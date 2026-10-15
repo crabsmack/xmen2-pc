@@ -145,6 +145,11 @@ def cmd_trace(a) -> dict:
             shutil.copy2(f, run_dir / f.name)
     (run_dir / "settings.ini").write_text(SETTINGS)
     frames = a.frames or script_frames(Path(a.input))
+    # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
+    # would return from the runner before that summary, so the played copy drops it.
+    script = out / "input.input"
+    script.write_text("".join(l for l in Path(a.input).read_text().splitlines(True)
+                              if not l.strip().upper().startswith("EXIT")), newline="\n")
     csv_path = out / "frames.csv"
     env = {**__import__("os").environ, "XMEN2_TRACE_CSV": str(csv_path), "GENESIS_NO_LAUNCHER": "1",
            "SDL_AUDIODRIVER": "dummy"}
@@ -152,7 +157,7 @@ def cmd_trace(a) -> dict:
         (out / "dump").mkdir(exist_ok=True)
         env.update(XMEN2_DUMP_FRAMES=a.dump_frames, XMEN2_DUMP_DIR=str(out / "dump"))
     cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames),
-           "--input-script", str(Path(a.input).resolve()), "--fresh-evidence"]
+           "--input-script", str(script), "--fresh-evidence"]
     log(f"trace {a.run}: {frames} frames")
     with open(out / "runner.log", "w", encoding="utf-8", errors="replace") as lf:
         r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
