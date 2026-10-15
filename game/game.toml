@@ -20,6 +20,9 @@ discovery_files = ["xmen2.seeds.toml", "xmen2.jtstubs.toml"]
 # 68000: never generate the 68020 path.
 allow_68020_branch = false
 jump_table_autodiscovery = false
+# Cycle-exact emission (XI boundaries, exact costs): the runner schedules the 68000,
+# VDP, Z80 and interrupts like the reference emulator (segagenesisrecomp exact_sched).
+exact_timing = true
 
 # ---------------------------------------------------------------------------
 # Per-game RAM layout. Only the stack fields are load-bearing; the Sonic-shaped
