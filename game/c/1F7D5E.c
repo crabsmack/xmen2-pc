@@ -1,6 +1,6 @@
 /* Seg_ForEachOfObj - call func(obj, segment) for every floor segment an object owns.
  *
- * obj: the owner (any Actor class), its first segment segIndex; each segment's unk_13 links
+ * obj: the owner (any Actor class), its first segment segIndex; each segment's nextOwned links
  * the next one ($FF ends). func: e.g. Seg_SetLayerFromObj. last is never read (the
  * original's). */
 #include "xmen2.h"
@@ -17,7 +17,7 @@ void Seg_ForEachOfObj(void *obj, SegObjFn func)
 	while (i != 0xFF) {
 		last = n = i;
 		s = &g_Segs[n];
-		i = s->unk_13;
+		i = s->nextOwned;
 		func(o, s);
 	}
 }

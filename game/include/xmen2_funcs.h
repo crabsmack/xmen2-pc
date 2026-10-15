@@ -2050,7 +2050,7 @@ long Elevator_GetSize(void);	/* $10B584 */
 void Elevator_Init(void *, long, short, short);	/* $10B58E */
 void Elevator_Update(void *);	/* $10B5D0 */
 void Elevator_Toggle(void *);	/* $10B672 */
-long SpaceA1_SwitchTileHit(short, short, void *);	/* $10B6BE */
+long SpaceA1_SwitchTileHit(short col, short row, void *obj, long, long);	/* $10B6BE */
 void SpaceA1_InstallTileHooks(void);	/* $10B76C */
 void SpaceA1_CamApply(void *);	/* $10B7A0 */
 void SpaceA1_CamUpdate(void *);	/* $10B840 */
@@ -2062,18 +2062,18 @@ void SpaceA1_InstallHooks(void);	/* $10BA6A */
 void SpaceA1_CallEmptyStub(void);	/* $10BB62 */
 void SpaceA1_RunScene(void);	/* $10BB6E */
 void Deathbird_EmptyStub1(void);	/* $1111E2 */
-void Deathbird_MovePolar(void *, void *, void *, void *, void *, void *, long, long, void *, void *, void *, void *, short);	/* $1111EA */
+void Deathbird_MovePolar(s16 *speed, s16 *accel, s16 *maxSpeed, s32 *heading, s32 *turnRate, s32 *turnAccel, s32 *x, s32 *y, s16 *vx, s16 *vy, s16 *prevVx, s16 *prevVy, short steps);	/* $1111EA */
 void Deathbird_MovePolar_Case0(void);	/* $1112FE fragment */
 void Deathbird_MovePolar_Case3(void);	/* $111336 fragment */
 void Deathbird_MovePolar_Case4(void);	/* $111352 fragment */
 void Deathbird_MovePolar_Case16(void);	/* $1114FC fragment */
 long Deathbird_GetSize(void);	/* $11157A */
 void Deathbird_EmptyStub2(void);	/* $111588 */
-void Deathbird_Nop66(void *);	/* $111590 */
-long Deathbird_LaunchBurst(void *);	/* $1115A6 */
+void Deathbird_Nop66(Deathbird *self);	/* $111590 */
+void Deathbird_LaunchBurst(Deathbird *self);	/* $1115A6 */
 void Deathbird_EmptyStub3(void);	/* $111790 */
 void Deathbird_EmptyStub4(void);	/* $111798 */
-void Deathbird_SetMoveMode(void *, short);	/* $1117A0 */
+void Deathbird_SetMoveMode(Deathbird *self, short mode);	/* $1117A0 */
 void Deathbird_SetMoveMode_Case0(void);	/* $1117DC fragment */
 void Deathbird_SetMoveMode_Case1(void);	/* $1117F0 fragment */
 void Deathbird_SetMoveMode_Case2(void);	/* $111842 fragment */
@@ -2083,42 +2083,42 @@ void Deathbird_SetMoveMode_Case7(void);	/* $111A00 fragment */
 void Deathbird_SetMoveMode_Case9(void);	/* $111ABA fragment */
 void Deathbird_SetMoveMode_Case10(void);	/* $111B50 fragment */
 void Deathbird_SetMoveMode_Default(void);	/* $111B9A fragment */
-void Deathbird_UpdateBurst(void *);	/* $111BAA */
+void Deathbird_UpdateBurst(Deathbird *self);	/* $111BAA */
 void Deathbird_ClassInit(void);	/* $111DEA */
-void Deathbird_Init(void *, long, long, long);	/* $111E44 */
-long Deathbird_Update(void *);	/* $112016 */
-void Deathbird_Move(void *, short);	/* $11214E */
+void Deathbird_Init(Deathbird *self, long x, long y, Placement *pl);	/* $111E44 */
+void Deathbird_Update(Deathbird *self);	/* $112016 */
+void Deathbird_Move(Deathbird *self, short steps);	/* $11214E */
 void Deathbird_Move_Polar(void);	/* $112186 fragment */
 void Deathbird_Move_Wobble(void);	/* $1121C6 fragment */
 void Deathbird_Move_Done(void);	/* $112330 fragment */
-long Deathbird_SetFrame(void *, short);	/* $11233A */
-void Deathbird_Draw(void *);	/* $1123FA */
+void Deathbird_SetFrame(Deathbird *self, short frame);	/* $11233A */
+void Deathbird_Draw(Deathbird *self);	/* $1123FA */
 char Deathbird_OutsideActiveWindow(void);	/* $112596 */
 void Deathbird_Reset(void);	/* $1125A0 */
-long Deathbird_StateHurt(void *);	/* $1125B8 */
-long Deathbird_StateHurtFlash(void *);	/* $112664 */
-long Deathbird_StateFalling(void *);	/* $112754 */
-long Deathbird_StateDeadFlicker(void *);	/* $11286E */
-long Deathbird_StateStart(void *);	/* $1128AE */
-long Deathbird_StateSendHornets(void *);	/* $1128E4 */
-long Deathbird_StateChooseAttack(void *);	/* $112A2E */
-long Deathbird_StateSwoopDown(void *);	/* $112B2E */
-long Deathbird_StateHoverPause(void *);	/* $112B90 */
-long Deathbird_StateThrowBurst(void *);	/* $112BDE */
-long Deathbird_StateWaitThenLeave(void *);	/* $112C50 */
-long Deathbird_StateFlyOff(void *);	/* $112C9E */
-long Deathbird_StateDiveLow(void *);	/* $112D1E */
-long Deathbird_StateGoToSwitch(void *);	/* $112D9E */
-long Deathbird_StateLandOnSwitch(void *);	/* $112EA4 */
-long Deathbird_StatePeck(void *);	/* $112F58 */
-long Deathbird_StateHitSwitch(void *);	/* $112F8E */
+short Deathbird_StateHurt(Deathbird *self);	/* $1125B8 */
+short Deathbird_StateHurtFlash(Deathbird *self);	/* $112664 */
+short Deathbird_StateFalling(Deathbird *self);	/* $112754 */
+short Deathbird_StateDeadFlicker(Deathbird *self);	/* $11286E */
+short Deathbird_StateStart(Deathbird *self);	/* $1128AE */
+short Deathbird_StateSendHornets(Deathbird *self);	/* $1128E4 */
+short Deathbird_StateChooseAttack(Deathbird *self);	/* $112A2E */
+short Deathbird_StateSwoopDown(Deathbird *self);	/* $112B2E */
+short Deathbird_StateHoverPause(Deathbird *self);	/* $112B90 */
+short Deathbird_StateThrowBurst(Deathbird *self);	/* $112BDE */
+short Deathbird_StateWaitThenLeave(Deathbird *self);	/* $112C50 */
+short Deathbird_StateFlyOff(Deathbird *self);	/* $112C9E */
+short Deathbird_StateDiveLow(Deathbird *self);	/* $112D1E */
+short Deathbird_StateGoToSwitch(Deathbird *self);	/* $112D9E */
+short Deathbird_StateLandOnSwitch(Deathbird *self);	/* $112EA4 */
+short Deathbird_StatePeck(Deathbird *self);	/* $112F58 */
+short Deathbird_StateHitSwitch(Deathbird *self);	/* $112F8E */
 long XNpc_GetSize(void);	/* $113B9A */
-void XNpc_Nop66(void *);	/* $113BA8 */
-void XNpc_Init(void *, long, long, long);	/* $113BBE */
-void XNpc_Explode(void *);	/* $113C14 */
-void XNpc_Move(long, short);	/* $113C80 */
-void XNpc_Attack(void *, void *, char, char, short, short);	/* $113CA6 */
-long XNpc_GetMoveLimit(long, long, void *);	/* $113D0E */
+void XNpc_Nop66(XNpc *self);	/* $113BA8 */
+void XNpc_Init(XNpc *self, long x, long y, Placement *pl);	/* $113BBE */
+void XNpc_Explode(XNpc *self);	/* $113C14 */
+void XNpc_Move(XNpc *self, short steps);	/* $113C80 */
+void XNpc_Attack(XNpc *self, Actor *target, char type, char damage, short hx, short hy);	/* $113CA6 */
+short XNpc_GetMoveLimit(XNpc *self, char dir, u8 *kind);	/* $113D0E */
 void XNpc_TakeDamage(void *, long, char, char);	/* $113D20 */
 void XNpc_TakeDamage_Type4(void);	/* $113D60 fragment */
 void XNpc_TakeDamage_Default(void);	/* $113D64 fragment */
@@ -2567,9 +2567,9 @@ long HornetBullet_GetSize(void);	/* $137340 */
 void HornetBullet_NopStatic(void);	/* $13734E */
 void HornetBullet_Reset(void);	/* $137356 */
 void HornetBullet_ClassInit(void);	/* $137362 */
-long HornetBullet_Init(void *, long, long, long);	/* $137382 */
-void HornetBullet_Update(void *);	/* $13745E */
-void HornetBullet_Draw(void *);	/* $1375DA */
+void HornetBullet_Init(HornetBullet *self, long x, long y, Placement *pl);	/* $137382 */
+void HornetBullet_Update(HornetBullet *self);	/* $13745E */
+void HornetBullet_Draw(HornetBullet *self);	/* $1375DA */
 long LaserCannon_GetSize(void);	/* $13814A */
 void LaserCannon_Nop66(void *);	/* $138158 */
 void LaserCannon_Nop6A(void);	/* $13816E */
@@ -2897,18 +2897,18 @@ void *Magneto_FrameBank(short frame);	/* $1599CC */
 short Magneto_FrameInBank(short frame);	/* $159A06 */
 void Magneto_SetFrame(Magneto *self, short frame);	/* $159A46 */
 void Cam_ClampLookToPlayers(void *);	/* $159ECC */
-void Cam_CommitLook(void *);	/* $159FB8 */
+void Cam_CommitLook(Camera *cam);	/* $159FB8 */
 void Pal_CycleStep(void *, void *, void *, void *, char);	/* $159FD6 */
-long Seg_MoveAlong(void *, short);	/* $15A0AC */
-void Seg_MoveAlongSteps(void *, short);	/* $15A168 */
+void Seg_MoveAlong(void *obj, short dist);	/* $15A0AC */
+void Seg_MoveAlongSteps(void *obj, short n);	/* $15A168 */
 long Obj_RideRail(void *, short);	/* $15A19C */
 void AiScript_Set(AiCursor *cursor, void *table);	/* $15A6DE */
 long Obj_InScreenWindow(void *);	/* $15A6FC */
 long Obj_OutsideActivateWindow(void *);	/* $15A79C */
 long Seg_GridCell(long x, long y);	/* $15A7C8 */
-long Seg_FindAt(short, short, short, short);	/* $15A82A */
-Seg *Seg_FindBelow(short, short, short);	/* $15A8FE */
-Seg *Seg_FindAbove(short, short, short);	/* $15AA20 */
+Seg *Seg_FindAt(short x, short y, short maxLayer, short height);	/* $15A82A */
+Seg *Seg_FindBelow(short x, short y, short maxLayer);	/* $15A8FE */
+Seg *Seg_FindAbove(short x, short y, short maxLayer);	/* $15AA20 */
 Seg *Seg_FindLeft(short x, short y, short type);	/* $15AB44 */
 Seg *Seg_FindRight(short x, short y, short type);	/* $15AC68 */
 long SegHook_HurtPlayerStop(short, long, void *, void *);	/* $15AD8A */
@@ -2976,29 +2976,29 @@ void Actor_Update(void *);	/* $15E7FA */
 short Obj_CountOfClass(void *);	/* $15EA78 */
 void Actor_Nop6A(void);	/* $15EAC8 */
 void Actor_Nop66(void *);	/* $15EAD0 */
-long Map_PutRowBlockA(void);	/* $15EAE2 asm */
-long Map_PutRowBlockB(void);	/* $15EB78 asm */
-void Map_PutRowPartA(void);	/* $15EC0E asm */
-void Map_PutRowPartB(void);	/* $15ECB2 asm */
-void Map_DrawRowA(void);	/* $15ED56 asm */
-void Map_DrawRowB(void);	/* $15EDCC asm */
+void Map_PutRowBlockA(u16 *defs, unsigned short cell, short r, short vramRow, short *vramCol);	/* $15EAE2 asm regs(a2,d2,d1,d6,&d7) clobbers(d4,d5) */
+void Map_PutRowBlockB(u16 *defs, unsigned short cell, short r, short vramRow, short *vramCol);	/* $15EB78 asm regs(a2,d2,d1,d6,&d7) clobbers(d4,d5) */
+void Map_PutRowPartA(u16 *defs, unsigned short cell, short r, short from, short to, short vramRow, short *vramCol);	/* $15EC0E asm regs(a2,d2,d1,d4,d3,d6,&d7) clobbers(d3,d4,d5) */
+void Map_PutRowPartB(u16 *defs, unsigned short cell, short r, short from, short to, short vramRow, short *vramCol);	/* $15ECB2 asm regs(a2,d2,d1,d4,d3,d6,&d7) clobbers(d3,d4,d5) */
+void Map_DrawRowA(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15ED56 asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
+void Map_DrawRowB(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15EDCC asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_StreamRows(void);	/* $15EE48 asm */
-void Map_PutColBlockA(void);	/* $15EF90 asm */
-void Map_PutColBlockB(void);	/* $15F036 asm */
-void Map_DrawColumnA(void);	/* $15F0DC asm */
-void Map_DrawColumnB(void);	/* $15F16A asm */
+void Map_PutColBlockA(u16 *defs, unsigned short cell, short c, short from, short to, short *vramRow, short vramCol);	/* $15EF90 asm regs(a2,d2,d1,d4,d3,&d6,d7) clobbers(d3,d4) */
+void Map_PutColBlockB(u16 *defs, unsigned short cell, short c, short from, short to, short *vramRow, short vramCol);	/* $15F036 asm regs(a2,d2,d1,d4,d3,&d6,d7) clobbers(d3,d4) */
+void Map_DrawColumnA(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F0DC asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
+void Map_DrawColumnB(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F16A asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_StreamColumns(void);	/* $15F1F8 asm */
 void Nem_Decode(void *, void *, long, char, void *);	/* $15F37C */
-long Nem_DecodeLoop(void);	/* $15F3F0 asm */
+void Nem_DecodeLoop(u8 *src, u16 *codes, short rows, char mode, u32 *dest, u8 *mask, unsigned short bits, short nbits, short nibbles, unsigned long row, unsigned long *fill);	/* $15F3F0 asm conv clobbers(d0,d1,d3,d4,d5,d6,a0,a3,a4) */
 void Nem_DecodeLoop_Row(void);	/* $15F4BA fragment */
 void Nem_DecodeLoop_Inline(void);	/* $15F540 fragment */
-void Nem_PutRowVdp(void);	/* $15F566 asm */
-void Nem_PutRowRam(void);	/* $15F572 asm */
-void Nem_PutRowMasked(void);	/* $15F57E asm */
+char Nem_PutRowVdp(unsigned long row, short *rowsLeft);	/* $15F566 asm conv */
+char Nem_PutRowRam(unsigned long row, short *rowsLeft, u32 **dest);	/* $15F572 asm conv */
+char Nem_PutRowMasked(unsigned long row, short *rowsLeft, char *skip, u8 *mask);	/* $15F57E asm conv */
 u8 *Nem_BuildCodeTable(void *list, void *table);	/* $15F5CA asm */
 void Eni_Decode(void *, void *, void *);	/* $15F5FC */
-void Eni_Ops(void);	/* $15F65C asm */
-long Eni_ReadInline(void);	/* $15F6F0 asm */
+void Eni_Ops(short op, short count, u8 *src, unsigned long bits, short nbits, u16 *dest, short inc, short common, short flags, short base, short width);	/* $15F65C asm conv clobbers(d0,d1,d2,a0,a1) */
+unsigned short Eni_ReadInline(u8 **src, unsigned long *bits, short *nbits, short width, short flags, short base, short *shift);	/* $15F6F0 asm regs(&a0,&d5,&d6,d4,d3,a3,&d7)->d1 */
 void Anim_Advance(void *);	/* $15F740 */
 char Anim_ApplyStep(void *, char);	/* $15F78E */
 long Anim_AdvanceByDistance(void *, short, long, long);	/* $15F8B6 */
@@ -3023,32 +3023,32 @@ void VDP_InitRegs(void);	/* $160594 */
 void Sys_InitHardware(void);	/* $160642 */
 long Obj_GetLiftCarrier(void *);	/* $1606F4 */
 long Cam_GetSize(void);	/* $1607A0 */
-long Cam_New(void *, long);	/* $1607AA */
+Camera *Cam_New(Class *cls, CamFn hook);	/* $1607AA */
 long Cam_Init(void *);	/* $1607E8 */
-void Cam_Nop12(void *);	/* $160996 */
-long Cam_Update(void *);	/* $1609A8 */
-void Cam_FollowBoth(void *, short, short, short, short);	/* $1609CC */
-void Cam_FollowPlayer(void *, short, short, short, short);	/* $160A18 */
-void Cam_FollowObject(void *, long, short, short, short, short);	/* $160ACA */
-void Cam_EaseOffset(void *);	/* $160B0E */
+void Cam_Nop12(Camera *self);	/* $160996 */
+void Cam_Update(Camera *self);	/* $1609A8 */
+void Cam_FollowBoth(Camera *self, short left, short top, short right, short bottom);	/* $1609CC */
+void Cam_FollowPlayer(Camera *self, short left, short top, short right, short bottom);	/* $160A18 */
+void Cam_FollowObject(Camera *self, void *obj, short left, short top, short right, short bottom);	/* $160ACA */
+void Cam_EaseOffset(Camera *self);	/* $160B0E */
 void Cam_ShakeStep(void *);	/* $160BB0 */
-void Cam_StepLookDown(void *);	/* $160C3E */
-void Cam_StepLookUp(void *);	/* $160D06 */
-long Cam_LookUp(void *);	/* $160DCE */
-long Cam_LookDown(void *);	/* $160E0E */
-void Cam_EndLookUp(void *);	/* $160E4E */
-void Cam_EndLookDown(void *);	/* $160E60 */
-void Cam_PanStep(void *);	/* $160E72 */
+void Cam_StepLookDown(Camera *self);	/* $160C3E */
+void Cam_StepLookUp(Camera *self);	/* $160D06 */
+char Cam_LookUp(Camera *self);	/* $160DCE */
+char Cam_LookDown(Camera *self);	/* $160E0E */
+void Cam_EndLookUp(Camera *self);	/* $160E4E */
+void Cam_EndLookDown(Camera *self);	/* $160E60 */
+void Cam_PanStep(Camera *self);	/* $160E72 */
 void Cam_PanTo(void *, short, short, short, short, char, char);	/* $160F36 */
-void Cam_UnlockAxes(void *);	/* $160FCC */
+void Cam_UnlockAxes(Camera *self);	/* $160FCC */
 char Cam_IsPanning(Camera *self);	/* $160FDE */
-void Cam_ApplyPos(void *);	/* $160FFE */
-void Cam_TrackBoth(void *);	/* $16103C */
+void Cam_ApplyPos(Camera *self);	/* $160FFE */
+void Cam_TrackBoth(Camera *self);	/* $16103C */
 long Cam_EaseAxis(short, short, short, short, short);	/* $16118E */
 void Cam_SpringAxis(short, short, short, short, short, short, void *, void *, void *, void *);	/* $161222 */
-void Cam_TrackPlayer(void *);	/* $16136E */
-void Cam_TrackObject(void *);	/* $161744 */
-void Cam_DefaultUpdate(void *);	/* $161816 */
+void Cam_TrackPlayer(Camera *self);	/* $16136E */
+void Cam_TrackObject(Camera *self);	/* $161744 */
+void Cam_DefaultUpdate(Camera *self);	/* $161816 */
 long Beast_GetSize(void);	/* $182AE6 */
 void Beast_Jump(Beast *self);	/* $182AF4 */
 void Beast_SetAirFrame(Beast *self);	/* $182B3C */
@@ -3419,9 +3419,9 @@ void Map_SetRowPalette(void *, short, short, short);	/* $1F553C */
 long Level_CompactUsedItems(long, long, void *, char, long, short);	/* $1F5594 */
 short Level_LoadUsedTiles(void *, void *, short, long, long, char);	/* $1F5612 */
 void Level_LoadMaps(void *, void *, void *, void *, short, short, char, char, char, char);	/* $1F5788 */
-void Cam_SetMinXBlocks(short);	/* $1F5F40 */
-void Cam_SetMaxXBlocks(short);	/* $1F5F5A */
-void Cam_SetPos(short, short);	/* $1F5F78 */
+void Cam_SetMinXBlocks(short col);	/* $1F5F40 */
+void Cam_SetMaxXBlocks(short col);	/* $1F5F5A */
+void Cam_SetPos(short x, short y);	/* $1F5F78 */
 void Cam_SetPosScaled(short, short);	/* $1F60E4 */
 long Math_MulFix8(short, short);	/* $1F6258 */
 void Obj_SetAnim(void *obj, void *anim);	/* $1F626A */
@@ -3448,51 +3448,51 @@ Actor *Player_NearestLive(void *obj);	/* $1F6A32 */
 long Obj_StandOnSeg(void *, void *);	/* $1F6B56 */
 void Obj_StandOnSegHere(void *);	/* $1F6B9C */
 void Seg_ClearAll(void);	/* $1F6BD2 */
-void Seg_LoadList(void *, char);	/* $1F6C04 */
-long Seg_ApplyObjPos(void *);	/* $1F6D76 */
+void Seg_LoadList(SegListEntry *list, char append);	/* $1F6C04 */
+void Seg_ApplyObjPos(void *obj);	/* $1F6D76 */
 void Seg_ApplyObjPos_Cases(void);	/* $1F6E42 fragment */
 void Seg_ApplyObjPos_Store(void);	/* $1F6EA6 fragment */
-long Seg_AlignObjVelocity(void *);	/* $1F6EC4 */
+void Seg_AlignObjVelocity(void *obj);	/* $1F6EC4 */
 void Seg_AlignObjVelocity_Slope(void);	/* $1F6F80 fragment */
 void Seg_AlignObjVelocity_Reverse(void);	/* $1F6F92 fragment */
 void Seg_AlignObjVelocity_Flat(void);	/* $1F6FD6 fragment */
 void Seg_AlignObjVelocity_Store(void);	/* $1F6FDA fragment */
-void Seg_ComputeObjPos(void *, void *);	/* $1F6FF4 */
+void Seg_ComputeObjPos(Seg *seg, void *obj);	/* $1F6FF4 */
 void Seg_ComputeObjPos_Cases(void);	/* $1F70A4 fragment */
 void Seg_ComputeObjPos_Done(void);	/* $1F71E8 fragment */
-void Seg_ObjPosUnclamped(void *, void *);	/* $1F71F2 */
+void Seg_ObjPosUnclamped(Seg *seg, void *obj);	/* $1F71F2 */
 void Seg_ObjPosUnclamped_Horiz(void);	/* $1F72A0 fragment */
 void Seg_ObjPosUnclamped_Reverse(void);	/* $1F72B6 fragment */
 void Seg_ObjPosUnclamped_Done(void);	/* $1F72F6 fragment */
-long Seg_CollideBlock(void *, void *, void *);	/* $1F7300 */
-void Seg_ApplyPushOut(void *, void *);	/* $1F7628 */
+short Seg_CollideBlock(void *obj, Seg *seg, SegContact *c);	/* $1F7300 */
+void Seg_ApplyPushOut(Seg *seg, void *obj, SegContact *c);	/* $1F7628 */
 void Seg_ApplyPushOut_Block(void);	/* $1F7686 fragment */
 void Seg_ApplyPushOut_Default(void);	/* $1F76D6 fragment */
 void Seg_ApplyPushOut_Walls(void);	/* $1F7848 fragment */
 void Seg_ApplyPushOut_Move(void);	/* $1F78CA fragment */
 void Seg_SetLayerFromObj(void *obj, Seg *seg);	/* $1F7940 */
 void Obj_InheritLayer(void *, void *);	/* $1F7956 */
-void Seg_ComputeLength(void *);	/* $1F79A2 */
+void Seg_ComputeLength(Seg *seg);	/* $1F79A2 */
 void Seg_ComputeLength_Flat(void);	/* $1F7A7C fragment */
 void Seg_ComputeLength_Max(void);	/* $1F7A82 fragment */
 void Seg_InitDefaults(Seg *seg, char type, char layer);	/* $1F7A9E */
-void Seg_ComputeSlope(void *);	/* $1F7AF8 */
+void Seg_ComputeSlope(Seg *seg);	/* $1F7AF8 */
 void Seg_ComputeSlope_Flat(void);	/* $1F7B36 fragment */
 void Seg_ComputeSlope_Calc(void);	/* $1F7B3C fragment */
-void Seg_Setup(void *, short, short, short, short, short, short);	/* $1F7BB6 */
+void Seg_Setup(Seg *seg, short type, short layer, short x1, short y1, short x2, short y2);	/* $1F7BB6 */
 short Seg_Alloc(void);	/* $1F7C0A */
-Seg *Seg_Create(char, short, short, short, short, short);	/* $1F7C6A */
+Seg *Seg_Create(char type, short layer, short x1, short y1, short x2, short y2);	/* $1F7C6A */
 void Seg_Free(Seg *seg);	/* $1F7CFE */
 void Seg_ForEachOfObj(void *obj, SegObjFn func);	/* $1F7D5E */
 long Obj_SnapToNearestSeg(void *, short, short);	/* $1F7DAE */
 void Obj_SnapToNearestFloor(void *, short, short);	/* $1F7F38 */
 Seg *Seg_FindNearestOfType(short x, short y, short type);	/* $1F80CA */
-Seg *Seg_FindContaining(short, short, short);	/* $1F82CC */
+Seg *Seg_FindContaining(short x, short y, short type);	/* $1F82CC */
 Seg *Seg_FindInBlock(short type, short col, short row);	/* $1F8454 */
 void Seg_SetEndpoints(void *seg, short x1, short y1, short x2, short y2);	/* $1F8494 asm */
 void Seg_BuildGrid(void);	/* $1F84BE */
-void Seg_GatherNearObj(void *, void *);	/* $1F85B6 */
-long Seg_CollideObj(void *, void *, void *);	/* $1F87B2 */
+void Seg_GatherNearObj(void *obj, SegContact *c);	/* $1F85B6 */
+short Seg_CollideObj(Seg *seg, void *obj, SegContact *c);	/* $1F87B2 */
 void Seg_CollideObj_Cases(void);	/* $1F883A fragment */
 void Seg_CollideObj_Trigger(void);	/* $1F895C fragment */
 void Seg_CollideObj_CeilFloor(void);	/* $1F89A4 fragment */

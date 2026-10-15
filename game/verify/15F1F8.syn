@@ -1,0 +1,14 @@
+# Map_StreamColumns: the clamps at the map's left edge, which the corpus never reaches: more
+# columns wanted to the left than the map has. Plane A ($15F242): the camera 16 px left of the
+# map (g_FgScrollX = -16) with the drawn x at 8: 3 columns wanted, 1 left, drawn at tile column 0.
+case left
+w $FFC736 = $0008         # g_FgStreamX
+w $FFC73E = $FFF0         # g_FgScrollX
+b $FFC74E = 0             # g_MapDrawOff: draw
+# Plane B ($15F310), the same with a BG map that doesn't wrap horizontally
+case bg-left
+w $FFC732 = $0008         # g_BgStreamX
+w $FFC73A = $FFF0         # g_BgScrollX
+b $FFC79C = 1             # g_BgMapPresent
+b $FFC74C = 0             # g_BgWrapX
+b $FFC74E = 0             # g_MapDrawOff: draw

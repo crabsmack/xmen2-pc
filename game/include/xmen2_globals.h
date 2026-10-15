@@ -593,9 +593,9 @@ extern PTR(void) g_SpaceA1Buf;
 #endif
 /* $FFC63C ptr: SpaceA1 ELEVATOR object, on SpaceA1_RunScene's stack (SpaceA1_CamUpdate) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_Elevator;
+extern PTR(Elevator) g_Elevator;
 #else
-#define g_Elevator XM_G(PTR(void), 0xFFC63C)
+#define g_Elevator XM_G(PTR(Elevator), 0xFFC63C)
 #endif
 /* $FFC640 word: sprite-definition slot of Art_DeathbirdSpr (Deathbird_ClassInit via SprDef_Add; Deathbird_Init) */
 #ifdef XMEN2_MPW
@@ -2184,15 +2184,21 @@ extern s16 g_SegFirstFree;
 #endif
 /* $FFCD92 ptr: the g_SegTypeHooks entry fetched before calling it (Seg_ApplyObjPos, Seg_AlignObjVelocity, Seg_ComputeObjPos, Seg_ObjPosUnclamped, Seg_ComputeLength) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SegHookTmp;
+extern SegHookFn g_SegHookTmp;
 #else
-#define g_SegHookTmp XM_G(PTR(void), 0xFFCD92)
+#define g_SegHookTmp XM_G(SegHookFn, 0xFFCD92)
 #endif
 /* $FFCD96 array of long: per floor-segment-type callback (mode, segment, object, 0), indexed by the segment's type byte +1; ACTOR Move (Actor_Move) and the floor code call it when non-zero; scenes install their own (CloneA5_SegHook15/16/17 at -$3416/-$3412/-$340E) */
 #ifdef XMEN2_MPW
 extern SegHookFn g_SegTypeHooks[];
 #else
 #define g_SegTypeHooks XM_GA(SegHookFn, 0xFFCD96)
+#endif
+/* $FFCE2A ptr: g_HeapTop after the level's floor-segment grid (Seg_LoadList writes it, nothing reads it by name); name proposed by the Seg worker, not yet in the disassembly */
+#ifdef XMEN2_MPW
+extern PTR(void) g_SegHeapEnd;
+#else
+#define g_SegHeapEnd XM_G(PTR(void), 0xFFCE2A)
 #endif
 /* $FFCE2E array: floor-segment records, $14 bytes each ($FFCE2E) (Seg_Alloc, Seg_LoadList) */
 #ifdef XMEN2_MPW

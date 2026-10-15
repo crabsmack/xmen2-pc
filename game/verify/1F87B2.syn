@@ -1,0 +1,177 @@
+# Seg_CollideObj: the corpus never meets a type-0, $1D (trigger), $1F/$20 (event wall) or $F
+# segment, a type-$E floor under a player, nor walls / ceilings / floors whose slope is exactly
+# +-1 ($100 / $FF00) or another non-zero one. Each case sets the object's box to x 0..20,
+# y 100..140 (centre 10, 120), retypes the segment (arg0) and clears that type's hook so the
+# type case itself runs.
+
+# left wall $20, slope +1: pushed right 50 px, event 4
+case wall20
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = $20
+l $FFCD96+$80 = 0
+w arg0+4 = $100
+w arg0+8 = 10
+w arg0+$A = 80
+w arg0+$C = 10
+w arg0+$E = 160
+
+# left wall 1, slope -1: the surface is left of the box, no contact
+case wall1neg
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = 1
+l $FFCD96+4 = 0
+w arg0+4 = $FF00
+w arg0+8 = 10
+w arg0+$A = 80
+w arg0+$C = 10
+w arg0+$E = 160
+
+# left wall 1, slope 1/2: pushed right 30 px
+case wall1mul
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = 1
+l $FFCD96+4 = 0
+w arg0+4 = $80
+w arg0+8 = 10
+w arg0+$A = 80
+w arg0+$C = 10
+w arg0+$E = 160
+
+# right wall $1F, slope +1 from its lower end: pushed left 50 px, event 4
+case wall1F
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = $1F
+l $FFCD96+$7C = 0
+w arg0+4 = $100
+w arg0+8 = 10
+w arg0+$A = 160
+w arg0+$C = 10
+w arg0+$E = 80
+
+# trigger box $1D around a player's box: event 2
+case trigger
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg1+$15 = 0
+b arg0+1 = $1D
+l $FFCD96+$74 = 0
+w arg0+8 = -10
+w arg0+$A = 90
+w arg0+$C = 30
+w arg0+$E = 150
+
+# ceiling 4 just into the box top: slope +1 pushes down 10 px; -1 and 1/2 leave it clear
+case ceilpos
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = 4
+l $FFCD96+$10 = 0
+w arg0+4 = $100
+w arg0+8 = -10
+w arg0+$A = 90
+w arg0+$C = 30
+w arg0+$E = 130
+case ceilneg
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = 4
+l $FFCD96+$10 = 0
+w arg0+4 = $FF00
+w arg0+8 = -10
+w arg0+$A = 90
+w arg0+$C = 30
+w arg0+$E = 130
+case ceilmul
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+b arg0+1 = 4
+l $FFCD96+$10 = 0
+w arg0+4 = $80
+w arg0+8 = -10
+w arg0+$A = 90
+w arg0+$C = 30
+w arg0+$E = 130
+
+# floor 3 under an airborne object: slope +1 puts it below the box (3), slope -1 lands it
+case floorpos
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+l arg1+$76 = 0
+b arg0+1 = 3
+l $FFCD96+$C = 0
+w arg0+4 = $100
+w arg0+8 = -10
+w arg0+$A = 150
+w arg0+$C = 30
+w arg0+$E = 170
+case floorneg
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+l arg1+$76 = 0
+b arg0+1 = 3
+l $FFCD96+$C = 0
+w arg0+4 = $FF00
+w arg0+8 = -10
+w arg0+$A = 150
+w arg0+$C = 30
+w arg0+$E = 130
+
+# flat floor $E 10 px into a player's box: event 2; flat floor $F under a non-player: event 3
+# and landing
+case floorE
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+l arg1+$76 = 0
+b arg1+$15 = 0
+b arg0+1 = $E
+l $FFCD96+$38 = 0
+w arg0+4 = 0
+w arg0+8 = -10
+w arg0+$A = 130
+w arg0+$C = 30
+w arg0+$E = 130
+case floorF
+w arg1+$4C = 100
+w arg1+$4E = 0
+w arg1+$50 = 140
+w arg1+$52 = 20
+l arg1+$76 = 0
+b arg1+$15 = 5
+b arg0+1 = $F
+l $FFCD96+$3C = 0
+w arg0+4 = 0
+w arg0+8 = -10
+w arg0+$A = 130
+w arg0+$C = 30
+w arg0+$E = 130
+
+# type 0: no contact
+case type0
+b arg0+1 = 0
+l $FFCD96 = 0

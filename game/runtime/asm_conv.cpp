@@ -14,7 +14,11 @@
 extern "C" {
 #include "genesis_runtime.h"
 void xm_slot_return(void);
+void xm_regs_save(uint32_t *saved);
+void xm_regs_restore(const uint32_t *saved);
 }
+/* the game-memory types of the C prototypes (u8, u16, u32) and host <-> 68000 pointers */
+#include "xmen2_mem.h"
 
 namespace xm {
 [[noreturn]] void fatal(const char *fmt, ...);
@@ -95,4 +99,221 @@ void conv_call_1FE4EC(unsigned short sr)
     if (g_cpu.A[7] != sp || g_cpu.A[6] != a6)
         xm::fatal("Z80_BusRelease left A7 $%08X A6 $%08X (expected $%08X $%08X)", (unsigned)g_cpu.A[7],
                   (unsigned)g_cpu.A[6], (unsigned)sp, (unsigned)a6);
+}
+
+/* A data register's low word, as move.w/subq.w leave it (the high word stays). */
+static void set_dw(int r, uint16_t v) { g_cpu.D[r] = (g_cpu.D[r] & 0xFFFF0000u) | v; }
+
+/* ---- $15F3F0 Nem_DecodeLoop, its row writers $15F566 / $15F572 / $15F57E --------------------
+   Nem_Decode (link a6; its frame stays a6 throughout) sets a0 = the data, a1 = the code table,
+   a3 = the row writer (lea), a4 = the RAM destination or $C00000, d2 = rows, d3 = 8, d4 = 0,
+   d5/d6 = the bit buffer and its count, and bsr's to the loop. The loop does jsr (a3) per row;
+   the writer (d4 = the row, d2 = rows left) returns, or after the last row pops the loop's
+   return address into a0 and rts: out of the loop, back to Nem_Decode. Nem_PutRowMasked reads
+   its tile mask at $1C(a6) (Nem_Decode's last argument) and at a tile's end leaves in a3 the
+   entry for the next tile's rows: its own, or $15F580 (just after its write) to skip the tile.
+   C: the writer is Nem_Decode's mode (0 RAM, 1 VDP, 2 masked); a writer returns 1 after the
+   last row; the masked writer's choice is *skip. */
+static const uint32_t NEM_PUT_VDP = 0x15F566u, NEM_PUT_RAM = 0x15F572u, NEM_PUT_MASKED = 0x15F57Eu,
+                      NEM_PUT_SKIP = 0x15F580u;
+
+void conv_slot_15F3F0(void (*c)(u8 *src, u16 *codes, short rows, char mode, u32 *dest, u8 *mask,
+                                unsigned short bits, short nbits, short nibbles, unsigned long row,
+                                unsigned long *fill))
+{
+    uint32_t w = g_cpu.A[3] & 0xFFFFFFu;
+    int m = w == NEM_PUT_RAM ? 0 : w == NEM_PUT_VDP ? 1 : w == NEM_PUT_MASKED ? 2 : -1;
+    if (m < 0)   /* Nem_Decode always starts with a writer's own entry */
+        xm::fatal("Nem_DecodeLoop entered with a3 $%08X (not a row writer)", (unsigned)g_cpu.A[3]);
+    char mode = (char)m;
+    u32 *dest = mode == 0 ? (u32 *)xm::host(g_cpu.A[4]) : nullptr;
+    u8 *mask = mode == 2 ? (u8 *)xm::host(m68k_read32(g_cpu.A[6] + 0x1Cu)) : nullptr;
+    unsigned long fill = g_cpu.D[7];
+    c((u8 *)xm::host(g_cpu.A[0]), (u16 *)xm::host(g_cpu.A[1]), (short)g_cpu.D[2], mode, dest, mask,
+      (unsigned short)g_cpu.D[5], (short)g_cpu.D[6], (short)g_cpu.D[3], g_cpu.D[4], &fill);
+    set_dw(2, 0);                 /* the last row brought the count to 0 */
+    g_cpu.D[7] = (uint32_t)fill;
+    xm_slot_return();             /* the writer's rts, past the loop to Nem_Decode */
+}
+
+void conv_call_15F3F0(u8 *src, u16 *codes, short rows, char mode, u32 *dest, u8 *mask, unsigned short bits,
+                      short nbits, short nibbles, unsigned long row, unsigned long *fill)
+{
+    uint32_t saved[15];
+    xm_regs_save(saved);
+    uint32_t sp = g_cpu.A[7];
+    uint32_t fr = xm::sp_reserve(0x20);   /* a frame for the masked writer's $1C(a6) */
+    m68k_write32(fr + 0x1Cu, xm::addr(mask));
+    g_cpu.A[6] = fr;
+    g_cpu.A[0] = xm::addr(src);
+    g_cpu.A[1] = xm::addr(codes);
+    g_cpu.A[3] = mode == 0 ? NEM_PUT_RAM : mode == 1 ? NEM_PUT_VDP : NEM_PUT_MASKED;
+    g_cpu.A[4] = mode == 0 ? xm::addr(dest) : 0x00C00000u;
+    set_dw(2, (uint16_t)rows);
+    set_dw(3, (uint16_t)nibbles);
+    g_cpu.D[4] = (uint32_t)row;
+    set_dw(5, bits);
+    set_dw(6, (uint16_t)nbits);
+    g_cpu.D[7] = (uint32_t)*fill;
+    xm::call_raw(0x15F3F0u);
+    if (g_cpu.A[7] != fr)
+        xm::fatal("Nem_DecodeLoop left A7 $%08X (expected $%08X)", (unsigned)g_cpu.A[7], (unsigned)fr);
+    *fill = g_cpu.D[7];
+    xm_regs_restore(saved);
+    g_cpu.A[7] = sp;
+}
+
+/* A writer called from generated code: d2 back, and after the last row the loop's return
+   address popped into a0 (movea.l (a7)+,a0), so that the rts leaves the loop. */
+static void nem_put_return(char done, short left)
+{
+    set_dw(2, (uint16_t)left);
+    if (done)
+        g_cpu.A[0] = pop32();
+    xm_slot_return();
+}
+
+/* A writer's generated code called from C: under a stand-in for the loop's return address,
+   which it pops after the last row (then A7 is back at sp). */
+static char nem_put_call(uint32_t entry, uint32_t sp)
+{
+    push32(xm::ret_from_c());
+    xm::call_raw(entry);
+    if (g_cpu.A[7] != sp && g_cpu.A[7] != sp - 4u)
+        xm::fatal("Nemesis writer $%06X left A7 $%08X (expected $%08X or $%08X)", (unsigned)entry,
+                  (unsigned)g_cpu.A[7], (unsigned)sp, (unsigned)(sp - 4u));
+    return g_cpu.A[7] == sp;
+}
+
+void conv_slot_15F566(char (*c)(unsigned long row, short *rowsLeft))
+{
+    short left = (short)g_cpu.D[2];
+    char done = c(g_cpu.D[4], &left);
+    nem_put_return(done, left);
+}
+
+char conv_call_15F566(unsigned long row, short *rowsLeft)
+{
+    uint32_t saved[15];
+    xm_regs_save(saved);
+    uint32_t sp = g_cpu.A[7];
+    g_cpu.D[4] = (uint32_t)row;
+    set_dw(2, (uint16_t)*rowsLeft);
+    g_cpu.A[4] = 0x00C00000u;
+    char done = nem_put_call(NEM_PUT_VDP, sp);
+    *rowsLeft = (short)g_cpu.D[2];
+    xm_regs_restore(saved);
+    g_cpu.A[7] = sp;
+    return done;
+}
+
+void conv_slot_15F572(char (*c)(unsigned long row, short *rowsLeft, u32 **dest))
+{
+    short left = (short)g_cpu.D[2];
+    u32 *dest = (u32 *)xm::host(g_cpu.A[4]);
+    char done = c(g_cpu.D[4], &left, &dest);
+    g_cpu.A[4] = xm::addr(dest);
+    nem_put_return(done, left);
+}
+
+char conv_call_15F572(unsigned long row, short *rowsLeft, u32 **dest)
+{
+    uint32_t saved[15];
+    xm_regs_save(saved);
+    uint32_t sp = g_cpu.A[7];
+    g_cpu.D[4] = (uint32_t)row;
+    set_dw(2, (uint16_t)*rowsLeft);
+    g_cpu.A[4] = xm::addr(*dest);
+    char done = nem_put_call(NEM_PUT_RAM, sp);
+    *rowsLeft = (short)g_cpu.D[2];
+    *dest = (u32 *)xm::host(g_cpu.A[4]);
+    xm_regs_restore(saved);
+    g_cpu.A[7] = sp;
+    return done;
+}
+
+void conv_slot_15F57E(char (*c)(unsigned long row, short *rowsLeft, char *skip, u8 *mask))
+{
+    short left = (short)g_cpu.D[2];
+    char skip = 0;                /* entered here (jsr (a3), a3 = this entry): the tile is written */
+    u8 *mask = (u8 *)xm::host(m68k_read32(g_cpu.A[6] + 0x1Cu));
+    char done = c(g_cpu.D[4], &left, &skip, mask);
+    if (skip)
+        g_cpu.A[3] = NEM_PUT_SKIP;   /* else a3 stays this entry, which is what its lea would set */
+    nem_put_return(done, left);
+}
+
+char conv_call_15F57E(unsigned long row, short *rowsLeft, char *skip, u8 *mask)
+{
+    uint32_t saved[15];
+    xm_regs_save(saved);
+    uint32_t sp = g_cpu.A[7];
+    uint32_t fr = xm::sp_reserve(0x20);   /* a frame for $1C(a6) */
+    m68k_write32(fr + 0x1Cu, xm::addr(mask));
+    g_cpu.A[6] = fr;
+    g_cpu.D[4] = (uint32_t)row;
+    set_dw(2, (uint16_t)*rowsLeft);
+    g_cpu.A[4] = 0x00C00000u;
+    g_cpu.A[3] = *skip ? NEM_PUT_SKIP : NEM_PUT_MASKED;
+    char done = nem_put_call(g_cpu.A[3], fr);
+    *rowsLeft = (short)g_cpu.D[2];
+    *skip = (g_cpu.A[3] & 0xFFFFFFu) == NEM_PUT_SKIP;
+    xm_regs_restore(saved);
+    g_cpu.A[7] = sp;
+    return done;
+}
+
+/* ---- $15F65C Eni_Ops ------------------------------------------------------------------------
+   Eni_Decode (link a6 / movem.l d3-d7/a2-a4,-(a7)) reads a command and does jmp Eni_Ops(pc,d1.w)
+   into the 8-entry branch table at $15F65C (d1 = op * 2, d2 = count), with a0 = the data, a1 =
+   the output, a2 = the incrementing word, a4 = the common word, d3 = the flag bits, a3 = the
+   base, d4 = the inline width, d5/d6 = the bit buffer and its count. Each command branches back
+   to Eni_Decode's command loop ($15F628); the end mark does Eni_Decode's epilogue (movem.l
+   (a7)+,d3-d7/a2-a4 / unlk a6 / rts). Generated code enters the C only at $15F65C (op 0); the
+   C runs every command from there on, then the epilogue is done here. */
+void conv_slot_15F65C(void (*c)(short op, short count, u8 *src, unsigned long bits, short nbits, u16 *dest,
+                                short inc, short common, short flags, short base, short width))
+{
+    c(0, (short)g_cpu.D[2], (u8 *)xm::host(g_cpu.A[0]), g_cpu.D[5], (short)g_cpu.D[6],
+      (u16 *)xm::host(g_cpu.A[1]), (short)g_cpu.A[2], (short)g_cpu.A[4], (short)g_cpu.D[3], (short)g_cpu.A[3],
+      (short)g_cpu.D[4]);
+    for (int r = 3; r <= 7; r++)
+        g_cpu.D[r] = pop32();
+    for (int r = 2; r <= 4; r++)
+        g_cpu.A[r] = pop32();
+    g_cpu.A[7] = g_cpu.A[6];      /* unlk a6 */
+    g_cpu.A[6] = pop32();
+    xm_slot_return();             /* rts: from Eni_Decode */
+}
+
+void conv_call_15F65C(short op, short count, u8 *src, unsigned long bits, short nbits, u16 *dest, short inc,
+                      short common, short flags, short base, short width)
+{
+    uint32_t saved[15];
+    xm_regs_save(saved);
+    uint32_t sp = g_cpu.A[7], a6 = g_cpu.A[6];
+    /* Eni_Decode's frame, for the end mark to unwind; its rts returns here */
+    push32(xm::ret_from_c());
+    push32(g_cpu.A[6]);
+    g_cpu.A[6] = g_cpu.A[7];
+    for (int r = 4; r >= 2; r--)
+        push32(g_cpu.A[r]);
+    for (int r = 7; r >= 3; r--)
+        push32(g_cpu.D[r]);
+    set_dw(1, (uint16_t)((op & 7) * 2));
+    set_dw(2, (uint16_t)count);
+    g_cpu.A[0] = xm::addr(src);
+    g_cpu.D[5] = (uint32_t)bits;
+    set_dw(6, (uint16_t)nbits);
+    g_cpu.A[1] = xm::addr(dest);
+    g_cpu.A[2] = (uint32_t)(int32_t)inc;      /* movea.w */
+    g_cpu.A[4] = (uint32_t)(int32_t)common;
+    g_cpu.D[3] = (uint32_t)(int32_t)flags;
+    g_cpu.A[3] = (uint32_t)(int32_t)base;
+    g_cpu.D[4] = (uint32_t)(int32_t)width;
+    xm::jump_raw(0x15F65Cu + 2u * (uint32_t)(op & 7));
+    if (g_cpu.A[7] != sp || g_cpu.A[6] != a6)
+        xm::fatal("Eni_Ops left A7 $%08X A6 $%08X (expected $%08X $%08X)", (unsigned)g_cpu.A[7],
+                  (unsigned)g_cpu.A[6], (unsigned)sp, (unsigned)a6);
+    xm_regs_restore(saved);
 }

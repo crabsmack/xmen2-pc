@@ -99,7 +99,7 @@ void Actor_Move(void *obj)
 					o->vx = o->maxVx;
 					v = o->vx;
 				}
-				if (s->unk_04 != 0 || v > o->minVx) {
+				if (s->slope != 0 || v > o->minVx) {
 					dv = v;
 					if (g_HalfSpeed)
 						dv >>= 1;
@@ -111,7 +111,7 @@ void Actor_Move(void *obj)
 					o->vx = -o->maxVx;
 					v = o->maxVx;
 				}
-				if (s->unk_04 != 0 || v > o->minVx) {
+				if (s->slope != 0 || v > o->minVx) {
 					dv = (short)-v;
 					if (g_HalfSpeed)
 						dv >>= 1;

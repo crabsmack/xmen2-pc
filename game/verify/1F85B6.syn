@@ -1,0 +1,70 @@
+# Seg_GatherNearObj: the corpus never marks an owned segment (owner match, attached-to chain),
+# never meets an owner of $FF, and never clamps the box centre to the grid (negative sum, past
+# the right / bottom edge). The cases keep one owned segment, g_Segs[0] ($FFCE2E), in the second
+# scan (g_SegLevelCount = g_SegHighWater = 0) with a box around the object's (set to x -10..5,
+# y 100..120). The function calls nothing, so the mutated memory is only ever read by it.
+
+# the object owns the segment; a player (index 1) with passFrames 3: marked, counted down.
+# The box centre sum is negative: cell column 0.
+case own
+w $FFCD8E = 0
+w $FFCD8C = 0
+w arg0+$4C = 100
+w arg0+$4E = -10
+w arg0+$50 = 120
+w arg0+$52 = 5
+b arg0+$15 = 1
+b $FFCE2E = $80
+b $FFCE31 = 3
+w $FFCE36 = -20
+w $FFCE38 = 110
+w $FFCE3A = 20
+w $FFCE3C = 110
+b $FFCE40 = 1
+
+# owned by object 11, attached to the object (index 10): the chain is walked one step and the
+# segment marked; not a player, so passFrames stays. Object 11 is a stand-in record in an
+# unused part of g_Segs ($FFDDCE: index $33, attached to 10).
+case chain
+w $FFCD8E = 0
+w $FFCD8C = 0
+w arg0+$4C = 100
+w arg0+$4E = -10
+w arg0+$50 = 120
+w arg0+$52 = 5
+b arg0+$15 = 10
+l [$FFCD5A]+40 = arg0
+l [$FFCD5A]+44 = $FFDDCE
+b $FFDDE3 = $33
+b $FFDE08 = 10
+b $FFCE2E = $80
+b $FFCE31 = 2
+w $FFCE36 = -20
+w $FFCE38 = 110
+w $FFCE3A = 20
+w $FFCE3C = 110
+b $FFCE40 = 11
+
+# owner $FF (no object): listed, not marked.
+case noowner
+w $FFCD8E = 0
+w $FFCD8C = 0
+w arg0+$4C = 100
+w arg0+$4E = -10
+w arg0+$50 = 120
+w arg0+$52 = 5
+b arg0+$15 = 5
+b $FFCE2E = $80
+b $FFCE31 = 0
+w $FFCE36 = -20
+w $FFCE38 = 110
+w $FFCE3A = 20
+w $FFCE3C = 110
+b $FFCE40 = $FF
+
+# the box far right and below the level: its centre is clamped to the grid's last column and row
+case clamp
+w arg0+$4C = $3000
+w arg0+$4E = $3000
+w arg0+$50 = $3010
+w arg0+$52 = $3010

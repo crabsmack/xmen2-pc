@@ -1,0 +1,12 @@
+# Nem_DecodeLoop: a decode is long (hundreds of rows), so corpus calls may take an interrupt and
+# not be comparable. One uninterrupted run from its first call's state, then the same stream
+# through the other writers Nem_Decode can choose (a3: its lea): to the VDP data port (mode 1),
+# and the first 16 rows into a RAM buffer (mode 0, which no caller uses).
+case plain
+case vdp
+reg a3 = $0015F566        # Nem_PutRowVdp
+reg a4 = $00C00000
+case ram16
+reg a3 = $0015F572        # Nem_PutRowRam
+reg a4 = $00FF8000
+reg d2 = $00000010        # 16 rows

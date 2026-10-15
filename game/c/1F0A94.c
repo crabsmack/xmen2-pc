@@ -32,7 +32,7 @@ short XPlayer_StateControl(register XPlayer *self)
 
 	seg = self->seg;
 #ifdef XMEN2_MPW
-	unused = seg->unk_04;
+	unused = seg->slope;
 	type = seg->type;
 #else
 	/* With no segment (in the air, or a new player) the 68000 reads ROM $000001 ($FF): -1. */

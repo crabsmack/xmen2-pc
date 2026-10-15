@@ -1,0 +1,20 @@
+# Nem_PutRowRam: never run (Nem_Decode mode 0 has no caller in the game). As Nem_DecodeLoop's
+# jsr (a3) would call it: d4 = the row, a4 = a RAM buffer (both pointer forms), d2 = rows left.
+at any
+case row
+reg d4 = $12345678
+reg a4 = $00FF4000
+reg d2 = $00000003
+case row-ffff
+reg d4 = $89ABCDEF
+reg a4 = $FFFF4100
+reg d2 = $00010002        # only the low word counts
+# the last row: it pops the loop's return address (stacked here: back into the loop at
+# $15F4C0, below it Nem_Decode's continuation $15F3E8) and returns past the loop
+case last
+reg a7 = a7 - 8
+l a7 = $0015F4C0
+l a7+4 = $0015F3E8
+reg d4 = $00FFF000
+reg a4 = $00FF4200
+reg d2 = $00000001

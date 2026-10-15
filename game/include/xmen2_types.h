@@ -175,11 +175,11 @@ CHECK_SIZE(SpawnRec, 0x0E);
 
 /* A floor segment: $14-byte records in g_Segs (xmen2disasm NOTES "Floor segments"). */
 typedef struct Seg {
-	s8 flags;			/* +$00 bit 7 in use (signed: the segment code and Barbarian_FindPlatforms ext.w it) */
-	s8 type;			/* +$01 handler (g_SegTypeHooks); signed (Seg $15AB44 ext.w, Barbarian_FindPlatforms bgt) */
-	u8 layer;			/* +$02 layer (Seg_FindAbove/Below take segments up to a layer) */
-	u8 unk_03;			/* +$03 */
-	s16 unk_04;			/* +$04 (a word: XPlayer_StateControl reads it into a variable it never uses; non-zero: Actor_Move moves objects on it below their minimum speed) */
+	s8 flags;			/* +$00 bit 7 in use, bit 3 steep (slope is dx/dy: Seg_ComputeSlope); $A0 fresh (Seg_InitDefaults) (signed: the segment code and Barbarian_FindPlatforms ext.w it) */
+	s8 type;			/* +$01 handler (g_SegTypeHooks); signed (Seg $15AB44 ext.w, Barbarian_FindPlatforms bgt); $13-$1C flat floors / solid blocks */
+	s8 layer;			/* +$02 layer (Seg_FindAt/Below/Above take segments up to a layer; signed: ext.w / bgt there) */
+	s8 passFrames;			/* +$03 passes the players may still go through it: 30 after it blocked one (Obj_CollideSegs), counted down by Seg_GatherNearObj (signed: tst.b / bgt) */
+	s16 slope;			/* +$04 dy/dx, 8 fraction bits (dx/dy when flags bit 3); 0 for flat types (Seg_ComputeSlope). XPlayer_StateControl reads it into a variable it never uses; non-zero: Actor_Move moves objects on it below their minimum speed */
 	s16 length;			/* +$06 length along the segment, pixels (Seg_ComputeLength; Actor_Move) */
 	s16 x1;				/* +$08 endpoints (pixels) */
 	s16 y1;				/* +$0A */
@@ -188,9 +188,35 @@ typedef struct Seg {
 	u8 prev;			/* +$10 g_Segs index of the segment before it ($FF: none; Actor_Move) */
 	u8 next;			/* +$11 the segment after it */
 	s8 owner;			/* +$12 owner object: its index (+$15, Actor_Activate); negative: none (XPlayer_PlaceAtSafePos) */
-	u8 unk_13;			/* +$13 next segment of the owner */
+	u8 nextOwned;			/* +$13 next segment of the same owner ($FF: last; Seg_ForEachOfObj) */
 } Seg;
 CHECK_SIZE(Seg, 0x14);
+/* A contact of an object with a floor segment (8 bytes; Obj_CollideSegs keeps 30 on its stack):
+   Seg_GatherNearObj lists the segments near the object, Seg_CollideObj (Seg_CollideBlock for
+   blocks) computes the push-out of each. */
+typedef struct SegContact {
+	s16 flags;			/* +$00 bit 0 end of the list, 1 pushed in x, 2 skip, 3 landing on it, 4 push2 instead, 6 pushed in y, 15 event */
+	u8 seg;				/* +$02 g_Segs index */
+	s8 pushX;			/* +$03 push-out in x (pixels, -127..127) */
+	s8 pushY;			/* +$04 push-out in y */
+	s8 push2X;			/* +$05 second push-out (flags bit 4; Obj_CollideSegs) */
+	s8 push2Y;			/* +$06 */
+	u8 event;			/* +$07 event of an event contact: 2 trigger box / floor $E, 3 floor $F, 4 walls $1F/$20 */
+} SegContact;
+CHECK_SIZE(SegContact, 8);
+/* An entry of a level's floor-segment list (ROM; Seg_LoadList, ended by a type byte 0): 12
+   bytes, or 10 (no prev/next) with type bit 6. */
+typedef struct SegListEntry {
+	s8 type;			/* +$00 segment type (bits 0-5); bit 6: no links, the entry ends at +$0A */
+	s8 layer;			/* +$01 */
+	s16 x1;				/* +$02 endpoints (pixels) */
+	s16 y1;				/* +$04 */
+	s16 x2;				/* +$06 */
+	s16 y2;				/* +$08 */
+	u8 prev;			/* +$0A index in the list of the segment before it ($FF: none) */
+	u8 next;			/* +$0B the segment after it */
+} SegListEntry;
+CHECK_SIZE(SegListEntry, 12);
 /* A state function of an object, kept at +$5C/+$60/+$64 and run by Update when the
    +$6C delay runs out; most return self->flags & 8. */
 FNTYPE(StateFn, short);
@@ -348,18 +374,20 @@ CHECK_SIZE(BBoard, 0x8);
 /* An enemy's stats record (ROM, Tbl_<Class>Stats), kept at XNPC +$8C (xmen2disasm NOTES
    "ACTOR object fields"). */
 typedef struct NpcStats {
-	u8 attack;			/* +$00 attack damage */
-	u8 hurtSound;			/* +$01 */
-	u8 health;			/* +$02 starting health (also the death type) */
-	u8 unk_03[4];			/* +$03 */
-	u8 hurtFrame;			/* +$07 */
+	s8 attack;			/* +$00 attack damage (signed: XNpc_Attack) */
+	u8 hurtSound;			/* +$01 sound when hit (0: $63; XNpc_TakeDamage, _HurtReact, _DeathReact) */
+	u8 health;			/* +$02 starting health (also the death effect: XNpc_Explode) */
+	s8 knockDist[4];		/* +$03 knockback distance in pixels for hit strength 1, 2, 4, 8 (XNpc_KnockbackDist) */
+	u8 hurtFrame;			/* +$07 sprite frame shown when hurt ($FF: none; XNpc_TakeDamage) */
 } NpcStats;
 
 /* XNPC: descriptor $113A88, parent ACTOR, $94 bytes (GetSize $113B9A) */
 #define XNPC_FIELDS \
 	ACTOR_FIELDS \
 	PTR(NpcStats) stats;		/* +$8C stats record (ROM) */ \
-	u8 unk_90[0x4];		/* +$90 */
+	u8 shake;			/* +$90 frames left of the hurt shake (XNpc_ShakeStep), then of the knockback slide */ \
+	s8 knock;			/* +$91 knockback distance in pixels, signed: the way it goes (XNpc_HurtReact, _DeathReact) */ \
+	s16 knockToX;			/* +$92 knockback B: x in pixels where the slide ends (XNpc_StateKnockBShake) */
 typedef struct XNpc { XNPC_FIELDS } XNpc;
 CHECK_SIZE(XNpc, 0x94);
 
@@ -931,20 +959,33 @@ FNTYPE(CamFn, void);
 /* CAMERA: descriptor $1F4960, root, $6C bytes (GetSize $1607A0) */
 #define CAMERA_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[4];			/* +$04 (xmen2disasm NOTES "CAMERA object") */ \
+	CamFn update;			/* +$04 per-frame update, run by Cam_Update (Cam_DefaultUpdate; scenes put their own: AvalonB1_CamHook*) */ \
 	CamFn track;			/* +$08 tracking function (Cam_TrackPlayer...; XClone_CamArenaUpdate) */ \
-	u8 unk_0C[0x10];		/* +$0C */ \
+	CamFn apply;			/* +$0C sets the scroll from the camera (Cam_ApplyPos) */ \
+	CamFn ease;			/* +$10 eases offsetX/Y back to 0 (Cam_EaseOffset; 0 while panning) */ \
+	CamFn shake;			/* +$14 plays g_CamShake (Cam_ShakeStep) */ \
+	CamFn lookFn;			/* +$18 look up/down step (Cam_StepLookUp/Down; 0 once back at 0) */ \
 	CamFn postHook;			/* +$1C called after every camera update (0 = none) */ \
-	u8 unk_20[0x10];		/* +$20 */ \
+	CamFn savedTrack;		/* +$20 tracking function to go back to after a pan (Cam_PanTo / Cam_PanStep) */ \
+	PTR(Actor) target;		/* +$24 object followed (Cam_FollowPlayer / _FollowObject; 0 in two-player mode) */ \
+	s16 targetX;			/* +$28 its pixel position last frame */ \
+	s16 targetY;			/* +$2A */ \
+	s16 offsetX;			/* +$2C transition offset added to the scroll: absorbs a mode switch's jump, eased to 0 (Cam_EaseOffset) */ \
+	s16 offsetY;			/* +$2E */ \
 	s16 x;				/* +$30 camera position in pixels */ \
 	s16 y;				/* +$32 */ \
-	u8 unk_34[8];			/* +$34 */ \
+	s16 prevY;			/* +$34 position before this frame's update (Cam_DefaultUpdate) */ \
+	s16 prevX;			/* +$36 */ \
+	s16 panX;			/* +$38 pan target (Cam_PanTo) */ \
+	s16 panY;			/* +$3A */ \
 	s16 deadLeft;			/* +$3C dead-zone box: target screen x/y ranges kept still */ \
 	s16 deadRight;			/* +$3E */ \
 	s16 deadTop;			/* +$40 */ \
 	s16 deadBottom;			/* +$42 */ \
-	u8 unk_44[6];			/* +$44 */ \
-	s16 camFlags;			/* +$4A 1 x locked, 2 y locked, 4 looking up, 8 looking down */ \
+	s16 catchUp;			/* +$44 px per frame the spring may move beyond the target's own motion (Cam_SpringAxis; Cam_Init 3) */ \
+	s16 easeStep;			/* +$46 offset easing per frame and Cam_EaseAxis's step (Cam_Init 2) */ \
+	s16 unk_48;			/* +$48 (cleared with camFlags by Cam_Init) */ \
+	s16 camFlags;			/* +$4A 1 x locked, 2 y locked, 4 looking up, 8 looking down, $10 look folded into y (Cam_ClampLookToPlayers) */ \
 	s16 accelX;			/* +$4C following speed change per frame, x and y (Cam_SpringAxis: up to maxAccel) */ \
 	s16 accelY;			/* +$4E */ \
 	s16 accelStepX;			/* +$50 accel change per frame, x and y (Cam_SpringAxis; negated on reversing) */ \
@@ -953,11 +994,22 @@ FNTYPE(CamFn, void);
 	s16 speedY;			/* +$56 */ \
 	s16 maxAccelX;			/* +$58 maximum accel, x and y (Cam_Init $150) */ \
 	s16 maxAccelY;			/* +$5A */ \
-	u8 unk_5C[4];			/* +$5C */ \
+	s16 look;			/* +$5C look offset added to y (looking up < 0, down > 0) */ \
+	s16 lookReturn;			/* +$5E look change per frame back to 0 (Cam_LookUp 2, _LookDown 5) */ \
 	s16 lookStep;			/* +$60 look offset change per frame (Cam_StepLookUp/Down; Cam_Init 5) */ \
-	u8 unk_62[0xA];			/* +$62 */
+	s16 lookMinScrY;		/* +$62 looking down stops with the highest live player this far below the screen top ($40) */ \
+	s16 lookMaxScrY;		/* +$64 looking up stops with the lowest live player this far below the screen top ($E0) */ \
+	s16 climbScrY;			/* +$66 screen y of a climbing player (Cam_TrackPlayer; $56, + $20 for one class) */ \
+	s16 wallMargin;			/* +$68 screen x of a player on a wall, from that side ($60) */ \
+	u8 ledgeDist;			/* +$6A look-ahead at a ledge: Seg_WouldLeaveEnd's distance ($A) */ \
+	u8 unk_6B;			/* +$6B */
 typedef struct Camera { CAMERA_FIELDS } Camera;
 CHECK_SIZE(Camera, 0x6C);
+CHECK_OFFSET(Camera, target, 0x24);
+CHECK_OFFSET(Camera, x, 0x30);
+CHECK_OFFSET(Camera, camFlags, 0x4A);
+CHECK_OFFSET(Camera, look, 0x5C);
+CHECK_OFFSET(Camera, ledgeDist, 0x6A);
 
 /* CAPEDACOLYTE: descriptor $013E10, parent BIONPC, $B8 bytes (GetSize $013342) */
 #define CAPEDACOLYTE_FIELDS \
@@ -1082,11 +1134,63 @@ CHECK_SIZE(CyclopsBeam, 0x26);
 typedef struct Cyclops { CYCLOPS_FIELDS } Cyclops;
 CHECK_SIZE(Cyclops, 0xE2);
 
-/* DEATHBIRD: descriptor $111162, parent ACTOR, $B6 bytes (GetSize $11157A) */
+/* One of DEATHBIRD's 8 burst projectiles ($10 bytes): Deathbird_LaunchBurst throws them,
+   Deathbird_UpdateBurst moves, draws and hit-tests them. */
+typedef struct BurstShot {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 ax;				/* +$0C added to vx each frame */
+	s16 ay;				/* +$0E added to vy each frame */
+} BurstShot;
+CHECK_SIZE(BurstShot, 0x10);
+/* The record DEATHBIRD keeps its burst in (+$9A: g_SpaceA1Buf, $A8 zeroed bytes on
+   SpaceA1_RunScene's stack). */
+typedef struct DeathbirdBurst {
+	u8 unk_00[0x28];		/* +$00 not used by DEATHBIRD */
+	BurstShot shot[8];		/* +$28 */
+} DeathbirdBurst;
+CHECK_SIZE(DeathbirdBurst, 0xA8);
+/* An entry of DEATHBIRD's hornet schedule (ROM, Tbl_DeathbirdHornetSchedule, 4 bytes; read by
+   Deathbird_StateSendHornets). */
+typedef struct HornetWave {
+	s8 kind;			/* +$00 Hornet_SpawnForDeathbird kind 0-3; -1 ends the schedule (back to its start) */
+	s8 side;			/* +$01 0: drops in at x 110 px, else at 370 px */
+	s8 delay;			/* +$02 frames before the next one */
+	s8 unused;			/* +$03 read, not used */
+} HornetWave;
+
+/* DEATHBIRD: descriptor $111162, parent ACTOR, $B6 bytes (GetSize $11157A). The boss of
+   SpaceA1's elevator: sends HORNET waves while the lift is low (Deathbird_StateSendHornets), then
+   attacks from the screen sides by an attack list (swoop and throw an 8-projectile burst, low
+   dive, fly-by) and now and then flies to the lift switch and pecks it. Flies by velocity with a
+   wobble around an anchor (moveKind 3) or circles by heading (moveKind 4, Deathbird_MovePolar);
+   its big frames come from a second sprite (+$B0, Deathbird_SetFrame). */
 #define DEATHBIRD_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x2A];		/* +$8C */
+	s16 speed;			/* +$8C circling speed (Deathbird_MovePolar; $350 by SetMoveMode 2) */ \
+	s16 accel;			/* +$8E added to speed each step, kept within -/+maxSpeed */ \
+	s16 maxSpeed;			/* +$90 $1000 at Init */ \
+	s32 anchorX;			/* +$92 centre of the wobble (moveKind 3), 8 fraction bits: x when vx turns or is slow */ \
+	s32 anchorY;			/* +$96 */ \
+	PTR(DeathbirdBurst) burst;	/* +$9A its burst projectiles (g_SpaceA1Buf; 0: none) */ \
+	PTR(Timer) burstTimer;		/* +$9E runs Deathbird_UpdateBurst while a burst flies (Timer_Start / _Stop) */ \
+	s16 wobbleX;			/* +$A2 wobble offset added to x each step, -100..100 */ \
+	s16 wobbleY;			/* +$A4 */ \
+	s16 wobbleVx;			/* +$A6 change of wobbleX per step: -4/4 when x is past -/+$60 of the anchor (low words) */ \
+	s16 wobbleVy;			/* +$A8 -3/3 */ \
+	s16 unk_AA;			/* +$AA 0 at Init, not read */ \
+	s16 unk_AC;			/* +$AC 0 at Init, not read */ \
+	u8 moveKind;			/* +$AE Deathbird_Move: 3 velocity + wobble, 4 circling, other: still (1 / 2: off the left / right side, where SetMoveMode 5/7/9 bring it in) */ \
+	u8 unk_AF;			/* +$AF */ \
+	PTR(SprInst) spr2;		/* +$B0 second sprite (Art_DeathbirdSpr2, the g_SceneVar3B18 record): frames $80+ */ \
+	u8 spr2Shown;			/* +$B4 1: spr2 is the one drawn (Deathbird_SetFrame) and gives the second box */ \
+	u8 unk_B5;			/* +$B5 */
 typedef struct Deathbird { DEATHBIRD_FIELDS } Deathbird;
+CHECK_OFFSET(Deathbird, burst, 0x9A);
+CHECK_OFFSET(Deathbird, moveKind, 0xAE);
+CHECK_OFFSET(Deathbird, spr2, 0xB0);
 CHECK_SIZE(Deathbird, 0xB6);
 
 /* DROPBOMB: descriptor $082294, parent ACTOR, $90 bytes (GetSize $08230C) */
@@ -1102,10 +1206,18 @@ CHECK_SIZE(DropBomb, 0x90);
 typedef struct DropRocket { DROPROCKET_FIELDS } DropRocket;
 CHECK_SIZE(DropRocket, 0x96);
 
-/* ELEVATOR: descriptor $10B532, root, $14 bytes (GetSize $10B584) */
+/* ELEVATOR: descriptor $10B532, root, $14 bytes (GetSize $10B584). SpaceA1's lift (g_Elevator):
+   Elevator_Update accelerates and moves it, Elevator_Toggle (slot 3) reverses it. */
 #define ELEVATOR_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x10];		/* +$04 */
+	s32 pos;			/* +$04 position, 8 fraction bits (DEATHBIRD attacks once it reaches $10000) */ \
+	s16 speed;			/* +$08 added (>> 8) to pos each frame, kept within -/+$900 */ \
+	s16 accel;			/* +$0A added to speed each frame ($40 up / -$40 by Elevator_Toggle) */ \
+	s16 prevSpeed;			/* +$0C speed before the last Update */ \
+	s16 unk_0E;			/* +$0E -1 at Init */ \
+	u8 up;				/* +$10 1: going up (Elevator_Toggle flips it) */ \
+	u8 stopped;			/* +$11 1: Update doesn't move it (Elevator_Toggle clears it) */ \
+	s16 toggleDelay;		/* +$12 frames before Elevator_Toggle works again (26 after a toggle) */
 typedef struct Elevator { ELEVATOR_FIELDS } Elevator;
 CHECK_SIZE(Elevator, 0x14);
 

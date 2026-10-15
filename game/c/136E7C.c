@@ -33,6 +33,10 @@ void Hornet_Init(Hornet *self, long x, long y, Placement *pl)
 	self->move = (HornetMoveFn)Hornet_MoveStartSwing;
 	self->moveFlags = 0;
 	self->shotsLeft = 0;
+#ifndef XMEN2_MPW
+	if (!pl)	/* no placement: the 68000 reads the params from the vector table */
+		pl = (Placement *)Vectors;
+#endif
 	self->swingRadius = pl->param[0] ? pl->param[0] : 0x40;
 	self->swingStep = pl->param[1] ? pl->param[1] : 2;
 	self->attackDelay = pl->param[2] ? pl->param[2] : 60;

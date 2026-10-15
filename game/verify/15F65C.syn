@@ -1,0 +1,6 @@
+# Eni_Ops: entered once per Enigma decode and running all of its remaining commands, so corpus
+# calls may take an interrupt and not be comparable. One uninterrupted run from its first call's
+# state, and the same with a base tile word (Eni_Decode's third argument; Level_LoadMaps passes 0).
+case plain
+case base
+reg a3 = $00002010

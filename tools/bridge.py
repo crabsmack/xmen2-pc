@@ -106,7 +106,7 @@ def parse_protos() -> list[dict]:
         if cm:
             # registers the hand-written 68000 leaves changed with no meaning (verify skips them)
             f["clobbers"] = [r.strip() for r in cm.group(1).split(",") if r.strip()]
-            if not all(re.fullmatch(r"[ad][0-6]", r) for r in f["clobbers"]):
+            if not all(re.fullmatch(r"d[0-7]|a[0-6]", r) for r in f["clobbers"]):
                 sys.exit(f"xmen2_funcs.h ${f['addr']:06X}: clobbers({cm.group(1)})")
         out.append(f)
     return out

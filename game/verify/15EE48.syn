@@ -1,0 +1,12 @@
+# Map_StreamRows: the clamp at the map's top ($15EE92: more rows wanted above than the map has),
+# which the corpus never reaches. The camera 16 px above the map (g_FgScrollY = -16) while the
+# drawn y is 8: 3 rows wanted, 1 left, drawn at tile row 0.
+case top
+w $FFC734 = $0008         # g_FgStreamY
+w $FFC73C = $FFF0         # g_FgScrollY
+b $FFC74E = 0             # g_MapDrawOff: draw
+# the same with drawing off: the drawn y still moves
+case top-nodraw
+w $FFC734 = $0010         # g_FgStreamY: 2 rows above
+w $FFC73C = $FFE0         # g_FgScrollY
+b $FFC74E = 1             # g_MapDrawOff
