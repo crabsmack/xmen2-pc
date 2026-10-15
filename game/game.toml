@@ -6,6 +6,7 @@
 # xmen2.* inputs below from the disassembly's phase-1 handoff (build/recomp/):
 #   xmen2.code_addrs.txt  every instruction start (runtime-verified)
 #   xmen2.seeds.toml      every function entry (one src/f file each)
+#   xmen2.labels.toml     interior code labels (CFG seeds; exact-mode computed-JMP cases)
 #   xmen2.jtstubs.toml    the A5 jump-table `jmp target.l` stubs at $222+8i whose
 #                         target is code: every `jsr d(a5)` lands on one of them
 #
@@ -15,7 +16,7 @@
 [game]
 output_prefix = "xmen2"
 code_addrs_file = "xmen2.code_addrs.txt"
-discovery_files = ["xmen2.seeds.toml", "xmen2.jtstubs.toml"]
+discovery_files = ["xmen2.seeds.toml", "xmen2.jtstubs.toml", "xmen2.labels.toml"]
 # Math_LDivS and friends test for a 68020 and skip its `divs.l` with a bra on a
 # 68000: never generate the 68020 path.
 allow_68020_branch = false

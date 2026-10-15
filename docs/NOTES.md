@@ -80,6 +80,21 @@ compares the recompiler's static cost of every X-Men 2 instruction with gpgx's b
   mode.
 - Frames 1-10: 116,968 instructions identical, RAM/VRAM/CRAM/VSRAM CRCs equal (Z80 RAM
   differs from frame 7, reported only).
+- 173: a 68K->VRAM DMA spanning lines: gpgx re-freezes the CPU at each line start by SETTING
+  its clock (the triggering instruction's own cost is dropped) -> same in exact mode.
+- 183: `lea Tbl(pc),a0; adda.w (a0,d0.w),a0; jmp (a0)` into another disassembly function's
+  interior label (`Tbl_SegCollideCases`, raw in the disassembly) -> exact mode exports every
+  interior code label of the disassembly (`game/xmen2.labels.toml`, extra_seeds): computed
+  JMPs switch over in-function labels, and every label is a dispatch entry (host emitted as
+  `func_body_HOST(entry)`). This also covers AI-script thunks entered at offset k and the MPW
+  switch tables (the old table probes decoded them as code: K3's 32 "unsupported" were those).
+- 410: the 68000 reads the Z80 driver's status byte ($A01B21) -> the Z80 must match too.
+  Z80 instruction traces (`emu/cycle_trace.py --z80-out`, `GENESIS_ZTRACE`,
+  `tools/ztrace_diff.py`): gpgx takes Z80 interrupts BEFORE an instruction (superzazu after),
+  powers the Z80 up with all registers 0 and Z set; the driver spins on YM2612 timer A, so the
+  exact mode models the YM timers on gpgx's sample grid (1008 master clocks per sample; reads
+  and data writes catch up whole samples).
+- Frames 1-600 of the TAS equal (K5). Z80 RAM differs from frame 379 (reported only; next).
 
 ## Open questions
 
