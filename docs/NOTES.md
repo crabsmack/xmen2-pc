@@ -126,5 +126,5 @@ compares the recompiler's static cost of every X-Men 2 instruction with gpgx's b
   `MISALIGNED_FUNC_ENTRY` warnings and the 52 `offset_table` hybrid dispatch sites. Fix in the
   core: recognise the preceding `move.w d8(pc,Xn),Xn`, read targets from its table, bound the
   table with `code_addrs_file`.
-- Exact-every-frame RAM equality during loading (CPU busy across frame boundaries) needs the
-  engine's 68000 cycle accounting and VDP/DMA timing to match gpgx 2.4 closely.
+- (Resolved: frame equality while the CPU runs across frame boundaries, by exact mode above.
+  Phase 2 complete 2026-10-15, K10 user-verified.)
