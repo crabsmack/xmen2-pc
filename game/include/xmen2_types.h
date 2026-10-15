@@ -74,7 +74,10 @@ typedef struct AnimScript {
 /* A frame record of a sprite definition ($14 bytes; SprDef.frame). Box offsets are signed
    pixels from the object's position, mirrored by the instance's flips (Obj_UpdateBox(es)). */
 typedef struct SprFrame {
-	u8 unk_00[4];			/* +$00 */
+	s8 left;			/* +$00 bounding box of its pieces (pixels from the position; Spr_Draw's on-screen test) */
+	s8 top;				/* +$01 */
+	s8 right;			/* +$02 */
+	s8 bottom;			/* +$03 */
 	s8 boxLeft;			/* +$04 body box */
 	s8 boxTop;			/* +$05 */
 	s8 boxRight;			/* +$06 */
@@ -84,15 +87,56 @@ typedef struct SprFrame {
 	s8 box2Right;			/* +$0A */
 	s8 box2Bottom;			/* +$0B */
 	s16 hitPoints;			/* +$0C offset from the definition of its hit-point list (0: none; XPlayer_Update) */
-	u8 unk_0E[6];			/* +$0E */
+	s16 hitFlags;			/* +$0E bit 0: the hit-point list is one rectangle (x1, y1, x2, y2), else (x, y) pairs (Obj_FindHitPoint) */
+	s8 pieceCount;			/* +$10 pieces (hardware sprites) of the frame */
+	u8 tileCount;			/* +$11 VRAM tiles of the frame (Spr_Init) */
+	u16 pieces;			/* +$12 offset from the definition of its piece records (8 bytes for type $18, else 4; Spr_UploadFrame) */
 } SprFrame;
 CHECK_SIZE(SprFrame, 0x14);
+
+/* A piece of a frame of a raw-tile sprite definition (types $18/$19, 8 bytes; SprFrame.pieces):
+   one hardware sprite (Spr_EmitStream, Spr_UploadFrame, Spr_PreloadTiles). */
+typedef struct SprPiece8 {
+	s16 x;				/* +$00 offset from the sprite's position (pixels) */
+	s16 y;				/* +$02 */
+	s16 attr;			/* +$04 bits 0-3 hardware size code, 4-7 its tiles - 1, $1800 flips */
+	u16 tiles;			/* +$06 offset from the definition of its raw tiles (0: none) */
+} SprPiece8;
+CHECK_SIZE(SprPiece8, 8);
+/* A piece of a frame of a packed sprite definition (the other streamed types, 4 bytes;
+   Spr_UploadFrame): its tile block. */
+typedef struct SprPiece4 {
+	u8 unk_00[2];			/* +$00 */
+	u16 tiles;			/* +$02 offset from the definition of its tile block (SprTiles; 0: none) */
+} SprPiece4;
+CHECK_SIZE(SprPiece4, 4);
+/* A tile block of a packed sprite definition: a hardware size code, then the tiles (raw words for
+   type $14, else Nemesis-packed). Any of bits $9CC0 in size: it stands for the block at ref. */
+typedef struct SprTiles {
+	s16 size;			/* +$00 hardware size code: Tbl_SprSizeTiles[size] tiles; bits $9CC0: a reference */
+	u16 ref;			/* +$02 the tiles start here; for a reference, the offset from the definition of the real block */
+} SprTiles;
+/* A piece of a frame of a preloaded sprite definition (type $20, 6 bytes; Spr_PreloadTiles builds
+   them in RAM, Spr_EmitPre draws them). */
+typedef struct SprPiecePre {
+	s8 x;				/* +$00 offset from the sprite's position (pixels) */
+	s8 y;				/* +$01 */
+	s16 attr;			/* +$02 bits 0-3 hardware size code, $1800 flips; $4000 while tile is still an offset */
+	s16 tile;			/* +$04 VRAM tile (relative to the definition's tile base); the ROM offset of its tiles until uploaded */
+} SprPiecePre;
+CHECK_SIZE(SprPiecePre, 6);
+/* Nem_Decode's code lookup table (Nem_BuildCodeTable fills it): 256 words, a local of its callers. */
+typedef struct NemCodeTable {
+	s16 code[256];			/* +$00 (code length << 8 | value) per 8-bit peek */
+} NemCodeTable;
 
 /* A sprite definition (ROM): a header, then its frame records from +$24. */
 typedef struct SprDef {
 	u8 type;			/* +$00 how its tiles reach VRAM: $20 preloaded (whole definition in VRAM: Actor_Activate lets it in past g_VramTileLimit), $18/$19 streamed per frame */
 	u8 frameCount;			/* +$01 frames (BioBalls_Draw) */
-	u8 unk_02[0x22];		/* +$02 */
+	u8 unk_02[3];			/* +$02 */
+	u8 maxTiles;			/* +$05 VRAM tiles of its largest frame (0: Spr_Init finds them) */
+	u8 unk_06[0x1E];		/* +$06 */
 	SprFrame frame[1];		/* +$24 */
 } SprDef;
 
@@ -111,7 +155,7 @@ typedef struct SprInst {
 	u8 firstChild;			/* +$0D first attached object (object-table index) */
 	u8 nextSibling;			/* +$0E next attached object */
 	u8 unk_0F;			/* +$0F */
-	s32 unk_10;			/* +$10 (a long: Apocalypse_Init clears it with one move.l) */
+	s32 unk_10;			/* +$10 (a long: Apocalypse_Init clears it with one move.l); its 4 bytes are the states the conditions of a hit-point list test (Obj_FindHitPoint) */
 } SprInst;
 CHECK_SIZE(SprInst, 0x14);
 
@@ -900,12 +944,48 @@ CHECK_SIZE(BioSentinel, 0xA8);
 typedef struct Blast { BLAST_FIELDS } Blast;
 CHECK_SIZE(Blast, 0x9E);
 
-/* BOULDER: descriptor $05C0DE, parent ACTOR, $BC bytes (GetSize $05AD20) */
+/* A piece of a shattered BOULDER (8 bytes; Boulder_SplitIntoPieces, Boulder_Move/_Draw/
+   _StatePiecesFall). */
+typedef struct BoulderPiece {
+	s16 x;				/* +$00 quarter pixels */
+	s16 y;				/* +$02 */
+	s8 vx;				/* +$04 quarter pixels per step */
+	s8 vy;				/* +$05 +2 per step (Boulder_Move's cap of $800 a byte never reaches) */
+	s8 layer;			/* +$06 floor-segment layer it can land on (Seg_FindAt; 0: none) */
+	u8 unk_07;			/* +$07 */
+} BoulderPiece;
+CHECK_SIZE(BoulderPiece, 8);
+
+/* BOULDER: descriptor $05C0DE, parent ACTOR, $BC bytes (GetSize $05AD20). A rolling rock: the
+   BaniMazaB2 boulder rain (Boulder_SpawnerTick) and TUSK's thrown boulders (Boulder_Spawn kind
+   1, carried until thrown). It bounces down floors of its layer (ACTOR layer: the floor-segment
+   layer it lands on, Boulder_FindFloorBelow), cracks crumbling floors, raises dust (spr2) and
+   shakes the camera at each impact, and shatters into three pieces when hit. ACTOR fields it
+   uses its own way: maxVx/maxVy = spr2's position (pixels), minVx/minVy = spr2's animation
+   timer and step, hitCooldown > 0 = shattered (1000), spr.unk_0C = the object carrying it. */
 #define BOULDER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x30];		/* +$8C */
+	BoulderPiece piece[3];		/* +$8C the three pieces it shatters into */ \
+	SprInst spr2;			/* +$A4 impact dust (g_BoulderSprDef2), at maxVx/maxVy while anim2 runs */ \
+	PTR(u8) anim2;			/* +$B8 spr2's animation script, an AnimScript read as bytes (step i's frame at +7 + 2i: Boulder_Update) (Tbl_BoulderBounceAnim; 0 = none, cleared when a one-shot ends) */
 typedef struct Boulder { BOULDER_FIELDS } Boulder;
 CHECK_SIZE(Boulder, 0xBC);
+CHECK_OFFSET(Boulder, spr2, 0xA4);
+
+/* A rock-debris piece ($14 bytes; 30 in g_BoulderDebrisPool: Boulder_SpawnDebris throws them,
+   Boulder_UpdateDebris moves and draws them as single hardware sprites). */
+typedef struct BoulderDebris {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 ax;				/* +$0C drag, against vx (vx and ax stop once they have one sign) */
+	s16 ay;				/* +$0E gravity ($20) */
+	s8 frame;			/* +$10 animation counter: tile = counter & 7 (small), (& 3) * 4 + 8 (big) (signed: the and is done on the byte) */
+	u8 big;				/* +$11 1: big piece (16x16), 0: small (8x8) */
+	s16 floorY;			/* +$12 screen y where it bounces, once ($7D00 after: never again) */
+} BoulderDebris;
+CHECK_SIZE(BoulderDebris, 0x14);
 
 /* BOXINPUTACTOR: descriptor $06A0D8, parent ACTOR, $90 bytes (GetSize $067D6C) */
 #define BOXINPUTACTOR_FIELDS \
@@ -1109,12 +1189,74 @@ CHECK_OFFSET(Camera, camFlags, 0x4A);
 CHECK_OFFSET(Camera, look, 0x5C);
 CHECK_OFFSET(Camera, ledgeDist, 0x6A);
 
-/* CAPEDACOLYTE: descriptor $013E10, parent BIONPC, $B8 bytes (GetSize $013342) */
+/* A camera zone of CloneA2 (ROM, Tbl_CloneA2CameraZones, 12 bytes each; CloneA2_SetCameraZone):
+   the part of the map the camera shows while the players are in it, and a point whose coming
+   on screen starts the earthquake (CloneA2_FrameHook). Pixels. */
+typedef struct CamZone {
+	s16 left;			/* +$00 minimum camera x */
+	s16 top;			/* +$02 minimum camera y */
+	s16 right;			/* +$04 right edge: maximum camera x = right - $140 */
+	s16 bottom;			/* +$06 bottom edge: maximum camera y = bottom - $E0 */
+	s16 quakeX;			/* +$08 quake point (0: none) */
+	s16 quakeY;			/* +$0A */
+} CamZone;
+CHECK_SIZE(CamZone, 0x0C);
+
+/* The header of a level map blob (g_LevelFgMap, passed to Level_Load). */
+typedef struct MapHeader {
+	u16 unk_00;			/* +$00 */
+	u16 width;			/* +$02 in 8-px cells (CloneA2_SetCameraLimitsToMap) */
+	u16 height;			/* +$04 in 8-px cells (SwampPlatform_Move) */
+} MapHeader;
+
+/* A keyframe of the SiberiaB1 blizzard (ROM, Tbl_SiberiaB1Wind, 8 bytes; SiberiaB1_StepWind):
+   the wind moves to this angle and strength, then holds. */
+typedef struct WindKey {
+	s16 hold;			/* +$00 steps of 8 frames to hold it (negative: end of the table) */
+	s16 angle;			/* +$02 degrees (0 and $37 change the wind sound) */
+	s16 strength;			/* +$04 8 fraction bits ($600..) */
+	u8 unk_06[2];			/* +$06 */
+} WindKey;
+CHECK_SIZE(WindKey, 8);
+
+/* An ice shard of SiberiaB1's breakable ice ($14 bytes, 48 in the pool at g_SceneVar3B24;
+   SiberiaB1_SpawnDebris throws 4 per tile, SiberiaB1_DebrisUpdate moves and draws them). */
+typedef struct IceShard {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 ax;				/* +$0C 2 or -2 by vx (set, never used) */
+	s16 ay;				/* +$0E gravity ($20), added to vy per frame */
+	s8 frame;			/* +$10 animation frame 0-2 */
+	s8 frameSet;			/* +$11 first frame of its set: 0 or 3, + 3 per bounce (gone past 9) */
+	s8 frameDelay;			/* +$12 frames to the next animation frame (4-7) */
+	u8 age;				/* +$13 frames alive: bit 3 flips it horizontally */
+} IceShard;
+CHECK_SIZE(IceShard, 0x14);
+
+/* CAPEDACOLYTE: descriptor $013E10, parent BIONPC, $B8 bytes (GetSize $013342). A caped acolyte
+   that hovers inside a box around its placement with a wobble (Tbl_CapedAcolyteHoverOffsets),
+   flies to a point beside the nearest player and shoots bursts of gauss bullets (AI scripts
+   Tbl_CapedAcolyteIntroScriptLen, then Tbl_CapedAcolyteMainScriptLen). */
 #define CAPEDACOLYTE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x22];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script */ \
+	s32 homeX;			/* +$9C position before the hover wobble (8 fraction bits): CapedAcolyte_Move moves it */ \
+	s32 homeY;			/* +$A0 */ \
+	s16 xMin;			/* +$A4 x range in pixels (placement x -/+ |param 0|, 0: $40) */ \
+	s16 xMax;			/* +$A6 */ \
+	s16 yMax;			/* +$A8 y range in pixels: placement y up to |param 1| above (0: $60) */ \
+	s16 yMin;			/* +$AA */ \
+	s16 shotDelay;			/* +$AC frames between the shots of a burst (param 4, 0: 20; -1: at once) */ \
+	s16 shotsLeft;			/* +$AE shots left in the burst (CapedAcolyte_StateShoot) */ \
+	s16 burstShots;			/* +$B0 shots per burst (param 3, 0: 2) */ \
+	s16 hoverTime;			/* +$B2 frames it hovers near the player per script step (param 2, 0: 120) */ \
+	PTR(struct HoverStep) hover;	/* +$B4 next hover step (Tbl_CapedAcolyteHoverOffsets) */
 typedef struct CapedAcolyte { CAPEDACOLYTE_FIELDS } CapedAcolyte;
 CHECK_SIZE(CapedAcolyte, 0xB8);
+CHECK_OFFSET(CapedAcolyte, ai, 0x96);
+CHECK_OFFSET(CapedAcolyte, hover, 0xB4);
 
 /* CHILDSHIP: descriptor $0B7C3A, parent XNPC, $AE bytes (GetSize $0B70A2) */
 #define CHILDSHIP_FIELDS \
@@ -2087,10 +2229,36 @@ CHECK_SIZE(Tank, 0xA8);
 typedef struct TankLeft { TANKLEFT_FIELDS } TankLeft;
 CHECK_SIZE(TankLeft, 0xA8);
 
-/* TECHWALLGUN: descriptor $143224, parent ACTOR, $A8 bytes (GetSize $14224E) */
+/* A TECHWALLGUN bullet: 16 records in g_TechWallGunRecs (TechWallGun_ClassInit), shared by all
+   the wall guns, moved and drawn by TechWallGun_UpdateBullets (a timer). */
+typedef struct WallGunBullet {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s8 ax;				/* +$0C added to vx each frame once flying */
+	s8 ay;				/* +$0D */
+	s8 flags;			/* +$0E bits 0-3 direction (1-9: TechWallGun_Fire); $40 muzzle flash, $80 flying, $20 h-flip, $10 v-flip; 0 = free */
+	s8 frame;			/* +$0F sprite frame (tiles of g_TechWallGunSprDef, 4 a frame) */
+} WallGunBullet;
+CHECK_SIZE(WallGunBullet, 0x10);
+
+/* TECHWALLGUN: descriptor $143224, parent ACTOR, $A8 bytes (GetSize $14224E). A gun on a wall
+   (left or right) or the ceiling: it turns toward the nearest player in range and fires bursts of
+   bullets (WallGunBullet) at it. */
 #define TECHWALLGUN_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x1C];		/* +$8C */
+	s32 unk_8C;			/* +$8C 0 at Init, not read */ \
+	StateFn aimState;		/* +$90 the aiming state a burst goes back to (TechWallGun_SetupBurst) */ \
+	PTR(void) fireAnim;		/* +$94 animation of each shot of the burst (TechWallGun_Fire) */ \
+	s16 burstPause;			/* +$98 frames after a burst before aiming again (placement param 1, 120) */ \
+	s16 mount;			/* +$9A 0 left wall (faces right), 1 ceiling, 2 right wall (placement param 0) */ \
+	s16 unk_9C;			/* +$9C 40 at Init, not read */ \
+	s16 range;			/* +$9E reach: a player less than this many px away in x (250) */ \
+	s16 burstShots;			/* +$A0 shots per burst (placement param 2, 1) */ \
+	s16 shotsLeft;			/* +$A2 shots left in the burst */ \
+	s16 shotDir;			/* +$A4 direction of the burst's bullets (1-9: TechWallGun_Fire) */ \
+	s16 shotDelay;			/* +$A6 frames between shots (placement param 3, 10) */
 typedef struct TechWallGun { TECHWALLGUN_FIELDS } TechWallGun;
 CHECK_SIZE(TechWallGun, 0xA8);
 

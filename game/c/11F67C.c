@@ -15,8 +15,8 @@
 
 /* The ball sine at angle a (256 a turn): g_BioBallsSine holds half a turn (128 longs, 16
    fraction bits), the other half is its negative (also in BioBalls_MotionRing, _Helix). */
-#define BALL_SIN(a)	(((a) & 0xFF) < 0x80 ? (long)g_BioBallsSine[(a) & 0x7F] \
-				: -(long)g_BioBallsSine[(a) & 0x7F])
+#define BALL_SIN(a)	((0xFF & (a)) < 0x80 ? (long)g_BioBallsSine[0x7F & (a)] \
+				: -(long)g_BioBallsSine[0x7F & (a)])
 
 char BioBalls_MotionOrbit(BioBalls *self, short steps)
 {

@@ -1,0 +1,110 @@
+# Obj_CollideSegs: the corpus never meets an event contact during the scan, a contact's event
+# byte, a landing on a segment owned by $FF, a non-player still stuck after 30 passes, or a
+# free-moving object that owns floor segments. Each case plants one floor segment in slot 254
+# ($FFE206, unused in every level) as the only segment "objects own" (g_SegLevelCount =
+# g_SegHighWater = 254: Seg_GatherNearObj's second scan), placed from the object's box (words at
+# arg0+$4C top, $4E left, $50 bottom, $52 right: the low word of the long 2 bytes before), in the
+# object's layer (byte arg0+$42: the high byte of the word written at +2, then passFrames 0), with no type hook (g_SegTypeHooks at $FFCD96, 4 per type).
+# Not reachable by state: contact flags $10 (the second push: nothing in the game sets it) and a
+# type hook answering 1 to message 0 (no installed hook answers 0 to message 3 and 1 to 0).
+# Segment fields: +0 flags $80 in use, +1 type, +2 layer, +3 passFrames, +4 slope, +6 length,
+# +8 x1, +$A y1, +$C x2, +$E y2, +$10 prev, +$11 next, +$12 owner, +$13 nextOwned.
+
+# player against a type $20 left wall 8 px into its box: event 4 contact (flags bit 15), chosen
+# as the event best, resolved (Seg_ResolveContact pushes it out), event byte 4 -> Sys_Nop1FA8C4
+case event_wall
+b arg0+$15 = 0
+w $FFCD8C = 254
+w $FFCD8E = 254
+b $FFE206 = $80
+b $FFE207 = $20
+w $FFE208 = [arg0+$40]
+b $FFE209 = 0
+w $FFE20A = 0
+w $FFE20C = 32
+w $FFE20E = [arg0+$4C]+8
+w $FFE210 = [arg0+$4A]-16
+w $FFE212 = [arg0+$4C]+8
+w $FFE214 = [arg0+$4E]+16
+b $FFE216 = $FF
+b $FFE217 = $FF
+b $FFE218 = $FE
+b $FFE219 = $FF
+l $FFCE16 = 0
+
+# player inside a type $1D trigger box: event 2 contact with no push, event byte 2 ->
+# Sys_Nop1FA8CC (Seg_ResolveContact ignores type $1D)
+case event_trigger
+b arg0+$15 = 0
+w $FFCD8C = 254
+w $FFCD8E = 254
+b $FFE206 = $80
+b $FFE207 = $1D
+w $FFE208 = [arg0+$40]
+b $FFE209 = 0
+w $FFE20A = 0
+w $FFE20C = 32
+w $FFE20E = [arg0+$4C]-4
+w $FFE210 = [arg0+$4A]-4
+w $FFE212 = [arg0+$50]+4
+w $FFE214 = [arg0+$4E]+4
+b $FFE216 = $FF
+b $FFE217 = $FF
+b $FFE218 = $FE
+b $FFE219 = $FF
+l $FFCE0A = 0
+
+# a falling non-player object (index 5, flags $9000, no segment, flags6 0) whose box bottom is 4 px
+# into a type $F floor owned by $FF: event 3 landing contact; the landing attaches it to
+# OBJ_AT($FF) = 0 (Obj_AttachChild with no parent), then event byte 3 -> Sys_Nop1FA8D4
+case land_owner_ff
+b arg0+$15 = 5
+w arg0+4 = $9000
+w arg0+6 = 0
+l arg0+$76 = 0
+w $FFCD8C = 254
+w $FFCD8E = 254
+b $FFE206 = $80
+b $FFE207 = $F
+w $FFE208 = [arg0+$40]
+b $FFE209 = 0
+w $FFE20A = 0
+w $FFE20C = [arg0+$50]-[arg0+$4C]+16
+w $FFE20E = [arg0+$4C]-8
+w $FFE210 = [arg0+$4E]-4
+w $FFE212 = [arg0+$50]+8
+w $FFE214 = [arg0+$4E]-4
+b $FFE216 = $FF
+b $FFE217 = $FF
+b $FFE218 = $FF
+b $FFE219 = $FF
+l $FFCDD2 = 0
+
+# a free-moving non-player object (index 5, flags $9000) owning segment 254 (segIndex), against a
+# type 1 wall, with g_SegResolveHook an empty function (Sys_Nop1F949E): the push is never applied,
+# so after 30 passes it stops (c = 0); at the end its layer goes to its segments
+# (Seg_ForEachOfObj, Seg_SetLayerFromObj)
+case stuck_nonplayer
+b arg0+$15 = 5
+w arg0+4 = $9000
+w arg0+6 = 0
+l arg0+$76 = 0
+b arg0+$7A = 254
+l $FFCD78 = $1F949E
+w $FFCD8C = 254
+w $FFCD8E = 254
+b $FFE206 = $80
+b $FFE207 = 1
+w $FFE208 = [arg0+$40]
+b $FFE209 = 0
+w $FFE20A = 0
+w $FFE20C = 32
+w $FFE20E = [arg0+$4C]+8
+w $FFE210 = [arg0+$4A]-16
+w $FFE212 = [arg0+$4C]+8
+w $FFE214 = [arg0+$4E]+16
+b $FFE216 = $FF
+b $FFE217 = $FF
+b $FFE218 = $FE
+b $FFE219 = $FF
+l $FFCD9A = 0

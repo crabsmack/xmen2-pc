@@ -2,16 +2,17 @@
  * balls drawn from the shared ball list, collapsed on the object (BioBalls_ActCollapse) and idle.
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on).
- * Not moving, AI script Tbl_BioBalls_ScriptIdleLen (BioBalls_StateIdle), state and default state
- * BioBalls_ActCollapse, flags6 |= $1083, sprite Art_BioBallsSpr with palette 1, priority bit (2)
+ * Not moving, AI script Tbl_BioBalls_ScriptIdleLen (one step, the thunk BioBalls_ScriptIdle:
+ * BioBalls_StateIdle), state and default state BioBalls_ActCollapse, flags6 |= $1083, sprite
+ * Art_BioBallsSpr with palette 1, priority bit (2)
  * from the live player (player 1 when neither is), ball list g_BioBallsList, no flags, not done,
  * no path, no path offset, no motion, the box a point at the position. */
 #include "xmen2.h"
 
 void BioBalls_Init(BioBalls *self, long x, long y, Placement *pl)
 {
-	short px = x >> 8;
-	short py = y >> 8;
+	short px = (short)(x >> 8);
+	short py = (short)(y >> 8);
 
 	(*CLASS(Tbl_BioBalls_vtable)->parent->method[3])(self, x, y, pl);	/* ACTOR Init */
 	STOP_MOVING(self);

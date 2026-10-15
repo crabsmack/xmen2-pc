@@ -237,11 +237,11 @@ extern s16 g_BoulderSprDef;
 #else
 #define g_BoulderSprDef XM_G(s16, 0xFFC596)
 #endif
-/* $FFC598 ptr: boulder debris records (Boulder_InitDebrisPool; Alloc/Free/Update) */
+/* $FFC598 ptr: the 30 boulder debris records, live ones first (Boulder_InitDebrisPool; Alloc/Free/Update) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BoulderDebrisPool;
+extern PTR(BoulderDebris) g_BoulderDebrisPool;
 #else
-#define g_BoulderDebrisPool XM_G(PTR(void), 0xFFC598)
+#define g_BoulderDebrisPool XM_G(PTR(BoulderDebris), 0xFFC598)
 #endif
 /* $FFC59C word: boulder debris in use (Boulder_InitDebrisPool clears; Boulder_AllocDebris/FreeDebris/UpdateDebris) */
 #ifdef XMEN2_MPW
@@ -2218,11 +2218,23 @@ extern s16 g_SprIndex;
 #else
 #define g_SprIndex XM_G(s16, 0xFFE21E)
 #endif
+/* $FFE220 word: cleared by Spr_InitLinks, never read */
+#ifdef XMEN2_MPW
+extern s16 g_SprUnusedE220;
+#else
+#define g_SprUnusedE220 XM_G(s16, 0xFFE220)
+#endif
 /* $FFE222 word: last slot used last frame, $51 = none (Spr_EndFrame, Spr_BeginFrame) */
 #ifdef XMEN2_MPW
 extern s16 g_SprLast;
 #else
 #define g_SprLast XM_G(s16, 0xFFE222)
+#endif
+/* $FFE224 word: cleared by Spr_InitLinks, never read */
+#ifdef XMEN2_MPW
+extern s16 g_SprUnusedE224;
+#else
+#define g_SprUnusedE224 XM_G(s16, 0xFFE224)
 #endif
 /* $FFE226 array: sprite attribute buffer ($FFE226, $280 bytes) DMAed to VRAM $F000 every V-blank (VDP_FlushDmaQueue) */
 #ifdef XMEN2_MPW
@@ -2430,9 +2442,9 @@ extern s16 g_TechWallGunSprDef;
 #endif
 /* $FFE794 ptr: 16 x 16-byte records allocated by TECHWALLGUN's ClassInit TechWallGun_ClassInit (Mem_StackAlloc); scanned by TechWallGun_FindFreeBullet */
 #ifdef XMEN2_MPW
-extern PTR(void) g_TechWallGunRecs;
+extern PTR(WallGunBullet) g_TechWallGunRecs;
 #else
-#define g_TechWallGunRecs XM_G(PTR(void), 0xFFE794)
+#define g_TechWallGunRecs XM_G(PTR(WallGunBullet), 0xFFE794)
 #endif
 /* $FFE798 sprite instance (object +$2E layout) shared by FLUXBOMB: Spr_Init by Scene_AllocCommonVram, frame set by FluxBomb_SetFrame, drawn by FluxBomb_Draw; +6/+8 give the particle tiles */
 #ifdef XMEN2_MPW
@@ -2613,6 +2625,24 @@ extern s16 g_PalSave[64];
 extern s16 g_BroodBossPalSave[16];
 #else
 #define g_BroodBossPalSave XM_GA(s16, 0xFFEE58)
+#endif
+/* $FFEE98 long: y (8 fraction bits) where Obj_CollideSegs last resolved a player (both players share it); a player still stuck after 30 passes is put back there (once per call: g_CollideReset) */
+#ifdef XMEN2_MPW
+extern s32 g_CollideSafeY;
+#else
+#define g_CollideSafeY XM_G(s32, 0xFFEE98)
+#endif
+/* $FFEE9C long: x of that position (Obj_CollideSegs) */
+#ifdef XMEN2_MPW
+extern s32 g_CollideSafeX;
+#else
+#define g_CollideSafeX XM_G(s32, 0xFFEE9C)
+#endif
+/* $FFEEA0 byte: $FF once Obj_CollideSegs has put a stuck player back at g_CollideSafeX/Y; cleared at the start of each call */
+#ifdef XMEN2_MPW
+extern u8 g_CollideReset;
+#else
+#define g_CollideReset XM_G(u8, 0xFFEEA0)
 #endif
 /* $FFEEA2 ptr: called by the object-vs-floor-segment pass Obj_CollideSegs as (obj, contact list, contact) when a contact is blocked and the object is not in hit cooldown (segment +0 |= $40, +3 = 30); Level_Load sets Sys_Nop1F949E */
 #ifdef XMEN2_MPW

@@ -253,15 +253,22 @@ inline bool in_game_memory(const void *p)
 
 /* The arguments of one call into 68000 code. A pointer to host memory (a C function's local,
    e.g. a SprInst passed by address) travels on the 68000 stack: copied below A7 before the
-   call, copied back after it, A7 restored. Only game-memory types (their bytes are the 68000
-   layout) can travel this way. */
+   call, copied back after it, A7 restored. Game-memory types go as their bytes (they are the
+   68000 layout); a plain scalar (char, short, long) in the 68000's byte order and size. A
+   `void *` can't: its size is unknown. */
 struct Scratch {
     uint32_t sp0 = 0;
     int nc = 0;
-    struct { void *host; uint32_t a, n; } copy[8];
+    struct { void *host; uint32_t a, n; bool scalar; } copy[8];
     ~Scratch()
     {
-        for (int i = 0; i < nc; i++) memcpy(copy[i].host, host(copy[i].a), copy[i].n);
+        for (int i = 0; i < nc; i++) {
+            if (!copy[i].scalar) { memcpy(copy[i].host, host(copy[i].a), copy[i].n); continue; }
+            if (copy[i].n == 1) { *(uint8_t *)copy[i].host = m68k_read8(copy[i].a); continue; }
+            if (copy[i].n == 2) { uint16_t v = m68k_read16(copy[i].a); memcpy(copy[i].host, &v, 2); continue; }
+            uint32_t v = m68k_read32(copy[i].a);
+            memcpy(copy[i].host, &v, 4);
+        }
         if (nc) sp_restore(sp0);
     }
     template <class A> uint32_t arg(A a)
@@ -269,16 +276,26 @@ struct Scratch {
         if constexpr (std::is_pointer<A>::value && !std::is_function<typename std::remove_pointer<A>::type>::value) {
             if (!a || in_game_memory((const void *)a)) return addr((const void *)a);
             typedef typename std::remove_cv<typename std::remove_pointer<A>::type>::type T;
-            if constexpr (std::is_void<T>::value || std::is_arithmetic<T>::value) {
-                fatal("call68: a host %s pointer can't be passed to 68000 code (use a game-memory type)",
-                      std::is_void<T>::value ? "void" : "scalar");
+            if constexpr (std::is_void<T>::value) {
+                fatal("call68: a host void pointer can't be passed to 68000 code (its size is unknown)");
+            } else if constexpr (std::is_arithmetic<T>::value) {
+                static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4, "call68: a 1, 2 or 4 byte scalar");
+                if (nc == 8) fatal("call68: too many host pointers");
+                if (!nc) sp0 = sp_reserve(0);
+                uint32_t a68 = sp_reserve(sizeof(T) < 2 ? 2u : (uint32_t)sizeof(T));
+                if (sizeof(T) == 1) m68k_write8(a68, *(const uint8_t *)a);
+                else if (sizeof(T) == 2) { uint16_t v; memcpy(&v, (const void *)a, 2); m68k_write16(a68, v); }
+                else { uint32_t v; memcpy(&v, (const void *)a, 4); m68k_write32(a68, v); }
+                copy[nc].host = (void *)a; copy[nc].a = a68; copy[nc].n = (uint32_t)sizeof(T); copy[nc].scalar = true;
+                nc++;
+                return a68;
             } else {
                 if (nc == 8) fatal("call68: too many host pointers");
                 uint32_t n = ((uint32_t)sizeof(T) + 1u) & ~1u;
                 if (!nc) sp0 = sp_reserve(0);
                 uint32_t a68 = sp_reserve(n);
                 memcpy(host(a68), (const void *)a, sizeof(T));
-                copy[nc].host = (void *)a; copy[nc].a = a68; copy[nc].n = (uint32_t)sizeof(T);
+                copy[nc].host = (void *)a; copy[nc].a = a68; copy[nc].n = (uint32_t)sizeof(T); copy[nc].scalar = false;
                 nc++;
                 return a68;
             }
@@ -391,6 +408,7 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define VDP_CTRL       HW16(0xC00004)   /* VDP control port: status (read), commands (write) */
 #define VDP_CTRL32     HW32(0xC00004)
 #define VDP_HV         HW16(0xC00008)   /* H/V counter */
+#define VDP_HV_B       HW8(0xC00008)    /* its high byte: the V counter (SiberiaB1_InstallHooks) */
 #define PSG_PORT       HW8(0xC00011)    /* SN76489 */
 #define IO_VERSION     HW8(0xA10001)    /* region / version register */
 #define IO_DATA1       HW8(0xA10003)    /* pad port 1 data */

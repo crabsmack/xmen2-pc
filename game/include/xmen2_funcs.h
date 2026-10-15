@@ -360,14 +360,14 @@ void AvalonA4_AnimatePalettes_part3(void);	/* $034EC6 fragment */
 void AvalonA4_AnimatePalettes_part4(void);	/* $034F62 fragment */
 void AvalonA4_AnimatePalettes_part5(void);	/* $034FDC fragment */
 void AvalonA4_AnimatePalettes_part6(void);	/* $035174 fragment */
-long AvalonA4_SwitchTileHook(short, short);	/* $03518C */
-long AvalonA4_GlobCrackBlockHook(short, short, void *);	/* $0351F8 */
-long AvalonA4_GlobCrackColumnHook(short, short, void *);	/* $035322 */
-long AvalonA4_CrackFloorHook(short, short, void *);	/* $0355A6 */
+long AvalonA4_SwitchTileHook(short col, short row);	/* $03518C */
+long AvalonA4_GlobCrackBlockHook(short col, short row, Actor *obj);	/* $0351F8 */
+long AvalonA4_GlobCrackColumnHook(short col, short row, Actor *obj);	/* $035322 */
+long AvalonA4_CrackFloorHook(short col, short row, Actor *obj);	/* $0355A6 */
 void AvalonA4_InstallTileHooks(void);	/* $035710 */
 void AvalonA4_FrameHook(void);	/* $035750 */
 void AvalonA4_LoadLevel(void);	/* $035782 */
-void AvalonA4_CamHook(void *);	/* $035802 */
+void AvalonA4_CamHook(Camera *cam);	/* $035802 */
 void AvalonA4_InitCamera(void);	/* $03582E */
 void AvalonA4_PlacePlayers(void);	/* $03585C */
 void AvalonA4_ClearCameraZone(short);	/* $035872 */
@@ -381,12 +381,12 @@ void AvalonA4_SetCameraZone_case0(void);	/* $035956 fragment */
 void AvalonA4_SetCameraZone_case3(void);	/* $035962 fragment */
 void AvalonA4_SetCameraZone_case4(void);	/* $035966 fragment */
 void AvalonA4_SetCameraZone_apply(void);	/* $03596C fragment */
-long AvalonA4_EventZoneFree0(short);	/* $03597A */
-long AvalonA4_EventZoneFree1(short);	/* $03599A */
-long AvalonA4_EventZoneFree2(short);	/* $0359BA */
-long AvalonA4_EventZoneFree3(short);	/* $0359DA */
-long AvalonA4_EventZoneFree4(short);	/* $0359FA */
-long AvalonA4_EventZoneFree5(short);	/* $035A1A */
+short AvalonA4_EventZoneFree0(short msg);	/* $03597A */
+short AvalonA4_EventZoneFree1(short msg);	/* $03599A */
+short AvalonA4_EventZoneFree2(short msg);	/* $0359BA */
+short AvalonA4_EventZoneFree3(short msg);	/* $0359DA */
+short AvalonA4_EventZoneFree4(short msg);	/* $0359FA */
+short AvalonA4_EventZoneFree5(short msg);	/* $035A1A */
 void AvalonA4_InstallEventHooks(void);	/* $035A3A */
 void AvalonA4_EmptyStub1(void);	/* $035A76 */
 void AvalonA4_EmptyStub2(void);	/* $035A7E */
@@ -481,29 +481,29 @@ void BaniMazaA1_PlacePlayers(void);	/* $038AFE */
 void BaniMazaA1_InitScroll(void);	/* $038BAC */
 void BaniMazaA1_RunScene(void);	/* $038BFA */
 long BanimazaDoor_GetSize(void);	/* $039D16 */
-long BanimazaDoor_PushCallback(short, void *, void *, void *);	/* $039D24 */
-void BanimazaDoor_InitDebris(void *, short, long, long, char);	/* $039DBA */
-void BanimazaDoor_DrawDebris(void *, short, short);	/* $039E94 */
-long BanimazaDoor_PlayerClear(void *, void *);	/* $039F80 */
-long BanimazaDoor_StateReset(void *);	/* $03A01C */
-long BanimazaDoor_StateWaitPlayer(void *);	/* $03A05A */
-long BanimazaDoor_StateStartRise(void *);	/* $03A0AA */
-long BanimazaDoor_StateRising(void *);	/* $03A11A */
-void BanimazaDoor_StateRaised(void *);	/* $03A156 */
-long BanimazaDoor_Shatter(void *);	/* $03A172 */
-long BanimazaDoor_StateShattered(void *);	/* $03A210 */
-long BanimazaDoor_StateWaitRespawn(void *);	/* $03A246 */
-void BanimazaDoor_NopStatic(void);	/* $03A29E */
-void BanimazaDoor_ClassInit(long);	/* $03A2A6 */
-void BanimazaDoor_DrawColumn(void *);	/* $03A2F4 */
-void BanimazaDoor_Draw(void *);	/* $03A4EE */
+short BanimazaDoor_PushCallback(short msg, Seg *seg, Actor *obj, SegContact *c);	/* $039D24 */
+void BanimazaDoor_InitDebris(DoorShard *s, short n, long x, long y, unsigned char mirror);	/* $039DBA */
+void BanimazaDoor_DrawDebris(DoorShard *s, short n, short tileBase);	/* $039E94 */
+char BanimazaDoor_PlayerClear(BanimazaDoor *self, XPlayer *pl);	/* $039F80 */
+short BanimazaDoor_StateReset(BanimazaDoor *self);	/* $03A01C */
+short BanimazaDoor_StateWaitPlayer(BanimazaDoor *self);	/* $03A05A */
+short BanimazaDoor_StateStartRise(BanimazaDoor *self);	/* $03A0AA */
+short BanimazaDoor_StateRising(BanimazaDoor *self);	/* $03A11A */
+void BanimazaDoor_StateRaised(BanimazaDoor *self);	/* $03A156 */
+short BanimazaDoor_Shatter(BanimazaDoor *self);	/* $03A172 */
+short BanimazaDoor_StateShattered(BanimazaDoor *self);	/* $03A210 */
+short BanimazaDoor_StateWaitRespawn(BanimazaDoor *self);	/* $03A246 */
+void BanimazaDoor_NopStatic(BanimazaDoor *self);	/* $03A29E */
+void BanimazaDoor_ClassInit(BanimazaDoor *self);	/* $03A2A6 */
+void BanimazaDoor_DrawColumn(BanimazaDoor *self);	/* $03A2F4 */
+void BanimazaDoor_Draw(BanimazaDoor *self);	/* $03A4EE */
 void BanimazaDoor_Draw_part1(void);	/* $03A584 fragment */
 void BanimazaDoor_Draw_part2(void);	/* $03A5B4 fragment */
-void BanimazaDoor_TakeDamage(void *, long, long, char);	/* $03A5BE */
-long BanimazaDoor_InActivateWindow(void *);	/* $03A632 */
-long BanimazaDoor_OutsideActiveWindow(void *);	/* $03A69A */
-void BanimazaDoor_Nop66(void *);	/* $03A714 */
-void BanimazaDoor_Init(void *, long, long, void *);	/* $03A72A */
+void BanimazaDoor_TakeDamage(BanimazaDoor *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $03A5BE */
+char BanimazaDoor_InActivateWindow(BanimazaDoor *self);	/* $03A632 */
+char BanimazaDoor_OutsideActiveWindow(BanimazaDoor *self);	/* $03A69A */
+void BanimazaDoor_Nop66(BanimazaDoor *self);	/* $03A714 */
+void BanimazaDoor_Init(BanimazaDoor *self, long x, long y, Placement *pl);	/* $03A72A */
 long RollingDiscs_GetSize(void);	/* $03A86C */
 void RollingDiscs_InitStub(void);	/* $03A87A */
 void RollingDiscs_UpdateScroll(void);	/* $03A882 */
@@ -645,30 +645,30 @@ void BaniMazaB2_InitPalette(void);	/* $05ACAE */
 void BaniMazaB2_InstallFrameHook(void);	/* $05ACDC */
 void BaniMazaB2_RunScene(void);	/* $05ACEC */
 long Boulder_GetSize(void);	/* $05AD20 */
-void Boulder_FindFloorBelow(void *);	/* $05AD2E */
-long Boulder_SplitIntoPieces(void *);	/* $05AE10 */
-long Boulder_SpawnerTick(long);	/* $05AED2 */
-long Boulder_InitDebrisPool(void *);	/* $05B016 */
-long Boulder_AllocDebris(void);	/* $05B058 */
-void Boulder_FreeDebris(long);	/* $05B08E */
+void Boulder_FindFloorBelow(Boulder *self);	/* $05AD2E */
+void Boulder_SplitIntoPieces(Boulder *self);	/* $05AE10 */
+void Boulder_SpawnerTick(long yLimit);	/* $05AED2 */
+void Boulder_InitDebrisPool(BoulderDebris *buf);	/* $05B016 */
+BoulderDebris *Boulder_AllocDebris(void);	/* $05B058 */
+void Boulder_FreeDebris(BoulderDebris *d);	/* $05B08E */
 void Boulder_UpdateDebris(void);	/* $05B0C8 */
-long Boulder_SpawnDebris(short, short, short);	/* $05B322 */
-long Boulder_StateWaitGround(void *);	/* $05B58E */
-long Boulder_StateStart(void *);	/* $05B5D4 */
-long Boulder_StateStartRoll(void *);	/* $05B614 */
-long Boulder_StateBounce(void *);	/* $05B65A */
-long Boulder_StatePiecesFall(void *);	/* $05B98C */
-long Boulder_StateShatter(void *);	/* $05BAAC */
-void Boulder_Nop6A(void);	/* $05BB06 */
-void Boulder_ClassInit(long);	/* $05BB0E */
-void Boulder_Deactivate(long);	/* $05BB86 */
-void Boulder_Kill(long);	/* $05BBA4 */
-void Boulder_Update(void *);	/* $05BBC2 */
-void Boulder_Move(void *, short);	/* $05BC9C */
-void Boulder_TakeDamage(void *, long, char, char, short, short);	/* $05BD34 */
-void Boulder_Draw(void *);	/* $05BD92 */
-void Boulder_Init(void *, long, long, void *);	/* $05BF4A */
-Boulder *Boulder_Spawn(long, long, long);	/* $05C07C */
+void Boulder_SpawnDebris(short x, short y, short floorY);	/* $05B322 */
+short Boulder_StateWaitGround(Boulder *self);	/* $05B58E */
+short Boulder_StateStart(Boulder *self);	/* $05B5D4 */
+short Boulder_StateStartRoll(Boulder *self);	/* $05B614 */
+short Boulder_StateBounce(Boulder *self);	/* $05B65A */
+short Boulder_StatePiecesFall(Boulder *self);	/* $05B98C */
+short Boulder_StateShatter(Boulder *self);	/* $05BAAC */
+void Boulder_Nop6A(Boulder *self);	/* $05BB06 */
+void Boulder_ClassInit(Boulder *self);	/* $05BB0E */
+void Boulder_Deactivate(Boulder *self);	/* $05BB86 */
+void Boulder_Kill(Boulder *self);	/* $05BBA4 */
+void Boulder_Update(Boulder *self);	/* $05BBC2 */
+void Boulder_Move(Boulder *self, short steps);	/* $05BC9C */
+void Boulder_TakeDamage(Boulder *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $05BD34 */
+void Boulder_Draw(Boulder *self);	/* $05BD92 */
+void Boulder_Init(Boulder *self, long x, long y, Placement *pl);	/* $05BF4A */
+Boulder *Boulder_Spawn(long x, long y, long kind);	/* $05C07C */
 long Tusk_GetSize(void);	/* $05C170 */
 short Tusk_HookIsEvent3(short);	/* $05C17E */
 short Tusk_HookReturn0(short);	/* $05C19C */
@@ -948,17 +948,17 @@ void CloneA2_LoadResources(void);	/* $081DD2 */
 void CloneA2_LoadLevel(void);	/* $081E02 */
 void CloneA2_InstallHooks(void);	/* $081EA6 */
 void CloneA2_EmptyStub2(void);	/* $081ED4 */
-void CloneA2_CamHookNormal(void *);	/* $081EDC */
-void CloneA2_CamHookAlt(void *);	/* $081F02 */
+void CloneA2_CamHookNormal(Camera *cam);	/* $081EDC */
+void CloneA2_CamHookAlt(Camera *cam);	/* $081F02 */
 void CloneA2_InitCamera(void);	/* $081F28 */
 void CloneA2_EmptyStub3(void);	/* $081F5A */
-void CloneA2_BgPalTimer(void);	/* $081F62 */
+void CloneA2_BgPalTimer(Timer *t);	/* $081F62 */
 void CloneA2_BgPalTimer_Case0(void);	/* $081FB4 fragment */
 void CloneA2_BgPalTimer_Copy(void);	/* $081FDA fragment */
 void CloneA2_StartBgPalTimer(void);	/* $081FFE */
-void CloneA2_CamAltTimer(long);	/* $082038 */
+void CloneA2_CamAltTimer(Timer *t);	/* $082038 */
 void CloneA2_StartCamAltMode(void);	/* $08206A */
-void CloneA2_SetCameraZone(short);	/* $0820AE */
+void CloneA2_SetCameraZone(short zone);	/* $0820AE */
 void CloneA2_SetCameraLimitsToMap(void);	/* $082176 */
 void CloneA2_CallEmptyStubs(void);	/* $0821D4 */
 void CloneA2_StartCamera(void);	/* $0821E8 */
@@ -1981,8 +1981,8 @@ void SentinelsB2_EmptyStub(void);	/* $0F4CD0 */
 void SentinelsB2_RunScene(void);	/* $0F4CD8 */
 void SiberiaB1_ResetPalCycles(void);	/* $0FC71A */
 void SiberiaB1_CyclePalettes(void);	/* $0FC72E */
-void SiberiaB1_CamApply(void *);	/* $0FC78A */
-void SiberiaB1_InitCamera(void *);	/* $0FC890 */
+void SiberiaB1_CamApply(Camera *cam);	/* $0FC78A */
+void SiberiaB1_InitCamera(Camera *cam);	/* $0FC890 */
 void SiberiaB1_InitWind(void);	/* $0FC8A4 */
 void SiberiaB1_StepWind(void);	/* $0FC954 */
 void SiberiaB1_InitWindSprite(void);	/* $0FCB8E */
@@ -1992,12 +1992,12 @@ void SiberiaB1_PreLoad(void);	/* $0FCC6A */
 void SiberiaB1_PostLoad(void);	/* $0FCC86 */
 void SiberiaB1_FrameHook(void);	/* $0FCCAE */
 void SiberiaB1_LoadResources(void);	/* $0FCDEE */
-long SiberiaB1_DebrisInit(void *);	/* $0FCE32 */
-long SiberiaB1_DebrisAlloc(void);	/* $0FCE74 */
-void SiberiaB1_DebrisFree(long);	/* $0FCEAA */
+void SiberiaB1_DebrisInit(IceShard *pool);	/* $0FCE32 */
+IceShard *SiberiaB1_DebrisAlloc(void);	/* $0FCE74 */
+void SiberiaB1_DebrisFree(IceShard *p);	/* $0FCEAA */
 void SiberiaB1_DebrisUpdate(void);	/* $0FCEDE */
-long SiberiaB1_SpawnDebris(short, short);	/* $0FD0E0 */
-long SiberiaB1_IceTileHit(short, short);	/* $0FD24C */
+void SiberiaB1_SpawnDebris(short x, short y);	/* $0FD0E0 */
+long SiberiaB1_IceTileHit(short col, short row);	/* $0FD24C */
 void SiberiaB1_InstallTileHooks(void);	/* $0FD50A */
 void SiberiaB1_LoadLevel(void);	/* $0FD576 */
 void SiberiaB1_InstallHooks(void);	/* $0FD614 */
@@ -2745,41 +2745,41 @@ void Tank_ScriptWaitDrive(void);	/* $14221E fragment */
 void Tank_ScriptDriveIn(void);	/* $14222C fragment */
 void Tank_ScriptDrive(void);	/* $14223A fragment */
 long TechWallGun_GetSize(void);	/* $14224E */
-long TechWallGun_FindFreeBullet(void);	/* $14225C */
+WallGunBullet *TechWallGun_FindFreeBullet(TechWallGun *self);	/* $14225C */
 void TechWallGun_NopStatic(void);	/* $1422A0 */
-void TechWallGun_Explode(void *);	/* $1422A8 */
-long TechWallGun_StateHurt(void *);	/* $142322 */
-void TechWallGun_StateBurst(void *);	/* $1423D6 */
-void TechWallGun_SetupBurst(void *, long, long, short);	/* $14241C */
-long TechWallGun_BurstDiagUp(void *);	/* $142446 */
-long TechWallGun_BurstLevel(void *);	/* $142490 */
-long TechWallGun_BurstDiagDown(void *);	/* $1424DA */
-long TechWallGun_BurstCeilLeft(void *);	/* $142524 */
-long TechWallGun_BurstCeilDown(void *);	/* $142562 */
-long TechWallGun_BurstCeilRight(void *);	/* $1425A0 */
-long TechWallGun_AimAngle(short, short);	/* $1425DE */
-long TechWallGun_AimWall(void *, void *);	/* $1426FE */
-long TechWallGun_AimCeiling(void *, void *);	/* $14278E */
-long TechWallGun_StateAimUp(void *);	/* $14280A */
-long TechWallGun_StateAimLevel(void *);	/* $14286A */
-long TechWallGun_StateAimDown(void *);	/* $1428E6 */
-long TechWallGun_StateCeilAimLeft(void *);	/* $142946 */
-long TechWallGun_StateCeilAimDown(void *);	/* $1429A6 */
-long TechWallGun_StateCeilAimRight(void *);	/* $142A22 */
-long TechWallGun_StartWall(void *);	/* $142A82 */
-long TechWallGun_StartCeiling(void *);	/* $142AA6 */
-void TechWallGun_Nop66(void *);	/* $142ACA */
+void TechWallGun_Explode(TechWallGun *self);	/* $1422A8 */
+short TechWallGun_StateHurt(TechWallGun *self);	/* $142322 */
+void TechWallGun_StateBurst(TechWallGun *self);	/* $1423D6 */
+void TechWallGun_SetupBurst(TechWallGun *self, void *anim, StateFn aim, short dir);	/* $14241C */
+short TechWallGun_BurstDiagUp(TechWallGun *self);	/* $142446 */
+short TechWallGun_BurstLevel(TechWallGun *self);	/* $142490 */
+short TechWallGun_BurstDiagDown(TechWallGun *self);	/* $1424DA */
+short TechWallGun_BurstCeilLeft(TechWallGun *self);	/* $142524 */
+short TechWallGun_BurstCeilDown(TechWallGun *self);	/* $142562 */
+short TechWallGun_BurstCeilRight(TechWallGun *self);	/* $1425A0 */
+short TechWallGun_AimAngle(short dx, short dy);	/* $1425DE */
+char TechWallGun_AimWall(TechWallGun *self, s16 *angle);	/* $1426FE */
+char TechWallGun_AimCeiling(TechWallGun *self, s16 *angle);	/* $14278E */
+short TechWallGun_StateAimUp(TechWallGun *self);	/* $14280A */
+short TechWallGun_StateAimLevel(TechWallGun *self);	/* $14286A */
+short TechWallGun_StateAimDown(TechWallGun *self);	/* $1428E6 */
+short TechWallGun_StateCeilAimLeft(TechWallGun *self);	/* $142946 */
+short TechWallGun_StateCeilAimDown(TechWallGun *self);	/* $1429A6 */
+short TechWallGun_StateCeilAimRight(TechWallGun *self);	/* $142A22 */
+short TechWallGun_StartWall(TechWallGun *self);	/* $142A82 */
+short TechWallGun_StartCeiling(TechWallGun *self);	/* $142AA6 */
+void TechWallGun_Nop66(TechWallGun *self);	/* $142ACA */
 void TechWallGun_ClassInit(void);	/* $142AE0 */
-void TechWallGun_Init(void *, long, long, void *);	/* $142B54 */
-long TechWallGun_UpdateBullet(void *);	/* $142CD6 */
+void TechWallGun_Init(TechWallGun *self, long x, long y, Placement *pl);	/* $142B54 */
+void TechWallGun_UpdateBullet(WallGunBullet *b);	/* $142CD6 */
 void TechWallGun_UpdateBullet_Case1(void);	/* $142F0C fragment */
 void TechWallGun_UpdateBullet_Case4(void);	/* $142F2A fragment */
 void TechWallGun_UpdateBullet_Case5(void);	/* $142F38 fragment */
 void TechWallGun_UpdateBullet_Case8(void);	/* $142F5C fragment */
 void TechWallGun_UpdateBullet_Case9(void);	/* $142F64 fragment */
 void TechWallGun_UpdateBullet_Draw(void);	/* $142F70 fragment */
-void TechWallGun_UpdateBullets(void *);	/* $14304E */
-long TechWallGun_Fire(void *, short);	/* $143082 */
+void TechWallGun_UpdateBullets(void *recs);	/* $14304E */
+void TechWallGun_Fire(TechWallGun *self, short dir);	/* $143082 */
 void TechWallGun_Fire_Case1(void);	/* $1430E4 fragment */
 void TechWallGun_Fire_Case4(void);	/* $143136 fragment */
 void TechWallGun_Fire_Case5(void);	/* $143152 fragment */
@@ -2916,7 +2916,7 @@ long SegHook_HurtPlayer(short, long, void *, void *);	/* $15ADEC */
 void Spr_EmitFlicker(void *, void *, void *, char, char, char, char, char);	/* $15AE48 */
 void Timer_SetVBlankHookCb(long, long);	/* $15B0D0 */
 void Spr_ReloadDefs(void (*load)(void), char repack);	/* $15B0E6 */
-void Spr_SetFromDef(void *, char);	/* $15B18A */
+void Spr_SetFromDef(SprInst *spr, unsigned char n);	/* $15B18A */
 long Math_LMul(long a, long b);	/* $15C1FC asm regs(d0,d1)->d0 */
 long Math_LDivS(long n, long d);	/* $15C222 asm regs(d0,d1)->d0 */
 long Math_LDivS_Sel(long n, long d);	/* $15C22E asm regs(d0,d1)->d0 */
@@ -2988,7 +2988,7 @@ void Map_PutColBlockB(u16 *defs, unsigned short cell, short c, short from, short
 void Map_DrawColumnA(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F0DC asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_DrawColumnB(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F16A asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_StreamColumns(void);	/* $15F1F8 asm */
-void Nem_Decode(void *, void *, long, char, void *);	/* $15F37C */
+void Nem_Decode(void *src, NemCodeTable *table, long rows, char mode, long dest);	/* $15F37C */
 void Nem_DecodeLoop(u8 *src, u16 *codes, short rows, char mode, u32 *dest, u8 *mask, unsigned short bits, short nbits, short nibbles, unsigned long row, unsigned long *fill);	/* $15F3F0 asm conv clobbers(d0,d1,d3,d4,d5,d6,a0,a3,a4) */
 void Nem_DecodeLoop_Row(void);	/* $15F4BA fragment */
 void Nem_DecodeLoop_Inline(void);	/* $15F540 fragment */
@@ -3323,7 +3323,7 @@ char Player_FrontPastSeg(void *, short, void *);	/* $1F1478 */
 void XPlayer_SaveSafePos(XPlayer *self);	/* $1F1504 */
 void XPlayer_Move(XPlayer *self, short step);	/* $1F153A */
 void XPlayer_Update(XPlayer *self);	/* $1F1644 */
-long Spr_UploadFrame18(void *);	/* $1F196E */
+void Spr_UploadFrame18(SprInst *spr);	/* $1F196E */
 void XPlayer_Draw(XPlayer *self);	/* $1F1A2E */
 void XPlayer_Deactivate(XPlayer *self);	/* $1F1C06 */
 void XPlayer_Activate(XPlayer *self);	/* $1F1CD4 */
@@ -3499,7 +3499,7 @@ void Seg_CollideObj_CeilFloor(void);	/* $1F89A4 fragment */
 void Seg_CollideObj_RetNone(void);	/* $1F8ACA fragment */
 void Seg_CollideObj_RetHit(void);	/* $1F8AD6 fragment */
 void Seg_CollideObj_Ret(void);	/* $1F8AEE fragment */
-long Obj_CollideSegs(void *);	/* $1F8B42 */
+void Obj_CollideSegs(void *obj);	/* $1F8B42 */
 long DrawList_Init(void);	/* $1F8EF6 */
 long DrawList_AllocNode(void);	/* $1F8F4C */
 short DrawList_Add(AnyFn draw, void *obj, short, char, short, char);	/* $1F8FA2 */
@@ -3512,12 +3512,12 @@ char Scene_Register(long, long);	/* $1F9464 */
 void Sys_Nop1F949E(void);	/* $1F949E */
 long Game_TickFrameCounter(void);	/* $1F94A6 */
 void Scene_ClearActivateHook(void);	/* $1F94B6 */
-long Obj_FindHitPoint(void *, void *, void *, short, short, void *, void *);	/* $1F94C4 */
+char Obj_FindHitPoint(Actor *att, Actor *tgt, s8 *pts, short ox, short oy, s16 *rx, s16 *ry);	/* $1F94C4 */
 void Music_Play(short);	/* $1F97A4 */
 long Pad_P1StartDown(void);	/* $1F97DE */
 void ClassList_CallSlot5A(void);	/* $1F9804 */
 void Sys_InitGameVideo(void);	/* $1F9850 */
-void Level_Load(void *, long, void *, long, long, long, char, char, char, char, short, short, short);	/* $1F98A8 */
+void Level_Load(void *fgMap, void *fgTiles, void *bgMap, void *bgTiles, void *fgSegs, void *bgSegs, char flag0, char flag1, char flag2, char flag3, short classArg, short music, short gridShiftX, short gridShiftY, char spawnFromBg, void *classList);	/* $1F98A8 */
 void Timer_InitAll(void);	/* $1F9C60 */
 Timer *Timer_Create(TimerFn func, short period, void *arg, char user);	/* $1F9C92 */
 void Timer_Start(Timer *t);	/* $1F9D04 */
@@ -3541,15 +3541,15 @@ void Mem_StackFree(void *);	/* $1FA924 */
 void Spr_InitLinks(void);	/* $1FA956 */
 void Spr_BeginFrame(void);	/* $1FA99C */
 void Spr_EndFrame(void);	/* $1FA9D2 */
-short Spr_PreloadTiles(void *, short);	/* $1FAA08 */
+short Spr_PreloadTiles(SprInst *spr, short tile);	/* $1FAA08 */
 short Spr_PreloadToHeap(SprInst *spr, short tile);	/* $1FAD08 */
-void Spr_UploadFrame(void *, char);	/* $1FAD44 */
-short Spr_Init(SprInst *spr, long, void *, short, short, short, char);	/* $1FB026 */
-void Spr_InvalidateFrame(void *);	/* $1FB126 */
-void Spr_SetFrame(void *, short);	/* $1FB142 */
+void Spr_UploadFrame(SprInst *spr, char now);	/* $1FAD44 */
+short Spr_Init(SprInst *spr, long unused, void *def, short frame, short pal, short tile, char upload);	/* $1FB026 */
+void Spr_InvalidateFrame(SprInst *spr);	/* $1FB126 */
+void Spr_SetFrame(SprInst *spr, short frame);	/* $1FB142 */
 void Obj_ShiftTree(Actor *parent, Actor *o);	/* $1FB178 */
-void Spr_PlaceAttached(void *, short, short);	/* $1FB1C2 */
-void Spr_Draw(void *, short, short);	/* $1FB346 */
+void Spr_PlaceAttached(SprInst *spr, short x, short y);	/* $1FB1C2 */
+void Spr_Draw(SprInst *spr, short x, short y);	/* $1FB346 */
 void Spr_EmitPreLinked(void *, short, short, short);	/* $1FB592 */
 void Spr_EmitPreLinked_Piece(void);	/* $1FB6D6 fragment */
 void Spr_EmitPre(void *, short, short, short);	/* $1FB75A */

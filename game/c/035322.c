@@ -6,32 +6,50 @@
  *
  * col, row: the block hit.  obj: the object that hit it.
  * The pillar's top: up to 3 blocks up from row while their bits 11-13 are 3 (row itself
- * included; if row isn't one, the column starts at row). Returns 0; other objects do nothing. */
+ * included; if row isn't one, the column starts at row). Returns 0; other objects do nothing.
+ *
+ * MPW: the class is compared with the long at +2 of MAGNETICGLOB's jump-table entry, an external
+ * data record (AvalonA4_GlobCrackBlockHook). The explosion's coordinates are in a block of their
+ * own (do/while (0)): in one basic block with the tile lookup, MPW keeps (long)col and r in
+ * temporaries the ROM doesn't have (and a goto label instead stops the hoisting of the first
+ * loop's bound into d3). The sound pair's do/while puts its argument pop before the return. */
 #include "xmen2.h"
 
-long AvalonA4_GlobCrackColumnHook(register short col, short row, Actor *obj)
+#define PASTE(a, b)		a##b
+#ifdef XMEN2_MPW
+extern struct { short jmp; Class *cls; } PASTE(Tbl_MagneticGlob, _vtable);
+#define MAGNETICGLOB_CLASS	(PASTE(Tbl_MagneticGlob, _vtable).cls)
+#else
+#define MAGNETICGLOB_CLASS	CLASS(PASTE(Tbl_MagneticGlob, _vtable))
+#endif
+
+long AvalonA4_GlobCrackColumnHook(short col, short row, Actor *obj)
 {
-	short tile;
-	long x, y;
-	short kind;
 	char broke;
 	register long top, i, r;
 	register Seg *seg;
 
-	if (obj->cls != CLASS(Tbl_MagneticGlob_vtable))
+	if (obj->cls != MAGNETICGLOB_CLASS)
 		return 0;
 	broke = 0;
 	top = row;
 	for (i = 0, r = row; i < 3; i++, r--) {
+		short kind;
+
 		kind = (g_FgBlockMap[g_FgRowTable[r] + col] & 0x3800) >> 11;
 		if (kind != 3)
 			break;
 		top = r;
 	}
 	for (i = 0, r = top; i < 3; i++, r++) {
+		short tile;
+		long x, y;
+
 		tile = g_FgBlockMap[g_FgRowTable[r] + col] & 0x1FF;
-		x = ((col << 5) + 16) << 8;
-		y = ((r << 5) + 16) << 8;
+		do {
+			x = ((col << 5) + 16) << 8;
+			y = ((r << 5) + 16) << 8;
+		} while (0);
 		Explosion_SpawnSetTimerWord(x, y, 0, 0);
 		if (tile == 0x8C)
 			Map_SetBlockFG(col, r, 0xA9, 1);
@@ -61,7 +79,9 @@ long AvalonA4_GlobCrackColumnHook(register short col, short row, Actor *obj)
 		if (seg = Seg_FindInBlock(0x14, col, row))
 			Seg_Free(seg);
 	}
-	Snd_Stop(0x1A);
-	Snd_Play(0x1A);
+	do {
+		Snd_Stop(0x1A);
+		Snd_Play(0x1A);
+	} while (0);
 	return 0;
 }

@@ -25,7 +25,7 @@ void AvalonA4_AnimatePalettes(void)
 	if (g_TwoPlayerStep)
 		g_A4PulseDelay--;
 	if (g_A4PulseDelay <= 0) {
-		pulse = CODEPTR(Tbl_AvalonA4PalPulse);
+		pulse = (s8 *)CODEPTR(Tbl_AvalonA4PalPulse);
 		g_A4PulseDelay = 5;
 		g_PalBaseDirty = 1;
 		if (g_AvalonA4PalStep == *pulse)

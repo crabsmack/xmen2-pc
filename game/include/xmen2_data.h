@@ -909,7 +909,7 @@ extern void Tbl_Tank_ScriptDriveInLen();
 extern void Tbl_Tank_ScriptDriveLen();
 extern void Tbl_TankStats();
 extern void Str_Empty_142B52();
-extern void Lvl_Data_143224();
+extern void Tbl_TechWallGun_vtable();
 extern void Tbl_Anim_1432A2();
 extern void Tbl_Anim_1432AC();
 extern void Tbl_Anim_1432B6();
@@ -2100,7 +2100,7 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_Tank_ScriptDriveLen (xm::rom(0x142238))
 #define Tbl_TankStats (xm::rom(0x142246))
 #define Str_Empty_142B52 (xm::rom(0x142B52))
-#define Lvl_Data_143224 (xm::rom(0x143224))
+#define Tbl_TechWallGun_vtable (xm::rom(0x143224))
 #define Tbl_Anim_1432A2 (xm::rom(0x1432A2))
 #define Tbl_Anim_1432AC (xm::rom(0x1432AC))
 #define Tbl_Anim_1432B6 (xm::rom(0x1432B6))
