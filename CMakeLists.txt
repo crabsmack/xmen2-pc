@@ -34,23 +34,9 @@ endif()
 find_package(SDL2 REQUIRED)
 
 include("${RECOMP_ROOT}/cmake/GenesisRecompGenerated.cmake")
-genesisrecomp_add_generated_sources(XMEN2_GENERATED xmen2 "${CMAKE_SOURCE_DIR}/game" xmen2.bin)
 genesisrecomp_runner_sources(XMEN2_RUNNER_SOURCES TRACE ${GEN_ENABLE_TRACE})
 
-add_executable(XMen2Recomp
-    ${XMEN2_RUNNER_SOURCES}
-    ${XMEN2_GENERATED}
-    "${CMAKE_SOURCE_DIR}/game/xmen2_spec.c")
-add_dependencies(XMen2Recomp ${XMEN2_GENERATED_TARGET})
-genesisrecomp_runner_target(XMen2Recomp)
-
-target_compile_definitions(XMen2Recomp PRIVATE
-    INCLUDE_GENERATED_CODE=1
-    ENABLE_RECOMPILED_CODE=1
-    OWN_BACKEND=1
-    DEFAULT_DEBUG_PORT=4382
-    GENESIS_GAME_VERSION="${PROJECT_VERSION}")
-target_include_directories(XMen2Recomp PRIVATE
+set(XMEN2_INCLUDE_DIRS
     "${RUNNER_ROOT}"
     "${RUNNER_ROOT}/include"
     "${RUNNER_ROOT}/external/ymfm/src"
@@ -58,16 +44,76 @@ target_include_directories(XMen2Recomp PRIVATE
     "${RUNNER_ROOT}/external/clowncommon"
     "${RUNNER_ROOT}/video"
     "${RECOMP_ROOT}/recompiler/src"
-    "${CMAKE_SOURCE_DIR}/game")
-target_link_libraries(XMen2Recomp PRIVATE SDL2::SDL2main SDL2::SDL2)
-if(WIN32)
-    target_link_libraries(XMen2Recomp PRIVATE ws2_32 comdlg32)
-endif()
+    "${CMAKE_SOURCE_DIR}/game"
+    "${CMAKE_SOURCE_DIR}/game/include")
+set(XMEN2_COMMON_DEFS INCLUDE_GENERATED_CODE=1 ENABLE_RECOMPILED_CODE=1 OWN_BACKEND=1
+    GENESIS_GAME_VERSION="${PROJECT_VERSION}")
+
+# One runner executable: the engine's runner sources, the game spec and SOURCES.
+function(xmen2_runner TARGET PORT)
+    cmake_parse_arguments(XR "" "" "DEFS;SOURCES;DEPENDS" ${ARGN})
+    add_executable(${TARGET} ${XMEN2_RUNNER_SOURCES} ${XR_SOURCES} "${CMAKE_SOURCE_DIR}/game/xmen2_spec.c")
+    if(XR_DEPENDS)
+        add_dependencies(${TARGET} ${XR_DEPENDS})
+    endif()
+    genesisrecomp_runner_target(${TARGET})
+    target_compile_definitions(${TARGET} PRIVATE ${XMEN2_COMMON_DEFS} DEFAULT_DEBUG_PORT=${PORT} ${XR_DEFS})
+    target_include_directories(${TARGET} PRIVATE ${XMEN2_INCLUDE_DIRS})
+    target_link_libraries(${TARGET} PRIVATE SDL2::SDL2main SDL2::SDL2)
+    if(WIN32)
+        target_link_libraries(${TARGET} PRIVATE ws2_32 comdlg32)
+    endif()
+    if(MSVC)
+        target_compile_options(${TARGET} PRIVATE /W3 /WX- /utf-8 /wd4102 /wd4996)
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${RUNNER_ROOT}/external/SDL2/SDL2-2.28.5/lib/x64/SDL2.dll"
+                "$<TARGET_FILE_DIR:${TARGET}>"
+            COMMENT "Copying SDL2.dll")
+    endif()
+endfunction()
+
+# ---------------------------------------------------------------------------
+# The timed runner (phase 2; phase 4 D1): all generated code, cycle-exact. Its generated
+# code is one object library, shared with the verification runner.
+# ---------------------------------------------------------------------------
+genesisrecomp_add_generated_sources(XMEN2_GENERATED xmen2 "${CMAKE_SOURCE_DIR}/game" xmen2.bin)
+add_library(xmen2_timed_code OBJECT ${XMEN2_GENERATED})
+add_dependencies(xmen2_timed_code ${XMEN2_GENERATED_TARGET})
+target_compile_definitions(xmen2_timed_code PRIVATE ${XMEN2_COMMON_DEFS})
+target_include_directories(xmen2_timed_code PRIVATE ${XMEN2_INCLUDE_DIRS})
 if(MSVC)
-    target_compile_options(XMen2Recomp PRIVATE /W3 /WX- /utf-8 /wd4102 /wd4996)
-    add_custom_command(TARGET XMen2Recomp POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${RUNNER_ROOT}/external/SDL2/SDL2-2.28.5/lib/x64/SDL2.dll"
-            "$<TARGET_FILE_DIR:XMen2Recomp>"
-        COMMENT "Copying SDL2.dll")
+    target_compile_options(xmen2_timed_code PRIVATE /W3 /WX- /utf-8 /wd4102 /wd4996)
 endif()
+xmen2_runner(XMen2Recomp 4382 SOURCES $<TARGET_OBJECTS:xmen2_timed_code>)
+
+# ---------------------------------------------------------------------------
+# Phase 4. Hand-written C (game/c) joins a runner through the bridge tools/bridge.py writes
+# (xmen2check.py build runs it first): build/bridge for the stepped runner, build/bridge_verify
+# for the verification runner. handc.cmake lists the C files and renames each one's function
+# to hc_<Name> (the bridge's <Name> counts the entry and calls it).
+# ---------------------------------------------------------------------------
+set(XMEN2_BRIDGE_DIR "${CMAKE_BINARY_DIR}/bridge")
+set(XMEN2_VERIFY_BRIDGE_DIR "${CMAKE_BINARY_DIR}/bridge_verify")
+set(XMEN2_HANDC_SOURCES "")
+include("${XMEN2_BRIDGE_DIR}/handc.cmake" OPTIONAL)
+
+# The stepped runner (D2): the same game.toml generated with --untimed (the exact-mode code
+# shape without XI/XC timing), scheduled by logical position from a timed run's replay log
+# (GENESIS_REPLAY_IN). Functions written in C are left out (--skip): their slot entries
+# take every call.
+genesisrecomp_add_generated_sources(XMEN2S_GENERATED xmen2s "${CMAKE_SOURCE_DIR}/game" xmen2.bin
+    EXTRA_ARGS --untimed --prefix xmen2s --skip "${XMEN2_BRIDGE_DIR}/handc_skip.txt"
+    EXTRA_DEPENDS "${XMEN2_BRIDGE_DIR}/handc_skip.txt")
+xmen2_runner(XMen2Stepped 4383 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2S_GENERATED_TARGET}
+    SOURCES ${XMEN2S_GENERATED} ${XMEN2_HANDC_SOURCES}
+            "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp")
+
+# The verification runner (D4 `verify`): the timed runner with ALL generated code, plus the
+# hand-written C run beside it as shadow tests (game/runtime/verify.cpp).
+xmen2_runner(XMen2Verify 4384 DEFS XMEN2_VERIFY=1
+    SOURCES $<TARGET_OBJECTS:xmen2_timed_code> ${XMEN2_HANDC_SOURCES}
+            "${XMEN2_VERIFY_BRIDGE_DIR}/xmen2_bridge.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/verify.cpp")

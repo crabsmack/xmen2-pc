@@ -6,6 +6,7 @@
 
 # Build outputs, including all generated C
 build/
+build-*/
 .venv/
 __pycache__/
 *.pyc

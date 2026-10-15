@@ -11,7 +11,10 @@ ROOT = Path(__file__).resolve().parent.parent
 GAME = ROOT / "game"
 ENGINE = ROOT / "segagenesisrecomp"
 DISASM = ROOT / "xmen2disasm"
-BUILD = ROOT / "build"
+# The working disassembly checkout next to this repo: reference runs (emu/runs), the corpus
+# and the phase checker live there ($XMEN2_DISASM overrides).
+DISASM_MAIN = Path(os.environ.get("XMEN2_DISASM") or ROOT.parent / "xmen2disasm")
+BUILD = Path(os.environ.get("XMEN2_BUILD") or ROOT / "build")   # dev: a second build tree
 ROM = GAME / "xmen2.bin"
 ROM_SHA1 = "61409e6cf6065ab67d8952b891d8edcf47777193"
 EXE_NAME = "XMen2Recomp.exe" if sys.platform == "win32" else "XMen2Recomp"

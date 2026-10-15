@@ -24,12 +24,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "xmen2_functions.h"   /* xmen2_game_functions[]: tools/sync_disasm.py */
 
 #define XMEN2_ENTRY 0x1F43AEu
 #define XMEN2_VINT  0x1F4860u
 #define XMEN2_HINT  0x1F4870u
 
-static void xmen2_call_entry_point(void) { recomp_call_addr(XMEN2_ENTRY); }
+static void xmen2_start(void);
+static void xmen2_call_entry_point(void) { xmen2_start(); recomp_call_addr(XMEN2_ENTRY); }
 static void xmen2_call_vblank(void)      { recomp_call_addr(XMEN2_VINT); }
 static void xmen2_call_hblank(void)      { recomp_call_addr(XMEN2_HINT); }
 
@@ -46,11 +50,15 @@ static void crc_init(void)
     }
 }
 
+static uint32_t crc32_update(uint32_t c, const uint8_t *p, size_t n)
+{
+    while (n--) c = s_crc_table[(c ^ *p++) & 0xFFu] ^ (c >> 8);
+    return c;
+}
+
 static uint32_t crc32_bytes(const uint8_t *p, size_t n)
 {
-    uint32_t c = 0xFFFFFFFFu;
-    while (n--) c = s_crc_table[(c ^ *p++) & 0xFFu] ^ (c >> 8);
-    return c ^ 0xFFFFFFFFu;
+    return crc32_update(0xFFFFFFFFu, p, n) ^ 0xFFFFFFFFu;
 }
 
 static uint32_t crc32_words_be(const uint16_t *w, size_t n, uint16_t mask)
@@ -75,19 +83,122 @@ static FILE *s_trace;
 extern uint64_t glue_miss_count_any(void);
 extern uint64_t g_m68ki_insn_total;
 
+/* ---- sync points (phase 4: xmen2disasm docs/phases/P4-decomp.md) ---------
+ * Every main-program entry to VDP_WaitVBlank is a sync point: the logic of a
+ * game frame is done. With XMEN2_SYNC_CSV=<path> each one appends
+ *   sync,frame,ram_crc32,vram_crc32,cram_crc32,vsram_crc32
+ * with the frame CRCs' definitions, except that RAM in [stack_low, A7) is
+ * zeroed: the dead stack below the stack pointer, whose contents depend on
+ * where interrupts landed. stack_low is the lowest A7 the timed runner sees
+ * over the whole corpus (measured: XMEN2_STACK_LOW overrides it for that). */
+#define XMEN2_SYNC_PC   0x1FDC5Cu   /* VDP_WaitVBlank */
+#define XMEN2_STACK_LOW 0x00FFAF1Au  /* lowest A7 of the corpus: the TAS (docs/NOTES.md) */
+
+static FILE    *s_sync;
+static uint32_t s_stack_low = XMEN2_STACK_LOW;
+static uint64_t s_sync_rows;
+
+uint32_t xmen2_stack_low(void) { return s_stack_low; }   /* also verify.cpp's dead-stack bound */
+#ifdef XMEN2_VERIFY
+int xmen2_verify_entry(uint32_t addr);                    /* game/runtime/verify.cpp */
+#endif
+
+static uint32_t ram_crc_masked(void)
+{
+    static const uint8_t zeros[256];
+    uint32_t lo = s_stack_low & 0xFFFFu, hi = g_cpu.A[7] & 0xFFFFu;
+    if ((s_stack_low & 0xFF0000u) != 0xFF0000u || (g_cpu.A[7] & 0xFF0000u) != 0xFF0000u || hi < lo)
+        hi = lo;                                     /* nothing below A7 to mask */
+    uint32_t c = crc32_update(0xFFFFFFFFu, g_ram, lo);
+    for (uint32_t n = hi - lo; n; ) {
+        uint32_t k = n > sizeof zeros ? (uint32_t)sizeof zeros : n;
+        c = crc32_update(c, zeros, k);
+        n -= k;
+    }
+    c = crc32_update(c, g_ram + hi, 0x10000u - hi);
+    return c ^ 0xFFFFFFFFu;
+}
+
+/* First-divergence aid: XMEN2_SYNC_DUMP="661,662" + XMEN2_DUMP_DIR write sNNNNNN.ram (masked
+ * like the CRC: zeros in [stack_low, A7)) and sNNNNNN.vram at those sync points. */
+static void maybe_dump_sync(uint64_t sync)
+{
+    const char *list = getenv("XMEN2_SYNC_DUMP"), *dir = getenv("XMEN2_DUMP_DIR");
+    if (!list || !dir) return;
+    for (const char *s = list; *s; ) {
+        char *e;
+        unsigned long long n = strtoull(s, &e, 10);
+        if (e == s) break;
+        if (n == sync) {
+            static uint8_t ram[0x10000];
+            memcpy(ram, g_ram, sizeof ram);
+            uint32_t lo = s_stack_low & 0xFFFFu, hi = g_cpu.A[7] & 0xFFFFu;
+            if (hi > lo) memset(ram + lo, 0, hi - lo);
+            char path[600];
+            snprintf(path, sizeof path, "%s/s%06llu.ram", dir, n);
+            FILE *f = fopen(path, "wb");
+            if (f) { fwrite(ram, 1, sizeof ram, f); fclose(f); }
+            snprintf(path, sizeof path, "%s/s%06llu.vram", dir, n);
+            f = fopen(path, "wb");
+            if (f) { fwrite(g_machine.vdp.vram, 1, GVDP_VRAM_SIZE, f); fclose(f); }
+        }
+        s = *e ? e + 1 : e;
+    }
+}
+
+static void xmen2_on_sync(uint64_t sync, uint64_t frame)
+{
+    s_sync_rows = sync;
+    maybe_dump_sync(sync);
+    if (!s_sync) return;
+    const GVDP *v = &g_machine.vdp;
+    fprintf(s_sync, "%llu,%llu,%08x,%08x,%08x,%08x\n", (unsigned long long)sync, (unsigned long long)frame,
+            ram_crc_masked(),
+            crc32_bytes(v->vram, GVDP_VRAM_SIZE),
+            crc32_words_be(v->cram, GVDP_CRAM_ENTRIES, 0x0EEE),
+            crc32_words_be(v->vsram, GVDP_VSRAM_ENTRIES, 0x07FF));
+}
+
 static void xmen2_report_counters(void)
 {
+    extern uint32_t g_xa7min;
     if (s_trace) fflush(s_trace);
+    if (s_sync) fflush(s_sync);
+    char a7[16] = "null";
+    if (g_xa7min != 0xFFFFFFFFu) snprintf(a7, sizeof a7, "%u", (unsigned)(g_xa7min & 0xFFFFFFu));
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": %llu, \"interp_instructions\": %llu, "
-                    "\"stub_hits\": 0}\n",
-            (unsigned long long)glue_miss_count_any(), (unsigned long long)g_m68ki_insn_total);
+                    "\"stub_hits\": 0, \"sync_points\": %llu, \"a7_min\": %s, \"stack_low\": %u}\n",
+            (unsigned long long)glue_miss_count_any(), (unsigned long long)g_m68ki_insn_total,
+            (unsigned long long)s_sync_rows, a7, (unsigned)(s_stack_low & 0xFFFFFFu));
     fflush(stderr);
+}
+
+static void xmen2_sync_init(void)
+{
+    const char *sl = getenv("XMEN2_STACK_LOW");
+    if (sl && *sl) s_stack_low = (uint32_t)strtoul(sl, NULL, 0);
+    const char *path = getenv("XMEN2_SYNC_CSV");
+    if (!path || !path[0]) return;
+    s_sync = fopen(path, "w");
+    if (!s_sync) {
+        fprintf(stderr, "[xmen2] cannot open XMEN2_SYNC_CSV %s\n", path);
+        exit(2);
+    }
+    setvbuf(s_sync, NULL, _IOFBF, 1 << 20);
+    fprintf(s_sync, "sync,frame,ram_crc32,vram_crc32,cram_crc32,vsram_crc32\n");
+}
+
+/* Before the game's first instruction (call_entry_point, on the game fiber). */
+static void xmen2_start(void)
+{
+    crc_init();
+    atexit(xmen2_report_counters);
+    xmen2_sync_init();
 }
 
 /* The runner has no post-reset call site for game hooks; this runs on the first tick. */
 static void xmen2_trace_init(void)
 {
-    atexit(xmen2_report_counters);
     const char *path = getenv("XMEN2_TRACE_CSV");
     if (!path || !path[0]) return;
     crc_init();
@@ -135,7 +246,7 @@ static void maybe_dump(uint64_t frame)
         if (e == s) break;
         if (f == frame) {
             const GVDP *v = &g_machine.vdp;
-            dump_file(dir, frame, "ram", g_ram, sizeof g_ram);
+            dump_file(dir, frame, "ram", g_ram, 0x10000u);
             dump_file(dir, frame, "vram", v->vram, GVDP_VRAM_SIZE);
             dump_words_be(dir, frame, "cram", v->cram, GVDP_CRAM_ENTRIES, 0x0EEE);
             dump_words_be(dir, frame, "vsram", v->vsram, GVDP_VSRAM_ENTRIES, 0x07FF);
@@ -162,7 +273,7 @@ static void xmen2_on_frame_post(uint64_t frame)
     if (!s_trace) return;
     const GVDP *v = &g_machine.vdp;
     fprintf(s_trace, "%llu,%08x,%08x,%08x,%08x,%08x\n", (unsigned long long)frame,
-            crc32_bytes(g_ram, sizeof g_ram),
+            crc32_bytes(g_ram, 0x10000u),
             crc32_bytes(v->vram, GVDP_VRAM_SIZE),
             crc32_words_be(v->cram, GVDP_CRAM_ENTRIES, 0x0EEE),
             crc32_words_be(v->vsram, GVDP_VSRAM_ENTRIES, 0x07FF),
@@ -184,6 +295,20 @@ const GameSpec g_game_spec = {
     /* Frame-identical to the reference emulator (phase-2 criteria): the exact
      * scheduler, with code generated by game.toml exact_timing = true. */
     .exact_timing           = 1,
+
+    /* Logical positions (phase 4): game functions are the disassembly's, a sync
+     * point is a main-program entry to VDP_WaitVBlank. The stepped runner is
+     * built from the same config with GenesisRecomp --untimed (CMakeLists.txt). */
+    .game_functions         = xmen2_game_functions,
+    .game_function_count    = (unsigned)(sizeof xmen2_game_functions / sizeof xmen2_game_functions[0]),
+    .sync_pc                = XMEN2_SYNC_PC,
+    .on_sync                = xmen2_on_sync,
+#ifdef XMEN2_STEPPED
+    .stepped                = 1,
+#endif
+#ifdef XMEN2_VERIFY
+    .on_entry               = xmen2_verify_entry,
+#endif
 
     .call_entry_point       = xmen2_call_entry_point,
     .call_vblank            = xmen2_call_vblank,

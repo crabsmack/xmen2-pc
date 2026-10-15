@@ -24,6 +24,10 @@ jump_table_autodiscovery = false
 # Cycle-exact emission (XI boundaries, exact costs): the runner schedules the 68000,
 # VDP, Z80 and interrupts like the reference emulator (segagenesisrecomp exact_sched).
 exact_timing = true
+# XENTRY at every function entry: logical positions for phase 4 (sync points at
+# VDP_WaitVBlank, the hardware/interrupt replay log). The stepped runner's code is
+# this config generated with GenesisRecomp --untimed (CMakeLists.txt XMen2Stepped).
+entry_hooks = true
 
 # ---------------------------------------------------------------------------
 # Per-game RAM layout. Only the stack fields are load-bearing; the Sonic-shaped
