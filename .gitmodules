@@ -1,0 +1,6 @@
+[submodule "segagenesisrecomp"]
+	path = segagenesisrecomp
+	url = https://github.com/crabsmack/segagenesisrecomp.git
+[submodule "xmen2disasm"]
+	path = xmen2disasm
+	url = https://github.com/crabsmack/xmen2disasm.git

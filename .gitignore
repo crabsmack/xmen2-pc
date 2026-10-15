@@ -1,0 +1,22 @@
+# Never commit the game. Supply your own dump (tools/common.py finds it).
+*.bin
+*.gen
+*.smd
+*.md.rom
+
+# Build outputs, including all generated C
+build/
+.venv/
+__pycache__/
+*.pyc
+
+# Runner evidence/settings written next to executables
+dispatch_misses*.toml
+floor_coverage*.toml
+interior_label_misses*.toml
+floor_unsafe*.toml
+settings.ini
+rom-*.cfg
+*.log
+
+.claude/worktrees/

@@ -1,0 +1,42 @@
+# game.toml - X-Men 2: Clone Wars (Sega Genesis, USA/Europe, 2 MB).
+# SHA-1 61409e6cf6065ab67d8952b891d8edcf47777193, CRC-32 710BC628.
+#
+# Discovery is the byte-matching disassembly (xmen2disasm submodule), never
+# runtime feedback (engine PRINCIPLES #16). tools/sync_disasm.py regenerates the
+# xmen2.* inputs below from the disassembly's phase-1 handoff (build/recomp/):
+#   xmen2.code_addrs.txt  every instruction start (runtime-verified)
+#   xmen2.seeds.toml      every function entry (one src/f file each)
+#   xmen2.jtstubs.toml    the A5 jump-table `jmp target.l` stubs at $222+8i whose
+#                         target is code: every `jsr d(a5)` lands on one of them
+#
+# Vectors: SSP $FFC518, entry $1F43AE, IRQ4 $1F4870, IRQ6 $1F4860 (see
+# xmen2_spec.c). A5 is the constant $000200 for the whole game.
+
+[game]
+output_prefix = "xmen2"
+code_addrs_file = "xmen2.code_addrs.txt"
+discovery_files = ["xmen2.seeds.toml", "xmen2.jtstubs.toml"]
+# Math_LDivS and friends test for a 68020 and skip its `divs.l` with a bra on a
+# 68000: never generate the 68020 path.
+allow_68020_branch = false
+jump_table_autodiscovery = false
+
+# ---------------------------------------------------------------------------
+# Per-game RAM layout. Only the stack fields are load-bearing; the Sonic-shaped
+# tracking fields are cosmetic telemetry and are 0 (no equivalent named yet).
+# ---------------------------------------------------------------------------
+[ram_layout]
+game_mode      = 0x000000
+vint_runcount  = 0x000000
+vint_routine   = 0x000000
+plc_pending    = 0x000000
+initial_ssp    = 0x00FFC518   # reset SSP from the vector table
+vbla_stack     = 0x00FFC518
+intr_stack     = 0x00FFC518
+player_object  = 0x000000
+level_modes    = []
+
+[functions]
+# Entry and the V-int / H-int wrappers (also in the seeds; listed for clarity).
+extra = [0x1F43AE, 0x1F4860, 0x1F4870]
+blacklist = []
