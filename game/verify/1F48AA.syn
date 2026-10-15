@@ -1,0 +1,11 @@
+# Mem_Copy: the corpus never copies 17+ bytes between two odd addresses (one byte first, then
+# the long moves), nor between addresses of different alignment. Into scratch RAM ($FF8000 area;
+# the case's writes are undone), from ROM.
+case both_odd
+l a7+4 = $FF8001
+l a7+8 = $101
+l a7+12 = 40
+case mixed_alignment
+l a7+4 = $FF8000
+l a7+8 = $101
+l a7+12 = 40

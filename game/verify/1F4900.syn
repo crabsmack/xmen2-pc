@@ -1,0 +1,10 @@
+# Mem_Set: the corpus never fills 19+ bytes from an odd address (one byte, then a word, then the
+# long stores). Into scratch RAM ($FF8000 area; undone after the case).
+case odd_start
+l a7+4 = $FF8001
+l a7+8 = $AB
+l a7+12 = 40
+case odd_start_word_aligned
+l a7+4 = $FF8003
+l a7+8 = $5A
+l a7+12 = 33

@@ -1,0 +1,11 @@
+# Math_DivModS: the corpus never divides a negative by a negative (both negated, the remainder
+# negated back). d0 = dividend, d1 = divisor.
+case neg_by_neg
+reg d0 = -100
+reg d1 = -7
+case neg_by_pos
+reg d0 = -100
+reg d1 = 7
+case pos_by_neg
+reg d0 = 100
+reg d1 = -7

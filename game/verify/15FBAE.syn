@@ -1,0 +1,10 @@
+# Intro_WaitFrame: the game always passes no callback (Cerebro_PlayIntro gives
+# Intro_SegaLogoFlash 0), and every corpus call takes the V-blank interrupt it waits for. These
+# run it uninterrupted, the VDP status reads supplied (VBLANK clear, then set). With a callback:
+# Z80_BusFree ($1FE3EC), a harmless function, in the caller's frame at 8(a6).
+case no_callback
+l a6+8 = 0
+hw $0000 $0008
+case callback
+l a6+8 = $1FE3EC
+hw $0000 $0008

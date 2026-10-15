@@ -1,0 +1,3 @@
+# Pad_ReadPort: a port number over 1 returns at once (the corpus only reads ports 0 and 1).
+case bad_port
+reg d0 = 2

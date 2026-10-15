@@ -1,0 +1,6 @@
+# Obj_FindFreeSlot: the corpus always finds a free object. With g_ObjCount ($FFEE0E) = 3 the loop
+# checks entries 2 and 3 of g_ObjTable ([$FFCD5A]); both marked in use, it returns 0.
+case none_free
+w $FFEE0E = 3
+w [[$FFCD5A]+8]+4 = $8000
+w [[$FFCD5A]+12]+4 = $8000

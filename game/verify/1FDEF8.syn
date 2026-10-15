@@ -1,0 +1,16 @@
+# Math_SinDeg: angles the corpus doesn't use: 360 and more (wrapped down), each quadrant past the
+# first, and the exact 90 and 270. The angle is the word at 6(a7) (the low word of the slot).
+case wrap_down
+w a7+6 = 400
+case second_quadrant
+w a7+6 = 120
+case third_quadrant
+w a7+6 = 200
+case fourth_quadrant
+w a7+6 = 300
+case right_angle
+w a7+6 = 90
+case three_quarters
+w a7+6 = 270
+case negative
+w a7+6 = -30

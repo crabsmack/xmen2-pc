@@ -1,0 +1,16 @@
+# Math_DivModU: the corpus only divides by divisors under $10000 (two divu.w steps). These reach
+# the 16-step shift-subtract path: a dividend under the divisor (high word 0), quotients ending
+# in a 1 bit and a 0 bit (the loop's two exits), and a divisor over $80000000 (the lost carry).
+# d0 = dividend, d1 = divisor.
+case small_dividend
+reg d0 = $1234
+reg d1 = $10000
+case q_odd
+reg d0 = $12345678
+reg d1 = $12345
+case q_even
+reg d0 = $20000
+reg d1 = $10000
+case huge_divisor
+reg d0 = $FFFFFFFF
+reg d1 = $80000001

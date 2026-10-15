@@ -1,0 +1,5 @@
+# Mem_ClearAboveStack: with this ROM's initial SSP ($FFC518) the length to the end of RAM is a
+# multiple of 4, so the leading word store never runs. The case gives the reset vector an SSP of
+# $FFC516 (ROM image only, put back after the case) to run that path.
+case word_first
+l $0 = $00FFC516
