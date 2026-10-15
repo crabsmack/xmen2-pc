@@ -119,8 +119,21 @@ def cmd_build(a) -> dict:
                "XMen2SteppedGen", "XMen2Verify", "--parallel", logfile=BUILD / "build.log")
     exes = {"exe": exe_path(), "stepped_exe": exe_path(STEPPED_EXE), "stepped_gen_exe": exe_path(STEPPED_GEN_EXE),
             "verify_exe": exe_path(VERIFY_EXE)}
-    return {**{k: str(v) for k, v in exes.items()}, "config": "Release",
-            "ok": rc == 0 and all(v.is_file() for v in exes.values()), "log": str(BUILD / "build.log")}
+    res = {**{k: str(v) for k, v in exes.items()}, "config": "Release",
+           "ok": rc == 0 and all(v.is_file() for v in exes.values()), "log": str(BUILD / "build.log")}
+    if a.handc:
+        # The hand-C build is the stepped runner: the recompiler leaves every function written in
+        # C out of its code (--skip). Count the game functions (the disassembly's) whose generated
+        # code it still links: a func_ADDR / func_body_ADDR definition in its generated C.
+        with open(common.GAME / "xmen2.functions.csv", newline="") as f:
+            game = {r["addr"].upper() for r in __import__("csv").DictReader(f)}
+        defined = set()
+        for p in sorted((BUILD / "generated" / "xmen2s").glob("xmen2s_part*.c")):
+            defined.update(m.group(1) for m in re.finditer(
+                r"^(?:static )?void func_(?:body_)?([0-9A-F]{6})\((?:void|uint32_t _entry)\) \{", p.read_text(errors="replace"), re.M))
+        gen = sorted(game & defined)
+        res.update(exe=str(exes["stepped_exe"]), generated_game_functions=len(gen), first=gen[0] if gen else None)
+    return res
 
 
 # --- trace -----------------------------------------------------------------------------
@@ -183,7 +196,7 @@ def stepped_script(inp: Path, ref: Path, out: Path) -> int:
     return len(frames)
 
 
-STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE"}
+STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE", "handc": "STEPPED_EXE"}
 
 
 def cmd_trace(a) -> dict:
@@ -495,6 +508,8 @@ def main() -> int:
     for name in ("gen", "build", "trace"):
         p = sub.add_parser(name)
         p.add_argument("--json", action="store_true")
+        if name == "build":
+            p.add_argument("--handc", action="store_true", help="P4 D6: count generated game functions linked")
         if name == "trace":
             p.add_argument("--run", required=True)
             p.add_argument("--input", default="")

@@ -29,9 +29,9 @@ extern s16 g_AvalonB1PalCycles[6];
 #endif
 /* $FFC526 ptr: debris pool from Debris_CreatePool in BigAcolyte_ActAppear (+2 = $400, +4 = sprite definition from BigAcolyte_LoadSprite); used by BigAcolyte_StateBurstWall */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BigAcolyteDebris;
+extern PTR(DebrisPool) g_BigAcolyteDebris;
 #else
-#define g_BigAcolyteDebris XM_G(PTR(void), 0xFFC526)
+#define g_BigAcolyteDebris XM_G(PTR(DebrisPool), 0xFFC526)
 #endif
 /* $FFC52A word: sprite-definition slot of Art_FarAcolyteSpr3 (FarAcolyte_ClassInit via SprDef_Add; FarAcolyte_Draw) */
 #ifdef XMEN2_MPW
@@ -1139,9 +1139,9 @@ extern s16 g_FloatFallSpeed;
 #endif
 /* $FFC708 8 ptrs: map tile hooks indexed by a block's hook type (block word bits 11-13), entries 1-7 called as (x, y, obj, -1, -1) by Tile_TestAt/Tile_RunHooksAtPoints; filled by each *_InstallTileHooks */
 #ifdef XMEN2_MPW
-extern PTR(void) g_TileHooks[8];
+extern TileHookFn g_TileHooks[8];
 #else
-#define g_TileHooks XM_GA(PTR(void), 0xFFC708)
+#define g_TileHooks XM_GA(TileHookFn, 0xFFC708)
 #endif
 /* $FFC728 word: added to g_BgScrollY when uploaded (VDP_UpdateScroll) */
 #ifdef XMEN2_MPW
@@ -1361,15 +1361,15 @@ extern PTR(void) g_BgBlockDefs;
 #endif
 /* $FFC778 ptr: BG block layout, same word format as g_FgBlockMap (Level_LoadMaps) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BgBlockMap;
+extern PTR(s16) g_BgBlockMap;
 #else
-#define g_BgBlockMap XM_G(PTR(void), 0xFFC778)
+#define g_BgBlockMap XM_G(PTR(s16), 0xFFC778)
 #endif
 /* $FFC77C ptr: FG block layout, one word per 32-px block (bits 0-8 block id, $3800 tile-hook type 1-7, $4000 solid), Enigma-decoded by Level_LoadMaps; read and rewritten by tile hooks */
 #ifdef XMEN2_MPW
-extern PTR(void) g_FgBlockMap;
+extern PTR(s16) g_FgBlockMap;
 #else
-#define g_FgBlockMap XM_G(PTR(void), 0xFFC77C)
+#define g_FgBlockMap XM_G(PTR(s16), 0xFFC77C)
 #endif
 /* $FFC784 word: BG map height in 32-px blocks (Level_LoadMaps) */
 #ifdef XMEN2_MPW
@@ -1391,15 +1391,15 @@ extern s16 g_FgMapH;
 #endif
 /* $FFC78A ptr: BG row offset table, one word per block row (Level_LoadMaps, tag Str_RowTableTags); index into g_BgBlockMap */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BgRowTable;
+extern PTR(s16) g_BgRowTable;
 #else
-#define g_BgRowTable XM_G(PTR(void), 0xFFC78A)
+#define g_BgRowTable XM_G(PTR(s16), 0xFFC78A)
 #endif
 /* $FFC78E ptr: FG row offset table, one word per block row = row * g_FgMapW (Level_LoadMaps, heap); index into g_FgBlockMap (tile hooks, Tile_TestAt, Map_SetBlockFG) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_FgRowTable;
+extern PTR(s16) g_FgRowTable;
 #else
-#define g_FgRowTable XM_G(PTR(void), 0xFFC78E)
+#define g_FgRowTable XM_G(PTR(s16), 0xFFC78E)
 #endif
 /* $FFC792 word: FG map width in 32-px blocks (Level_LoadMaps: map +2 >> 2); bounds for tile queries (Tile_TestAt, bullets, Launcher_Draw) */
 #ifdef XMEN2_MPW
@@ -1865,9 +1865,9 @@ extern u8 g_CamActive;
 #endif
 /* $FFC972 ptr: per-frame scene hook installed by each scene's setup (CloneA2_FrameHook, CloneA5_FrameHook) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SceneFrameHook;
+extern FrameHookFn g_SceneFrameHook;
 #else
-#define g_SceneFrameHook XM_G(PTR(void), 0xFFC972)
+#define g_SceneFrameHook XM_G(FrameHookFn, 0xFFC972)
 #endif
 /* $FFC978 word: g_VramTileCursor saved when a level starts running (Level_Run, Cerebro_Run) */
 #ifdef XMEN2_MPW
@@ -2028,9 +2028,9 @@ extern u8 g_SceneSprites[];
 #endif
 /* $FFCD5A ptr: object pointer table, slot 0 = g_Player1, 1 = g_Player2, then level objects (Obj_AllocPool; indexed by object bytes +$3A/+$3B/+$3C) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_ObjTable;
+extern PTR(PTR(Actor)) g_ObjTable;
 #else
-#define g_ObjTable XM_G(PTR(void), 0xFFCD5A)
+#define g_ObjTable XM_G(PTR(PTR(Actor)), 0xFFCD5A)
 #endif
 /* $FFCD5E word: entries used in g_SpriteDefs (SprDef_Add) */
 #ifdef XMEN2_MPW
@@ -2172,9 +2172,9 @@ extern PTR(void) g_SegHookTmp;
 #endif
 /* $FFCD96 array of long: per floor-segment-type callback (mode, segment, object, 0), indexed by the segment's type byte +1; ACTOR Move (Actor_Move) and the floor code call it when non-zero; scenes install their own (CloneA5_SegHook15/16/17 at -$3416/-$3412/-$340E) */
 #ifdef XMEN2_MPW
-extern u8 g_SegTypeHooks[];
+extern SegHookFn g_SegTypeHooks[];
 #else
-#define g_SegTypeHooks XM_GA(u8, 0xFFCD96)
+#define g_SegTypeHooks XM_GA(SegHookFn, 0xFFCD96)
 #endif
 /* $FFCE2E array: floor-segment records, $14 bytes each ($FFCE2E) (Seg_Alloc, Seg_LoadList) */
 #ifdef XMEN2_MPW
@@ -2514,9 +2514,9 @@ extern PTR(void) g_HitListEnemyAtk;
 #endif
 /* $FFEBAE ptr: head of the enemy body hit list (Actor_Activate +$84 node; player attacks and projectiles test it) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_HitListEnemyBody;
+extern PTR(ListNode) g_HitListEnemyBody;
 #else
-#define g_HitListEnemyBody XM_G(PTR(void), 0xFFEBAE)
+#define g_HitListEnemyBody XM_G(PTR(ListNode), 0xFFEBAE)
 #endif
 /* $FFEBB2 array: 50 hit-list nodes x $C {next, prev, owner} (HitList_Init, HitList_AllocNode) */
 #ifdef XMEN2_MPW
@@ -2670,9 +2670,9 @@ extern PTR(void) g_ScalerWork;
 #endif
 /* $FFF55E ptr: result of Scaler_InitParams = &g_ScalerParams (0 on failure), passed back as the scale record by BigAcolyte_ActGrow/StateBurstWall, PlayerSelect_Run, Cerebro_PlayIntro */
 #ifdef XMEN2_MPW
-extern PTR(void) g_ScaleParamsPtr;
+extern PTR(ScaleParams) g_ScaleParamsPtr;
 #else
-#define g_ScaleParamsPtr XM_G(PTR(void), 0xFFF55E)
+#define g_ScaleParamsPtr XM_G(PTR(ScaleParams), 0xFFF55E)
 #endif
 /* $FFF562 ptr: heap tile buffer the scaler decodes into, then DMAed to VRAM (BigAcolyte_RenderScaled, Cerebro_BigSpriteDecode/Draw, PlayerSelect_AllocCharBuffers_Measure) */
 #ifdef XMEN2_MPW

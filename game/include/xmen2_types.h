@@ -113,7 +113,8 @@ CHECK_SIZE(Placement, 0x10);
 typedef struct Seg {
 	u8 flags;			/* +$00 bit 7 in use */
 	u8 type;			/* +$01 handler (g_SegTypeHooks) */
-	u8 unk_02[6];			/* +$02 layer... */
+	u8 layer;			/* +$02 layer (Seg_FindAbove/Below take segments up to a layer) */
+	u8 unk_03[5];			/* +$03 */
 	s16 x1;				/* +$08 endpoints (pixels) */
 	s16 y1;				/* +$0A */
 	s16 x2;				/* +$0C */
@@ -124,6 +125,12 @@ CHECK_SIZE(Seg, 0x14);
 /* A state function of an object, kept at +$5C/+$60/+$64 and run by Update when the
    +$6C delay runs out; most return self->flags & 8. */
 FNTYPE(StateFn, short);
+/* Hooks a scene installs: the per-frame hook (g_SceneFrameHook, no arguments), map tile hooks
+   (g_TileHooks[hook type]: func(column, row, object, -1, -1)) and floor-segment type hooks
+   (g_SegTypeHooks[type]: func(message, segment, object, 0)). */
+FNTYPE(FrameHookFn, void);
+FNTYPE(TileHookFn, long);
+FNTYPE(SegHookFn, short);
 
 /* ACTOR: descriptor $1F49A6, root, $8C bytes (GetSize $15D92C). Every game object.
    Fields: xmen2disasm NOTES "Game object layout", "ACTOR object fields". */
@@ -151,7 +158,8 @@ FNTYPE(StateFn, short);
 	u8 layer;			/* +$42 draw layer (DrawList_Add sorts by it; Obj_InheritLayer, Obj_StandOnSeg) */ \
 	u8 unk_43;			/* +$43 */ \
 	PTR(void) anim;			/* +$44 animation script playing (Obj_SetAnim; 0 = none) */ \
-	u8 unk_48[4];			/* +$48 animation step... */ \
+	s16 animStep;			/* +$48 animation step (Anim_ApplyStep; Obj_SetAnim clears it and animDist) */ \
+	s16 animDist;			/* +$4A distance-driven animation: movement since the last step (Anim_AdvanceByDistance; 8 fraction bits); Actor_Draw draws that far back in x (script flags & $30 = $20) or y ($30) */ \
 	s16 boxTop;			/* +$4C body box in pixels */ \
 	s16 boxLeft;			/* +$4E */ \
 	s16 boxBottom;			/* +$50 */ \
@@ -168,9 +176,15 @@ FNTYPE(StateFn, short);
 	s16 timer;			/* +$6C frames before the state function runs */ \
 	s16 countdown;			/* +$6E frames left: Actor_Update counts it down to 0 */ \
 	s8 attack;			/* +$70 damage it deals (the hit's damage argument of TakeDamage) */ \
-	u8 unk_71[0xB];			/* +$71 */ \
+	s8 hitType;			/* +$71 type of the hits it deals (TakeDamage's hit-type argument, next to attack: MagneticGlob_HitCb) */ \
+	u8 unk_72[4];			/* +$72 */ \
+	PTR(Seg) seg;			/* +$76 floor segment it stands on (Obj_StandOnSeg; Seg_WouldLeaveEnd) */ \
+	u8 unk_7A[2];			/* +$7A */ \
 	PTR(void) timerObj;		/* +$7C per-object Timer (ACTOR Init) */ \
-	u8 unk_80[0xC];			/* +$80 */
+	PTR(ListNode) attackNode;	/* +$80 its node in an attacker hit list (Actor_Activate HitList_Add, unless flags6 1) */ \
+	PTR(ListNode) bodyNode;		/* +$84 its node in a body hit list (unless flags6 2; List_Unlink to become unhittable) */ \
+	s16 drawNode;			/* +$88 its draw-list node (Actor_Activate's DrawList_Add; DrawList_SetPriority) */ \
+	u8 unk_8A[2];			/* +$8A */
 typedef struct Actor { ACTOR_FIELDS } Actor;
 CHECK_SIZE(Actor, 0x8C);
 CHECK_OFFSET(Actor, spr, 0x2E);
@@ -263,12 +277,34 @@ CHECK_SIZE(BabySentinelC, 0xBC);
 typedef struct BanimazaDoor { BANIMAZADOOR_FIELDS } BanimazaDoor;
 CHECK_SIZE(BanimazaDoor, 0xA2);
 
-/* BARBARIAN: descriptor $0BE74E, parent BIONPC, $C2 bytes (GetSize $0BD51E) */
+/* BARBARIAN: descriptor $0BE74E, parent BIONPC, $C2 bytes (GetSize $0BD51E). A brute standing
+   on its own type-$1A platform: it watches for a player on one of the floor segments next to it,
+   walks to the player on its own segment and attacks, or leaps across to the player's segment. */
 #define BARBARIAN_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x2C];		/* +$96 */
+	s16 hurtFlags6;			/* +$96 flags6 when the last hit came (TakeDamage); EndHurt restores bits $5000 */ \
+	s16 walkSpeed;			/* +$98 walking speed (900, or placement param 0) */ \
+	s16 walkMinX;			/* +$9A walk range on its segment in pixels: x1 + 15 (Barbarian_StandOn) */ \
+	s16 walkMaxX;			/* +$9C x2 - 15 */ \
+	s16 targetX;			/* +$9E point to walk / leap to, in pixels */ \
+	s16 targetY;			/* +$A0 */ \
+	PTR(struct XPlayer) target;	/* +$A2 player it goes for (Barbarian_TargetPlayer) */ \
+	PTR(Seg) platform;		/* +$A6 its own type-$1A platform segment (Barbarian_FindPlatforms) */ \
+	PTR(Seg) targetSeg;		/* +$AA segment the target stands on */ \
+	u8 neighbours[12];		/* +$AE g_Segs indices of the segments it can reach, $FF ends the list */ \
+	u8 tauntIndex;			/* +$BA taunt animation cycle 0-3 (Barbarian_StateTaunt) */ \
+	u8 taunts;			/* +$BB > $64: Barbarian_StateTaunt goes to Barbarian_StateScrollTiles (cleared by Init, nothing counts it up) */ \
+	u8 leapMode;			/* +$BC 0: re-engage at the target; 1: a leap failed, walk to the edge and try again */ \
+	u8 unk_BD;			/* +$BD (read, unused, by Barbarian_StateLanded) */ \
+	u8 attackIndex;			/* +$BE attack animation cycle 0-4 (Barbarian_StateAttack) */ \
+	u8 walking;			/* +$BF walking to the target: re-engage after a hit (Barbarian_EndHurt) */ \
+	u8 segGone;			/* +$C0 set by Barbarian_NotifySegmentGone when its floor segment opens */ \
+	u8 unk_C1;			/* +$C1 */
 typedef struct Barbarian { BARBARIAN_FIELDS } Barbarian;
 CHECK_SIZE(Barbarian, 0xC2);
+CHECK_OFFSET(Barbarian, target, 0xA2);
+CHECK_OFFSET(Barbarian, neighbours, 0xAE);
+CHECK_OFFSET(Barbarian, segGone, 0xC0);
 
 /* BARRIER: descriptor $0DCAAA, parent ACTOR, $98 bytes (GetSize $0DC5FE) */
 #define BARRIER_FIELDS \
@@ -289,10 +325,33 @@ CHECK_SIZE(BasicBioSentinel, 0x96);
 typedef struct BeamScooter { BEAMSCOOTER_FIELDS } BeamScooter;
 CHECK_SIZE(BeamScooter, 0x8C);
 
+/* A character's record (ROM, Tbl_<Char>CharRecord; player +$8C, XCLONE +$AC): attack strengths,
+   sounds, gravities, speeds, offsets of its animations from the record's start (xmen2disasm
+   NOTES "Character record"). */
+typedef struct CharRecord {
+	u8 unk_00[0x22];		/* +$00 attack strengths, sounds, gravities, speeds */
+	u8 comboWindow;			/* +$22 frames of the combo window (XCLONE: attack cooldown) */
+	u8 unk_23[5];			/* +$23 */
+	u8 hurtFrame;			/* +$28 hurt / death frame */
+	u8 unk_29[0xD];			/* +$29 */
+	s16 comboAnim1;			/* +$36 combo attack animations (first, second) */
+	s16 comboAnim2;			/* +$38 */
+	s16 upAttackAnim;		/* +$3A */
+	s16 downAttackAnim;		/* +$3C */
+	s16 runAnim;			/* +$3E */
+	u8 unk_40[6];			/* +$40 */
+	s16 crouchAnim;			/* +$46 */
+	u8 unk_48[0x16];		/* +$48 */
+} CharRecord;
+CHECK_SIZE(CharRecord, 0x5E);
+CHECK_OFFSET(CharRecord, comboAnim1, 0x36);
+
 /* XPLAYER: descriptor $1131A0, parent ACTOR, $BC bytes (GetSize $1F00E8) */
 #define XPLAYER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x30];		/* +$8C */
+	PTR(CharRecord) charRec;	/* +$8C the character's record (xmen2disasm NOTES "Character record") */ \
+	s32 playerFlags;		/* +$90 4 double-jump used, 8 jumped, $200 grounded latch, $200000 set while a clone arena is locked (XClone_LockArena) ... (NOTES "XPLAYER slots") */ \
+	u8 unk_94[0x28];		/* +$94 */
 typedef struct XPlayer { XPLAYER_FIELDS } XPlayer;
 CHECK_SIZE(XPlayer, 0xBC);
 
@@ -317,12 +376,75 @@ CHECK_SIZE(Beast, 0xDC);
 typedef struct BigAcBullet { BIGACBULLET_FIELDS } BigAcBullet;
 CHECK_SIZE(BigAcBullet, 0x9A);
 
-/* BIGACOLYTE: descriptor $011938, parent BIONPC, $AA bytes (GetSize $0101CE) */
+/* A picture for the scaler (ROM, Art_BigAcolytePicture): a header, then the pixels. */
+typedef struct ScalePicture {
+	u8 unk_00[2];			/* +$00 */
+	u8 left;			/* +$02 bounding box in pixels */
+	u8 top;				/* +$03 */
+	u8 right;			/* +$04 */
+	u8 bottom;			/* +$05 */
+	u8 unk_06[0x20];		/* +$06 */
+	u8 pixels[1];			/* +$26 */
+} ScalePicture;
+
+/* A picture-scaler parameter record ($26 bytes): Scaler_Start copies it into g_ScalerParams
+   (xmen2_globals.h has the fields Scaler_* read). */
+typedef struct ScaleParams {
+	s16 srcW;			/* +$00 source size in pixels */
+	s16 srcH;			/* +$02 */
+	s16 srcX;			/* +$04 source rectangle (0, 0, srcW, srcH) */
+	s16 srcY;			/* +$06 */
+	s16 rectW;			/* +$08 */
+	s16 rectH;			/* +$0A */
+	s16 tilesW;			/* +$0C output size in tiles */
+	s16 tilesH;			/* +$0E */
+	s16 outW;			/* +$10 output size in pixels (the scale) */
+	s16 outH;			/* +$12 */
+	u8 clearMode;			/* +$14 0 keep, 1 clear the buffer, 2 centre */
+	u8 tableKey;			/* +$15 */
+	s16 unk_16;			/* +$16 */
+	u8 unk_18;			/* +$18 */
+	u8 direct;			/* +$19 */
+	u8 packed;			/* +$1A packed/streamed upload */
+	u8 unk_1B;			/* +$1B */
+	s16 rowsPerCall;		/* +$1C */
+	s16 unk_1E;			/* +$1E */
+	s16 unk_20;			/* +$20 */
+	s16 unk_22;			/* +$22 */
+	s16 unk_24;			/* +$24 */
+} ScaleParams;
+CHECK_SIZE(ScaleParams, 0x26);
+
+/* A debris pool (Debris_CreatePool): this header, then $14-byte pieces. */
+typedef struct DebrisPool {
+	u8 used;			/* +$00 pieces flying */
+	u8 max;				/* +$01 */
+	s16 floorY;			/* +$02 floor line in pixels the pieces bounce on (Debris_SetFloorY; 400) */
+	s16 sprDef;			/* +$04 sprite-definition slot (Debris_SetSprDef; -1: not drawn) */
+	PTR(Timer) timer;		/* +$06 its update timer (Debris_Update) */
+	s16 bounceLimit;		/* +$0A (bounces - 1) * 3 (Debris_SetBounceLimit) */
+} DebrisPool;
+
+/* BIGACOLYTE: descriptor $011938, parent BIONPC, $AA bytes (GetSize $0101CE). A boss: it waits
+   behind a wall for the players, grows out of it as a scaled picture (bursting the wall into
+   debris), then glides between three heights shooting BIGACBULLETs (its AI scripts
+   BigAcolyte_IntroScript, BigAcolyte_FightScript). */
 #define BIGACOLYTE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x14];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script */ \
+	u16 bobAngle;			/* +$9C hover bob angle in degrees (0-358, by 2) */ \
+	s16 unk_9E;			/* +$9E (0, Init) */ \
+	s16 level;			/* +$A0 height of the fight script: 0 top, 1 low, 2 middle */ \
+	u16 targetY;			/* +$A2 glide target in pixels (BigAcolyte_SetTargetY) */ \
+	u16 targetX;			/* +$A4 (BigAcolyte_SetTargetX) */ \
+	u8 arrivedX;			/* +$A6 at targetX */ \
+	u8 arrivedY;			/* +$A7 at targetY */ \
+	u8 bobbing;			/* +$A8 hovering in place with a sine bob (BigAcolyte_Move) */ \
+	u8 picture;			/* +$A9 drawn as the scaled picture (intro), not as its sprite */
 typedef struct BigAcolyte { BIGACOLYTE_FIELDS } BigAcolyte;
 CHECK_SIZE(BigAcolyte, 0xAA);
+CHECK_OFFSET(BigAcolyte, ai, 0x96);
+CHECK_OFFSET(BigAcolyte, targetY, 0xA2);
 
 /* A BIGBIO spit projectile: 16-byte records in g_BigBioSpitPool (at most 8, the first
    g_BigBioSpitCount in use), moved, bounced and drawn by BigBio_SpitUpdateAll. */
@@ -388,12 +510,25 @@ typedef struct BioBall {
 	s16 unk_4;			/* +$04 */
 } BioBall;
 
+/* A BIOBALLS motion function (+$A2, BioBalls_Motion*): func(balls, steps); nonzero = the balls
+   were placed (BioBalls_Move then skips the path easing). */
+FNTYPE(BallMotionFn, char);
+
 /* BIOBALLS: descriptor $1203AC, parent ACTOR, $AC bytes (GetSize $11E7AA) */
 #define BIOBALLS_FIELDS \
 	ACTOR_FIELDS \
 	AiCursor ai;			/* +$8C AI script (SavageBio_StateCrossSurface, SavageBio_ActDie) */ \
 	PTR(s16) ballList;		/* +$92 its ball list: count, then BioBalls (g_BioBallsList) */ \
-	u8 unk_96[0x16];		/* +$96 */
+	u8 done;			/* +$96 formation / path / motion finished (BioBalls_IsDone) */ \
+	u8 unk_97;			/* +$97 */ \
+	s16 ballFlags;			/* +$98 bits 1/2 mirror the path x/y, 3 no anchor (BioBalls_StartPath); $100 orbit easing in, $200 busy (XCLONE waits), $400 aiming */ \
+	PTR(void) path;			/* +$9A ball path / formation the balls ease to (8-byte entries, x > 999 ends) */ \
+	s16 pathDx;			/* +$9E path anchor offset from the object, pixels */ \
+	s16 pathDy;			/* +$A0 */ \
+	BallMotionFn motion;		/* +$A2 motion function run first by BioBalls_Move (0 = none) */ \
+	s16 motionAngle;		/* +$A6 motion state: Orbit/Ring/Helix angle */ \
+	s16 motionSize;			/* +$A8 Orbit 2nd angle, Ring radius, Helix spacing, Roll angle */ \
+	s16 motionSpeed;		/* +$AA Orbit/Helix speed, Roll step (sign = direction) */
 typedef struct BioBalls { BIOBALLS_FIELDS } BioBalls;
 CHECK_SIZE(BioBalls, 0xAC);
 
@@ -539,7 +674,8 @@ CHECK_SIZE(BroodClaw, 0xA2);
 /* BUBBLEMANAGER: descriptor $0AAFA8, parent XNPC, $A6 bytes (GetSize $0AB038) */
 #define BUBBLEMANAGER_FIELDS \
 	XNPC_FIELDS \
-	s32 unk_94;			/* +$94 cleared by Init, not used */ \
+	s16 unk_94;			/* +$94 cleared by Init, not used */ \
+	s16 unk_96;			/* +$96 cleared by Init, not used */ \
 	s16 bubbleDir;			/* +$98 direction of the bubbles it releases (FloatBubble_Spawn dir) */ \
 	s16 bubbleSpeed;		/* +$9A speed index of its bubbles (FloatBubble_Spawn speed, 0-4) */ \
 	s16 period;			/* +$9C frames between releases (reloads countdown) */ \
@@ -550,10 +686,27 @@ CHECK_SIZE(BroodClaw, 0xA2);
 typedef struct BubbleManager { BUBBLEMANAGER_FIELDS } BubbleManager;
 CHECK_SIZE(BubbleManager, 0xA6);
 
+/* A camera function kept in the CAMERA object: func(camera). */
+FNTYPE(CamFn, void);
+
 /* CAMERA: descriptor $1F4960, root, $6C bytes (GetSize $1607A0) */
 #define CAMERA_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x5C];		/* +$04 (xmen2disasm NOTES "CAMERA object") */ \
+	u8 unk_04[4];			/* +$04 (xmen2disasm NOTES "CAMERA object") */ \
+	CamFn track;			/* +$08 tracking function (Cam_TrackPlayer...; XClone_CamArenaUpdate) */ \
+	u8 unk_0C[0x10];		/* +$0C */ \
+	CamFn postHook;			/* +$1C called after every camera update (0 = none) */ \
+	u8 unk_20[0x10];		/* +$20 */ \
+	s16 x;				/* +$30 camera position in pixels */ \
+	s16 y;				/* +$32 */ \
+	u8 unk_34[8];			/* +$34 */ \
+	s16 deadLeft;			/* +$3C dead-zone box: target screen x/y ranges kept still */ \
+	s16 deadRight;			/* +$3E */ \
+	s16 deadTop;			/* +$40 */ \
+	s16 deadBottom;			/* +$42 */ \
+	u8 unk_44[6];			/* +$44 */ \
+	s16 camFlags;			/* +$4A 1 x locked, 2 y locked, 4 looking up, 8 looking down */ \
+	u8 unk_4C[0x14];		/* +$4C */ \
 	s16 lookStep;			/* +$60 look offset change per frame (Cam_StepLookUp/Down; Cam_Init 5) */ \
 	u8 unk_62[0xA];			/* +$62 */
 typedef struct Camera { CAMERA_FIELDS } Camera;
@@ -654,12 +807,48 @@ CHECK_SIZE(Elevator, 0x14);
 typedef struct EvilBeam { EVILBEAM_FIELDS } EvilBeam;
 CHECK_SIZE(EvilBeam, 0x2A);
 
-/* XCLONE: descriptor $099C90, parent BIONPC, $BA bytes (GetSize $095208) */
+/* An evil clone's record (ROM, Tbl_<Class>CloneRecord; XCLONE +$A8): two words, then the offsets
+   from the record's start of its animation, ball path and AI scripts (CLONE_PART). */
+typedef struct CloneRecord {
+	s16 unk_00;			/* +$00 $7F */
+	s16 unk_02;			/* +$02 $8C3B */
+	s16 standAnim;			/* +$04 standing animation */
+	s16 ballPath;			/* +$06 BIOBALLS ball path (pod opening, balls form) */
+	s16 mainScript;			/* +$08 main AI script */
+	s16 hurtScript;			/* +$0A AI script after a hit (XClone_OnHurt) */
+	s16 lowHealthScript;		/* +$0C AI script below 14 health (XClone_ActCheckLowHealth) */
+} CloneRecord;
+CHECK_SIZE(CloneRecord, 0xE);
+/* The part of a clone record (or character record) at the offset in its field f. (The (void *)
+   step lets PC mode take the address out of a stored PTR(); MPW C emits nothing for it.) */
+#define CLONE_PART(rec, f)	((void *)((char *)(void *)(rec) + (rec)->f))
+
+/* XCLONE: descriptor $099C90, parent BIONPC, $BA bytes (GetSize $095208). An evil clone of the
+   CloneA stages (xmen2disasm NOTES "Evil clones"): waits for the players to enter its arena,
+   locks it, drops in a BIOBALLS pod, emerges and runs its clone record's scripts. */
 #define XCLONE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x24];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script */ \
+	PTR(BioBalls) child;		/* +$9C BIOBALLS object: the entrance pod, or the clone's balls form */ \
+	s16 arenaLeft;			/* +$A0 arena in pixels (XClone_Init; XClone_Move clamps to it) */ \
+	s16 arenaRight;			/* +$A2 */ \
+	s16 arenaTop;			/* +$A4 ceiling */ \
+	s16 arenaFloor;			/* +$A6 floor */ \
+	PTR(CloneRecord) record;	/* +$A8 clone record: animations, scripts */ \
+	PTR(CharRecord) charRec;	/* +$AC the character's record: attack and walk animations */ \
+	u8 lockedArena;			/* +$B0 this clone locked the arena (XClone_LockArena) */ \
+	u8 unk_B1;			/* +$B1 */ \
+	s16 walkSpeed;			/* +$B2 vx walking ($300) */ \
+	s16 keepDistance;		/* +$B4 px kept from the nearest player ($60, XClone_ActKeepDistance) */ \
+	s8 flashTimer;			/* +$B6 hit flash frames left (flags6 $40 until 0) */ \
+	s8 attackCooldown;		/* +$B7 frames before the first combo attack again */ \
+	s8 recentHits;			/* +$B8 +60 per hit, -1 per frame; OnHurt clears it at 120 */ \
+	s8 shotsLeft;			/* +$B9 shots the balls form still fires (XClone_StateChildShoot) */
 typedef struct XClone { XCLONE_FIELDS } XClone;
 CHECK_SIZE(XClone, 0xBA);
+CHECK_OFFSET(XClone, child, 0x9C);
+CHECK_OFFSET(XClone, record, 0xA8);
+CHECK_OFFSET(XClone, shotsLeft, 0xB9);
 
 /* EVILBEAST: descriptor $099D1E, parent XCLONE, $C0 bytes (GetSize $097DB4) */
 #define EVILBEAST_FIELDS \
@@ -791,7 +980,7 @@ CHECK_SIZE(FloatBio, 0xC0);
 	s16 unk_8E;			/* +$8E cleared by Init, not used */ \
 	s16 dir;			/* +$90 drift direction 0-7: 0 up, then clockwise (FloatBubble_SetDirection) */ \
 	s16 unk_92;			/* +$92 $20, or placement param 2; not read */ \
-	s32 anchorX;			/* +$94 x where the drift last turned: the wobble is kept around it */ \
+	s32 anchorX;			/* +$94 x where the drift last turned or was slow: the wobble stays around it */ \
 	s32 anchorY;			/* +$98 */ \
 	s16 wobbleX;			/* +$9C wobble added to x each Move, +-100 */ \
 	s16 wobbleY;			/* +$9E */ \
@@ -1246,19 +1435,40 @@ CHECK_SIZE(ToxicCanDamaged, 0x92);
 typedef struct TrapDoor { TRAPDOOR_FIELDS } TrapDoor;
 CHECK_SIZE(TrapDoor, 0xA0);
 
-/* TUSK: descriptor $05D03A, parent ACTOR, $9C bytes (GetSize $05C170) */
+/* TUSK: descriptor $05D03A, parent ACTOR, $9C bytes (GetSize $05C170). The BaniMaza boss on
+   its ledge: throws boulders, sends TUSKETTEs down, charges along its ledge. Its states use
+   the pixel position px/py as its home (the charge measures x against px and returns to it). */
 #define TUSK_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x10];		/* +$8C */
+	PTR(XPlayer) target;		/* +$8C the nearest player (Tusk_StateChooseAttack), aimed at by the throw */ \
+	PTR(Seg) ledge;			/* +$90 floor segment above its placement point + 32 px: its own ledge; a player on it is charged */ \
+	PTR(Seg) arenaFloor;		/* +$94 floor segment below that point: the players must stand on it to start the fight */ \
+	u8 attackStep;			/* +$98 step of its 10-attack cycle (Tusk_StateChooseAttack) */ \
+	s8 aimColumn;			/* +$99 throw column: (target x - home x + 16) / 32, -6..5 */ \
+	u8 hittable;			/* +$9A frames left in the enemy body hit list (Tusk_Update counts it down) */ \
+	u8 unk_9B;			/* +$9B (cleared with hittable by Init's word clear) */
 typedef struct Tusk { TUSK_FIELDS } Tusk;
 CHECK_SIZE(Tusk, 0x9C);
+CHECK_OFFSET(Tusk, target, 0x8C);
+CHECK_OFFSET(Tusk, attackStep, 0x98);
 
-/* TUSKETTE: descriptor $05E04E, parent BIONPC, $A8 bytes (GetSize $05D0AE) */
+/* TUSKETTE: descriptor $05E04E, parent BIONPC, $A8 bytes (GetSize $05D0AE). The small tusked
+   creatures of the BaniMaza levels; Tuskette_Init picks the behaviour by kind (placement param
+   0, or Tuskette_Spawn's argument when TUSK spawns them). */
 #define TUSKETTE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x12];		/* +$96 */
+	u8 kind;			/* +$96 0/5 walker, 1 hopper, 2/3 leaves TUSK's platform left/right, 4 runner, 6/7 a pair that runs into each other, else idle runner */ \
+	u8 unk_97;			/* +$97 */ \
+	s16 range;			/* +$98 x distance in pixels a player must come within (placement param 1, 0: $80) */ \
+	s16 speed;			/* +$9A walk/run/hop speed (placement param 2 pixels, 0: 2, << 8) */ \
+	s16 xMin;			/* +$9C runner's turning points in pixels (placement x -/+ param 3, 0: its floor segment's ends) */ \
+	s16 xMax;			/* +$9E */ \
+	PTR(struct Tuskette) partner;	/* +$A0 kind 6/7: the other of the pair (it explodes on reaching it) */ \
+	PTR(XPlayer) player;		/* +$A4 runner: the player it charged at (never read) */
 typedef struct Tuskette { TUSKETTE_FIELDS } Tuskette;
 CHECK_SIZE(Tuskette, 0xA8);
+CHECK_OFFSET(Tuskette, kind, 0x96);
+CHECK_OFFSET(Tuskette, partner, 0xA0);
 
 /* WALLCRAWLBIO: descriptor $11BAA0, parent BABYBIO, $C0 bytes (GetSize $11DC32) */
 #define WALLCRAWLBIO_FIELDS \

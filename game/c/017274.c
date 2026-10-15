@@ -27,7 +27,7 @@ void FarAcolyte_Init(register FarAcolyte *self, long x, long y, register Placeme
 	self->shotFlags = 0;
 	if (pl->param[0]) {
 		self->rangeLeft = pl->x - pl->param[0];
-		self->rangeRight = pl->param[0] + pl->x;
+		self->rangeRight = pl->x + pl->param[0];
 	} else {
 		self->rangeLeft = pl->x - 0x60;
 		self->rangeRight = pl->x + 0x60;

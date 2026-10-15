@@ -10,6 +10,12 @@
 /* |v| as the original wrote it (tst / sge / neg: a materialized condition). */
 #define ABS(v)			((v) >= 0 ? (v) : -(v))
 
+/* The larger / smaller of two values as the original wrote them: `a > b ? a : b` (the compare
+   order shows: MPW C's cmp/sgt vs cmp/slt; XClone_Init, _TakeDamage, _LockArena,
+   _MakerBufSize). Both arguments are evaluated twice. */
+#define MAX(a, b)		((a) > (b) ? (a) : (b))
+#define MIN(a, b)		((a) < (b) ? (a) : (b))
+
 /* Ends a function that returns a value on some paths and falls off the end on others, as the
    original did (MPW C accepts it; d0 then holds whatever the last instruction left, and no
    caller reads it: state functions). MPW: nothing. PC: C++ needs a value: 0, flagged so the
