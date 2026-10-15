@@ -37,6 +37,14 @@ typedef struct AiCursor {
 } AiCursor;
 CHECK_SIZE(AiCursor, 6);
 
+/* An AI script table (ROM): a step count, then one 4-byte `jmp d(a5)` thunk per step. A
+   step's address is itself a state function (it jumps to the action): AI_NEXT_STEP. */
+typedef struct AiStep { u8 code[4]; } AiStep;
+typedef struct AiScript {
+	s16 count;			/* +$00 steps */
+	AiStep step[1];			/* +$02 count thunks */
+} AiScript;
+
 /* A sprite instance: a sprite definition, the frame shown and its VRAM tiles. Every object has
    one at +$2E (Spr_SetFrame(&obj->spr, f), Spr_Draw); g_SpriteDefs is a table of them
    (SprDef_Add, Spr_Init, Obj_SetSpriteDef). */
@@ -79,6 +87,40 @@ typedef struct ListNode {
 	PTR(struct ListNode) prev;	/* +$04 */
 	PTR(void) owner;		/* +$08 */
 } ListNode;
+
+/* A hardware sprite in g_SpriteTable, the VDP sprite attribute table (80 slots, emitted
+   along the link bytes: Spr_BeginFrame / Spr_EndFrame). */
+typedef struct HwSprite {
+	s16 y;				/* +$00 screen y + 128 */
+	u8 size;			/* +$02 size code: width ((s>>2)+1)*8, height ((s&3)+1)*8 */
+	s8 link;			/* +$03 next slot */
+	s16 attr;			/* +$04 $8000 priority, palette << 13, flips $1800, first tile */
+	s16 x;				/* +$06 screen x + 128 */
+} HwSprite;
+CHECK_SIZE(HwSprite, 8);
+
+/* A level placement entry (16 bytes, table at $FFC92A, built by the level loader): the 4th
+   argument of every class Init (xmen2disasm NOTES "Override facts"). */
+typedef struct Placement {
+	s16 classIndex;			/* +$00 index into the level class list */
+	s16 x;				/* +$02 pixels */
+	s16 y;				/* +$04 */
+	s16 param[5];			/* +$06 class parameters (meaning per class) */
+} Placement;
+CHECK_SIZE(Placement, 0x10);
+
+/* A floor segment: $14-byte records in g_Segs (xmen2disasm NOTES "Floor segments"). */
+typedef struct Seg {
+	u8 flags;			/* +$00 bit 7 in use */
+	u8 type;			/* +$01 handler (g_SegTypeHooks) */
+	u8 unk_02[6];			/* +$02 layer... */
+	s16 x1;				/* +$08 endpoints (pixels) */
+	s16 y1;				/* +$0A */
+	s16 x2;				/* +$0C */
+	s16 y2;				/* +$0E */
+	u8 unk_10[4];			/* +$10 previous/next neighbour index, +$13 next segment of the owner */
+} Seg;
+CHECK_SIZE(Seg, 0x14);
 /* A state function of an object, kept at +$5C/+$60/+$64 and run by Update when the
    +$6C delay runs out; most return self->flags & 8. */
 FNTYPE(StateFn, short);
@@ -96,7 +138,8 @@ FNTYPE(StateFn, short);
 	u8 unk_14[2];			/* +$14 */ \
 	s16 vx;				/* +$16 velocity x */ \
 	s16 vy;				/* +$18 velocity y */ \
-	u8 unk_1A[4];			/* +$1A */ \
+	s16 prevVx;			/* +$1A velocity x before the last Move (Actor_Move saves +$16 here) */ \
+	s16 prevVy;			/* +$1C velocity y before the last Move */ \
 	s16 ax;				/* +$1E acceleration x */ \
 	s16 ay;				/* +$20 acceleration y (gravity, 100 by default) */ \
 	s16 maxVx;			/* +$22 maximum speed x */ \
@@ -105,19 +148,27 @@ FNTYPE(StateFn, short);
 	s16 minVy;			/* +$28 minimum speed y to move */ \
 	u8 unk_2A[4];			/* +$2A */ \
 	SprInst spr;			/* +$2E sprite instance */ \
-	u8 unk_42[0xA];			/* +$42 draw layer... */ \
+	u8 layer;			/* +$42 draw layer (DrawList_Add sorts by it; Obj_InheritLayer, Obj_StandOnSeg) */ \
+	u8 unk_43;			/* +$43 */ \
+	PTR(void) anim;			/* +$44 animation script playing (Obj_SetAnim; 0 = none) */ \
+	u8 unk_48[4];			/* +$48 animation step... */ \
 	s16 boxTop;			/* +$4C body box in pixels */ \
 	s16 boxLeft;			/* +$4E */ \
 	s16 boxBottom;			/* +$50 */ \
 	s16 boxRight;			/* +$52 */ \
-	u8 unk_54[8];			/* +$54 second box */ \
+	s16 box2Top;			/* +$54 second box in pixels (Obj_UpdateBoxes; hit tests) */ \
+	s16 box2Left;			/* +$56 */ \
+	s16 box2Bottom;			/* +$58 */ \
+	s16 box2Right;			/* +$5A */ \
 	StateFn state;			/* +$5C state function, run when timer runs out */ \
 	StateFn hurtState;		/* +$60 state after a hit */ \
 	StateFn defaultState;		/* +$64 state when the AI script is empty */ \
 	s16 health;			/* +$68 */ \
 	s16 hitCooldown;		/* +$6A hit-flash timer, 10 after a hit */ \
 	s16 timer;			/* +$6C frames before the state function runs */ \
-	u8 unk_6E[0xE];			/* +$6E */ \
+	s16 countdown;			/* +$6E frames left: Actor_Update counts it down to 0 */ \
+	s8 attack;			/* +$70 damage it deals (the hit's damage argument of TakeDamage) */ \
+	u8 unk_71[0xB];			/* +$71 */ \
 	PTR(void) timerObj;		/* +$7C per-object Timer (ACTOR Init) */ \
 	u8 unk_80[0xC];			/* +$80 */
 typedef struct Actor { ACTOR_FIELDS } Actor;
@@ -149,10 +200,21 @@ CHECK_SIZE(Apocalypse, 0xBA);
 typedef struct BBoard { BBOARD_FIELDS } BBoard;
 CHECK_SIZE(BBoard, 0x8);
 
+/* An enemy's stats record (ROM, Tbl_<Class>Stats), kept at XNPC +$8C (xmen2disasm NOTES
+   "ACTOR object fields"). */
+typedef struct NpcStats {
+	u8 attack;			/* +$00 attack damage */
+	u8 hurtSound;			/* +$01 */
+	u8 health;			/* +$02 starting health (also the death type) */
+	u8 unk_03[4];			/* +$03 */
+	u8 hurtFrame;			/* +$07 */
+} NpcStats;
+
 /* XNPC: descriptor $113A88, parent ACTOR, $94 bytes (GetSize $113B9A) */
 #define XNPC_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x8];		/* +$8C */
+	PTR(NpcStats) stats;		/* +$8C stats record (ROM) */ \
+	u8 unk_90[0x4];		/* +$90 */
 typedef struct XNpc { XNPC_FIELDS } XNpc;
 CHECK_SIZE(XNpc, 0x94);
 
@@ -262,17 +324,76 @@ CHECK_SIZE(BigAcBullet, 0x9A);
 typedef struct BigAcolyte { BIGACOLYTE_FIELDS } BigAcolyte;
 CHECK_SIZE(BigAcolyte, 0xAA);
 
-/* BIGBIO: descriptor $123684, parent BASICBIOSENTINEL, $BA bytes (GetSize $121598) */
+/* A BIGBIO spit projectile: 16-byte records in g_BigBioSpitPool (at most 8, the first
+   g_BigBioSpitCount in use), moved, bounced and drawn by BigBio_SpitUpdateAll. */
+typedef struct BigBioSpit {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 bounces;			/* +$08 bounces off the top/bottom so far (then it flies slowly) */
+	s16 vx;				/* +$0A sign = direction (the speed is $900, $120 after a bounce) */
+	s16 vy;				/* +$0C */
+	s8 kind;			/* +$0E BigBio_SpitSpawn's argument (0) */
+	s8 frame;			/* +$0F sprite tile frame 0-2: one more per bounce */
+} BigBioSpit;
+CHECK_SIZE(BigBioSpit, 0x10);
+
+/* One of BIGBIO's 16 orbs (g_BigBioOrbs, $60 bytes). */
+typedef struct BigBioOrb {
+	s16 x;				/* +$00 pixels; x <= 0 and y <= 0: not drawn */
+	s16 y;				/* +$02 */
+	s16 spin;			/* +$04 the orb's wobble angle in the ring (degrees) */
+} BigBioOrb;
+CHECK_SIZE(BigBioOrb, 6);
+
+/* A point of a BIGBIO orb shape (ROM, Tbl_BigBioOrbShape): 16 of them, dx $FFF ends early. */
+typedef struct BigBioShapePt {
+	s16 dx;				/* +$00 from the body, mirrored by the h-flip */
+	s16 dy;				/* +$02 mirrored by the v-flip */
+	u8 unk_04[4];			/* +$04 (0) */
+} BigBioShapePt;
+CHECK_SIZE(BigBioShapePt, 8);
+
+/* BIGBIO: descriptor $123684, parent BASICBIOSENTINEL, $BA bytes (GetSize $121598).
+   The SpaceB1 boss: a body with 16 orbs (g_BigBioOrbs) that it gathers into a shape or spins
+   in a ring around itself, and spit projectiles (g_BigBioSpitPool). */
 #define BIGBIO_FIELDS \
 	BASICBIOSENTINEL_FIELDS \
-	u8 unk_96[0x24];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script (BigBio_Script) */ \
+	s16 ringSpin;			/* +$9C each orb's wobble angle in the ring (degrees) */ \
+	s16 ringAngle;			/* +$9E angle of orb 0 around the body (degrees) */ \
+	s16 ringSpeed;			/* +$A0 ring spin, 1/16 degree per frame (+10 per frame spinning up) */ \
+	s16 orbMode;			/* +$A2 bit 3 orbs drawn as tiles; bits 0/1 orbs drawn as frame $64/$65; 1|8: no damage */ \
+	s32 targetX;			/* +$A4 flight target, swoop anchor (8 fraction bits) */ \
+	s32 targetY;			/* +$A8 */ \
+	PTR(BigBioShapePt) shape;	/* +$AC orb shape (BigBio_SetOrbShape) */ \
+	s16 arenaLeft;			/* +$B0 arena left edge in pixels (placement x) */ \
+	s16 swoopAngle;			/* +$B2 0..90 by 2 along the arc swoop */ \
+	s16 shotsLeft;			/* +$B4 spits left in this volley */ \
+	u8 facingRight;			/* +$B6 */ \
+	u8 orbFrame;			/* +$B7 orb tile frame 0-2 */ \
+	u8 wallSeg;			/* +$B8 floor segment of the arena wall (g_Segs index) */ \
+	u8 unk_B9;			/* +$B9 */
 typedef struct BigBio { BIGBIO_FIELDS } BigBio;
 CHECK_SIZE(BigBio, 0xBA);
+CHECK_OFFSET(BigBio, ai, 0x96);
+CHECK_OFFSET(BigBio, targetX, 0xA4);
+CHECK_OFFSET(BigBio, facingRight, 0xB6);
+
+/* A ball of the BIOBALLS ball list. The list (g_BioBallsList, BioBalls_AllocBallList) is a
+   short *: the count, then the balls from list + 1 (the original's own addressing,
+   SavageBio_StateDeathExplode); -1, -1 = gone. */
+typedef struct BioBall {
+	s16 x;				/* +$00 pixels */
+	s16 y;				/* +$02 */
+	s16 unk_4;			/* +$04 */
+} BioBall;
 
 /* BIOBALLS: descriptor $1203AC, parent ACTOR, $AC bytes (GetSize $11E7AA) */
 #define BIOBALLS_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x20];		/* +$8C */
+	AiCursor ai;			/* +$8C AI script (SavageBio_StateCrossSurface, SavageBio_ActDie) */ \
+	PTR(s16) ballList;		/* +$92 its ball list: count, then BioBalls (g_BioBallsList) */ \
+	u8 unk_96[0x16];		/* +$96 */
 typedef struct BioBalls { BIOBALLS_FIELDS } BioBalls;
 CHECK_SIZE(BioBalls, 0xAC);
 
@@ -341,14 +462,29 @@ CHECK_SIZE(BrainRocket, 0x96);
 /* SMALLBROOD: descriptor $0840FE, parent BIONPC, $B4 bytes (GetSize $084190) */
 #define SMALLBROOD_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x1E];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script (variant by placement +$E) */ \
+	PTR(XPlayer) target;		/* +$9C player that came within reach (Brood_StateWalkToPlayer) */ \
+	u8 wallLeft;			/* +$A0 1: x stops at xMin; 0: open edge, it falls off */ \
+	u8 wallRight;			/* +$A1 the same at xMax */ \
+	s16 xMin;			/* +$A2 patrol range in pixels (placement x -/+ |+6|, |+8|) */ \
+	s16 xMax;			/* +$A4 */ \
+	s16 speed;			/* +$A6 walk speed (|placement +$A| << 8) */ \
+	s16 floorY;			/* +$A8 y on its floor (pixels) */ \
+	s16 ceilY;			/* +$AA y on its ceiling (SMALLBROOD walks on both) */ \
+	s16 keepDist;			/* +$AC x distance it keeps from the nearest player */ \
+	s16 cooldownTime;		/* +$AE reload of cooldown (placement +$C, 90) */ \
+	s16 cooldown;			/* +$B0 frames before it may act again (SmallBrood_Update) */ \
+	s16 aiFlags;			/* +$B2 bit 0: SMALLBROOD kamikaze runs left; BROOD was hit */
 typedef struct SmallBrood { SMALLBROOD_FIELDS } SmallBrood;
 CHECK_SIZE(SmallBrood, 0xB4);
+CHECK_OFFSET(SmallBrood, ai, 0x96);
+CHECK_OFFSET(SmallBrood, xMin, 0xA2);
+CHECK_OFFSET(SmallBrood, aiFlags, 0xB2);
 
 /* BROOD: descriptor $06D136, parent SMALLBROOD, $B6 bytes (GetSize $06D1C2) */
 #define BROOD_FIELDS \
 	SMALLBROOD_FIELDS \
-	u8 unk_B4[0x2];		/* +$B4 */
+	s16 flashTimer;			/* +$B4 frames to the next palette toggle while cornered */
 typedef struct Brood { BROOD_FIELDS } Brood;
 CHECK_SIZE(Brood, 0xB6);
 
@@ -403,14 +539,23 @@ CHECK_SIZE(BroodClaw, 0xA2);
 /* BUBBLEMANAGER: descriptor $0AAFA8, parent XNPC, $A6 bytes (GetSize $0AB038) */
 #define BUBBLEMANAGER_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x12];		/* +$94 */
+	s32 unk_94;			/* +$94 cleared by Init, not used */ \
+	s16 bubbleDir;			/* +$98 direction of the bubbles it releases (FloatBubble_Spawn dir) */ \
+	s16 bubbleSpeed;		/* +$9A speed index of its bubbles (FloatBubble_Spawn speed, 0-4) */ \
+	s16 period;			/* +$9C frames between releases (reloads countdown) */ \
+	s16 clusterSize;		/* +$9E bubbles per cluster */ \
+	s16 burstLeft;			/* +$A0 clusters left in this burst (burst mode, SavageB1) */ \
+	s16 burstSize;			/* +$A2 clusters per burst */ \
+	s16 burstPause;			/* +$A4 frames between bursts */
 typedef struct BubbleManager { BUBBLEMANAGER_FIELDS } BubbleManager;
 CHECK_SIZE(BubbleManager, 0xA6);
 
 /* CAMERA: descriptor $1F4960, root, $6C bytes (GetSize $1607A0) */
 #define CAMERA_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x68];		/* +$04 */
+	u8 unk_04[0x5C];		/* +$04 (xmen2disasm NOTES "CAMERA object") */ \
+	s16 lookStep;			/* +$60 look offset change per frame (Cam_StepLookUp/Down; Cam_Init 5) */ \
+	u8 unk_62[0xA];			/* +$62 */
 typedef struct Camera { CAMERA_FIELDS } Camera;
 CHECK_SIZE(Camera, 0x6C);
 
@@ -589,12 +734,41 @@ CHECK_SIZE(Exodus, 0xAE);
 typedef struct ExodusBlast { EXODUSBLAST_FIELDS } ExodusBlast;
 CHECK_SIZE(ExodusBlast, 0x9A);
 
-/* FARACOLYTE: descriptor $017E28, parent ACTOR, $C0 bytes (GetSize $017218) */
+/* A FARACOLYTE's orb or bolt (two of these in the object). */
+typedef struct FarAcolyteShot {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 frame;			/* +$0C bolt animation frame 0-6 */
+	s16 frameTimer;			/* +$0E frames until the next bolt frame (4) */
+} FarAcolyteShot;
+CHECK_SIZE(FarAcolyteShot, 0x10);
+
+/* One step of a hover wobble table (ROM, Tbl_CapedAcolyteHoverOffsets): added to the position
+   per Move step; dx >= $6400 ends the table (back to its start). */
+typedef struct HoverStep {
+	s16 dx;				/* +$00 8 fraction bits */
+	s16 dy;				/* +$02 */
+} HoverStep;
+
+/* FARACOLYTE: descriptor $017E28, parent ACTOR, $C0 bytes (GetSize $017218). A hovering
+   acolyte that sends a homing orb at the player, then a bolt into the orb that explodes there. */
 #define FARACOLYTE_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x34];		/* +$8C */
+	s16 rangeLeft;			/* +$8C x range in pixels the player must be in (placement x -/+ param 0, $60); the orb stays in it */ \
+	s16 rangeRight;			/* +$8E */ \
+	s16 restDelay;			/* +$90 frames before waiting for the player again (param 1, 120; -1: at once) */ \
+	s16 shotFlags;			/* +$92 bit 0 orb out, bit 1 orb reached the player (palette flicker), bit 2 bolt out */ \
+	FarAcolyteShot orb;		/* +$94 */ \
+	FarAcolyteShot bolt;		/* +$A4 */ \
+	PTR(HoverStep) hover;		/* +$B4 next hover step (Tbl_CapedAcolyteHoverOffsets) */ \
+	s32 homeX;			/* +$B8 position before the hover wobble (8 fraction bits; px/py is the anchor) */ \
+	s32 homeY;			/* +$BC */
 typedef struct FarAcolyte { FARACOLYTE_FIELDS } FarAcolyte;
 CHECK_SIZE(FarAcolyte, 0xC0);
+CHECK_OFFSET(FarAcolyte, orb, 0x94);
+CHECK_OFFSET(FarAcolyte, hover, 0xB4);
 
 /* FIREWALL: descriptor $134214, parent ACTOR, $96 bytes (GetSize $133F3C) */
 #define FIREWALL_FIELDS \
@@ -613,7 +787,19 @@ CHECK_SIZE(FloatBio, 0xC0);
 /* FLOATBUBBLE: descriptor $0AB496, parent ACTOR, $AA bytes (GetSize $0AB510) */
 #define FLOATBUBBLE_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x1E];		/* +$8C */
+	s16 bubbleFlags;		/* +$8C bit 0 grow in place first, 1 held at the surface line, 2 moving */ \
+	s16 unk_8E;			/* +$8E cleared by Init, not used */ \
+	s16 dir;			/* +$90 drift direction 0-7: 0 up, then clockwise (FloatBubble_SetDirection) */ \
+	s16 unk_92;			/* +$92 $20, or placement param 2; not read */ \
+	s32 anchorX;			/* +$94 x where the drift last turned: the wobble is kept around it */ \
+	s32 anchorY;			/* +$98 */ \
+	s16 wobbleX;			/* +$9C wobble added to x each Move, +-100 */ \
+	s16 wobbleY;			/* +$9E */ \
+	s16 wobbleAx;			/* +$A0 wobble change per Move (+-4) */ \
+	s16 wobbleAy;			/* +$A2 (+-3) */ \
+	s16 wobbleMaxX;			/* +$A4 100, not read (Move uses the constant) */ \
+	s16 wobbleMaxY;			/* +$A6 */ \
+	s16 sprAttr;			/* +$A8 hardware sprite attribute: first tile | palette << 13 */
 typedef struct FloatBubble { FLOATBUBBLE_FIELDS } FloatBubble;
 CHECK_SIZE(FloatBubble, 0xAA);
 
@@ -851,16 +1037,45 @@ CHECK_SIZE(RollingDiscs, 0x90);
 /* SAVAGEBIOBASE: descriptor $0BD27C, parent BIONPC, $AE bytes (GetSize $0BA19E) */
 #define SAVAGEBIOBASE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x18];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script */ \
+	u8 unk_9C[2];			/* +$9C */ \
+	s16 arenaLeft;			/* +$9E arena x range in pixels (charges and dashes stop at its ends) */ \
+	s16 arenaRight;			/* +$A0 */ \
+	s16 arenaFloor;			/* +$A2 y in pixels standing on the floor ($140) */ \
+	s16 arenaCeiling;		/* +$A4 y in pixels hanging from the ceiling ($60) */ \
+	u8 unk_A6[2];			/* +$A6 */ \
+	s16 dashBrakeX;			/* +$A8 dash: brake within 15 px of this x (SavageBio_StateDash) */ \
+	s16 dashStopX;			/* +$AA dash: stop near this x once slow (SavageBio_StateDashBrake) */ \
+	u8 unk_AC[2];			/* +$AC */
 typedef struct SavageBioBase { SAVAGEBIOBASE_FIELDS } SavageBioBase;
 CHECK_SIZE(SavageBioBase, 0xAE);
+CHECK_OFFSET(SavageBioBase, ai, 0x96);
+CHECK_OFFSET(SavageBioBase, dashBrakeX, 0xA8);
 
-/* SAVAGEBIGBIO: descriptor $0BD30C, parent SAVAGEBIOBASE, $B8 bytes (GetSize $0BA562) */
+/* A point of a path or formation table (ROM, the Tbl_EvilBeastBallPath format): 8 bytes,
+   pixels; x >= 1000 ends the table. */
+typedef struct PathPt {
+	s16 x;				/* +$00 */
+	s16 y;				/* +$02 */
+	u8 unk_4[4];			/* +$04 */
+} PathPt;
+/* One step of the SAVAGEBIGBIO tentacle wave (Tbl_SavageBigBioTentacleWave, 32 of them): the
+   offset added to a segment. */
+typedef struct TentacleWave {
+	s16 dx;				/* +$00 */
+	s16 dy;				/* +$02 */
+} TentacleWave;
+
+/* SAVAGEBIGBIO: descriptor $0BD30C, parent SAVAGEBIOBASE, $B8 bytes (GetSize $0BA562). The
+   SavageA4 boss: the SavageBio_* actions and states are its AI. */
 #define SAVAGEBIGBIO_FIELDS \
 	SAVAGEBIOBASE_FIELDS \
-	u8 unk_AE[0xA];		/* +$AE */
+	s16 tentacleLen;		/* +$AE tentacle segments out, one per path point (0 = none) */ \
+	PTR(PathPt) tentacle;		/* +$B0 tentacle path (Tbl_SavageBio*TentaclePath; 0 = none) */ \
+	PTR(BioBalls) balls;		/* +$B4 BIOBALLS companion (SavageBigBio_Init) */
 typedef struct SavageBigBio { SAVAGEBIGBIO_FIELDS } SavageBigBio;
 CHECK_SIZE(SavageBigBio, 0xB8);
+CHECK_OFFSET(SavageBigBio, tentacle, 0xB0);
 
 /* SAVAGEMEDIUMBIO: descriptor $0BD39C, parent SAVAGEBIOBASE, $B2 bytes (GetSize $0BCC6A) */
 #define SAVAGEMEDIUMBIO_FIELDS \

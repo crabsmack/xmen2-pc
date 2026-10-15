@@ -146,8 +146,8 @@ void CapedAcolyte_IntroScript(void);	/* $013EC6 fragment */
 void CapedAcolyte_MainScript(void);	/* $013ED4 fragment */
 void CapedAcolyte_MainScriptEnd(void);	/* $013EE4 fragment */
 long FarAcolyte_GetSize(void);	/* $017218 */
-void FarAcolyte_Nop66(void *);	/* $017226 */
-void FarAcolyte_Nop6A(void);	/* $01723C */
+void FarAcolyte_Nop66(FarAcolyte *self);	/* $017226 */
+void FarAcolyte_Nop6A(FarAcolyte *self);	/* $01723C */
 void FarAcolyte_ClassInit(void);	/* $017244 */
 void FarAcolyte_Init(void *, long, long, void *);	/* $017274 */
 long FarAcolyte_OutsideActiveWindow(void *);	/* $01738E */
@@ -896,28 +896,28 @@ long CursorInput_MoveRight(void *);	/* $068078 */
 long CursorInput_Confirm(void *);	/* $068126 */
 void Brood_Script(void);	/* $06D126 fragment */
 long Brood_GetSize(void);	/* $06D1C2 */
-void Brood_Nop66(void *);	/* $06D1D0 */
-void Brood_Nop6A(void);	/* $06D1E6 */
+void Brood_Nop66(Brood *);	/* $06D1D0 */
+void Brood_Nop6A(Brood *);	/* $06D1E6 */
 void Brood_ClassInit(void);	/* $06D1EE */
-void Brood_Init(void *, long, long, void *);	/* $06D1F6 */
-void Brood_TakeDamage(void *, void *, char, char, short, short);	/* $06D472 */
-long Brood_StateStart(void *);	/* $06D4F6 */
-long Brood_StateLand(void *);	/* $06D51A */
-void Brood_ActIdle(void *);	/* $06D69E */
-long Brood_ActApproach(void *);	/* $06D70E */
-long Brood_StateApproach(void *);	/* $06D848 */
-long Brood_ActShoot(void *);	/* $06D92C */
-long Brood_StateFire(void *);	/* $06D990 */
-void Brood_StateFireEnd(void *);	/* $06D9DE */
-long Brood_ActCharge(void *);	/* $06DA42 */
-long Brood_StateWalkToPlayer(void *);	/* $06DB86 */
-void Brood_StateLimitWait(void *);	/* $06DCB2 */
-long Brood_StateRetreatStart(void *);	/* $06DCDC */
-void Brood_StateRetreat(void *);	/* $06DD32 */
-long Brood_StateCornered(void *);	/* $06DDA0 */
-void Brood_StateCorneredFlash(void *);	/* $06DDE0 */
-long Brood_StateBreakOut(void *);	/* $06DE3A */
-void Brood_StateBreakOutRun(void *);	/* $06DE90 */
+void Brood_Init(Brood *, long, long, Placement *);	/* $06D1F6 */
+void Brood_TakeDamage(Brood *, Actor *, char, char, short, short);	/* $06D472 */
+short Brood_StateStart(Brood *);	/* $06D4F6 */
+short Brood_StateLand(Brood *);	/* $06D51A */
+void Brood_ActIdle(Brood *);	/* $06D69E */
+short Brood_ActApproach(Brood *);	/* $06D70E */
+short Brood_StateApproach(Brood *);	/* $06D848 */
+short Brood_ActShoot(Brood *);	/* $06D92C */
+short Brood_StateFire(Brood *);	/* $06D990 */
+void Brood_StateFireEnd(Brood *);	/* $06D9DE */
+short Brood_ActCharge(Brood *);	/* $06DA42 */
+short Brood_StateWalkToPlayer(Brood *);	/* $06DB86 */
+short Brood_StateLimitWait(Brood *);	/* $06DCB2 */
+short Brood_StateRetreatStart(Brood *);	/* $06DCDC */
+void Brood_StateRetreat(Brood *);	/* $06DD32 */
+short Brood_StateCornered(Brood *);	/* $06DDA0 */
+short Brood_StateCorneredFlash(Brood *);	/* $06DDE0 */
+short Brood_StateBreakOut(Brood *);	/* $06DE3A */
+void Brood_StateBreakOutRun(Brood *);	/* $06DE90 */
 void CloneA1_AnimTilesTimer(long, long, void *);	/* $077256 asm */
 void CloneA1_ResetPalCycle(void);	/* $077402 */
 void CloneA1_CyclePalettes(void);	/* $077422 */
@@ -978,38 +978,38 @@ void SmallBrood_ScrStepKamikaze(void);	/* $0840CE fragment */
 void SmallBrood_ScrStepApproach(void);	/* $0840D8 fragment */
 void SmallBrood_ScrStepWalk(void);	/* $0840E6 fragment */
 long SmallBrood_GetSize(void);	/* $084190 */
-void SmallBrood_Nop66(void *);	/* $08419E */
-void SmallBrood_Nop6A(void);	/* $0841B4 */
-long SmallBrood_ClassInit(void);	/* $0841BC */
-void SmallBrood_Init(void *, long, long, void *);	/* $0841C4 */
+void SmallBrood_Nop66(SmallBrood *);	/* $08419E */
+void SmallBrood_Nop6A(SmallBrood *);	/* $0841B4 */
+void SmallBrood_ClassInit(void);	/* $0841BC */
+void SmallBrood_Init(SmallBrood *, long, long, Placement *);	/* $0841C4 */
 void SmallBrood_Init_CaseDefault(void);	/* $0843B8 fragment */
 void SmallBrood_Init_Case1(void);	/* $0843CC fragment */
 void SmallBrood_Init_SetYLimits(void);	/* $084420 fragment */
-void SmallBrood_Update(void *);	/* $084500 */
-void SmallBrood_Move(void *, short);	/* $084544 */
-void SmallBrood_Shoot(void *, short, short, char);	/* $0845EE */
-long SmallBrood_StateStart(void *);	/* $08468E */
-long SmallBrood_StateLand(void *);	/* $0846B2 */
-void SmallBrood_ActIdle(void *);	/* $084854 */
-long SmallBrood_ActApproach(void *);	/* $0848CA */
-void SmallBrood_StateWaitCooldown(void *);	/* $084988 */
-long SmallBrood_ActWalk(void *);	/* $0849F4 */
-long SmallBrood_StateApproach(void *);	/* $084A44 */
-long SmallBrood_ActChase(void *);	/* $084B28 */
-long SmallBrood_StateChase(void *);	/* $084B94 */
-long SmallBrood_ActShoot(void *);	/* $084C62 */
-long SmallBrood_StateFire(void *);	/* $084CC6 */
-void SmallBrood_StateNextStep(void *);	/* $084D14 */
-long SmallBrood_ActJump(void *);	/* $084D64 */
-long SmallBrood_StateJumpFlip(void *);	/* $084DCC */
-long SmallBrood_StateJumpUntilSurface(void *);	/* $084E2A */
-void SmallBrood_StateLanded(void *);	/* $084E8A */
-void SmallBrood_ActWaitCooldown(void *);	/* $084EEA */
-void SmallBrood_StateWaitForPlayer(void *);	/* $084F5A */
-long SmallBrood_ActKamikaze(void *);	/* $08503E */
-long SmallBrood_StateArmed(void *);	/* $085130 */
-long SmallBrood_StateFlash(void *);	/* $08515A */
-void SmallBrood_StateExplode(void *);	/* $0851BE */
+void SmallBrood_Update(SmallBrood *);	/* $084500 */
+void SmallBrood_Move(SmallBrood *, short);	/* $084544 */
+void SmallBrood_Shoot(SmallBrood *, short, short, char);	/* $0845EE */
+short SmallBrood_StateStart(SmallBrood *);	/* $08468E */
+short SmallBrood_StateLand(SmallBrood *);	/* $0846B2 */
+void SmallBrood_ActIdle(SmallBrood *);	/* $084854 */
+short SmallBrood_ActApproach(SmallBrood *);	/* $0848CA */
+void SmallBrood_StateWaitCooldown(SmallBrood *);	/* $084988 */
+short SmallBrood_ActWalk(SmallBrood *);	/* $0849F4 */
+short SmallBrood_StateApproach(SmallBrood *);	/* $084A44 */
+short SmallBrood_ActChase(SmallBrood *);	/* $084B28 */
+short SmallBrood_StateChase(SmallBrood *);	/* $084B94 */
+short SmallBrood_ActShoot(SmallBrood *);	/* $084C62 */
+short SmallBrood_StateFire(SmallBrood *);	/* $084CC6 */
+void SmallBrood_StateNextStep(SmallBrood *);	/* $084D14 */
+short SmallBrood_ActJump(SmallBrood *);	/* $084D64 */
+short SmallBrood_StateJumpFlip(SmallBrood *);	/* $084DCC */
+short SmallBrood_StateJumpUntilSurface(SmallBrood *);	/* $084E2A */
+void SmallBrood_StateLanded(SmallBrood *);	/* $084E8A */
+void SmallBrood_ActWaitCooldown(SmallBrood *);	/* $084EEA */
+void SmallBrood_StateWaitForPlayer(SmallBrood *);	/* $084F5A */
+short SmallBrood_ActKamikaze(SmallBrood *);	/* $08503E */
+short SmallBrood_StateArmed(SmallBrood *);	/* $085130 */
+short SmallBrood_StateFlash(SmallBrood *);	/* $08515A */
+void SmallBrood_StateExplode(SmallBrood *);	/* $0851BE */
 void Teleporter_NoPause(void);	/* $0853FA */
 long TeleportReceiver_GetSize(void);	/* $085402 */
 void TeleportReceiver_InitSpawnRec(void *, long);	/* $085410 */
@@ -1523,56 +1523,56 @@ long SavageBigBio_Move(void *, short);	/* $0BA77C */
 void SavageBigBio_TentacleHit(void *, short, void *, short, short);	/* $0BA7D8 */
 long SavageBigBio_Update(long);	/* $0BA864 */
 long SavageBigBio_Draw(void *);	/* $0BA8FA */
-void SavageBio_ActScript2052(void *);	/* $0BAEC4 */
-void SavageBio_ActFacePlayer(void *);	/* $0BAF14 */
-long SavageBio_ActFireRocket(void *);	/* $0BAF96 */
-long SavageBio_StateFireMouth(void *);	/* $0BAFF4 */
-long SavageBio_StateFireTip(void *);	/* $0BB0D6 */
-long SavageBio_ActFireVertical(void *);	/* $0BB268 */
-long SavageBio_StateFireVertical(void *);	/* $0BB2AA */
-long SavageBio_ActReloadArt14(void *);	/* $0BB38C */
-void SavageBio_StateReloadArt14(void *);	/* $0BB3CC */
-long SavageBio_ActReloadArt10(void *);	/* $0BB45C */
-void SavageBio_StateReloadArt10(void *);	/* $0BB49C */
-long SavageBio_ActExtendTentacle(void *);	/* $0BB52E */
-long SavageBio_ActExtendTentacle2(void *);	/* $0BB590 */
-long SavageBio_StateExtend(void *);	/* $0BB5E0 */
-long SavageBio_StateRetract(void *);	/* $0BB634 */
-long SavageBio_StateRetractStart(void *);	/* $0BB698 */
-void SavageBio_StateNextStep(void *);	/* $0BB6CE */
-long SavageBio_ActExtendShort(void *);	/* $0BB71E */
-long SavageBio_StateExtend10(void *);	/* $0BB780 */
-void SavageBio_ActAnimA(void *);	/* $0BB7F0 */
-void SavageBio_ActAnimB(void *);	/* $0BB850 */
-void SavageBio_ActAnimC(void *);	/* $0BB8B0 */
-long SavageBio_ActCharge(void *);	/* $0BB910 */
-void SavageBio_StateChargeToEdge(void *);	/* $0BBA0E */
-void SavageBio_ActChargeGo(void *);	/* $0BBA94 */
-long SavageBio_ActChargePlayer(void *);	/* $0BBBBE */
-long SavageBio_StateChargeToPlayer(void *);	/* $0BBCBC */
-long SavageBio_ActDashPast(void *);	/* $0BBE0C */
-long SavageBio_ActDashTo(void *);	/* $0BBF4E */
-long SavageBio_StateDash(void *);	/* $0BC0C4 */
-void SavageBio_StateDashBrake(void *);	/* $0BC1A8 */
-void SavageBio_ActFrame40(void *);	/* $0BC2D2 */
-void SavageBio_ActStop60(void *);	/* $0BC338 */
-void SavageBio_ActStop30(void *);	/* $0BC398 */
-void SavageBio_ActWait30(void *);	/* $0BC3F8 */
-void SavageBio_ActWait5(void *);	/* $0BC44C */
-void SavageBio_ActFrame4F(void *);	/* $0BC4A0 */
-void SavageBio_ActFrame4FB(void *);	/* $0BC516 */
-long SavageBio_StateWaitCrossing(void *);	/* $0BC58C */
-long SavageBio_StateCrossSurface(void *);	/* $0BC64A */
+void SavageBio_ActScript2052(SavageBigBio *self);	/* $0BAEC4 */
+short SavageBio_ActFacePlayer(SavageBigBio *self);	/* $0BAF14 */
+short SavageBio_ActFireRocket(SavageBigBio *self);	/* $0BAF96 */
+short SavageBio_StateFireMouth(SavageBigBio *self);	/* $0BAFF4 */
+short SavageBio_StateFireTip(SavageBigBio *self);	/* $0BB0D6 */
+short SavageBio_ActFireVertical(SavageBigBio *self);	/* $0BB268 */
+short SavageBio_StateFireVertical(SavageBigBio *self);	/* $0BB2AA */
+short SavageBio_ActReloadArt14(SavageBigBio *self);	/* $0BB38C */
+short SavageBio_StateReloadArt14(SavageBigBio *self);	/* $0BB3CC */
+short SavageBio_ActReloadArt10(SavageBigBio *self);	/* $0BB45C */
+short SavageBio_StateReloadArt10(SavageBigBio *self);	/* $0BB49C */
+short SavageBio_ActExtendTentacle(SavageBigBio *self);	/* $0BB52E */
+short SavageBio_ActExtendTentacle2(SavageBigBio *self);	/* $0BB590 */
+short SavageBio_StateExtend(SavageBigBio *self);	/* $0BB5E0 */
+short SavageBio_StateRetract(SavageBigBio *self);	/* $0BB634 */
+short SavageBio_StateRetractStart(SavageBigBio *self);	/* $0BB698 */
+short SavageBio_StateNextStep(SavageBigBio *self);	/* $0BB6CE */
+short SavageBio_ActExtendShort(SavageBigBio *self);	/* $0BB71E */
+short SavageBio_StateExtend10(SavageBigBio *self);	/* $0BB780 */
+void SavageBio_ActAnimA(SavageBigBio *self);	/* $0BB7F0 */
+void SavageBio_ActAnimB(SavageBigBio *self);	/* $0BB850 */
+void SavageBio_ActAnimC(SavageBigBio *self);	/* $0BB8B0 */
+short SavageBio_ActCharge(SavageBigBio *self);	/* $0BB910 */
+short SavageBio_StateChargeToEdge(SavageBigBio *self);	/* $0BBA0E */
+void SavageBio_ActChargeGo(SavageBigBio *self);	/* $0BBA94 */
+short SavageBio_ActChargePlayer(SavageBigBio *self);	/* $0BBBBE */
+short SavageBio_StateChargeToPlayer(SavageBigBio *self);	/* $0BBCBC */
+short SavageBio_ActDashPast(SavageBigBio *self);	/* $0BBE0C */
+short SavageBio_ActDashTo(SavageBigBio *self);	/* $0BBF4E */
+short SavageBio_StateDash(SavageBigBio *self);	/* $0BC0C4 */
+short SavageBio_StateDashBrake(SavageBigBio *self);	/* $0BC1A8 */
+void SavageBio_ActFrame40(SavageBigBio *self);	/* $0BC2D2 */
+void SavageBio_ActStop60(SavageBigBio *self);	/* $0BC338 */
+void SavageBio_ActStop30(SavageBigBio *self);	/* $0BC398 */
+void SavageBio_ActWait30(SavageBigBio *self);	/* $0BC3F8 */
+void SavageBio_ActWait5(SavageBigBio *self);	/* $0BC44C */
+void SavageBio_ActFrame4F(SavageBigBio *self);	/* $0BC4A0 */
+void SavageBio_ActFrame4FB(SavageBigBio *self);	/* $0BC516 */
+short SavageBio_StateWaitCrossing(SavageBigBio *self);	/* $0BC58C */
+short SavageBio_StateCrossSurface(SavageBigBio *self);	/* $0BC64A */
 long SavageBioBalls_ActLeap(void *);	/* $0BC71A */
 void SavageBioBalls_StateWait(void *);	/* $0BC7A2 */
 long SavageBioBalls_ActMotion(void *);	/* $0BC80C */
-void SavageBio_StateDying(void *);	/* $0BC85C */
-void SavageBio_ActCrossIfUp(void *);	/* $0BC8AC */
-long SavageBio_ActToCentre(void *);	/* $0BC920 */
-long SavageBio_StateToCentre(void *);	/* $0BC954 */
-long SavageBio_StateDeathWait(void *);	/* $0BCA2C */
-long SavageBio_ActDie(void *);	/* $0BCA7E */
-long SavageBio_StateDeathExplode(void *);	/* $0BCB92 */
+short SavageBio_StateDying(SavageBigBio *self);	/* $0BC85C */
+short SavageBio_ActCrossIfUp(SavageBigBio *self);	/* $0BC8AC */
+short SavageBio_ActToCentre(SavageBigBio *self);	/* $0BC920 */
+short SavageBio_StateToCentre(SavageBigBio *self);	/* $0BC954 */
+short SavageBio_StateDeathWait(SavageBigBio *self);	/* $0BCA2C */
+short SavageBio_ActDie(SavageBigBio *self);	/* $0BCA7E */
+short SavageBio_StateDeathExplode(SavageBigBio *self);	/* $0BCB92 */
 long SavageMediumBio_GetSize(void);	/* $0BCC6A */
 void SavageMediumBio_ClassInit(long);	/* $0BCC78 */
 void SavageMediumBio_Init(void *, long, long, long);	/* $0BCC96 */
@@ -2412,47 +2412,47 @@ void BioSentinel_ClassInit(void);	/* $12156E */
 void BioSentinel_Nop6A(void);	/* $12157A */
 void BioSentinel_Nop66(void *);	/* $121582 */
 long BigBio_GetSize(void);	/* $121598 */
-void BigBio_SpitSpawn(void *, char);	/* $1215A6 */
-void BigBio_SpitFree(long);	/* $121634 */
+void BigBio_SpitSpawn(BigBio *self, char kind);	/* $1215A6 */
+void BigBio_SpitFree(BigBioSpit *spit);	/* $121634 */
 void BigBio_SpitUpdateAll(void);	/* $121662 */
-void BigBio_Init(void *, long, long, void *);	/* $1218F0 */
-char BigBio_InActivateWindow(void *);	/* $121992 */
-long BigBio_Draw(void *);	/* $1219FE */
-long BigBio_PlaceOrbs(void *, void *);	/* $121CD6 */
-void BigBio_SetOrbShape(void *, long);	/* $121D94 */
-char BigBio_UpdateOrbRing(void *);	/* $121DB6 */
-void BigBio_ActIdleAnim90(void *);	/* $122024 */
-long BigBio_StateMorphToShape(void *);	/* $122088 */
-long BigBio_StateStartMorph(void *);	/* $1221D0 */
-long BigBio_ActRoarThenMorph(void *);	/* $122244 */
-long BigBio_StateSpitFire(void *);	/* $1222A0 */
-long BigBio_StateSpitBetween(void *);	/* $12232C */
-long BigBio_StateSpitStart(void *);	/* $122362 */
-long BigBio_ActSpit3(void *);	/* $122398 */
-void BigBio_ActFaceSide(void *);	/* $1223D4 */
-void BigBio_ActFaceIdle90(void *);	/* $122438 */
-long BigBio_StateGatherOrbs(void *);	/* $1224B0 */
-long BigBio_ActJumpToSide(void *);	/* $122660 */
-long BigBio_StateFlyToTarget(void *);	/* $1226C4 */
-long BigBio_StateArcSwoop(void *);	/* $1227B4 */
-long BigBio_ActStartArcSwoop(void *);	/* $12287A */
-long BigBio_StateWaitThenFlyBack(void *);	/* $1228F2 */
-long BigBio_StateBrake(void *);	/* $1229AC */
-long BigBio_ActChargePlayer(void *);	/* $122A14 */
-long BigBio_StateSpinUp(void *);	/* $122AFA */
-long BigBio_StateFormRing(void *);	/* $122B96 */
-long BigBio_Launch(void *, void *);	/* $122DBE */
-long BigBio_StateLaunch(void *);	/* $122E18 */
-long BigBio_ActRoarThenLaunch(void *);	/* $122E92 */
-long BigBio_StateStart(void *);	/* $122EDA */
-long BigBio_StateWaitPlayers(void *);	/* $122F64 */
-long BigBio_StateWalkIn(void *);	/* $12314C */
-void BigBio_StartScript(void *);	/* $1231E0 */
-long BigBio_ResumeAfterHit(void *);	/* $123242 */
-long BigBio_StateDying(void *);	/* $123272 */
-long BigBio_StateDeathOrbs(void *);	/* $1232F0 */
-long BigBio_StateDefeated(void *);	/* $123346 */
-long BigBio_TakeDamage(void *, long, long, char);	/* $12340E */
+void BigBio_Init(BigBio *self, long x, long y, Placement *place);	/* $1218F0 */
+char BigBio_InActivateWindow(BigBio *self);	/* $121992 */
+void BigBio_Draw(BigBio *self);	/* $1219FE */
+void BigBio_PlaceOrbs(BigBio *self, BigBioShapePt *shape);	/* $121CD6 */
+void BigBio_SetOrbShape(BigBio *self, BigBioShapePt *shape);	/* $121D94 */
+char BigBio_UpdateOrbRing(BigBio *self);	/* $121DB6 */
+void BigBio_ActIdleAnim90(BigBio *self);	/* $122024 */
+short BigBio_StateMorphToShape(BigBio *self);	/* $122088 */
+short BigBio_StateStartMorph(BigBio *self);	/* $1221D0 */
+short BigBio_ActRoarThenMorph(BigBio *self);	/* $122244 */
+short BigBio_StateSpitFire(BigBio *self);	/* $1222A0 */
+short BigBio_StateSpitBetween(BigBio *self);	/* $12232C */
+short BigBio_StateSpitStart(BigBio *self);	/* $122362 */
+short BigBio_ActSpit3(BigBio *self);	/* $122398 */
+void BigBio_ActFaceSide(BigBio *self);	/* $1223D4 */
+void BigBio_ActFaceIdle90(BigBio *self);	/* $122438 */
+short BigBio_StateGatherOrbs(BigBio *self);	/* $1224B0 */
+short BigBio_ActJumpToSide(BigBio *self);	/* $122660 */
+short BigBio_StateFlyToTarget(BigBio *self);	/* $1226C4 */
+short BigBio_StateArcSwoop(BigBio *self);	/* $1227B4 */
+short BigBio_ActStartArcSwoop(BigBio *self);	/* $12287A */
+short BigBio_StateWaitThenFlyBack(BigBio *self);	/* $1228F2 */
+short BigBio_StateBrake(BigBio *self);	/* $1229AC */
+short BigBio_ActChargePlayer(BigBio *self);	/* $122A14 */
+short BigBio_StateSpinUp(BigBio *self);	/* $122AFA */
+short BigBio_StateFormRing(BigBio *self);	/* $122B96 */
+void BigBio_Launch(BigBio *self, BigBioShapePt *shape);	/* $122DBE */
+short BigBio_StateLaunch(BigBio *self);	/* $122E18 */
+short BigBio_ActRoarThenLaunch(BigBio *self);	/* $122E92 */
+short BigBio_StateStart(BigBio *self);	/* $122EDA */
+short BigBio_StateWaitPlayers(BigBio *self);	/* $122F64 */
+short BigBio_StateWalkIn(BigBio *self);	/* $12314C */
+void BigBio_StartScript(BigBio *self);	/* $1231E0 */
+short BigBio_ResumeAfterHit(BigBio *self);	/* $123242 */
+short BigBio_StateDying(BigBio *self);	/* $123272 */
+short BigBio_StateDeathOrbs(BigBio *self);	/* $1232F0 */
+short BigBio_StateDefeated(BigBio *self);	/* $123346 */
+void BigBio_TakeDamage(BigBio *self, Actor *attacker, char type, char damage, short x, short y);	/* $12340E */
 void BigBio_EmptyStub(void);	/* $1234F4 */
 void BigBio_ClassInit(void);	/* $1234FC */
 long BrainRocket_GetSize(void);	/* $133630 */
@@ -2464,7 +2464,7 @@ char BrainRocket_OutsideActiveWindow(void *);	/* $1337FC */
 void BrainRocket_Deactivate(long);	/* $133898 */
 void BrainRocket_Attack(void *, void *, char, char, short, short);	/* $1338A8 */
 long Rocket_SetAngleOwner(void *, void *, short);	/* $13395E */
-void Rocket_SetAngleA(long, long, short);	/* $1339A6 */
+void Rocket_SetAngleA(void *rocket, void *owner, short angle);	/* $1339A6 */
 void Rocket_SetAngleB(long, long, short, short, short);	/* $1339C8 */
 long BrainRocket_StateLaunch(void *);	/* $1339F4 */
 long BrainRocket_StateSetDirection(void *);	/* $133A40 */
@@ -2666,7 +2666,7 @@ void ExplodeFx_BurstPuffInit(void *, long, long);	/* $13DA50 */
 void ExplodeFx_BurstUpdate(void *);	/* $13DA80 */
 void ExplodeFx_BurstDraw(void *);	/* $13DBD8 */
 long ExplodeFx_Burst(void *, short);	/* $13DCB8 */
-void ExplodeFx_BurstMedium(long);	/* $13DE36 */
+void ExplodeFx_BurstMedium(void *);	/* $13DE36 */
 void ExplodeFx_BurstSmall(long);	/* $13DE4A */
 void ExplodeFx_TrailStart(void *, char, long, char, char);	/* $13DE5E */
 void ExplodeFx_TrailSetHead(void *, long, long, short, short, short, short);	/* $13DF16 */
@@ -2686,7 +2686,7 @@ void ExplodeFx_ChainStep(void *);	/* $13EA46 */
 void ExplodeFx_ChainHit(void *, short, short);	/* $13EBB6 */
 void ExplodeFx_ChainUpdate(void *);	/* $13EC26 */
 void ExplodeFx_ChainDraw(void *);	/* $13EE20 */
-void ExplodeFx_Chain(void *, long, char, short, short);	/* $13EEFA */
+void ExplodeFx_Chain(void *obj, void *path, char damaging, short dx, short dy);	/* $13EEFA */
 void ExplodeFx_ChainRepeat(void *, long, char, short, short, short);	/* $13EFA0 */
 long Pop_GetSize(void);	/* $13F04A */
 void Pop_ClassInit(void);	/* $13F058 */
@@ -2907,8 +2907,8 @@ long Obj_InScreenWindow(void *);	/* $15A6FC */
 long Obj_OutsideActivateWindow(void *);	/* $15A79C */
 short Seg_GridCell(long, long);	/* $15A7C8 */
 long Seg_FindAt(short, short, short, short);	/* $15A82A */
-long Seg_FindBelow(short, short, short);	/* $15A8FE */
-long Seg_FindAbove(short, short, short);	/* $15AA20 */
+Seg *Seg_FindBelow(short, short, short);	/* $15A8FE */
+Seg *Seg_FindAbove(short, short, short);	/* $15AA20 */
 long Seg_FindLeft(short, short, short);	/* $15AB44 */
 long Seg_FindRight(short, short, short);	/* $15AC68 */
 long SegHook_HurtPlayerStop(short, long, void *, void *);	/* $15AD8A */
@@ -3402,8 +3402,8 @@ void Irq_Disable(void);	/* $1F485A asm */
 void Irq_VBlankVector(void);	/* $1F4860 fragment */
 void Irq_HBlankVector(void);	/* $1F4870 fragment */
 long unk_Sys_1F4890(void);	/* $1F4890 asm */
-void Mem_Copy(void *, long, long, long);	/* $1F48AA asm */
-long Mem_Set(void *, long);	/* $1F4900 asm */
+void Mem_Copy(void *dst, void *src, long n);	/* $1F48AA asm */
+void *Mem_Set(void *dst, long c, long n);	/* $1F4900 asm */
 long Obj_FindFreeSlot(void);	/* $1F4A1A asm */
 void Obj_UpdateBoxes(void *);	/* $1F4A40 asm */
 void Obj_UpdateBox(void *);	/* $1F4BA2 asm */
@@ -3424,9 +3424,9 @@ void Cam_SetMaxXBlocks(short);	/* $1F5F5A */
 void Cam_SetPos(short, short);	/* $1F5F78 */
 void Cam_SetPosScaled(short, short);	/* $1F60E4 */
 long Math_MulFix8(short, short);	/* $1F6258 */
-void Obj_SetAnim(void *, long);	/* $1F626A */
+void Obj_SetAnim(void *obj, void *anim);	/* $1F626A */
 void Obj_ChangeAnim(void *, void *);	/* $1F6296 */
-void SprDef_Add(long, short);	/* $1F62C0 */
+short SprDef_Add(void *def, short frame);	/* $1F62C0 */
 void Obj_SetSpriteDef(Actor *self, unsigned char n);	/* $1F6334 */
 char Seg_WouldLeaveEnd(void *, short);	/* $1F638A */
 long Seg_AtOpenEndAhead(void *, short);	/* $1F6420 */
@@ -3486,7 +3486,7 @@ void Seg_Free(void *);	/* $1F7CFE */
 void Seg_ForEachOfObj(void *, void *);	/* $1F7D5E */
 long Obj_SnapToNearestSeg(void *, short, short);	/* $1F7DAE */
 void Obj_SnapToNearestFloor(void *, short, short);	/* $1F7F38 */
-long Seg_FindNearestOfType(short, short, short);	/* $1F80CA */
+Seg *Seg_FindNearestOfType(short x, short y, short type);	/* $1F80CA */
 long Seg_FindContaining(short, short, short);	/* $1F82CC */
 long Seg_FindInBlock(short, short, short);	/* $1F8454 */
 void Seg_SetEndpoints(long, void *, short, short, short, short);	/* $1F8494 asm */
@@ -3536,7 +3536,7 @@ void ClassList_CallSlot62(void);	/* $1FA878 */
 void Sys_Nop1FA8C4(void);	/* $1FA8C4 */
 void Sys_Nop1FA8CC(void);	/* $1FA8CC */
 void Sys_Nop1FA8D4(void);	/* $1FA8D4 */
-long Mem_StackAlloc(long, long);	/* $1FA8DC */
+void *Mem_StackAlloc(long size, char *tag);	/* $1FA8DC */
 void Mem_StackFree(void *);	/* $1FA924 */
 void Spr_InitLinks(void);	/* $1FA956 */
 void Spr_BeginFrame(void);	/* $1FA99C */
@@ -3626,8 +3626,8 @@ long Snd_PutByte(void);	/* $1FE50A asm */
 void Snd_SendByte(void);	/* $1FE518 asm */
 void Snd_SendAddr24(void);	/* $1FE528 asm */
 void Snd_Init(long, long, long, long);	/* $1FE544 */
-void Snd_Play(void);	/* $1FE584 asm */
-void Snd_Stop(void);	/* $1FE5A2 asm */
+void Snd_Play(long id);	/* $1FE584 asm */
+void Snd_Stop(long id);	/* $1FE5A2 asm */
 void unk_Snd_1FE5B4(void);	/* $1FE5B4 asm */
 void Snd_Pause(void);	/* $1FE5C6 asm */
 void Snd_Resume(void);	/* $1FE5DC asm */

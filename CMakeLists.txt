@@ -110,6 +110,13 @@ xmen2_runner(XMen2Stepped 4383 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2S_GENERATED_T
             "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp")
 
+# The same stepped runner with ALL generated code (no hand C): the reference D2/D6 compare the
+# C against (xmen2disasm P4-decomp.md decision 5).
+genesisrecomp_add_generated_sources(XMEN2G_GENERATED xmen2g "${CMAKE_SOURCE_DIR}/game" xmen2.bin
+    EXTRA_ARGS --untimed --prefix xmen2g)
+xmen2_runner(XMen2SteppedGen 4385 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2G_GENERATED_TARGET}
+    SOURCES ${XMEN2G_GENERATED})
+
 # The verification runner (D4 `verify`): the timed runner with ALL generated code, plus the
 # hand-written C run beside it as shadow tests (game/runtime/verify.cpp).
 xmen2_runner(XMen2Verify 4384 DEFS XMEN2_VERIFY=1

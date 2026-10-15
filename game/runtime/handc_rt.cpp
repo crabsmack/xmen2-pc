@@ -56,6 +56,19 @@ uint32_t call_slots(uint32_t a, const uint32_t *slots, int n)
     return g_cpu.D[0];
 }
 
+uint32_t sp_reserve(uint32_t bytes)
+{
+    g_cpu.A[7] -= (bytes + 1u) & ~1u;
+    return g_cpu.A[7];
+}
+
+void sp_restore(uint32_t a7) { g_cpu.A[7] = a7; }
+
+/* NO_RETURN_VALUE / RETURN_NO_VALUE (xmen2_macros.h): the C function ended on a path where the
+   original returns no value; its slot entry then leaves d0 alone and verify doesn't compare it. */
+uint32_t g_frame, g_seq, g_novalue;
+bool g_retnv;
+
 }  /* namespace xm */
 
 extern "C" uint32_t xm_slot_arg(int i)

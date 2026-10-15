@@ -59,6 +59,7 @@ def configure() -> None:
 
 
 STEPPED_EXE = "XMen2Stepped.exe" if sys.platform == "win32" else "XMen2Stepped"
+STEPPED_GEN_EXE = "XMen2SteppedGen.exe" if sys.platform == "win32" else "XMen2SteppedGen"
 
 
 def exe_path(name: str = common.EXE_NAME) -> Path:
@@ -114,13 +115,12 @@ def cmd_build(a) -> dict:
         if r.returncode:
             sys.exit(f"bridge.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
     configure()
-    rc = cmake("--build", str(BUILD), "--config", "Release", "--target", "XMen2Recomp", "XMen2Stepped", "XMen2Verify",
-               "--parallel", logfile=BUILD / "build.log")
-    exe = exe_path()
-    stepped, verify = exe_path(STEPPED_EXE), exe_path(VERIFY_EXE)
-    return {"exe": str(exe), "stepped_exe": str(stepped), "verify_exe": str(verify), "config": "Release",
-            "ok": rc == 0 and exe.is_file() and stepped.is_file() and verify.is_file(),
-            "log": str(BUILD / "build.log")}
+    rc = cmake("--build", str(BUILD), "--config", "Release", "--target", "XMen2Recomp", "XMen2Stepped",
+               "XMen2SteppedGen", "XMen2Verify", "--parallel", logfile=BUILD / "build.log")
+    exes = {"exe": exe_path(), "stepped_exe": exe_path(STEPPED_EXE), "stepped_gen_exe": exe_path(STEPPED_GEN_EXE),
+            "verify_exe": exe_path(VERIFY_EXE)}
+    return {**{k: str(v) for k, v in exes.items()}, "config": "Release",
+            "ok": rc == 0 and all(v.is_file() for v in exes.values()), "log": str(BUILD / "build.log")}
 
 
 # --- trace -----------------------------------------------------------------------------
@@ -144,17 +144,61 @@ def csv_rows(p: Path) -> int:
     return sum(1 for _ in open(p)) - 1 if p.exists() else 0
 
 
+def input_pads(path: Path) -> list[str]:
+    """The pads of every frame of an exported .input (index 0 = frame 1): 'p1 p2'."""
+    pads, cur = [], "0 0"
+    for line in path.read_text().splitlines():
+        w = line.split()
+        if not w or w[0].startswith("#"):
+            continue
+        if w[0].upper() == "PADS":
+            cur = f"{w[1]} {w[2]}"
+        elif w[0].upper() == "WAIT":
+            pads += [cur] * int(w[1], 0)
+    return pads
+
+
+def sync_frames(ref: Path) -> list[int]:
+    import csv as _csv
+    with open(ref / "sync.csv", newline="") as f:
+        return [int(r["frame"]) for r in _csv.DictReader(f)]
+
+
+def stepped_script(inp: Path, ref: Path, out: Path) -> int:
+    """The frame-synchronous runner's input: one runner frame per sync interval. Frame 1 (boot
+    to sync 1) gets the input's first frame; frame k+1 (after sync k) the input of the
+    reference frame of sync k (D1 sync.csv), the frame whose V-int read the pads. Returns the
+    number of runner frames (= the reference's sync points)."""
+    pads, frames = input_pads(inp), sync_frames(ref)
+    seq = [pads[0] if pads else "0 0"] + [pads[min(f, len(pads)) - 1] if pads else "0 0" for f in frames[:-1]]
+    lines, prev, n = [], None, 0
+    for p in seq:
+        if p != prev and prev is not None:
+            lines += [f"PADS {prev}", f"WAIT {n}"]
+            n = 0
+        prev, n = p, n + 1
+    if prev is not None:
+        lines += [f"PADS {prev}", f"WAIT {n}"]
+    out.write_text("# per sync interval (xmen2check.py trace --mode stepped)\n" + "\n".join(lines) + "\n", newline="\n")
+    return len(frames)
+
+
+STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE"}
+
+
 def cmd_trace(a) -> dict:
     """recomp: the timed runner plays the input (phase 2); --sync adds sync.csv and the
-    replay log (phase 4 D1). stepped: the untimed runner replays REFDIR/replay.bin and
-    writes sync.csv (phase 4 D2); no input script, the pads come from the log."""
+    replay log (phase 4 D1). stepped / stepped-gen: the frame-synchronous untimed runner, with
+    hand C / with all generated code, plays the input one sync interval per runner frame (the
+    pads of each sync point's reference frame, from REFDIR = the run's D1 trace) and writes
+    sync.csv (phase 4 D2: the two must be equal)."""
     import os
-    if a.mode not in ("recomp", "stepped"):
-        sys.exit(f"--mode {a.mode}: not implemented (recomp, stepped)")
-    if a.mode == "stepped" and not a.replay:
-        sys.exit("--mode stepped needs --replay REFDIR (a `--mode recomp --sync` trace)")
+    if a.mode not in ("recomp", *STEPPED_MODES):
+        sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
+    if a.mode in STEPPED_MODES and not a.replay:
+        sys.exit(f"--mode {a.mode} needs --replay REFDIR (the run's `--mode recomp --sync` trace)")
     common.ensure_rom()
-    src = exe_path(STEPPED_EXE if a.mode == "stepped" else common.EXE_NAME)
+    src = exe_path(globals()[STEPPED_MODES[a.mode]] if a.mode in STEPPED_MODES else common.EXE_NAME)
     if not src.is_file():
         sys.exit(f"no Release runner at {src}: run `xmen2check.py build`")
     out = Path(a.out).resolve()
@@ -169,14 +213,20 @@ def cmd_trace(a) -> dict:
     (run_dir / "settings.ini").write_text(SETTINGS)
     env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy"}
     sync_csv = out / "sync.csv"
-    if a.mode == "stepped":
+    if a.mode in STEPPED_MODES:
         ref = Path(a.replay).resolve()
-        if not (ref / "replay.bin").is_file() or not (ref / "sync.csv").is_file():
-            sys.exit(f"{ref} has no replay.bin + sync.csv (a `trace --mode recomp --sync` output)")
-        # One runner frame per sync interval; the run stops itself where the reference ended.
-        frames = csv_rows(ref / "sync.csv") + 2
-        env.update(GENESIS_REPLAY_IN=str(ref / "replay.bin"), XMEN2_SYNC_CSV=str(sync_csv))
-        cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames), "--fresh-evidence"]
+        if not (ref / "sync.csv").is_file():
+            sys.exit(f"{ref} has no sync.csv (a `trace --mode recomp --sync` output)")
+        if not a.input:
+            sys.exit(f"--mode {a.mode} needs --input (the run's exported .input)")
+        script = out / "input.input"
+        frames = stepped_script(Path(a.input), ref, script)
+        if a.frames:
+            frames = min(frames, a.frames)
+        env.update(XMEN2_SYNC_CSV=str(sync_csv))
+        env.pop("GENESIS_REPLAY_IN", None)
+        cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames),
+               "--input-script", str(script), "--fresh-evidence"]
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -208,9 +258,8 @@ def cmd_trace(a) -> dict:
     b, c = json.loads(bench.group(1)), json.loads(counters.group(1))
     res = {"dispatch_misses": c["dispatch_misses"], "interp_instructions": c["interp_instructions"],
            "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(run_dir / src.name)}
-    if a.mode == "stepped":
+    if a.mode in STEPPED_MODES:
         res["sync_points"] = csv_rows(sync_csv)
-        res["replay_complete"] = "[replay] end of the reference" in stderr
         return res
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
     if a.sync:
@@ -371,7 +420,28 @@ def cmd_handc(a) -> dict:
         doc = bool(name) and bool(re.search(r"/\*\s*" + re.escape(name) + r"\s+-\s+\S", raw[:raw.find(name + "(")]
                                             if name + "(" in raw else ""))
         out[p.stem.upper()] = {"name": name, "doc": doc, "file": f"game/c/{p.name}", "defines": defs}
-    return {"functions": out}
+    # P4-decomp.md decisions 7 and 8: fragments (blocks the disassembly split off a C function,
+    # and AI-script thunk tables) are done with the C that contains / names them; asm functions
+    # (no MPW frame) are reported for the never-executed rule.
+    tags = {}
+    for line in (INC / "xmen2_funcs.h").read_text(encoding="utf-8").splitlines():
+        m = re.search(r"\b([A-Za-z_]\w*)\s*\([^;]*\)\s*;\s*/\*\s*\$([0-9A-F]{6})\s*(\w+)?\s*\*/", line)
+        if m:
+            tags[m.group(2)] = (m.group(1), m.group(3) or "")
+    texts = {a: (CDIR / f"{a}.c").read_text(encoding="utf-8") for a in out}
+    order = sorted(tags)
+    frags = {}
+    for addr, (name, tag) in tags.items():
+        if tag != "fragment":
+            continue
+        named_in = sorted(a for a, t in texts.items() if re.search(rf"\b{re.escape(name)}\b", t))
+        parent = named_in[0] if named_in else None
+        if parent is None:   # the C function the block was split from: the nearest one before it
+            i = order.index(addr)
+            parent = next((order[j] for j in range(i - 1, -1, -1) if tags[order[j]][1] != "fragment"), None)
+        frags[addr] = {"name": name, "parent": parent, "named": bool(named_in)}
+    return {"functions": out, "fragments": frags,
+            "asm": sorted(a for a, (_n, t) in tags.items() if t == "asm")}
 
 
 LINT_RULES = ("registers", "raw_addresses", "raw_offsets", "cross_function_goto")

@@ -46,6 +46,9 @@ typedef unsigned long  u32;
 /* FNTYPE(StateFn, short) declares StateFn, a function pointer kept in game memory: old-style
    (any arguments, as the original C declared them), returning short. */
 #define FNTYPE(name, ret)      typedef ret (*name)()
+/* FN_AT(StateFn, p): code at p (ROM the C has no function for, e.g. an AI script's jmp
+   thunk) as a stored function pointer of type `type`. */
+#define FN_AT(type, p)         ((type)(p))
 /* A class method slot. */
 typedef long (*AnyFn)();
 
@@ -70,6 +73,7 @@ typedef long (*AnyFn)();
 #endif
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 #include <type_traits>
 
 extern "C" {
@@ -224,9 +228,61 @@ struct ret68 {
 /* Call the 68000 code at `a` (generated, or C behind its slot entry) with argument slots
    pushed right to left, as an MPW C caller does. */
 uint32_t call_slots(uint32_t a, const uint32_t *slots, int n);
+uint32_t sp_reserve(uint32_t bytes);   /* A7 -= bytes (even); the new A7 */
+/* NO_RETURN_VALUE (xmen2_macros.h): a C function ended where the original returns no value.
+   g_frame is the running C function's call (the bridge numbers them), g_novalue the call that
+   ended so, g_retnv whether the call that just returned did (its slot entry leaves d0 alone). */
+extern uint32_t g_frame, g_seq, g_novalue;
+extern bool g_retnv;
+void     sp_restore(uint32_t a7);
+
+inline bool in_game_memory(const void *p)
+{
+    uintptr_t u = (uintptr_t)p;
+    return u - (uintptr_t)g_ram < 0x10000u || u - (uintptr_t)g_ram_ffff < 0x10000u
+        || u - (uintptr_t)g_rom < 0x400000u;
+}
+
+/* The arguments of one call into 68000 code. A pointer to host memory (a C function's local,
+   e.g. a SprInst passed by address) travels on the 68000 stack: copied below A7 before the
+   call, copied back after it, A7 restored. Only game-memory types (their bytes are the 68000
+   layout) can travel this way. */
+struct Scratch {
+    uint32_t sp0 = 0;
+    int nc = 0;
+    struct { void *host; uint32_t a, n; } copy[8];
+    ~Scratch()
+    {
+        for (int i = 0; i < nc; i++) memcpy(copy[i].host, host(copy[i].a), copy[i].n);
+        if (nc) sp_restore(sp0);
+    }
+    template <class A> uint32_t arg(A a)
+    {
+        if constexpr (std::is_pointer<A>::value && !std::is_function<typename std::remove_pointer<A>::type>::value) {
+            if (!a || in_game_memory((const void *)a)) return addr((const void *)a);
+            typedef typename std::remove_cv<typename std::remove_pointer<A>::type>::type T;
+            if constexpr (std::is_void<T>::value || std::is_arithmetic<T>::value) {
+                fatal("call68: a host %s pointer can't be passed to 68000 code (use a game-memory type)",
+                      std::is_void<T>::value ? "void" : "scalar");
+            } else {
+                if (nc == 8) fatal("call68: too many host pointers");
+                uint32_t n = ((uint32_t)sizeof(T) + 1u) & ~1u;
+                if (!nc) sp0 = sp_reserve(0);
+                uint32_t a68 = sp_reserve(n);
+                memcpy(host(a68), (const void *)a, sizeof(T));
+                copy[nc].host = (void *)a; copy[nc].a = a68; copy[nc].n = (uint32_t)sizeof(T);
+                nc++;
+                return a68;
+            }
+        } else {
+            return slot(a);
+        }
+    }
+};
 template <class... A> inline ret68 call68(uint32_t a, A... args)
 {
-    uint32_t s[sizeof...(A) + 1] = { slot(args)... };
+    Scratch sc;
+    uint32_t s[sizeof...(A) + 1] = { sc.arg(args)... };
     return ret68{ call_slots(a, s, (int)sizeof...(A)) };
 }
 /* The 68000 value a function's address had where the current C function took it
@@ -296,6 +352,10 @@ typedef xm::be<uint32_t>      u32;
 #define PTR(T)                 xm::bptr<T>
 #define FNTYPE(name, ret)      typedef xm::fnp<ret> name
 typedef xm::fnp<xm::ret68> AnyFn;   /* the result converts to what the caller casts it to */
+namespace xm {
+template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f; }
+}
+#define FN_AT(type, p)         (xm::fn_at<type>(p))
 
 #define CLASS(code)            ((struct Class *)(code))
 #define CODEPTR(code)          ((void *)(code))

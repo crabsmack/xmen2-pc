@@ -142,10 +142,39 @@ Criteria: `xmen2disasm/docs/phases/P4-decomp.md`; check `uv run tools/phase.py 4
   the first event (entry, hardware read, SR write) that finds the program at P and unmasked,
   before it: exactly where the timed runner could have taken it. DMA completes at once. No Z80.
   A divergence (a read the reference didn't make, a passed interrupt) stops the run loudly.
-- `sync.csv` RAM CRC zeroes `[stack_low, A7)`. stack_low = lowest A7 over the corpus
-  (`XI` tracks `g_xa7min`; the trace JSON reports `a7_min` per run).
-- First result (TAS frames 1-600, 428 sync points): stepped == timed at every sync point on
-  RAM/VRAM/CRAM/VSRAM, with `AiScript_Set` already in C.
+- `sync.csv` RAM CRC zeroes the stack area `[stack_low, $FFC518)` (decision 6 below; it was
+  `[stack_low, A7)`). stack_low = $FFAF1A, the TAS's lowest A7 (`XI` tracks `g_xa7min`; the
+  trace JSON reports `a7_min` per run; the other 53 runs measured stay above it).
+- **Replay by position cannot reproduce the timed run** (2026-10-15). TAS 1-600 equal, then:
+  sync 661 RAM differs only in the live stack (stale interrupt-frame bytes in uninitialised
+  locals: the interrupt landed at another A7); sync 1189: the V-int was taken at WaitVBlank's
+  first instruction, before it clears `g_FrameUpdated`, the stepped run took it later
+  (fix: record `since`, take "immediate" interrupts right after their event); sync 1209: an
+  interrupt due before `Irq_Disable` was masked by the time of the next event (fix: check before
+  SR writes, `XSRP`); sync 1243: the V-int lands ~7 instructions after WaitVBlank returns and
+  the caller then sets a palette-dirty flag (take late = wrong); sync 2042: the same window, the
+  flag set 5 instructions BEFORE the V-int (take early = wrong; `until` and the nearer side
+  don't help). A TAS measurement (`GENESIS_SHARED_OUT`) finds 843 non-stack RAM bytes shared
+  between the handlers and the main program (palettes, scroll, camera, sprite table, DMA
+  queue, `g_VBlankCount`...), much of it reached through pointers, so no event C can reproduce
+  pins the V-int inside those windows. Asked the user (P4 doc: "if D2 can't be made equal,
+  stop and ask").
+- **Decisions (user, 2026-10-15; P4-decomp.md 5-8):** D2/D6 compare the stepped runner with C
+  against the same runner with all generated code (`XMen2SteppedGen`); the stepped runner is
+  frame-synchronous; the sync CRC masks the whole stack area; fragments are done with their
+  parent; the 7 never-executed asm functions may use `verify` with synthetic cases.
+- **Frame-synchronous stepped mode** (engine `exact_sched.c`, no replay log): one sync
+  interval per runner frame; at each sync point, after its row, the V-int (when enabled and
+  unmasked); pads from a per-sync input script (`xmen2check.py` builds it from the run's
+  `.input` and the reference frame of each sync point in the D1 `sync.csv`); DMA at once; VDP
+  status alternates VBLANK per read (clear first after a sync point, so every wait for the bit
+  ends: WaitVBlank sees clear, then set), FIFO empty, never DMA busy; H/V counter 0; the Z80
+  runs a frame at each sync point (its V-int line first) and 8 lines per bus release by the
+  68000. A run polling hardware 20M times without a sync point stops and names the function
+  (the first model, VBLANK set after one clear read, hung in `VDP_UpdateScroll`'s caller).
+  First result: TAS, 2,500 sync points, stepped (160 functions in C) == stepped-gen.
+- The replay mode (`GENESIS_REPLAY_IN`) stays for diagnostics, with `GENESIS_REPLAY_TRACE`
+  (events on both sides), `tools/replaydump.py`, `XMEN2_SYNC_DUMP` + `tools/syncdiff.py`.
 
 ### Hand-written C in the runners
 
@@ -194,20 +223,10 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
 
 ## Open questions
 
-- **Phase 4, for the user (definitions):**
-  1. *Fragments*: 460 of the disassembly's 3,620 functions are blocks split off a C function
-     (switch cases, `_partN`: no frame, only branched into). In C they are code inside their
-     parent; they can't be compiled or called on their own. Proposed: a fragment is done when
-     its parent is (its code named inside the parent's C, verified with the parent).
-  2. *Live stack at sync points*: once a function on the call chain at a sync point (Game_Main,
-     scene loops, wait loops) is C, its 68000 frame (return address, saved registers, locals)
-     no longer exists in emulated RAM, so the RAM CRC can't match. Proposed: mask the whole
-     68000 stack area [stack_low, $FFC518) at sync points, not only [stack_low, A7).
-  3. *Never-executed asm*: 7 asm functions (no MPW frame) are never executed by the corpus
-     (Nem_PutRowRam, Cyclops_ResetBeamFlicker, Boot_DrawText, Scaler_ExpandSource,
-     Scaler_ClearRows, Scaler_Resume, Scaler_RowBlocks); MPW C can't produce asm, so they can't
-     match. Proposed: allow `verify` with synthetic cases for them.
-
+- (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
+  and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
+- Phase 4 synthetic cases for `verify` (decision 8: the 7 never-executed asm functions) are not
+  built yet.
 - MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe
   reads the table from the JMP base (= the JMP's own extension word, one word early), seeds
   `base` as code and decodes the table as instructions. This is the source of the 26

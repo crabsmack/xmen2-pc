@@ -102,6 +102,22 @@ def generate(out: Path, mode: str) -> None:
          '    else if constexpr (std::is_pointer<R>::value) return 4;',
          '    else return (int)sizeof(R);',
          '}',
+         '/* Run one C function call, numbered so NO_RETURN_VALUE marks this call: xm::g_retnv',
+         '   says, right after, whether it ended where the original returns no value. */',
+         'template <class F> static inline auto call_c(F f)',
+         '{',
+         '    uint32_t saved = xm::g_frame, me = xm::g_frame = ++xm::g_seq;',
+         '    if constexpr (std::is_void<decltype(f())>::value) {',
+         '        f();',
+         '        xm::g_retnv = false;',
+         '        xm::g_frame = saved;',
+         '    } else {',
+         '        auto r = f();',
+         '        xm::g_retnv = xm::g_novalue == me;',
+         '        xm::g_frame = saved;',
+         '        return r;',
+         '    }',
+         '}',
          'template <class T> static inline void to_d0(T v)',
          '{',
          '    if constexpr (std::is_pointer<T>::value) xm_set_d0(xm::addr((const void *)v), 4);',
@@ -130,7 +146,7 @@ def generate(out: Path, mode: str) -> None:
                     L.append(f"    {call(f, 'hc_' + f['name'])};")
                     L.append("    xm::fn_leave(saved);")
                 else:
-                    L.append(f"    {f['ret']} r = {call(f, 'hc_' + f['name'])};")
+                    L.append(f"    {f['ret']} r = call_c([&] {{ return {call(f, 'hc_' + f['name'])}; }});")
                     L.append("    xm::fn_leave(saved);")
                     L.append("    return r;")
             L.append("}")
@@ -143,8 +159,13 @@ def generate(out: Path, mode: str) -> None:
                 L.append(f"    uint32_t saved; xm::fn_enter(0x{a:06X}u, &saved);")
             if ret_void:
                 L.append(f"    {target}({args});")
+                L.append("    xm::g_retnv = false;")
+            elif mode == "verify":
+                L.append(f"    auto r = call_c([&] {{ return {target}({args}); }});")
+                L.append("    if (!xm::g_retnv) to_d0(r);")
             else:
-                L.append(f"    to_d0({target}({args}));")
+                L.append(f"    auto r = {target}({args});")
+                L.append("    if (!xm::g_retnv) to_d0(r);")
             if mode == "verify":
                 L.append("    xm::fn_leave(saved);")
             L.append("    xm_slot_return();")

@@ -1943,9 +1943,9 @@ extern s16 g_ActWinLeft;
 #endif
 /* $FFCC4A ptr: the CAMERA object (class $1F4960), created by a scene via CAMERA +$0A New(desc, per-frame hook); scenes call its +$36/+$3A (CloneA2_InitCamera) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_Camera;
+extern PTR(Camera) g_Camera;
 #else
-#define g_Camera XM_G(PTR(void), 0xFFCC4A)
+#define g_Camera XM_G(PTR(Camera), 0xFFCC4A)
 #endif
 /* $FFCC4E word: out-of-view window bottom $1E0 (Actor_SpawnRecOutOfView) */
 #ifdef XMEN2_MPW
@@ -1995,11 +1995,12 @@ extern s16 g_SpawnWinTop;
 #else
 #define g_SpawnWinTop XM_G(s16, 0xFFCC5C)
 #endif
-/* $FFCC5E long: game frame counter (+1 per frame, +2 when -$38DE set; TAS RAM +60 per 60 frames) */
+/* $FFCC5E long: game frame counter (+1 per frame, +2 when -$38DE set; TAS RAM +60 per 60 frames).
+   Unsigned: every shift of it in the ROM is lsr, its compares bls (SavageBio_StateFireTip). */
 #ifdef XMEN2_MPW
-extern s32 g_FrameCounter;
+extern u32 g_FrameCounter;
 #else
-#define g_FrameCounter XM_G(s32, 0xFFCC5E)
+#define g_FrameCounter XM_G(u32, 0xFFCC5E)
 #endif
 /* $FFCC64 word: current scene, index into g_SceneTable (Cerebro screens and stage parts; TAS steps 0,1,2,... per screen) */
 #ifdef XMEN2_MPW
@@ -2177,15 +2178,15 @@ extern u8 g_SegTypeHooks[];
 #endif
 /* $FFCE2E array: floor-segment records, $14 bytes each ($FFCE2E) (Seg_Alloc, Seg_LoadList) */
 #ifdef XMEN2_MPW
-extern u8 g_Segs[];
+extern Seg g_Segs[];
 #else
-#define g_Segs XM_GA(u8, 0xFFCE2E)
+#define g_Segs XM_GA(Seg, 0xFFCE2E)
 #endif
 /* $FFE21A ptr: current hardware-sprite slot in g_SpriteTable while emitting (Spr_BeginFrame, Spr_Emit*) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SprWritePtr;
+extern PTR(HwSprite) g_SprWritePtr;
 #else
-#define g_SprWritePtr XM_G(PTR(void), 0xFFE21A)
+#define g_SprWritePtr XM_G(PTR(HwSprite), 0xFFE21A)
 #endif
 /* $FFE21E word: index of the current hardware-sprite slot (Spr_BeginFrame $51, Spr_EndFrame) */
 #ifdef XMEN2_MPW
@@ -2201,9 +2202,9 @@ extern s16 g_SprLast;
 #endif
 /* $FFE226 array: sprite attribute buffer ($FFE226, $280 bytes) DMAed to VRAM $F000 every V-blank (VDP_FlushDmaQueue) */
 #ifdef XMEN2_MPW
-extern u8 g_SpriteTable[];
+extern HwSprite g_SpriteTable[];
 #else
-#define g_SpriteTable XM_GA(u8, 0xFFE226)
+#define g_SpriteTable XM_GA(HwSprite, 0xFFE226)
 #endif
 /* $FFE4B6 byte: set by game code when g_SpriteTable/g_DmaQueue are ready; VDP_FrameUpdate flushes and clears it */
 #ifdef XMEN2_MPW
@@ -2309,15 +2310,15 @@ extern s16 g_BigBioSpitCount;
 #endif
 /* $FFE770 ptr: BIGBIO spit projectile pool (BigBio_ClassInit; BigBio_SpitSpawn/Free/UpdateAll) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BigBioSpitPool;
+extern PTR(BigBioSpit) g_BigBioSpitPool;
 #else
-#define g_BigBioSpitPool XM_G(PTR(void), 0xFFE770)
+#define g_BigBioSpitPool XM_G(PTR(BigBioSpit), 0xFFE770)
 #endif
 /* $FFE774 ptr: BIGBIO's 16 orb records (BigBio_ClassInit allocates; BigBio_PlaceOrbs, BigBio_UpdateOrbRing, BigBio_State*, BigBio_Draw) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BigBioOrbs;
+extern PTR(BigBioOrb) g_BigBioOrbs;
 #else
-#define g_BigBioOrbs XM_G(PTR(void), 0xFFE774)
+#define g_BigBioOrbs XM_G(PTR(BigBioOrb), 0xFFE774)
 #endif
 /* $FFE778 word: sprite-definition slot of Art_CloneA1Spr, the BIOFLAME graphics (CloneA1/CloneA2/SavageA2/SavageA3/SiberiaB1/XClone_LoadResources via SprDef_Add; BioFlame_Init, ToxicCan_DrawLeak) */
 #ifdef XMEN2_MPW

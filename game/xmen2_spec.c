@@ -87,12 +87,13 @@ extern uint64_t g_m68ki_insn_total;
  * Every main-program entry to VDP_WaitVBlank is a sync point: the logic of a
  * game frame is done. With XMEN2_SYNC_CSV=<path> each one appends
  *   sync,frame,ram_crc32,vram_crc32,cram_crc32,vsram_crc32
- * with the frame CRCs' definitions, except that RAM in [stack_low, A7) is
- * zeroed: the dead stack below the stack pointer, whose contents depend on
- * where interrupts landed. stack_low is the lowest A7 the timed runner sees
- * over the whole corpus (measured: XMEN2_STACK_LOW overrides it for that). */
+ * with the frame CRCs' definitions, except that RAM in [stack_low, $FFC518) is zeroed: the
+ * whole 68000 stack area, from the lowest A7 the timed runner sees over the corpus to the reset
+ * SSP (P4-decomp.md decision 6: its contents depend on where interrupts landed, also above A7,
+ * and hand-written C keeps no 68000 frames). XMEN2_STACK_LOW overrides stack_low (measuring). */
 #define XMEN2_SYNC_PC   0x1FDC5Cu   /* VDP_WaitVBlank */
 #define XMEN2_STACK_LOW 0x00FFAF1Au  /* lowest A7 of the corpus: the TAS (docs/NOTES.md) */
+#define XMEN2_STACK_TOP 0x00FFC518u  /* the reset SSP */
 
 static FILE    *s_sync;
 static uint32_t s_stack_low = XMEN2_STACK_LOW;
@@ -106,9 +107,9 @@ int xmen2_verify_entry(uint32_t addr);                    /* game/runtime/verify
 static uint32_t ram_crc_masked(void)
 {
     static const uint8_t zeros[256];
-    uint32_t lo = s_stack_low & 0xFFFFu, hi = g_cpu.A[7] & 0xFFFFu;
-    if ((s_stack_low & 0xFF0000u) != 0xFF0000u || (g_cpu.A[7] & 0xFF0000u) != 0xFF0000u || hi < lo)
-        hi = lo;                                     /* nothing below A7 to mask */
+    uint32_t lo = s_stack_low & 0xFFFFu, hi = XMEN2_STACK_TOP & 0xFFFFu;
+    if ((s_stack_low & 0xFF0000u) != 0xFF0000u || hi < lo)
+        hi = lo;                                     /* stack_low not measured: mask nothing */
     uint32_t c = crc32_update(0xFFFFFFFFu, g_ram, lo);
     for (uint32_t n = hi - lo; n; ) {
         uint32_t k = n > sizeof zeros ? (uint32_t)sizeof zeros : n;
@@ -132,8 +133,8 @@ static void maybe_dump_sync(uint64_t sync)
         if (n == sync) {
             static uint8_t ram[0x10000];
             memcpy(ram, g_ram, sizeof ram);
-            uint32_t lo = s_stack_low & 0xFFFFu, hi = g_cpu.A[7] & 0xFFFFu;
-            if (hi > lo) memset(ram + lo, 0, hi - lo);
+            uint32_t lo = s_stack_low & 0xFFFFu, hi = XMEN2_STACK_TOP & 0xFFFFu;
+            if ((s_stack_low & 0xFF0000u) == 0xFF0000u && hi > lo) memset(ram + lo, 0, hi - lo);
             char path[600];
             snprintf(path, sizeof path, "%s/s%06llu.ram", dir, n);
             FILE *f = fopen(path, "wb");

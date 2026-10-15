@@ -39,6 +39,7 @@ uint32_t xmen2_stack_low(void);
 }
 
 struct XmVerifyFn { uint32_t addr, end; void (*slot)(void); void (*gen)(void); int ret_bytes; };
+namespace xm { extern bool g_retnv; }   /* the C call just made returned no value (handc_rt.cpp) */
 extern const XmVerifyFn xm_verify_fns[];
 extern const int xm_verify_fn_count;
 
@@ -222,7 +223,7 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
     }
     if (bad.empty() && rc.A[7] != r1.A[7]) bad = describe("A7", 7, r1.A[7], rc.A[7], call);
     if (bad.empty() && xrtsc != xrts1) bad = describe("return to", 0, xrts1, xrtsc, call);
-    if (bad.empty() && fn->ret_bytes) {
+    if (bad.empty() && fn->ret_bytes && !xm::g_retnv) {   /* no value returned: d0 is not a result */
         uint32_t m = fn->ret_bytes >= 4 ? 0xFFFFFFFFu : fn->ret_bytes == 2 ? 0xFFFFu : 0xFFu;
         if ((r1.D[0] & m) != (rc.D[0] & m)) bad = describe("d0", 0, r1.D[0] & m, rc.D[0] & m, call);
     }
