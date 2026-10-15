@@ -3604,7 +3604,8 @@ addr,name,end,purpose
 1FE434,Z80_DriverResume,1FE44E,clear the driver hold flag set by Z80_DriverPause
 1FE44E,Z80_LoadDriver,1FE48E,"hold the Z80 in reset, copy the sound driver into Z80 RAM and zero the rest"
 1FE48E,Z80_ResetRun,1FE4B6,pulse Z80 reset and release the bus so the freshly loaded driver starts
-1FE4B6,Z80_BusAcquire,1FE4FE,stop the Z80 and return to the caller holding its bus (release via Z80_BusRelease)
+1FE4B6,Z80_BusAcquire,1FE4EC,stop the Z80 and return to the caller holding its bus (release via Z80_BusRelease)
+1FE4EC,Z80_BusRelease,1FE4FE,"give the Z80 its bus back and undo Z80_BusAcquire's frame, returning from the function that acquired it"
 1FE4FE,Snd_PutCmd,1FE508,append a command (marker $FF then command byte d0) to the Z80 command ring; falls into Snd_PutByte
 1FE50A,Snd_PutByte,1FE518,append one byte to the Z80 command ring and publish the new write index
 1FE518,Snd_SendByte,1FE526,send one raw byte to the sound driver command ring

@@ -6,7 +6,7 @@
  * self: the clone; nothing happens unless it locked the arena. */
 #include "xmen2.h"
 
-#define g_CloneArenaFocus	(*(PTR(Actor) *)g_SceneVar3B30)	/* scene variable: object the arena camera follows */
+#define g_CloneArenaFocus	g_SceneVar3B30	/* scene variable: object the arena camera follows */
 #define g_CloneFlags		(*(s16 *)g_SceneVar3B08)	/* scene variable: 1 arena locked, 2 reward given, $100 << type killed by its own character */
 #define g_CloneBufSize		(*(s16 *)g_SceneVar3B04)	/* scene variable: size of the clone-maker buffer */
 

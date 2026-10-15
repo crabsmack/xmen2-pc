@@ -1,0 +1,16 @@
+# Boot_DrawText: only the region-check screen calls it (a wrong-region console), which the
+# corpus never shows. Its own inputs, as Boot_RegionCheck sets them: the "DEVELOPED FOR USE
+# ONLY WITH" message at column 4, row 8, the VDP ports in a4/a5.
+at any
+case developed
+reg a0 = $1F45FC
+reg d0 = 4
+reg d1 = 8
+reg a4 = $C00000
+reg a5 = $C00004
+case origin
+reg a0 = $1F45FC
+reg d0 = 0
+reg d1 = 0
+reg a4 = $C00000
+reg a5 = $C00004

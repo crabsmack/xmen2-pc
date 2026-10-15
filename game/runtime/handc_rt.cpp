@@ -56,6 +56,27 @@ uint32_t call_slots(uint32_t a, const uint32_t *slots, int n)
     return g_cpu.D[0];
 }
 
+/* For hand-written 68000 with odd conventions (asm_conv.cpp): call the code at `a` with a
+   return address to C pushed (call_raw) or none (jump_raw: the stack already holds one, e.g. a
+   frame built for code entered by jmp), and check it came back to C. A7 is the caller's
+   business. */
+void call_raw(uint32_t a)
+{
+    recomp_push_return(RET_FROM_C);
+    recomp_call_addr(a & 0xFFFFFFu);
+    if (g_xrts != RET_FROM_C)
+        fatal("call of $%06X from C returned to $%06X", (unsigned)(a & 0xFFFFFFu), (unsigned)g_xrts);
+}
+
+void jump_raw(uint32_t a)
+{
+    recomp_call_addr(a & 0xFFFFFFu);
+    if (g_xrts != RET_FROM_C)
+        fatal("jump to $%06X from C returned to $%06X", (unsigned)(a & 0xFFFFFFu), (unsigned)g_xrts);
+}
+
+uint32_t ret_from_c(void) { return RET_FROM_C; }
+
 uint32_t sp_reserve(uint32_t bytes)
 {
     g_cpu.A[7] -= (bytes + 1u) & ~1u;
@@ -63,6 +84,22 @@ uint32_t sp_reserve(uint32_t bytes)
 }
 
 void sp_restore(uint32_t a7) { g_cpu.A[7] = a7; }
+
+}  /* namespace xm */
+
+/* xmen2_mem.h "The CPU itself": SR and A7 for the C of hand-written 68000 functions. A write of
+   SR is what the generated code does for `move to SR`: the stepped runner first takes a logged
+   interrupt still due under the old mask, the timed one checks for interrupts after it. */
+unsigned short CPU_GetSR(void) { return g_cpu.SR; }
+void CPU_SetSR(unsigned short sr)
+{
+    x68k_sr_pre();
+    g_cpu.SR = sr;
+    x68k_sr_written();
+}
+unsigned long CPU_GetSP(void) { return g_cpu.A[7]; }
+
+namespace xm {
 
 /* NO_RETURN_VALUE / RETURN_NO_VALUE (xmen2_macros.h): the C function ended on a path where the
    original returns no value; its slot entry then leaves d0 alone and verify doesn't compare it. */
@@ -81,6 +118,38 @@ extern "C" void xm_set_d0(uint32_t v, int bytes)
     if (bytes >= 4)      g_cpu.D[0] = v;
     else if (bytes == 2) g_cpu.D[0] = (g_cpu.D[0] & 0xFFFF0000u) | (v & 0xFFFFu);
     else                 g_cpu.D[0] = (g_cpu.D[0] & 0xFFFFFF00u) | (v & 0xFFu);
+}
+
+/* Register conventions of hand-written 68000 (bridge.py regs(...)): r = 0-7 for d0-d7, 8-15 for
+   a0-a7. A data register written narrower than 4 bytes keeps its upper bytes, as .w/.b do. */
+extern "C" uint32_t xm_reg(int r)
+{
+    return r < 8 ? g_cpu.D[r] : g_cpu.A[r - 8];
+}
+
+extern "C" void xm_set_reg(int r, uint32_t v, int bytes)
+{
+    if (r >= 8) {   /* an address register is always written whole (word writes sign-extend) */
+        g_cpu.A[r - 8] = bytes == 2 ? (uint32_t)(int32_t)(int16_t)v : v;
+        return;
+    }
+    uint32_t &d = g_cpu.D[r];
+    if (bytes >= 4)      d = v;
+    else if (bytes == 2) d = (d & 0xFFFF0000u) | (v & 0xFFFFu);
+    else                 d = (d & 0xFFFFFF00u) | (v & 0xFFu);
+}
+
+/* d0-d7, a0-a6 (A7 is the call's own business). */
+extern "C" void xm_regs_save(uint32_t *saved)
+{
+    for (int i = 0; i < 8; i++) saved[i] = g_cpu.D[i];
+    for (int i = 0; i < 7; i++) saved[8 + i] = g_cpu.A[i];
+}
+
+extern "C" void xm_regs_restore(const uint32_t *saved)
+{
+    for (int i = 0; i < 8; i++) g_cpu.D[i] = saved[i];
+    for (int i = 0; i < 7; i++) g_cpu.A[i] = saved[8 + i];
 }
 
 /* The slot entry's RTS: pop the return address into g_xrts, as generated code does. */

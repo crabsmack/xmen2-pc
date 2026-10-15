@@ -214,6 +214,43 @@ access sequence; put the generated result back. Nested calls run generated code 
 Checks every call until 2,000 passed, then 1 in 64. Negative test: a planted bug in
 `AiScript_Set` gives 45/45 mismatches ("RAM FF5107: generated 00, C 01").
 
+Additions (2026-10-15, the asm functions):
+- **Tail calls.** A `jmp` to another function is a pending tail call in the caller's dispatch
+  frame (`recomp_tail_call`); the generated run now goes through `recomp_call_func`, which has
+  its own frame and drains it, so a function ending in a jmp (Math_LDivS) is compared after
+  the jump ran. Before, such calls compared a half-run function (A7 off by 4).
+- **Nesting.** A function with C called inside another's generated run is tested there too
+  (a stack of up to 4 test contexts; hardware accesses of a nested generated run are part of
+  every enclosing one). Before, a callee only ever called inside a tested caller was never
+  tested (Math_DivModS inside Math_LDivS).
+- **Synthetic cases** (`game/verify/<ADDR>.syn`, `xmen2check.py verify` passes the directory):
+  mutate the entry state of the function's first top-level corpus call (or, `at any`, of the
+  first call of any function) and compare both versions, untimed, hardware reads supplied by
+  the case (default 0), writes captured. For paths the corpus never takes, calls the corpus
+  can only make with an interrupt in the middle (VDP_ClearVram's DMA wait), and functions it
+  never runs. They count as checked calls and add coverage.
+- **Register conventions** of the 93 hand-written 68000 functions (xmen2_funcs.h tags, read by
+  bridge.py): `regs(d0,d1)->d0` (parameters in registers, result register), `&d1` (a pointer
+  parameter in and out of a register), `a0=$A00036` (a constant input the C doesn't take),
+  `@8(a6)` (an argument of the caller's frame: Intro_WaitFrame), `clobbers(...)` (callee-saved
+  registers left changed), `conv` (frame/stack effects: hand-written adapters in
+  `game/runtime/asm_conv.cpp`; Z80_BusAcquire builds a frame in its caller that
+  Z80_BusRelease, reached by jmp, unwinds). verify compares an asm function's result
+  registers and SR's system byte; a register convention's other scratch registers are free.
+  CPU-only operations have names in xmen2_mem.h: `CPU_GetSR/SetSR` (SR writes go through the
+  engine's `x68k_sr_pre/written` like generated `move to SR`), `CPU_GetSP`, `ADDR68(p)` /
+  `AT68(T, a)` (pointer <-> 68000 address number, for DMA sources), byte ports.
+- **Z80_BusRelease** ($1FE4EC) is its own function (xmen2disasm split it out of
+  Z80_BusAcquire; 3,621 functions): ten Snd_* functions jmp to it, and inside Z80_BusAcquire's
+  range its instructions could never be covered by Z80_BusAcquire's own calls.
+- **Builds while C is being written**: `xmen2check.py build` compiles a snapshot of game/c and
+  game/include (`build/handc_src`), and bridge.py leaves out a file whose definition doesn't fit
+  its prototype (caught mid-edit), so concurrent edits can't mix two states into one link.
+- Two PC traps the shadow tests found: `(void)IO_DATA(1);` performs no read on PC (a void cast
+  never calls the accessor's conversion; assign it), and an object without a sprite definition
+  makes the 68000 read the vector table where the host would dereference null
+  (`(SprDef *)Vectors` under `#ifndef XMEN2_MPW`).
+
 ### MPW matching from the game repo
 
 `xmen2disasm tools/cc.py --match-recomp ../XMen2Recomp --json` compiles each game/c file
@@ -225,8 +262,6 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
 
 - (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
   and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
-- Phase 4 synthetic cases for `verify` (decision 8: the 7 never-executed asm functions) are not
-  built yet.
 - MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe
   reads the table from the JMP base (= the JMP's own extension word, one word early), seeds
   `base` as code and decodes the table as instructions. This is the source of the 26

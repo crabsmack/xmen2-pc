@@ -7,7 +7,7 @@
  * Without a BIOBALLS object only the step is taken. */
 #include "xmen2.h"
 
-#define g_CloneArenaFocus	(*(PTR(Actor) *)g_SceneVar3B30)	/* scene variable: object the arena camera follows */
+#define g_CloneArenaFocus	g_SceneVar3B30	/* scene variable: object the arena camera follows */
 
 void XClone_ActLeaveBalls(XClone *self)
 {

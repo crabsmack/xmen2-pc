@@ -3607,6 +3607,7 @@ extra = [
   0x1FE44E,  # Z80_LoadDriver
   0x1FE48E,  # Z80_ResetRun
   0x1FE4B6,  # Z80_BusAcquire
+  0x1FE4EC,  # Z80_BusRelease
   0x1FE4FE,  # Snd_PutCmd
   0x1FE50A,  # Snd_PutByte
   0x1FE518,  # Snd_SendByte

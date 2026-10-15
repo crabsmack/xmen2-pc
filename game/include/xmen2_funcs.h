@@ -277,55 +277,55 @@ void AvalonA3_InstallHooks(void);	/* $02CD38 */
 void AvalonA3_EmptyStub1(void);	/* $02CD48 */
 void AvalonA3_RunScene(void);	/* $02CD50 */
 long Exodus_GetSize(void);	/* $02CD96 */
-long Exodus_StateStart(void *);	/* $02CDA4 */
-long Exodus_StateDescend(void *);	/* $02CDCA */
-long Exodus_StateWaitLanded(void *);	/* $02CE1A */
-void Exodus_NextPattern(void *);	/* $02CE52 */
+short Exodus_StateStart(Exodus *self);	/* $02CDA4 */
+short Exodus_StateDescend(Exodus *self);	/* $02CDCA */
+short Exodus_StateWaitLanded(Exodus *self);	/* $02CE1A */
+void Exodus_NextPattern(Exodus *self);	/* $02CE52 */
 void Exodus_NextPattern_part1(void);	/* $02CE94 fragment */
 void Exodus_NextPattern_part2(void);	/* $02CEBC fragment */
 void Exodus_NextPattern_part3(void);	/* $02CEF6 fragment */
-long Exodus_StateNextAttack(void *);	/* $02CF04 */
+short Exodus_StateNextAttack(Exodus *self);	/* $02CF04 */
 void Exodus_StateNextAttack_part1(void);	/* $02CF34 fragment */
 void Exodus_StateNextAttack_part2(void);	/* $02CF64 fragment */
 void Exodus_StateNextAttack_part3(void);	/* $02CFE8 fragment */
 void Exodus_StateNextAttack_part4(void);	/* $02CFF4 fragment */
 void Exodus_StateNextAttack_part5(void);	/* $02D0B8 fragment */
 void Exodus_StateNextAttack_part6(void);	/* $02D13E fragment */
-void Exodus_HurtPlayer(void *);	/* $02D146 */
-long Exodus_AtkBlast17(void *);	/* $02D1A6 */
-long Exodus_AtkBlast2(void *);	/* $02D21C */
-long Exodus_AtkBlast3(void *);	/* $02D27A */
-long Exodus_AtkBlast4(void *);	/* $02D2D8 */
-long Exodus_AtkSwoopA(void *);	/* $02D336 */
-long Exodus_AtkSwoopB(void *);	/* $02D372 */
-long Exodus_StateSwoopStart(void *);	/* $02D3AE */
-long Exodus_StateSwoopToY(void *);	/* $02D456 */
-long Exodus_StateSwoopBlast(void *);	/* $02D4BA */
-long Exodus_StateRiseStart(void *);	/* $02D522 */
-long Exodus_StateRise(void *);	/* $02D552 */
-long Exodus_StateRiseUntil(void *);	/* $02D5EA */
-long Exodus_StateRiseEnd(void *);	/* $02D61C */
-long Exodus_StateVulnerable(void *);	/* $02D658 */
-long Exodus_StateEndVulnerable(void *);	/* $02D6D8 */
-void Exodus_StateWaitBlastsGone(void *);	/* $02D720 */
-void Exodus_NopStatic(void);	/* $02D756 */
-void Exodus_InitSpawnRec(void *, long);	/* $02D75E */
-void Exodus_ClassInit(long);	/* $02D78E */
-void Exodus_Nop66(void *);	/* $02D7B2 */
-void Exodus_Move(void *);	/* $02D7C8 */
-void Exodus_Draw(void *);	/* $02D91C */
-void Exodus_HurtOnHotTiles(void *);	/* $02D96C */
-void Exodus_Update(void *);	/* $02DA16 */
-void Exodus_TakeDamage(void *, long, long, char);	/* $02DADE */
+void Exodus_HurtPlayer(XPlayer *player);	/* $02D146 */
+short Exodus_AtkBlast17(Exodus *self);	/* $02D1A6 */
+short Exodus_AtkBlast2(Exodus *self);	/* $02D21C */
+short Exodus_AtkBlast3(Exodus *self);	/* $02D27A */
+short Exodus_AtkBlast4(Exodus *self);	/* $02D2D8 */
+short Exodus_AtkSwoopA(Exodus *self);	/* $02D336 */
+short Exodus_AtkSwoopB(Exodus *self);	/* $02D372 */
+short Exodus_StateSwoopStart(Exodus *self);	/* $02D3AE */
+short Exodus_StateSwoopToY(Exodus *self);	/* $02D456 */
+short Exodus_StateSwoopBlast(Exodus *self);	/* $02D4BA */
+short Exodus_StateRiseStart(Exodus *self);	/* $02D522 */
+short Exodus_StateRise(Exodus *self);	/* $02D552 */
+short Exodus_StateRiseUntil(Exodus *self);	/* $02D5EA */
+short Exodus_StateRiseEnd(Exodus *self);	/* $02D61C */
+short Exodus_StateVulnerable(Exodus *self);	/* $02D658 */
+short Exodus_StateEndVulnerable(Exodus *self);	/* $02D6D8 */
+short Exodus_StateWaitBlastsGone(Exodus *self);	/* $02D720 */
+void Exodus_NopStatic(Exodus *self);	/* $02D756 */
+void Exodus_InitSpawnRec(SpawnRec *rec, Placement *pl);	/* $02D75E */
+void Exodus_ClassInit(Exodus *self);	/* $02D78E */
+void Exodus_Nop66(Exodus *self);	/* $02D7B2 */
+void Exodus_Move(Exodus *self);	/* $02D7C8 */
+void Exodus_Draw(Exodus *self);	/* $02D91C */
+void Exodus_HurtOnHotTiles(XPlayer *player);	/* $02D96C */
+void Exodus_Update(Exodus *self);	/* $02DA16 */
+void Exodus_TakeDamage(Exodus *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $02DADE */
 void Exodus_TakeDamage_part1(void);	/* $02DB62 fragment */
 void Exodus_TakeDamage_part2(void);	/* $02DB70 fragment */
 void Exodus_TakeDamage_part3(void);	/* $02DB84 fragment */
 void Exodus_TakeDamage_part4(void);	/* $02DB8E fragment */
 void Exodus_TakeDamage_part5(void);	/* $02DB98 fragment */
-void Exodus_Init(void *, long, long, void *);	/* $02DBCE */
+void Exodus_Init(Exodus *self, long x, long y, Placement *pl);	/* $02DBCE */
 void Exodus_StartPsiFlash(void);	/* $02DC80 */
-long Exodus_DropPlayerFromSeg(void *, long);	/* $02DC9E */
-void Exodus_BreakFloorTiles(char);	/* $02DCE4 */
+void Exodus_DropPlayerFromSeg(XPlayer *player, Seg *seg);	/* $02DC9E */
+void Exodus_BreakFloorTiles(char left);	/* $02DCE4 */
 void Exodus_CheckFloorHit(void);	/* $02DDDC */
 long ExodusBlast_GetSize(void);	/* $02DF96 */
 long ExodusBlast_StateStart(void *);	/* $02DFA4 */
@@ -393,63 +393,63 @@ void AvalonA4_EmptyStub2(void);	/* $035A7E */
 void AvalonA4_InstallHooks(void);	/* $035A86 */
 void AvalonA4_RunScene(void);	/* $035A9E */
 long MagnetoBoss_GetSize(void);	/* $035BDA */
-long MagnetoBoss_RubbleTimer(void *, long);	/* $035BE8 */
-void MagnetoBoss_SpawnRubble(short, short, short, short, char, short, short);	/* $035DC2 */
-void MagnetoBoss_Nop66(void *);	/* $03603E */
-void MagnetoBoss_Nop6A(void);	/* $036054 */
-void MagnetoBoss_ClassInit(long, short);	/* $03605C */
-void MagnetoBoss_Init(void *, long, long, void *);	/* $0360A6 */
-void MagnetoBoss_Activate(void *);	/* $03628E */
-void MagnetoBoss_Update(void *);	/* $0363A2 */
-void MagnetoBoss_Move(void *, short);	/* $03645C */
+void MagnetoBoss_RubbleTimer(MagnetoRubble *p, Timer *t);	/* $035BE8 */
+void MagnetoBoss_SpawnRubble(short col, short row0, short row1, short perRow, char mirror, short floorY, short tile);	/* $035DC2 */
+void MagnetoBoss_Nop66(MagnetoBoss *self);	/* $03603E */
+void MagnetoBoss_Nop6A(MagnetoBoss *self);	/* $036054 */
+void MagnetoBoss_ClassInit(MagnetoBoss *self, short classIndex);	/* $03605C */
+void MagnetoBoss_Init(MagnetoBoss *self, long x, long y, Placement *pl);	/* $0360A6 */
+void MagnetoBoss_Activate(MagnetoBoss *self);	/* $03628E */
+void MagnetoBoss_Update(MagnetoBoss *self);	/* $0363A2 */
+void MagnetoBoss_Move(MagnetoBoss *self, short n);	/* $03645C */
 void MagnetoBoss_Move_part1(void);	/* $03653E fragment */
 void MagnetoBoss_Move_part2(void);	/* $0366E6 fragment */
-void MagnetoBoss_TakeDamage(void *, long, char, char);	/* $036730 */
-long MagnetoBoss_Return0V6E(void);	/* $0367B6 */
-long MagnetoBoss_SmashSegment(void *, short);	/* $0367C0 */
-long MagnetoBoss_SmashSegmentStaggered(void *, short);	/* $0368D0 */
-long MagnetoBoss_CrackWall(short, short, short, char);	/* $0369F0 */
-void MagnetoBoss_EnterSpinState(void *);	/* $036AC6 */
-void MagnetoBoss_EnterOutroState(void *);	/* $036B10 */
-short MagnetoBoss_DirFromTo(void *, void *);	/* $036B34 */
-long MagnetoBoss_StateIntroStart(void *);	/* $036C0A */
-long MagnetoBoss_StateIntroShake1(void *);	/* $036C58 */
-void MagnetoBoss_StateIntroWait1(void *);	/* $036C9E */
-long MagnetoBoss_StateIntroShake2(void *);	/* $036CCA */
-void MagnetoBoss_StateIntroWait2(void *);	/* $036D10 */
-long MagnetoBoss_StateIntroShake3(void *);	/* $036D3C */
-void MagnetoBoss_StateIntroWait3(void *);	/* $036DC4 */
-long MagnetoBoss_StateBurstIn(void *);	/* $036DF0 */
-long MagnetoBoss_Zone0Setup(void *);	/* $036E82 */
-void MagnetoBoss_StateZone0(void *);	/* $036EC0 */
-long MagnetoBoss_Zone1Setup(void *);	/* $036F50 */
-long MagnetoBoss_StateZone1(void *);	/* $036F9A */
-long MagnetoBoss_Zone1Exit(void *);	/* $0370CC */
-long MagnetoBoss_StateFlyToSmash1(void *);	/* $0370FE */
-long MagnetoBoss_Zone2Setup(void *);	/* $03713C */
-void MagnetoBoss_StateZone2Approach(void *);	/* $037180 */
-long MagnetoBoss_Zone2Hover(void *);	/* $037210 */
-long MagnetoBoss_StateZone2(void *);	/* $03725A */
-long MagnetoBoss_Zone2Exit(void *);	/* $03738C */
-long MagnetoBoss_StateFlyToSmash2(void *);	/* $0373BE */
-long MagnetoBoss_StateSmash2b(void *);	/* $0373FE */
-long MagnetoBoss_Zone4Setup(void *);	/* $03742E */
-void MagnetoBoss_StateZone4Approach(void *);	/* $037472 */
-long MagnetoBoss_StateResumeShoot(void *);	/* $03750A */
-long MagnetoBoss_Zone4Hover(void *);	/* $03755A */
-long MagnetoBoss_StateZone4(void *);	/* $0375A4 */
-long MagnetoBoss_Zone4Exit(void *);	/* $0376C2 */
-long MagnetoBoss_StateBreakWall(void *);	/* $037700 */
-long MagnetoBoss_StateFlyToFinal(void *);	/* $037772 */
-void MagnetoBoss_StateWaitCamera(void *);	/* $0377D6 */
-long MagnetoBoss_FinalSetup(void *);	/* $03781C */
-void MagnetoBoss_StateFinalFight(void *);	/* $03784E */
-long MagnetoBoss_StateShoot(void *);	/* $0378A8 */
-void MagnetoBoss_StateAimShoot(void *);	/* $037924 */
-void MagnetoBoss_StateShootRecover(void *);	/* $03795E */
-void MagnetoBoss_StateSpin(void *);	/* $03799C */
-long MagnetoBoss_StateOutro(void *);	/* $0379CA */
-void MagnetoBoss_StateOutroLoop(long);	/* $037A00 */
+void MagnetoBoss_TakeDamage(MagnetoBoss *self, Actor *attacker, char type, char damage);	/* $036730 */
+long MagnetoBoss_Return0V6E(MagnetoBoss *self);	/* $0367B6 */
+void MagnetoBoss_SmashSegment(MagnetoBoss *self, short col);	/* $0367C0 */
+void MagnetoBoss_SmashSegmentStaggered(MagnetoBoss *self, short col);	/* $0368D0 */
+char MagnetoBoss_CrackWall(short col, short row0, short row1, char instant);	/* $0369F0 */
+void MagnetoBoss_EnterSpinState(MagnetoBoss *self);	/* $036AC6 */
+void MagnetoBoss_EnterOutroState(MagnetoBoss *self);	/* $036B10 */
+short MagnetoBoss_DirFromTo(MagnetoBoss *self, Actor *t);	/* $036B34 */
+short MagnetoBoss_StateIntroStart(MagnetoBoss *self);	/* $036C0A */
+short MagnetoBoss_StateIntroShake1(MagnetoBoss *self);	/* $036C58 */
+short MagnetoBoss_StateIntroWait1(MagnetoBoss *self);	/* $036C9E */
+short MagnetoBoss_StateIntroShake2(MagnetoBoss *self);	/* $036CCA */
+short MagnetoBoss_StateIntroWait2(MagnetoBoss *self);	/* $036D10 */
+short MagnetoBoss_StateIntroShake3(MagnetoBoss *self);	/* $036D3C */
+short MagnetoBoss_StateIntroWait3(MagnetoBoss *self);	/* $036DC4 */
+short MagnetoBoss_StateBurstIn(MagnetoBoss *self);	/* $036DF0 */
+short MagnetoBoss_Zone0Setup(MagnetoBoss *self);	/* $036E82 */
+short MagnetoBoss_StateZone0(MagnetoBoss *self);	/* $036EC0 */
+short MagnetoBoss_Zone1Setup(MagnetoBoss *self);	/* $036F50 */
+short MagnetoBoss_StateZone1(MagnetoBoss *self);	/* $036F9A */
+short MagnetoBoss_Zone1Exit(MagnetoBoss *self);	/* $0370CC */
+short MagnetoBoss_StateFlyToSmash1(MagnetoBoss *self);	/* $0370FE */
+short MagnetoBoss_Zone2Setup(MagnetoBoss *self);	/* $03713C */
+short MagnetoBoss_StateZone2Approach(MagnetoBoss *self);	/* $037180 */
+short MagnetoBoss_Zone2Hover(MagnetoBoss *self);	/* $037210 */
+short MagnetoBoss_StateZone2(MagnetoBoss *self);	/* $03725A */
+short MagnetoBoss_Zone2Exit(MagnetoBoss *self);	/* $03738C */
+short MagnetoBoss_StateFlyToSmash2(MagnetoBoss *self);	/* $0373BE */
+short MagnetoBoss_StateSmash2b(MagnetoBoss *self);	/* $0373FE */
+short MagnetoBoss_Zone4Setup(MagnetoBoss *self);	/* $03742E */
+short MagnetoBoss_StateZone4Approach(MagnetoBoss *self);	/* $037472 */
+short MagnetoBoss_StateResumeShoot(MagnetoBoss *self);	/* $03750A */
+short MagnetoBoss_Zone4Hover(MagnetoBoss *self);	/* $03755A */
+short MagnetoBoss_StateZone4(MagnetoBoss *self);	/* $0375A4 */
+short MagnetoBoss_Zone4Exit(MagnetoBoss *self);	/* $0376C2 */
+short MagnetoBoss_StateBreakWall(MagnetoBoss *self);	/* $037700 */
+short MagnetoBoss_StateFlyToFinal(MagnetoBoss *self);	/* $037772 */
+short MagnetoBoss_StateWaitCamera(MagnetoBoss *self);	/* $0377D6 */
+short MagnetoBoss_FinalSetup(MagnetoBoss *self);	/* $03781C */
+short MagnetoBoss_StateFinalFight(MagnetoBoss *self);	/* $03784E */
+short MagnetoBoss_StateShoot(MagnetoBoss *self);	/* $0378A8 */
+short MagnetoBoss_StateAimShoot(MagnetoBoss *self);	/* $037924 */
+void MagnetoBoss_StateShootRecover(MagnetoBoss *self);	/* $03795E */
+void MagnetoBoss_StateSpin(MagnetoBoss *self);	/* $03799C */
+short MagnetoBoss_StateOutro(MagnetoBoss *self);	/* $0379CA */
+void MagnetoBoss_StateOutroLoop(MagnetoBoss *self);	/* $037A00 */
 long ThronePhone_GetSize(void);	/* $037A96 */
 void ThronePhone_Nop66(void *);	/* $037AA4 */
 void ThronePhone_Nop6A(void);	/* $037ABA */
@@ -542,82 +542,82 @@ void Apocalypse_ScriptBomb(void);	/* $04B1A0 fragment */
 void Apocalypse_ScriptB(void);	/* $04B1A6 fragment */
 void Apocalypse_ScriptC(void);	/* $04B1C2 fragment */
 long Apocalypse_GetSize(void);	/* $04B336 */
-void Apocalypse_SelectBombPattern(void *);	/* $04B344 */
+void Apocalypse_SelectBombPattern(Apocalypse *self);	/* $04B344 */
 void Apocalypse_SelectBombPattern_part1(void);	/* $04B374 fragment */
 void Apocalypse_SelectBombPattern_part2(void);	/* $04B3A6 fragment */
 void Apocalypse_SelectBombPattern_part3(void);	/* $04B3B0 fragment */
 void Apocalypse_NopStatic1(void);	/* $04B3C6 */
-void Apocalypse_MoveTo(void *, long, long, long);	/* $04B3CE */
-void Apocalypse_StartJitter(void *);	/* $04B462 */
-long Apocalypse_StateEntrance(void *);	/* $04B52E */
-void Apocalypse_StateWaitEntrance(void *);	/* $04B59E */
-long Apocalypse_ActFlyOff(void *);	/* $04B616 */
-void Apocalypse_StateFlyOffWait(void *);	/* $04B654 */
+void Apocalypse_MoveTo(Apocalypse *self, long x, long y, long shift);	/* $04B3CE */
+void Apocalypse_StartJitter(Apocalypse *self);	/* $04B462 */
+short Apocalypse_StateEntrance(Apocalypse *self);	/* $04B52E */
+void Apocalypse_StateWaitEntrance(Apocalypse *self);	/* $04B59E */
+short Apocalypse_ActFlyOff(Apocalypse *self);	/* $04B616 */
+void Apocalypse_StateFlyOffWait(Apocalypse *self);	/* $04B654 */
 void Apocalypse_NopStatic2(void);	/* $04B6E2 */
-void Apocalypse_ActStartMainScript(void *);	/* $04B6EA */
-long Apocalypse_ActStartBombs(void *);	/* $04B73A */
-long Apocalypse_StateDropBombs(void *);	/* $04B790 */
-void Apocalypse_StateBombsDone(void *);	/* $04B848 */
-long Apocalypse_ActOrbitFrom180(void *);	/* $04B996 */
-long Apocalypse_ActOrbitFrom0(void *);	/* $04B9D0 */
-long Apocalypse_StateOrbitStep(void *);	/* $04BA08 */
-void Apocalypse_StateWaitArrive(void *);	/* $04BA9C */
-long Apocalypse_ActRotateTo0(void *);	/* $04BAF8 */
-void Apocalypse_StateRotateTo0(void *);	/* $04BB22 */
-void Apocalypse_StateRotateTo180(void *);	/* $04BB98 */
+void Apocalypse_ActStartMainScript(Apocalypse *self);	/* $04B6EA */
+short Apocalypse_ActStartBombs(Apocalypse *self);	/* $04B73A */
+short Apocalypse_StateDropBombs(Apocalypse *self);	/* $04B790 */
+void Apocalypse_StateBombsDone(Apocalypse *self);	/* $04B848 */
+short Apocalypse_ActOrbitFrom180(Apocalypse *self);	/* $04B996 */
+short Apocalypse_ActOrbitFrom0(Apocalypse *self);	/* $04B9D0 */
+short Apocalypse_StateOrbitStep(Apocalypse *self);	/* $04BA08 */
+void Apocalypse_StateWaitArrive(Apocalypse *self);	/* $04BA9C */
+short Apocalypse_ActRotateTo0(Apocalypse *self);	/* $04BAF8 */
+short Apocalypse_StateRotateTo0(Apocalypse *self);	/* $04BB22 */
+short Apocalypse_StateRotateTo180(Apocalypse *self);	/* $04BB98 */
 void Apocalypse_NopStatic3(void);	/* $04BC10 */
-void Apocalypse_ActSetMoveRates(void *);	/* $04BC18 */
-void Apocalypse_ActPickScript(void *);	/* $04BC74 */
+void Apocalypse_ActSetMoveRates(Apocalypse *self);	/* $04BC18 */
+void Apocalypse_ActPickScript(Apocalypse *self);	/* $04BC74 */
 void Apocalypse_ActPickScript_part1(void);	/* $04BC9E fragment */
 void Apocalypse_ActPickScript_part2(void);	/* $04BCB2 fragment */
 void Apocalypse_ActPickScript_part3(void);	/* $04BCEC fragment */
-long Apocalypse_ActNextScriptChoice(void *);	/* $04BD22 */
-void Apocalypse_ActGoLeft(void *);	/* $04BD5A */
-void Apocalypse_ActGoCentre(void *);	/* $04BDB4 */
-void Apocalypse_ActGoRight(void *);	/* $04BE1C */
-void Apocalypse_ActGoNearPlayer(void *);	/* $04BE76 */
-long Apocalypse_TargetWithin(void *, short);	/* $04BEFA */
-long Apocalypse_StateApproach(void *);	/* $04BF52 */
-long Apocalypse_StateLunge(void *);	/* $04C030 */
-void Apocalypse_StateLungeEnd(void *);	/* $04C0B2 */
-long Apocalypse_StateDropStart(void *);	/* $04C114 */
-long Apocalypse_StateDrop(void *);	/* $04C168 */
-void Apocalypse_StateDropFall(void *);	/* $04C1D0 */
-long Apocalypse_StateDefeated(void *);	/* $04C240 */
-long Apocalypse_StateDefeatedWait(void *);	/* $04C2AE */
-long Apocalypse_StateDefeatedRise(void *);	/* $04C306 */
-void Apocalypse_StateVanish(void *);	/* $04C332 */
-long Apocalypse_StateHurt(void *);	/* $04C36C */
-long Apocalypse_StateKnockback(void *);	/* $04C432 */
-void Apocalypse_StateResumeScript(void *);	/* $04C4C6 */
+short Apocalypse_ActNextScriptChoice(Apocalypse *self);	/* $04BD22 */
+void Apocalypse_ActGoLeft(Apocalypse *self);	/* $04BD5A */
+void Apocalypse_ActGoCentre(Apocalypse *self);	/* $04BDB4 */
+void Apocalypse_ActGoRight(Apocalypse *self);	/* $04BE1C */
+void Apocalypse_ActGoNearPlayer(Apocalypse *self);	/* $04BE76 */
+char Apocalypse_TargetWithin(Apocalypse *self, short dist);	/* $04BEFA */
+short Apocalypse_StateApproach(Apocalypse *self);	/* $04BF52 */
+short Apocalypse_StateLunge(Apocalypse *self);	/* $04C030 */
+void Apocalypse_StateLungeEnd(Apocalypse *self);	/* $04C0B2 */
+short Apocalypse_StateDropStart(Apocalypse *self);	/* $04C114 */
+short Apocalypse_StateDrop(Apocalypse *self);	/* $04C168 */
+void Apocalypse_StateDropFall(Apocalypse *self);	/* $04C1D0 */
+short Apocalypse_StateDefeated(Apocalypse *self);	/* $04C240 */
+short Apocalypse_StateDefeatedWait(Apocalypse *self);	/* $04C2AE */
+short Apocalypse_StateDefeatedRise(Apocalypse *self);	/* $04C306 */
+void Apocalypse_StateVanish(Apocalypse *self);	/* $04C332 */
+short Apocalypse_StateHurt(Apocalypse *self);	/* $04C36C */
+short Apocalypse_StateKnockback(Apocalypse *self);	/* $04C432 */
+void Apocalypse_StateResumeScript(Apocalypse *self);	/* $04C4C6 */
 void Apocalypse_CallNopStatics(void);	/* $04C4F0 */
-void Apocalypse_Nop6A(void);	/* $04C504 */
-void Apocalypse_Nop66(void *);	/* $04C510 */
+void Apocalypse_Nop6A(Apocalypse *self);	/* $04C504 */
+void Apocalypse_Nop66(Apocalypse *self);	/* $04C510 */
 void Apocalypse_ClassInit(void);	/* $04C526 */
-void Apocalypse_Init(void *, long, long, long);	/* $04C584 */
-void Apocalypse_SetFrame(void *, short);	/* $04C76C */
-void Apocalypse_Draw(void *);	/* $04C832 */
-void Apocalypse_Move(void *, short);	/* $04C9D8 */
-void Apocalypse_Update(void *);	/* $04CC42 */
-void Apocalypse_Deactivate(void *);	/* $04CCA0 */
-void Apocalypse_TakeDamage(void *, long, long, char);	/* $04CD3A */
+void Apocalypse_Init(Apocalypse *self, long x, long y, Placement *pl);	/* $04C584 */
+void Apocalypse_SetFrame(Apocalypse *self, short frame);	/* $04C76C */
+void Apocalypse_Draw(Apocalypse *self);	/* $04C832 */
+void Apocalypse_Move(Apocalypse *self, short steps);	/* $04C9D8 */
+void Apocalypse_Update(Apocalypse *self);	/* $04CC42 */
+void Apocalypse_Deactivate(Apocalypse *self);	/* $04CCA0 */
+void Apocalypse_TakeDamage(Apocalypse *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $04CD3A */
 long ApocBomb_GetSize(void);	/* $04DF1A */
 void ApocBomb_NopStatic(void);	/* $04DF28 */
-void ApocBomb_Nop6A(void);	/* $04DF30 */
-void ApocBomb_Nop66(void *);	/* $04DF3C */
-long ApocBomb_SetSpeed(short, short, short);	/* $04DF52 */
+void ApocBomb_Nop6A(ApocBomb *self);	/* $04DF30 */
+void ApocBomb_Nop66(ApocBomb *self);	/* $04DF3C */
+void ApocBomb_SetSpeed(short period, short speed, short accel);	/* $04DF52 */
 void ApocBomb_AccelTimer(void);	/* $04DF7A */
 void ApocBomb_StartAccelTimer(void);	/* $04DF92 */
 void ApocBomb_ClassInit(void);	/* $04DFDC */
-void ApocBomb_Init(void *, long, long, long);	/* $04E000 */
-void ApocBomb_Move(void *, short);	/* $04E0AC */
-void ApocBomb_Update(void *);	/* $04E238 */
-void ApocBomb_Draw(void *);	/* $04E3F6 */
-void ApocBomb_DrawShadow(void *);	/* $04E644 */
-void ApocBomb_Explode(void *);	/* $04E81A */
-void ApocBomb_TakeDamage(void *);	/* $04E87C */
-void ApocBomb_Attack(void *, void *, char, char, short, short);	/* $04E8F2 */
-long ApocBomb_Spawn(short, short);	/* $04E94A */
+void ApocBomb_Init(ApocBomb *self, long x, long y, Placement *pl);	/* $04E000 */
+void ApocBomb_Move(ApocBomb *self, short steps);	/* $04E0AC */
+void ApocBomb_Update(ApocBomb *self);	/* $04E238 */
+void ApocBomb_Draw(ApocBomb *self);	/* $04E3F6 */
+void ApocBomb_DrawShadow(Actor *obj);	/* $04E644 */
+void ApocBomb_Explode(ApocBomb *self);	/* $04E81A */
+void ApocBomb_TakeDamage(ApocBomb *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $04E87C */
+void ApocBomb_Attack(ApocBomb *self, Actor *target, char type, char damage, short hx, short hy);	/* $04E8F2 */
+void ApocBomb_Spawn(short speed, short param);	/* $04E94A */
 void ApocBomb_Spawn_part1(void);	/* $04E9C2 fragment */
 void ApocBomb_Spawn_part2(void);	/* $04E9C8 fragment */
 void ApocBomb_Spawn_part3(void);	/* $04E9D0 fragment */
@@ -710,7 +710,7 @@ void Tusk_Defeated_part3(void);	/* $05CD2C fragment */
 void Tusk_Defeated_part4(void);	/* $05CD36 fragment */
 void Tusk_Defeated_part5(void);	/* $05CD3E fragment */
 void Tusk_Nop6A(Tusk *);	/* $05CD46 */
-void Tusk_InitSpawnRec(void *, Placement *);	/* $05CD4E */
+void Tusk_InitSpawnRec(SpawnRec *, Placement *);	/* $05CD4E */
 void Tusk_ClassInit(void);	/* $05CD7E */
 void Tusk_TakeDamage(Tusk *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $05CD86 */
 void Tusk_Nop66(Tusk *);	/* $05CE28 */
@@ -918,7 +918,7 @@ short Brood_StateCornered(Brood *);	/* $06DDA0 */
 short Brood_StateCorneredFlash(Brood *);	/* $06DDE0 */
 short Brood_StateBreakOut(Brood *);	/* $06DE3A */
 void Brood_StateBreakOutRun(Brood *);	/* $06DE90 */
-void CloneA1_AnimTilesTimer(long, long, void *);	/* $077256 asm */
+void CloneA1_AnimTilesTimer(void);	/* $077256 asm */
 void CloneA1_ResetPalCycle(void);	/* $077402 */
 void CloneA1_CyclePalettes(void);	/* $077422 */
 void CloneA1_NopStatic(void);	/* $077462 */
@@ -1048,55 +1048,55 @@ long BroodBossDamage_Draw(void);	/* $0864E2 */
 long BroodBossDamage_Update(void *);	/* $0864EA */
 long BroodBossDamage_StateIdle(void *);	/* $08669C */
 long BroodBoss_GetSize(void);	/* $0866C0 */
-void BroodBoss_Init(void *, long, long, void *);	/* $0866CE */
-long BroodBoss_SpawnRecInView(long, void *);	/* $0868C6 */
-void BroodBoss_Update(void *);	/* $0868F0 */
-long BroodBoss_StateSetup(void *);	/* $086ABC */
-long BroodBoss_StateRoar(void *);	/* $086C02 */
-long BroodBoss_StateEnter(void *);	/* $086C3E */
-long BroodBoss_StateWaitArrive(void *);	/* $086CC4 */
-void BroodBoss_ActWait60(void *);	/* $086D5E */
-void BroodBoss_ActWait30(void *);	/* $086DB2 */
-void BroodBoss_ActClaw(void *);	/* $086E06 */
-long BroodBoss_ActDropBomb(void *);	/* $086E86 */
-long BroodBoss_StateDropBomb(void *);	/* $086ECE */
-long BroodBoss_ActDropBomb2(void *);	/* $086F28 */
-long BroodBoss_StateDropBomb2(void *);	/* $086F70 */
-void BroodBoss_StateAfterBomb(void *);	/* $086FCA */
-long BroodBoss_ActStomp(void *);	/* $08702A */
-long BroodBoss_StateStompLand(void *);	/* $087072 */
-long BroodBoss_StateShockOn(void *);	/* $0870AC */
-void BroodBoss_StateShockOff(void *);	/* $0870EA */
-void BroodBoss_ActStop(void *);	/* $08718A */
-long BroodBoss_ActBringWall(void *);	/* $087208 */
-long BroodBoss_StateWallStop(void *);	/* $087294 */
-long BroodBoss_StateChargeStart(void *);	/* $087304 */
-long BroodBoss_StateCharge(void *);	/* $087370 */
-long BroodBoss_StateRetreat(void *);	/* $087426 */
-void BroodBoss_SpawnDebris(void *);	/* $0874DC */
-long BroodBoss_ActChargeWall(void *);	/* $087516 */
-long BroodBoss_StateChargeWall(void *);	/* $087582 */
-long BroodBoss_StateHitWall(void *);	/* $087600 */
-long BroodBoss_StateRecoil(void *);	/* $08765E */
-void BroodBoss_StateRecoilReturn(void *);	/* $0876BA */
-long BroodBoss_ActAdvance(void *);	/* $087748 */
-long BroodBoss_StateAdvance(void *);	/* $0877D2 */
-void BroodBoss_StateMakeUnhittable(void *);	/* $087832 */
-long BroodBoss_ActScream(void *);	/* $08789C */
-long BroodBoss_StateScream(void *);	/* $0878E4 */
-void BroodBoss_Defeat(void *);	/* $08797A */
-long BroodBoss_StateHurt(void *);	/* $0879FE */
-long BroodBoss_StateHurtEnd(void *);	/* $087B22 */
-long BroodBoss_StateDeathStart(void *);	/* $087BAC */
-long BroodBoss_StateDeathSlide(void *);	/* $087BFE */
-long BroodBoss_StateDeathAnim(void *);	/* $087CB4 */
-long BroodBoss_StateDeathFx(void *);	/* $087CEA */
-long BroodBoss_StateDeathSink(void *);	/* $087DB0 */
-long BroodBoss_StateExplode(void *);	/* $087E0C */
-long BroodBoss_StateVanish(void *);	/* $087EBE */
-long BroodBoss_StateClawOut(void *);	/* $087EFA */
-long BroodBoss_StateRemoveParts(void *);	/* $087F3C */
-void BroodBoss_StateFinish(void *);	/* $087FEA */
+void BroodBoss_Init(BroodBoss *, long, long, Placement *);	/* $0866CE */
+long BroodBoss_SpawnRecInView(Class *, SpawnRec *);	/* $0868C6 */
+void BroodBoss_Update(BroodBoss *);	/* $0868F0 */
+short BroodBoss_StateSetup(BroodBoss *);	/* $086ABC */
+short BroodBoss_StateRoar(BroodBoss *);	/* $086C02 */
+short BroodBoss_StateEnter(BroodBoss *);	/* $086C3E */
+short BroodBoss_StateWaitArrive(BroodBoss *);	/* $086CC4 */
+void BroodBoss_ActWait60(BroodBoss *);	/* $086D5E */
+void BroodBoss_ActWait30(BroodBoss *);	/* $086DB2 */
+void BroodBoss_ActClaw(BroodBoss *);	/* $086E06 */
+short BroodBoss_ActDropBomb(BroodBoss *);	/* $086E86 */
+short BroodBoss_StateDropBomb(BroodBoss *);	/* $086ECE */
+short BroodBoss_ActDropBomb2(BroodBoss *);	/* $086F28 */
+short BroodBoss_StateDropBomb2(BroodBoss *);	/* $086F70 */
+void BroodBoss_StateAfterBomb(BroodBoss *);	/* $086FCA */
+short BroodBoss_ActStomp(BroodBoss *);	/* $08702A */
+short BroodBoss_StateStompLand(BroodBoss *);	/* $087072 */
+short BroodBoss_StateShockOn(BroodBoss *);	/* $0870AC */
+void BroodBoss_StateShockOff(BroodBoss *);	/* $0870EA */
+void BroodBoss_ActStop(BroodBoss *);	/* $08718A */
+short BroodBoss_ActBringWall(BroodBoss *);	/* $087208 */
+short BroodBoss_StateWallStop(BroodBoss *);	/* $087294 */
+short BroodBoss_StateChargeStart(BroodBoss *);	/* $087304 */
+short BroodBoss_StateCharge(BroodBoss *);	/* $087370 */
+short BroodBoss_StateRetreat(BroodBoss *);	/* $087426 */
+void BroodBoss_SpawnDebris(BroodBoss *);	/* $0874DC */
+short BroodBoss_ActChargeWall(BroodBoss *);	/* $087516 */
+short BroodBoss_StateChargeWall(BroodBoss *);	/* $087582 */
+short BroodBoss_StateHitWall(BroodBoss *);	/* $087600 */
+short BroodBoss_StateRecoil(BroodBoss *);	/* $08765E */
+short BroodBoss_StateRecoilReturn(BroodBoss *);	/* $0876BA */
+short BroodBoss_ActAdvance(BroodBoss *);	/* $087748 */
+short BroodBoss_StateAdvance(BroodBoss *);	/* $0877D2 */
+void BroodBoss_StateMakeUnhittable(BroodBoss *);	/* $087832 */
+short BroodBoss_ActScream(BroodBoss *);	/* $08789C */
+short BroodBoss_StateScream(BroodBoss *);	/* $0878E4 */
+void BroodBoss_Defeat(BroodBoss *);	/* $08797A */
+short BroodBoss_StateHurt(BroodBoss *);	/* $0879FE */
+short BroodBoss_StateHurtEnd(BroodBoss *);	/* $087B22 */
+short BroodBoss_StateDeathStart(BroodBoss *);	/* $087BAC */
+short BroodBoss_StateDeathSlide(BroodBoss *);	/* $087BFE */
+short BroodBoss_StateDeathAnim(BroodBoss *);	/* $087CB4 */
+short BroodBoss_StateDeathFx(BroodBoss *);	/* $087CEA */
+short BroodBoss_StateDeathSink(BroodBoss *);	/* $087DB0 */
+short BroodBoss_StateExplode(BroodBoss *);	/* $087E0C */
+short BroodBoss_StateVanish(BroodBoss *);	/* $087EBE */
+short BroodBoss_StateClawOut(BroodBoss *);	/* $087EFA */
+short BroodBoss_StateRemoveParts(BroodBoss *);	/* $087F3C */
+void BroodBoss_StateFinish(BroodBoss *);	/* $087FEA */
 long CloneA5_SegHook16(void);	/* $08803A */
 long CloneA5_SegHook15(short);	/* $088044 */
 long CloneA5_SegHook17(short, void *, void *);	/* $088064 */
@@ -1115,23 +1115,23 @@ void CloneA5_RunScene(void);	/* $088730 */
 void BroodBoss_ScrStepClaw(void);	/* $088A56 fragment */
 void BroodBoss_ScrStepScream(void);	/* $088A9A fragment */
 long EvilMaker_GetSize(void);	/* $0945C6 */
-void EvilMaker_Nop6A(void);	/* $0945D4 */
-void EvilMaker_Init(void *, long, long, long);	/* $0945E0 */
-long EvilMaker_StateWaitKills(void *);	/* $0946BA */
-long EvilMaker_StateIdle(void *);	/* $09472E */
-void EvilMaker_ActWait60(void *);	/* $094752 */
-void EvilMaker_ActDropBeast(void *);	/* $0947A6 */
-void EvilMaker_ActKill(void *);	/* $094834 */
-void EvilMaker_ActDropCyclops(void *);	/* $094850 */
-void EvilMaker_ActDropGambit(void *);	/* $0948DE */
-void EvilMaker_ActDropMagneto(void *);	/* $09496C */
-void EvilMaker_ActDropNightcrawler(void *);	/* $0949FA */
-void EvilMaker_ActDropPsylocke(void *);	/* $094A88 */
-void EvilMaker_ActDropWolverine(void *);	/* $094B16 */
+void EvilMaker_Nop6A(EvilMaker *);	/* $0945D4 */
+void EvilMaker_Init(EvilMaker *, long, long, Placement *);	/* $0945E0 */
+short EvilMaker_StateWaitKills(EvilMaker *);	/* $0946BA */
+short EvilMaker_StateIdle(EvilMaker *);	/* $09472E */
+void EvilMaker_ActWait60(EvilMaker *);	/* $094752 */
+void EvilMaker_ActDropBeast(EvilMaker *);	/* $0947A6 */
+void EvilMaker_ActKill(EvilMaker *);	/* $094834 */
+void EvilMaker_ActDropCyclops(EvilMaker *);	/* $094850 */
+void EvilMaker_ActDropGambit(EvilMaker *);	/* $0948DE */
+void EvilMaker_ActDropMagneto(EvilMaker *);	/* $09496C */
+void EvilMaker_ActDropNightcrawler(EvilMaker *);	/* $0949FA */
+void EvilMaker_ActDropPsylocke(EvilMaker *);	/* $094A88 */
+void EvilMaker_ActDropWolverine(EvilMaker *);	/* $094B16 */
 void EvilMaker_NopStatic(void);	/* $094BA4 */
 void EvilMaker_ScrStepKill(void);	/* $094C26 fragment */
 long EvilDrop_GetSize(void);	/* $094C82 */
-long EvilDrop_Spawn(void *);	/* $094C90 */
+EvilDrop *EvilDrop_Spawn(Placement *, void *);	/* $094C90 */
 void EvilDrop_Nop6A(void);	/* $094CDA */
 long EvilDrop_ClassInit(void);	/* $094CE6 */
 void EvilDrop_Init(void *, long, long, void *);	/* $094CF2 */
@@ -1298,7 +1298,7 @@ void XClone_Script12(void);	/* $09A90A fragment */
 void XClone_Script13(void);	/* $09AA8A fragment */
 long BroodClaw_GetSize(void);	/* $09ACCE */
 long BroodClaw_Init(void *, long, long, void *);	/* $09ACDC */
-long BroodClaw_Spawn(void *, char);	/* $09AD96 */
+BroodClaw *BroodClaw_Spawn(Placement *rec, char pair);	/* $09AD96 */
 long BroodClaw_Update(void *);	/* $09AE80 */
 long BroodClaw_Draw(void *);	/* $09AF3E */
 long BroodClaw_Kill(void *);	/* $09B168 */
@@ -1867,59 +1867,59 @@ long HoloBolt_Update(void *);	/* $0E819E */
 void HoloBolt_Init(void *, long, long, long);	/* $0E82E4 */
 long Hologram_GetSize(void);	/* $0E99D6 */
 void Hologram_EmptyStub(void);	/* $0E99E4 */
-void Hologram_SetXPowerSpawns(char);	/* $0E99EC */
-void Hologram_SetPose(short);	/* $0E9A5C */
-long Hologram_FindLifts(void *);	/* $0E9A8C */
-void Hologram_FindGateSeg(void *);	/* $0E9B2E */
-char Hologram_PlayerInArena(void *, void *);	/* $0E9B72 */
-void Hologram_LockArena(void *);	/* $0E9BCE */
+void Hologram_SetXPowerSpawns(char enable);	/* $0E99EC */
+void Hologram_SetPose(short pose);	/* $0E9A5C */
+void Hologram_FindLifts(Hologram *self);	/* $0E9A8C */
+void Hologram_FindGateSeg(Hologram *self);	/* $0E9B2E */
+char Hologram_PlayerInArena(Hologram *self, XPlayer *player);	/* $0E9B72 */
+void Hologram_LockArena(Hologram *self);	/* $0E9BCE */
 void Hologram_BeginDying(void);	/* $0E9C04 */
-void Hologram_Explode(void *);	/* $0E9C5E */
-void Hologram_OpenExit(void *);	/* $0E9D3A */
-long Hologram_StateStart(void *);	/* $0E9D88 */
-long Hologram_StateSetup(void *);	/* $0E9DAE */
-long Hologram_WaitLowerLiftBoarded(void *);	/* $0E9DEA */
-long Hologram_WaitLowerLiftDown(void *);	/* $0E9E36 */
-void Hologram_WaitPlayersInArena(void *);	/* $0E9E68 */
-void Hologram_StartDyingScript(void *);	/* $0E9ED4 */
-void Hologram_ExplodeWhenReady(void *);	/* $0E9F24 */
-long Hologram_StateOpenExit(void *);	/* $0E9F58 */
-long Hologram_WaitLowerLiftBoarded2(void *);	/* $0E9F84 */
-long Hologram_WaitLowerLiftUp(void *);	/* $0E9FC0 */
-long Hologram_WaitUpperLiftBoarded(void *);	/* $0E9FF2 */
-long Hologram_RideUpperLift(void *);	/* $0EA02E */
+void Hologram_Explode(Hologram *self);	/* $0E9C5E */
+void Hologram_OpenExit(Hologram *self);	/* $0E9D3A */
+short Hologram_StateStart(Hologram *self);	/* $0E9D88 */
+short Hologram_StateSetup(Hologram *self);	/* $0E9DAE */
+short Hologram_WaitLowerLiftBoarded(Hologram *self);	/* $0E9DEA */
+short Hologram_WaitLowerLiftDown(Hologram *self);	/* $0E9E36 */
+void Hologram_WaitPlayersInArena(Hologram *self);	/* $0E9E68 */
+void Hologram_StartDyingScript(Hologram *self);	/* $0E9ED4 */
+short Hologram_ExplodeWhenReady(Hologram *self);	/* $0E9F24 */
+short Hologram_StateOpenExit(Hologram *self);	/* $0E9F58 */
+short Hologram_WaitLowerLiftBoarded2(Hologram *self);	/* $0E9F84 */
+short Hologram_WaitLowerLiftUp(Hologram *self);	/* $0E9FC0 */
+short Hologram_WaitUpperLiftBoarded(Hologram *self);	/* $0E9FF2 */
+short Hologram_RideUpperLift(Hologram *self);	/* $0EA02E */
 void Hologram_StateDone(void);	/* $0EA098 */
-void Hologram_StartAttackScript(void *);	/* $0EA0A0 */
-void Hologram_ActPose0(void *);	/* $0EA100 */
-long Hologram_SeqA_Pose1(void *);	/* $0EA15E */
-long Hologram_SeqA_Pose2(void *);	/* $0EA18E */
-long Hologram_SeqA_Pose1b(void *);	/* $0EA1BE */
-void Hologram_SeqA_Pose0(void *);	/* $0EA1EE */
-long Hologram_SeqB_Pose3(void *);	/* $0EA24C */
-long Hologram_SeqB_Pose4(void *);	/* $0EA27C */
-long Hologram_SeqB_Pose3b(void *);	/* $0EA2AC */
-void Hologram_SeqB_Pose0(void *);	/* $0EA2DC */
-long Hologram_Raise_Pose3(void *);	/* $0EA33A */
-void Hologram_Raise_Pose4(void *);	/* $0EA36A */
-long Hologram_Lower_Pose3(void *);	/* $0EA3C8 */
-void Hologram_Lower_Pose0(void *);	/* $0EA3F8 */
-long Hologram_Fire1_Pose6(void *);	/* $0EA456 */
-void Hologram_Fire1_Bolts(void *);	/* $0EA486 */
-long Hologram_Fire2_Pose6(void *);	/* $0EA512 */
-void Hologram_Fire2_Bolts(void *);	/* $0EA542 */
-long Hologram_Fire3_Pose5(void *);	/* $0EA5CE */
-void Hologram_Fire3_Bolts(void *);	/* $0EA5FE */
-long Hologram_Fire4_Pose5(void *);	/* $0EA68A */
-void Hologram_Fire4_Bolts(void *);	/* $0EA6BA */
-void Hologram_ActPose0WaitA(void *);	/* $0EA746 */
-void Hologram_ActWaitB(void *);	/* $0EA7A4 */
-void Hologram_ActWait30(void *);	/* $0EA7F8 */
-void Hologram_Reset(void);	/* $0EA84C */
-void Hologram_InitSpawnRec(void *, long);	/* $0EA858 */
-void Hologram_ClassInit(long);	/* $0EA888 */
-void Hologram_Nop66(void *);	/* $0EA898 */
-void Hologram_Draw(void *);	/* $0EA8AE */
-void Hologram_Init(void *, long, long, void *);	/* $0EAD14 */
+void Hologram_StartAttackScript(Hologram *self);	/* $0EA0A0 */
+void Hologram_ActPose0(Hologram *self);	/* $0EA100 */
+short Hologram_SeqA_Pose1(Hologram *self);	/* $0EA15E */
+short Hologram_SeqA_Pose2(Hologram *self);	/* $0EA18E */
+short Hologram_SeqA_Pose1b(Hologram *self);	/* $0EA1BE */
+void Hologram_SeqA_Pose0(Hologram *self);	/* $0EA1EE */
+short Hologram_SeqB_Pose3(Hologram *self);	/* $0EA24C */
+short Hologram_SeqB_Pose4(Hologram *self);	/* $0EA27C */
+short Hologram_SeqB_Pose3b(Hologram *self);	/* $0EA2AC */
+void Hologram_SeqB_Pose0(Hologram *self);	/* $0EA2DC */
+short Hologram_Raise_Pose3(Hologram *self);	/* $0EA33A */
+void Hologram_Raise_Pose4(Hologram *self);	/* $0EA36A */
+short Hologram_Lower_Pose3(Hologram *self);	/* $0EA3C8 */
+void Hologram_Lower_Pose0(Hologram *self);	/* $0EA3F8 */
+short Hologram_Fire1_Pose6(Hologram *self);	/* $0EA456 */
+void Hologram_Fire1_Bolts(Hologram *self);	/* $0EA486 */
+short Hologram_Fire2_Pose6(Hologram *self);	/* $0EA512 */
+void Hologram_Fire2_Bolts(Hologram *self);	/* $0EA542 */
+short Hologram_Fire3_Pose5(Hologram *self);	/* $0EA5CE */
+void Hologram_Fire3_Bolts(Hologram *self);	/* $0EA5FE */
+short Hologram_Fire4_Pose5(Hologram *self);	/* $0EA68A */
+void Hologram_Fire4_Bolts(Hologram *self);	/* $0EA6BA */
+void Hologram_ActPose0WaitA(Hologram *self);	/* $0EA746 */
+void Hologram_ActWaitB(Hologram *self);	/* $0EA7A4 */
+void Hologram_ActWait30(Hologram *self);	/* $0EA7F8 */
+void Hologram_Reset(Hologram *self);	/* $0EA84C */
+void Hologram_InitSpawnRec(SpawnRec *rec, Placement *pl);	/* $0EA858 */
+void Hologram_ClassInit(Hologram *self);	/* $0EA888 */
+void Hologram_Nop66(Hologram *self);	/* $0EA898 */
+void Hologram_Draw(Hologram *self);	/* $0EA8AE */
+void Hologram_Init(Hologram *self, long x, long y, Placement *pl);	/* $0EAD14 */
 void Hologram_VBlankFlicker(void);	/* $0EAE8E asm */
 void Hologram_ScriptIntro(void);	/* $0EAEFE fragment */
 void Hologram_ScriptDying(void);	/* $0EAF04 fragment */
@@ -1952,7 +1952,7 @@ long CoreElevator_WaitAtBottom(void *);	/* $0EC622 */
 long CoreElevator_StartUp(void *);	/* $0EC668 */
 long CoreElevator_MoveUp(void *);	/* $0EC69E */
 long CoreElevator_WaitAtTop(void *);	/* $0EC6E0 */
-long CoreElevator_CarriesAllPlayers(void *);	/* $0EC740 */
+char CoreElevator_CarriesAllPlayers(void *);	/* $0EC740 */
 void CoreElevator_SendDown(void *);	/* $0EC7B0 */
 void CoreElevator_SendUp(void *);	/* $0EC7D6 */
 void CoreElevator_Reset(void);	/* $0EC7F8 */
@@ -2206,7 +2206,7 @@ void ICandy_PoolInit(long, short, short);	/* $118760 */
 long ICandy_PoolAlloc(void);	/* $1187C2 */
 void ICandy_PoolFree(void *);	/* $118814 */
 void ICandy_SetSpriteDef(void *, char);	/* $118826 */
-void ICandy_SetAnim(void *, long);	/* $118874 */
+void ICandy_SetAnim(void *obj, void *anim);	/* $118874 */
 long RThetaObject_GetSize(void);	/* $1188DA */
 void RThetaObject_Init(void *, long, long, long);	/* $1188E8 */
 void RThetaObject_Move(void *, short);	/* $11893C */
@@ -2271,48 +2271,48 @@ void BioFlame_Init(void *, long, long, void *);	/* $11BB54 */
 void BioFlame_Update(void *);	/* $11BC88 */
 void BioFlame_Draw(void *);	/* $11BE72 */
 long BabyBio_GetSize(void);	/* $11C146 */
-void BabyBio_Nop66(void *);	/* $11C154 */
-void BabyBio_Nop6A(void);	/* $11C16A */
-void BabyBio_ClassInit(long);	/* $11C172 */
+void BabyBio_Nop66(BabyBio *);	/* $11C154 */
+void BabyBio_Nop6A(BabyBio *);	/* $11C16A */
+void BabyBio_ClassInit(BabyBio *);	/* $11C172 */
 void BabyBio_LevelStart(void);	/* $11C184 */
-void BabyBio_Init(void *, long, long, void *);	/* $11C190 */
-void BabyBio_Move(void *, short);	/* $11C3C2 */
-void BabyBio_Deactivate(void *);	/* $11C576 */
-long BabyBio_TakeDamage(void *, long, char, char, short, short);	/* $11C5BA */
-void BabyBio_EndHurt(void *);	/* $11C630 */
-long BabyBio_GetMoveLimit(void *, char, void *);	/* $11C662 */
+void BabyBio_Init(BabyBio *self, long x, long y, Placement *pl);	/* $11C190 */
+void BabyBio_Move(BabyBio *self, short steps);	/* $11C3C2 */
+void BabyBio_Deactivate(BabyBio *self);	/* $11C576 */
+void BabyBio_TakeDamage(BabyBio *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $11C5BA */
+void BabyBio_EndHurt(BabyBio *self);	/* $11C630 */
+short BabyBio_GetMoveLimit(BabyBio *self, char dir, u8 *kind);	/* $11C662 */
 void BabyBio_GetMoveLimit_Horiz(void);	/* $11C694 fragment */
 void BabyBio_GetMoveLimit_Vert(void);	/* $11C6BC fragment */
 void BabyBio_GetMoveLimit_Done(void);	/* $11C6C4 fragment */
-void BabyBio_StateStart(void *);	/* $11C6CE */
-void BabyBio_ActNext(void *);	/* $11C71C */
-void BabyBio_StateExplode(void *);	/* $11C782 */
-long BabyBio_StateFallOff(void *);	/* $11C79E */
-long BabyBio_ActFacePlayer(void *);	/* $11C7E6 */
-void BabyBio_ActPlayAnimA(void *);	/* $11C88C */
-void BabyBio_ActWaitParam(void *);	/* $11C918 */
-void BabyBio_ActStopWaitParam(void *);	/* $11C974 */
-void BabyBio_ActStopWait60(void *);	/* $11C9DC */
-void BabyBio_ActStopWait30(void *);	/* $11CA3C */
-void BabyBio_ActPlayAnimB(void *);	/* $11CA9C */
-void BabyBio_ActPlayAnimC(void *);	/* $11CAFC */
-void BabyBio_ActPlayAnimD(void *);	/* $11CB5C */
-long BabyBio_ActWaitPlayerNear192(void *);	/* $11CBBC */
-long BabyBio_ActWaitPlayerNear128(void *);	/* $11CC7E */
-void BabyBio_WaitReachVLimit(void *);	/* $11CD42 */
-long BabyBio_ActMoveVertical(void *);	/* $11CDA8 */
-void BabyBio_WaitReachHLimit(void *);	/* $11CE34 */
-long BabyBio_ActMoveHorizontal(void *);	/* $11CE9A */
-long BabyBio_ActWalkUntilPlayerAhead(void *);	/* $11CFE8 */
-long BabyBio_ActStartWalk(void *);	/* $11D0D4 */
-void BabyBio_WaitStopOrLimit(void *);	/* $11D184 */
-void BabyBio_ActWalkForward(void *);	/* $11D210 */
-long BabyBio_ActFireLoop(void *);	/* $11D2C6 */
-long BabyBio_ActStartFiring(void *);	/* $11D3F2 */
-long BabyBio_ActAttachFlame(void *);	/* $11D422 */
-void BabyBio_ActDropFlame(void *);	/* $11D4F0 */
-long BabyBio_ActCrawl(void *);	/* $11D55C */
-void BabyBio_WaitCrawlLimit(void *);	/* $11D646 */
+void BabyBio_StateStart(BabyBio *);	/* $11C6CE */
+void BabyBio_ActNext(BabyBio *);	/* $11C71C */
+void BabyBio_StateExplode(BabyBio *);	/* $11C782 */
+short BabyBio_StateFallOff(BabyBio *);	/* $11C79E */
+void BabyBio_ActFacePlayer(BabyBio *);	/* $11C7E6 */
+void BabyBio_ActPlayAnimA(BabyBio *);	/* $11C88C */
+void BabyBio_ActWaitParam(BabyBio *);	/* $11C918 */
+void BabyBio_ActStopWaitParam(BabyBio *);	/* $11C974 */
+void BabyBio_ActStopWait60(BabyBio *);	/* $11C9DC */
+void BabyBio_ActStopWait30(BabyBio *);	/* $11CA3C */
+void BabyBio_ActPlayAnimB(BabyBio *);	/* $11CA9C */
+void BabyBio_ActPlayAnimC(BabyBio *);	/* $11CAFC */
+void BabyBio_ActPlayAnimD(BabyBio *);	/* $11CB5C */
+short BabyBio_ActWaitPlayerNear192(BabyBio *);	/* $11CBBC */
+short BabyBio_ActWaitPlayerNear128(BabyBio *);	/* $11CC7E */
+void BabyBio_WaitReachVLimit(BabyBio *);	/* $11CD42 */
+short BabyBio_ActMoveVertical(BabyBio *);	/* $11CDA8 */
+void BabyBio_WaitReachHLimit(BabyBio *);	/* $11CE34 */
+short BabyBio_ActMoveHorizontal(BabyBio *);	/* $11CE9A */
+short BabyBio_ActWalkUntilPlayerAhead(BabyBio *);	/* $11CFE8 */
+short BabyBio_ActStartWalk(BabyBio *);	/* $11D0D4 */
+short BabyBio_WaitStopOrLimit(BabyBio *);	/* $11D184 */
+void BabyBio_ActWalkForward(BabyBio *);	/* $11D210 */
+short BabyBio_ActFireLoop(BabyBio *);	/* $11D2C6 */
+short BabyBio_ActStartFiring(BabyBio *);	/* $11D3F2 */
+void BabyBio_ActAttachFlame(BabyBio *);	/* $11D422 */
+void BabyBio_ActDropFlame(BabyBio *);	/* $11D4F0 */
+short BabyBio_ActCrawl(BabyBio *);	/* $11D55C */
+short BabyBio_WaitCrawlLimit(BabyBio *);	/* $11D646 */
 long BabySentinelA_GetSize(void);	/* $11D6C0 */
 void BabySentinelA_Nop66(void *);	/* $11D6CE */
 void BabySentinelA_Init(void *, long, long, long);	/* $11D6E4 */
@@ -2490,76 +2490,76 @@ void FlyBrood_ScrStepsWaitPassedLow(void);	/* $1344EA fragment */
 void FlyBrood_ScrStepsWaitPassedSine(void);	/* $1344F4 fragment */
 long FlyBrood_GetSize(void);	/* $134590 */
 void FlyBrood_EmptyStub(void);	/* $13459E */
-void FlyBrood_EnterFromSide(void *, char);	/* $1345A6 */
-long FlyBrood_MoveHoming(void *, short);	/* $13463C */
-void FlyBrood_MovePath(void *, short);	/* $13478C */
-void FlyBrood_MoveBallistic(void *, short);	/* $1347F8 */
-void FlyBrood_MoveSine(void *, short);	/* $13486A */
-void FlyBrood_Nop6A(void);	/* $1348E8 */
-void FlyBrood_Nop66(void *);	/* $1348F0 */
+void FlyBrood_EnterFromSide(FlyBrood *self, char fromLeft);	/* $1345A6 */
+long FlyBrood_MoveHoming(FlyBrood *self, short steps);	/* $13463C */
+void FlyBrood_MovePath(FlyBrood *self, short steps);	/* $13478C */
+void FlyBrood_MoveBallistic(FlyBrood *self, short steps);	/* $1347F8 */
+void FlyBrood_MoveSine(FlyBrood *self, short count);	/* $13486A */
+void FlyBrood_Nop6A(FlyBrood *self);	/* $1348E8 */
+void FlyBrood_Nop66(FlyBrood *self);	/* $1348F0 */
 void FlyBrood_ClassInit(void);	/* $134906 */
-void FlyBrood_Init(void *, long, long, void *);	/* $134934 */
+void FlyBrood_Init(FlyBrood *self, long x, long y, Placement *pl);	/* $134934 */
 void FlyBrood_Init_Case0(void);	/* $134AE4 fragment */
 void FlyBrood_Init_Case1(void);	/* $134AFA fragment */
 void FlyBrood_Init_Case4(void);	/* $134B42 fragment */
 void FlyBrood_Init_Tail(void);	/* $134BE6 fragment */
-long FlyBrood_Deactivate(long);	/* $134C3A */
-void FlyBrood_Draw(void *);	/* $134C60 */
-long FlyBrood_Update(void *);	/* $134D64 */
-void FlyBrood_ActRestartScript(void *);	/* $134E2A */
-void FlyBrood_WaitPathDone(void *);	/* $134E6A */
-long FlyBrood_ActHover90(void *);	/* $134EC4 */
-void FlyBrood_StateHoverFacePlayer(void *);	/* $134F20 */
-long FlyBrood_ActHoverUntilNear(void *);	/* $134F9C */
-void FlyBrood_StateWaitPlayerInRange(void *);	/* $134FF2 */
-void FlyBrood_StateFacePlayer(void *);	/* $1350FE */
-long FlyBrood_ActHoverForever(void *);	/* $135134 */
-void FlyBrood_StateFlyOffKill(void *);	/* $13518A */
-long FlyBrood_ActDiveAtPlayer(void *);	/* $1351EA */
-long FlyBrood_StateWaitPlayerPassed(void *);	/* $1352D4 */
-long FlyBrood_ActDiveAtPlayerLow(void *);	/* $13536A */
-long FlyBrood_StateWaitPlayerPassedLow(void *);	/* $135452 */
-long FlyBrood_ActSineFlyBy(void *);	/* $1354E8 */
-long FlyBrood_StateWaitPlayerPassedSine(void *);	/* $13557A */
-long FlyBrood_StateSwoopPatrol(void *);	/* $135610 */
-long FlyBrood_WaitSwoopDone(void *);	/* $13570A */
-void FlyBrood_StateHit(long);	/* $135794 */
+void FlyBrood_Deactivate(FlyBrood *self);	/* $134C3A */
+void FlyBrood_Draw(FlyBrood *self);	/* $134C60 */
+void FlyBrood_Update(FlyBrood *self);	/* $134D64 */
+void FlyBrood_ActRestartScript(FlyBrood *self);	/* $134E2A */
+short FlyBrood_WaitPathDone(FlyBrood *self);	/* $134E6A */
+short FlyBrood_ActHover90(FlyBrood *self);	/* $134EC4 */
+void FlyBrood_StateHoverFacePlayer(FlyBrood *self);	/* $134F20 */
+short FlyBrood_ActHoverUntilNear(FlyBrood *self);	/* $134F9C */
+void FlyBrood_StateWaitPlayerInRange(FlyBrood *self);	/* $134FF2 */
+void FlyBrood_StateFacePlayer(FlyBrood *self);	/* $1350FE */
+short FlyBrood_ActHoverForever(FlyBrood *self);	/* $135134 */
+void FlyBrood_StateFlyOffKill(FlyBrood *self);	/* $13518A */
+short FlyBrood_ActDiveAtPlayer(FlyBrood *self);	/* $1351EA */
+short FlyBrood_StateWaitPlayerPassed(FlyBrood *self);	/* $1352D4 */
+short FlyBrood_ActDiveAtPlayerLow(FlyBrood *self);	/* $13536A */
+short FlyBrood_StateWaitPlayerPassedLow(FlyBrood *self);	/* $135452 */
+short FlyBrood_ActSineFlyBy(FlyBrood *self);	/* $1354E8 */
+short FlyBrood_StateWaitPlayerPassedSine(FlyBrood *self);	/* $13557A */
+short FlyBrood_StateSwoopPatrol(FlyBrood *self);	/* $135610 */
+short FlyBrood_WaitSwoopDone(FlyBrood *self);	/* $13570A */
+void FlyBrood_StateHit(FlyBrood *self);	/* $135794 */
 long Hornet_GetSize(void);	/* $1364B4 */
 void Hornet_NopStatic(void);	/* $1364C2 */
-void Hornet_MoveSwing(void *);	/* $1364CA */
-void Hornet_MoveStartSwing(void *);	/* $136584 */
-void Hornet_StepCirclePath(void *);	/* $136598 */
-void Hornet_MoveVelocity(void *);	/* $136642 */
-void Hornet_MoveBounce(void *);	/* $1366A2 */
-void Hornet_MoveFlyOff(void *);	/* $13679A */
-void Hornet_MoveWaitThenFlyOff(void *);	/* $136816 */
-void Hornet_MoveRiseThenLeave(void *);	/* $136880 */
-void Hornet_MoveWaitThenRiseLeave(void *);	/* $1368F4 */
-void Hornet_MoveDiveOnce(void *);	/* $13695C */
-void Hornet_MoveDiveAgain(void *);	/* $136992 */
-void Hornet_MoveWaitThenDive(void *);	/* $1369C8 */
-void Hornet_MoveRiseThenWait(void *);	/* $136A32 */
-void Hornet_MoveWaitThenRise(void *);	/* $136AA6 */
-void Hornet_MoveDiveRepeat(void *);	/* $136B0E */
-long Hornet_StateAttackDelay(void *);	/* $136B44 */
-long Hornet_StateFacePlayer(void *);	/* $136B84 */
-long Hornet_StateShotLoop(void *);	/* $136BD4 */
-long Hornet_StateFire(void *);	/* $136C28 */
-long Hornet_StateShotRecover(void *);	/* $136CCA */
-long Hornet_StateDropIn(void *);	/* $136D1A */
-void Hornet_StateDropping(void *);	/* $136D44 */
-long Hornet_StatePickPattern(void *);	/* $136D86 */
+void Hornet_MoveSwing(Hornet *self);	/* $1364CA */
+void Hornet_MoveStartSwing(Hornet *self);	/* $136584 */
+void Hornet_StepCirclePath(Hornet *self);	/* $136598 */
+void Hornet_MoveVelocity(Hornet *self);	/* $136642 */
+void Hornet_MoveBounce(Hornet *self);	/* $1366A2 */
+void Hornet_MoveFlyOff(Hornet *self);	/* $13679A */
+void Hornet_MoveWaitThenFlyOff(Hornet *self);	/* $136816 */
+void Hornet_MoveRiseThenLeave(Hornet *self);	/* $136880 */
+void Hornet_MoveWaitThenRiseLeave(Hornet *self);	/* $1368F4 */
+void Hornet_MoveDiveOnce(Hornet *self);	/* $13695C */
+void Hornet_MoveDiveAgain(Hornet *self);	/* $136992 */
+void Hornet_MoveWaitThenDive(Hornet *self);	/* $1369C8 */
+void Hornet_MoveRiseThenWait(Hornet *self);	/* $136A32 */
+void Hornet_MoveWaitThenRise(Hornet *self);	/* $136AA6 */
+void Hornet_MoveDiveRepeat(Hornet *self);	/* $136B0E */
+short Hornet_StateAttackDelay(Hornet *self);	/* $136B44 */
+short Hornet_StateFacePlayer(Hornet *self);	/* $136B84 */
+short Hornet_StateShotLoop(Hornet *self);	/* $136BD4 */
+short Hornet_StateFire(Hornet *self);	/* $136C28 */
+short Hornet_StateShotRecover(Hornet *self);	/* $136CCA */
+short Hornet_StateDropIn(Hornet *self);	/* $136D1A */
+short Hornet_StateDropping(Hornet *self);	/* $136D44 */
+short Hornet_StatePickPattern(Hornet *self);	/* $136D86 */
 void Hornet_StatePickPattern_CaseDefault(void);	/* $136DAE fragment */
 void Hornet_StatePickPattern_Case1(void);	/* $136DC4 fragment */
 void Hornet_StatePickPattern_StartAttack(void);	/* $136E04 fragment */
-void Hornet_Nop66(void *);	/* $136E3A */
+void Hornet_Nop66(Hornet *self);	/* $136E3A */
 void Hornet_Reset(void);	/* $136E50 */
 void Hornet_ClassInit(void);	/* $136E5C */
-void Hornet_Init(void *, long, long, void *);	/* $136E7C */
-long Hornet_Move(void *);	/* $13707A */
-long Hornet_Update(void *);	/* $13709E */
-void Hornet_Explode(void *);	/* $1370E8 */
-long Hornet_SpawnForDeathbird(long, long, long, short);	/* $137142 */
+void Hornet_Init(Hornet *self, long x, long y, Placement *pl);	/* $136E7C */
+void Hornet_Move(Hornet *self);	/* $13707A */
+void Hornet_Update(Hornet *self);	/* $13709E */
+void Hornet_Explode(Hornet *self);	/* $1370E8 */
+Hornet *Hornet_SpawnForDeathbird(long x, long y, Placement *pl, short kind);	/* $137142 */
 void Hornet_SpawnForDeathbird_CaseDefault(void);	/* $1371C8 fragment */
 void Hornet_SpawnForDeathbird_Case2(void);	/* $1371D8 fragment */
 void Hornet_SpawnForDeathbird_Finish(void);	/* $13722C fragment */
@@ -2833,7 +2833,7 @@ void FluxBomb_StateBurst(void *);	/* $158F68 */
 long FluxBomb_Explode(void *);	/* $158F92 */
 long FluxBomb_StartHeld(void *);	/* $158FE4 */
 long FluxBomb_StateHeld(void *);	/* $159030 */
-long Magneto_AirShotAnim(short);	/* $159092 */
+void *Magneto_AirShotAnim(short dir);	/* $159092 */
 void Magneto_AirShotAnim_Case0(void);	/* $1590C6 fragment */
 void Magneto_AirShotAnim_Case2(void);	/* $1590DA fragment */
 void Magneto_AirShotAnim_Case3(void);	/* $1590E4 fragment */
@@ -2842,7 +2842,7 @@ void Magneto_AirShotAnim_Case9(void);	/* $159120 fragment */
 void Magneto_AirShotAnim_Default(void);	/* $15912A fragment */
 void Magneto_AirShotAnim_Result(void);	/* $15912E fragment */
 void Magneto_AirShotAnim_Ret(void);	/* $159130 fragment */
-long Magneto_AirShotEndAnim(short);	/* $159138 */
+void *Magneto_AirShotEndAnim(short dir);	/* $159138 */
 void Magneto_AirShotEndAnim_Case0(void);	/* $15916C fragment */
 void Magneto_AirShotEndAnim_Case2(void);	/* $159180 fragment */
 void Magneto_AirShotEndAnim_Case3(void);	/* $15918A fragment */
@@ -2851,7 +2851,7 @@ void Magneto_AirShotEndAnim_Case9(void);	/* $1591C6 fragment */
 void Magneto_AirShotEndAnim_Default(void);	/* $1591D0 fragment */
 void Magneto_AirShotEndAnim_Result(void);	/* $1591D4 fragment */
 void Magneto_AirShotEndAnim_Ret(void);	/* $1591D6 fragment */
-long Magneto_ShotAnim(short);	/* $1591DE */
+void *Magneto_ShotAnim(short dir);	/* $1591DE */
 void Magneto_ShotAnim_Case1(void);	/* $15920C fragment */
 void Magneto_ShotAnim_Case2(void);	/* $159216 fragment */
 void Magneto_ShotAnim_Case4(void);	/* $15922A fragment */
@@ -2860,7 +2860,7 @@ void Magneto_ShotAnim_Case8(void);	/* $159252 fragment */
 void Magneto_ShotAnim_Default(void);	/* $15925C fragment */
 void Magneto_ShotAnim_Result(void);	/* $159260 fragment */
 void Magneto_ShotAnim_Ret(void);	/* $159262 fragment */
-long Magneto_ShotEndAnim(short);	/* $15926A */
+void *Magneto_ShotEndAnim(short dir);	/* $15926A */
 void Magneto_ShotEndAnim_Case1(void);	/* $159298 fragment */
 void Magneto_ShotEndAnim_Case2(void);	/* $1592A2 fragment */
 void Magneto_ShotEndAnim_Case4(void);	/* $1592B6 fragment */
@@ -2869,8 +2869,8 @@ void Magneto_ShotEndAnim_Case8(void);	/* $1592DE fragment */
 void Magneto_ShotEndAnim_Default(void);	/* $1592E8 fragment */
 void Magneto_ShotEndAnim_Result(void);	/* $1592EC fragment */
 void Magneto_ShotEndAnim_Ret(void);	/* $1592EE fragment */
-long Magneto_ShotOriginCrouch(char, void *, void *, void *, void *);	/* $1592F6 */
-void Magneto_ShotOriginAir(char, void *, void *);	/* $159354 */
+void Magneto_ShotOriginCrouch(char dir, short *dx, short *dy, long *angle, char *type);	/* $1592F6 */
+void Magneto_ShotOriginAir(char dir, short *dx, short *dy, long *angle, char *type);	/* $159354 */
 void Magneto_ShotOriginAir_Case0(void);	/* $159398 fragment */
 void Magneto_ShotOriginAir_Case9(void);	/* $1593B6 fragment */
 void Magneto_ShotOriginAir_Case1(void);	/* $1593D4 fragment */
@@ -2878,24 +2878,24 @@ void Magneto_ShotOriginAir_Case2(void);	/* $1593F2 fragment */
 void Magneto_ShotOriginAir_Case3(void);	/* $159410 fragment */
 void Magneto_ShotOriginAir_Case7(void);	/* $159482 fragment */
 void Magneto_ShotOriginAir_Ret(void);	/* $1594B6 fragment */
-void Magneto_ShotOrigin(char, void *, void *);	/* $1594C0 */
+void Magneto_ShotOrigin(char dir, short *dx, short *dy, long *angle, char *type);	/* $1594C0 */
 void Magneto_ShotOrigin_Case1(void);	/* $159502 fragment */
 void Magneto_ShotOrigin_Case7(void);	/* $1595B0 fragment */
 void Magneto_ShotOrigin_Case8(void);	/* $1595CA fragment */
 void Magneto_ShotOrigin_Ret(void);	/* $1595E4 fragment */
-long Magneto_SpawnShot(long, long, char, char, char, char, char, short);	/* $1595EE */
-long Magneto_BombOriginCrouch(char, void *, void *, void *);	/* $1597BE */
-void Magneto_BombOrigin(char, void *, void *);	/* $15980C */
+MagneticGlob *Magneto_SpawnShot(long x, long y, char dir, unsigned char byPlayer, unsigned char crouch, unsigned char priority, unsigned char air, short tiles);	/* $1595EE */
+void Magneto_BombOriginCrouch(char dir, short *dx, short *dy, long *angle);	/* $1597BE */
+void Magneto_BombOrigin(char dir, short *dx, short *dy, long *angle);	/* $15980C */
 void Magneto_BombOrigin_Case1(void);	/* $15984E fragment */
 void Magneto_BombOrigin_Case2(void);	/* $159864 fragment */
 void Magneto_BombOrigin_Case4(void);	/* $15988C fragment */
 void Magneto_BombOrigin_Case7(void);	/* $1598C8 fragment */
 void Magneto_BombOrigin_Case8(void);	/* $1598DA fragment */
 void Magneto_BombOrigin_Ret(void);	/* $1598EC fragment */
-long Magneto_SpawnFluxBomb(long, long, char, char, char, char);	/* $1598F6 */
-long Magneto_FrameBank(short);	/* $1599CC */
-long Magneto_FrameInBank(short);	/* $159A06 */
-void Magneto_SetFrame(void *, short);	/* $159A46 */
+FluxBomb *Magneto_SpawnFluxBomb(long x, long y, char dir, unsigned char byPlayer, unsigned char crouch, unsigned char strong);	/* $1598F6 */
+void *Magneto_FrameBank(short frame);	/* $1599CC */
+short Magneto_FrameInBank(short frame);	/* $159A06 */
+void Magneto_SetFrame(Magneto *self, short frame);	/* $159A46 */
 void Cam_ClampLookToPlayers(void *);	/* $159ECC */
 void Cam_CommitLook(void *);	/* $159FB8 */
 void Pal_CycleStep(void *, void *, void *, void *, char);	/* $159FD6 */
@@ -2905,7 +2905,7 @@ long Obj_RideRail(void *, short);	/* $15A19C */
 void AiScript_Set(AiCursor *cursor, void *table);	/* $15A6DE */
 long Obj_InScreenWindow(void *);	/* $15A6FC */
 long Obj_OutsideActivateWindow(void *);	/* $15A79C */
-short Seg_GridCell(long, long);	/* $15A7C8 */
+long Seg_GridCell(long x, long y);	/* $15A7C8 */
 long Seg_FindAt(short, short, short, short);	/* $15A82A */
 Seg *Seg_FindBelow(short, short, short);	/* $15A8FE */
 Seg *Seg_FindAbove(short, short, short);	/* $15AA20 */
@@ -2917,14 +2917,14 @@ void Spr_EmitFlicker(void *, void *, void *, char, char, char, char, char);	/* $
 void Timer_SetVBlankHookCb(long, long);	/* $15B0D0 */
 void Spr_ReloadDefs(void (*load)(void), char repack);	/* $15B0E6 */
 void Spr_SetFromDef(void *, char);	/* $15B18A */
-long Math_LMul(void);	/* $15C1FC asm */
-long Math_LDivS(void);	/* $15C222 asm */
-long Math_LDivS_Sel(void);	/* $15C22E asm */
+long Math_LMul(long a, long b);	/* $15C1FC asm regs(d0,d1)->d0 */
+long Math_LDivS(long n, long d);	/* $15C222 asm regs(d0,d1)->d0 */
+long Math_LDivS_Sel(long n, long d);	/* $15C22E asm regs(d0,d1)->d0 */
 void Math_LDivS_68000(void);	/* $15C236 fragment */
-long Math_LModS(void);	/* $15C246 asm */
-long Math_LModS_68000(void);	/* $15C252 asm */
-long Math_DivModS(void);	/* $15C25C asm */
-long Math_DivModU(void);	/* $15C2AC asm */
+long Math_LModS(long n, long d);	/* $15C246 asm regs(d0,d1)->d0 */
+long Math_LModS_68000(long n, long d);	/* $15C252 asm regs(d0,d1)->d0 */
+long Math_DivModS(long n, long d, long *q);	/* $15C25C asm regs(d0,d1,&d1)->d0 */
+unsigned long Math_DivModU(unsigned long n, unsigned long d, unsigned long *q);	/* $15C2AC asm regs(d0,d1,&d1)->d0 */
 void Pause_LoadSprite(void);	/* $15C306 */
 void Pause_ShowText(void);	/* $15C32E */
 void Pause_LinkSprites(void);	/* $15C39A */
@@ -2995,7 +2995,7 @@ void Nem_DecodeLoop_Inline(void);	/* $15F540 fragment */
 void Nem_PutRowVdp(void);	/* $15F566 asm */
 void Nem_PutRowRam(void);	/* $15F572 asm */
 void Nem_PutRowMasked(void);	/* $15F57E asm */
-long Nem_BuildCodeTable(void *, void *);	/* $15F5CA asm */
+u8 *Nem_BuildCodeTable(void *list, void *table);	/* $15F5CA asm */
 void Eni_Decode(void *, void *, void *);	/* $15F5FC */
 void Eni_Ops(void);	/* $15F65C asm */
 long Eni_ReadInline(void);	/* $15F6F0 asm */
@@ -3006,7 +3006,7 @@ void Spawn_Nop(void);	/* $15F954 */
 void Spawn_InitRecords(void);	/* $15F95C */
 void VDP_WriteTileRect(void *, void *, long, long, long);	/* $15FA2C */
 void Intro_SegaLogoFlash(long, short);	/* $15FA7A */
-void Intro_WaitFrame(void);	/* $15FBAE asm */
+void Intro_WaitFrame(IntroFrameFn cb);	/* $15FBAE asm regs(@8(a6)) */
 void Bitmap_Set(void *, short);	/* $15FC70 asm */
 char Bitmap_Test(void *, short);	/* $15FC84 asm */
 void Bitmap_FromTileWords(void *, void *, long, short);	/* $15FC9A asm */
@@ -3041,7 +3041,7 @@ void Cam_EndLookDown(void *);	/* $160E60 */
 void Cam_PanStep(void *);	/* $160E72 */
 void Cam_PanTo(void *, short, short, short, short, char, char);	/* $160F36 */
 void Cam_UnlockAxes(void *);	/* $160FCC */
-long Cam_IsPanning(void *);	/* $160FDE */
+char Cam_IsPanning(Camera *self);	/* $160FDE */
 void Cam_ApplyPos(void *);	/* $160FFE */
 void Cam_TrackBoth(void *);	/* $16103C */
 long Cam_EaseAxis(short, short, short, short, short);	/* $16118E */
@@ -3050,106 +3050,106 @@ void Cam_TrackPlayer(void *);	/* $16136E */
 void Cam_TrackObject(void *);	/* $161744 */
 void Cam_DefaultUpdate(void *);	/* $161816 */
 long Beast_GetSize(void);	/* $182AE6 */
-void Beast_Jump(void *);	/* $182AF4 */
-void Beast_SetAirFrame(void *);	/* $182B3C */
-long Beast_WallJump(void *);	/* $182BDE */
-long Beast_StateGrabWall(void *);	/* $182C74 */
-long Beast_StateCling(void *);	/* $182DC2 */
-void Beast_DiveImpact(void *);	/* $182F0C */
-long Beast_StateDive(void *);	/* $182FFA */
-long Beast_StateDiveHold(void *);	/* $1830BE */
-long Beast_AirAttackDown(void *);	/* $183136 */
-long Beast_AirSpecial(void *);	/* $1831D0 */
-void Beast_ShockwaveInit(short, void *, void *, long, char);	/* $18323E */
-long Beast_ShockwaveHitCb(void *, short, short, short);	/* $1832B6 */
-long Beast_ShockwaveStep(void *, void *, void *, char, char, char);	/* $183320 */
-long Beast_UpdateShockwaves(void *);	/* $183512 */
-void Beast_StateStompEnd(void *);	/* $1835C2 */
-long Beast_StateStomp(void *);	/* $183630 */
-long Beast_GroundSpecial(void *);	/* $1836C0 */
-void Beast_SetFrameKeepCenter(void *, short);	/* $183724 */
-void Beast_SetFrameKeepCenterX(void *, short);	/* $1837B0 */
-void Beast_RollLand(void *);	/* $183810 */
-long Beast_StateRollRecover(void *);	/* $183870 */
-long Beast_StateRollEnd(void *);	/* $1838B8 */
-long Beast_StateRoll(void *);	/* $18393C */
-void Beast_RollProbeCb(long, void *, void *);	/* $183A24 */
-long Beast_RollPathClear(void *);	/* $183A3E */
-long Beast_StartRoll(void *);	/* $183AB6 */
-long Beast_StateCrouch(void *);	/* $183BAE */
-long Beast_Crouch(void *);	/* $183E1A */
-void Beast_StateUpAttack(void *);	/* $183EB2 */
-long Beast_GroundAttackUp(void *);	/* $183F70 */
-void Beast_Init(void *, long, long, long);	/* $183FFE */
-long Beast_Attack(void *, long, char, char, short, short);	/* $1840EC */
-void Beast_SetFrame(void *, short);	/* $184158 */
-long Beast_SelectSpriteDef(void);	/* $1841E4 */
-long Beast_SelectFrame(void);	/* $1841F4 */
+void Beast_Jump(Beast *self);	/* $182AF4 */
+void Beast_SetAirFrame(Beast *self);	/* $182B3C */
+short Beast_WallJump(Beast *self);	/* $182BDE */
+short Beast_StateGrabWall(Beast *self);	/* $182C74 */
+short Beast_StateCling(Beast *self);	/* $182DC2 */
+void Beast_DiveImpact(Beast *self);	/* $182F0C */
+short Beast_StateDive(Beast *self);	/* $182FFA */
+short Beast_StateDiveHold(Beast *self);	/* $1830BE */
+short Beast_AirAttackDown(Beast *self);	/* $183136 */
+short Beast_AirSpecial(Beast *self);	/* $1831D0 */
+void Beast_ShockwaveInit(short x, s16 *leftX, s16 *rightX, SprInst *spr, char strong);	/* $18323E */
+char Beast_ShockwaveHitCb(Actor *target, short x, short y, short type);	/* $1832B6 */
+char Beast_ShockwaveStep(s16 *px, s16 *py, SprInst *spr, char right, unsigned char priority, char hitsEnemies);	/* $183320 */
+void Beast_UpdateShockwaves(Beast *self);	/* $183512 */
+void Beast_StateStompEnd(Beast *self);	/* $1835C2 */
+short Beast_StateStomp(Beast *self);	/* $183630 */
+short Beast_GroundSpecial(Beast *self);	/* $1836C0 */
+void Beast_SetFrameKeepCenter(Beast *self, short frame);	/* $183724 */
+void Beast_SetFrameKeepCenterX(Beast *self, short frame);	/* $1837B0 */
+void Beast_RollLand(Beast *self);	/* $183810 */
+short Beast_StateRollRecover(Beast *self);	/* $183870 */
+short Beast_StateRollEnd(Beast *self);	/* $1838B8 */
+short Beast_StateRoll(Beast *self);	/* $18393C */
+void Beast_RollProbeCb(Seg *seg, Actor *obj, s16 *contact);	/* $183A24 */
+char Beast_RollPathClear(Beast *self);	/* $183A3E */
+short Beast_StartRoll(Beast *self);	/* $183AB6 */
+short Beast_StateCrouch(Beast *self);	/* $183BAE */
+short Beast_Crouch(Beast *self);	/* $183E1A */
+void Beast_StateUpAttack(Beast *self);	/* $183EB2 */
+short Beast_GroundAttackUp(Beast *self);	/* $183F70 */
+void Beast_Init(Beast *self, long x, long y, Placement *pl);	/* $183FFE */
+void Beast_Attack(Beast *self, Actor *target, char type, char damage, short sx, short sy);	/* $1840EC */
+void Beast_SetFrame(Beast *self, short frame);	/* $184158 */
+void *Beast_SelectSpriteDef(void);	/* $1841E4 */
+short Beast_SelectFrame(void);	/* $1841F4 */
 long Wolverine_GetSize(void);	/* $196552 */
-void Wolverine_SetAirFrame(void *);	/* $196560 */
-long Wolverine_WallToCeiling(void *);	/* $1965D2 */
-long Wolverine_CeilingToWall(void *);	/* $196686 */
-long Wolverine_StateWallClimb(void *);	/* $19673A */
-long Wolverine_StartCeilingCrawl(void *);	/* $1968D2 */
-long Wolverine_StateWallCling(void *);	/* $1969C2 */
-void Wolverine_StateCeilingCrawl(void *);	/* $196C82 */
-long Wolverine_StartWallClimb(void *);	/* $196E64 */
-long Wolverine_StateCeilingHang(void *);	/* $196F70 */
-long Wolverine_StateGrab(void *);	/* $197116 */
-long Wolverine_StateDive(void *);	/* $1972B8 */
-long Wolverine_StateDiveHold(void *);	/* $197348 */
-long Wolverine_AirAttackDown(void *);	/* $197412 */
-void Wolverine_StateLungeEnd(void *);	/* $197498 */
-long Wolverine_StateLunge(void *);	/* $1974EE */
-long Wolverine_AirSpecial(void *);	/* $1975E6 */
-void Wolverine_LeapSlashEnd(void *);	/* $19767C */
-long Wolverine_GroundSpecial(void *);	/* $1976D2 */
-long Wolverine_StateCrouch(void *);	/* $19777E */
-long Wolverine_Crouch(void *);	/* $1979A4 */
-void Wolverine_Update(void *);	/* $197A3C */
-void Wolverine_Init(void *, long, long, long);	/* $197ACA */
-void Wolverine_SetFrame(void *, short);	/* $197B96 */
-long Wolverine_SelectSpriteDef(void);	/* $197C22 */
-long Wolverine_SelectFrame(void);	/* $197C32 */
-void Wolverine_Reset(void);	/* $197C3C */
-long Nightcrawler_FlashPalette(short);	/* $1A60B6 */
+void Wolverine_SetAirFrame(Wolverine *self);	/* $196560 */
+short Wolverine_WallToCeiling(Wolverine *self);	/* $1965D2 */
+short Wolverine_CeilingToWall(Wolverine *self);	/* $196686 */
+short Wolverine_StateWallClimb(Wolverine *self);	/* $19673A */
+short Wolverine_StartCeilingCrawl(Wolverine *self);	/* $1968D2 */
+short Wolverine_StateWallCling(Wolverine *self);	/* $1969C2 */
+short Wolverine_StateCeilingCrawl(Wolverine *self);	/* $196C82 */
+short Wolverine_StartWallClimb(Wolverine *self);	/* $196E64 */
+short Wolverine_StateCeilingHang(Wolverine *self);	/* $196F70 */
+short Wolverine_StateGrab(Wolverine *self);	/* $197116 */
+short Wolverine_StateDive(Wolverine *self);	/* $1972B8 */
+short Wolverine_StateDiveHold(Wolverine *self);	/* $197348 */
+short Wolverine_AirAttackDown(Wolverine *self);	/* $197412 */
+void Wolverine_StateLungeEnd(Wolverine *self);	/* $197498 */
+short Wolverine_StateLunge(Wolverine *self);	/* $1974EE */
+short Wolverine_AirSpecial(Wolverine *self);	/* $1975E6 */
+void Wolverine_LeapSlashEnd(Wolverine *self);	/* $19767C */
+short Wolverine_GroundSpecial(Wolverine *self);	/* $1976D2 */
+short Wolverine_StateCrouch(Wolverine *self);	/* $19777E */
+short Wolverine_Crouch(Wolverine *self);	/* $1979A4 */
+void Wolverine_Update(Wolverine *self);	/* $197A3C */
+void Wolverine_Init(Wolverine *self, long x, long y, Placement *pl);	/* $197ACA */
+void Wolverine_SetFrame(Wolverine *self, short frame);	/* $197B96 */
+void *Wolverine_SelectSpriteDef(void);	/* $197C22 */
+short Wolverine_SelectFrame(void);	/* $197C32 */
+void Wolverine_Reset(Wolverine *self);	/* $197C3C */
+char Nightcrawler_FlashPalette(short step);	/* $1A60B6 */
 long Nightcrawler_GetSize(void);	/* $1A61DE */
-void Nightcrawler_Jump(void *);	/* $1A61EC */
-void Nightcrawler_DropThrough(void *);	/* $1A621C */
-void Nightcrawler_SetAirFrame(void *);	/* $1A6248 */
-long Nightcrawler_WallAttackEnd(void *);	/* $1A62A2 */
-long Nightcrawler_StateWallClimb(void *);	/* $1A62D6 */
-long Nightcrawler_StateWaitUpRelease(void *);	/* $1A6410 */
-long Nightcrawler_StateWaitLeftRelease(void *);	/* $1A646A */
-long Nightcrawler_StateWaitRightRelease(void *);	/* $1A64C4 */
-long Nightcrawler_WallToCeiling(void *);	/* $1A651E */
-long Nightcrawler_StateWallCling(void *);	/* $1A65EC */
+void Nightcrawler_Jump(Nightcrawler *self);	/* $1A61EC */
+void Nightcrawler_DropThrough(Nightcrawler *self);	/* $1A621C */
+void Nightcrawler_SetAirFrame(Nightcrawler *self);	/* $1A6248 */
+short Nightcrawler_WallAttackEnd(Nightcrawler *self);	/* $1A62A2 */
+short Nightcrawler_StateWallClimb(Nightcrawler *self);	/* $1A62D6 */
+short Nightcrawler_StateWaitUpRelease(Nightcrawler *self);	/* $1A6410 */
+short Nightcrawler_StateWaitLeftRelease(Nightcrawler *self);	/* $1A646A */
+short Nightcrawler_StateWaitRightRelease(Nightcrawler *self);	/* $1A64C4 */
+short Nightcrawler_WallToCeiling(Nightcrawler *self);	/* $1A651E */
+short Nightcrawler_StateWallCling(Nightcrawler *self);	/* $1A65EC */
 void Nightcrawler_StateWallCling_Ret(void);	/* $1A6A52 fragment */
-long Nightcrawler_StateCeilingCrawl(void *);	/* $1A6A5C */
-long Nightcrawler_CeilingToWall(void *);	/* $1A6B36 */
-long Nightcrawler_StateCeilingHang(void *);	/* $1A6C48 */
-long Nightcrawler_StateGrab(void *);	/* $1A6FDC */
-long Nightcrawler_StateDive(void *);	/* $1A714C */
-long Nightcrawler_StateDiveHold(void *);	/* $1A71EE */
-long Nightcrawler_AirAttackDown(void *);	/* $1A72C6 */
-long Nightcrawler_AirAttack(void *);	/* $1A73B2 */
-long Nightcrawler_SetTeleportVelocity(void *);	/* $1A74A2 */
-long Nightcrawler_StartTeleport(void *);	/* $1A757E */
-long Nightcrawler_TeleportVanish(void *);	/* $1A76E6 */
-void Nightcrawler_TeleportDown(void *);	/* $1A7730 */
-void Nightcrawler_StateTeleport(void *);	/* $1A775E */
-void Nightcrawler_TeleportDone(void *);	/* $1A77F0 */
-void Nightcrawler_StateTeleportFlash(void *);	/* $1A7848 */
-long Nightcrawler_TeleportAppear(void *);	/* $1A78BC */
-void Nightcrawler_GroundSpecial(void *);	/* $1A7962 */
-void Nightcrawler_AirSpecial(void *);	/* $1A7984 */
-long Nightcrawler_Attack(void *, long, char, char, short, short);	/* $1A79A6 */
-long Nightcrawler_UpdateCharge(void *);	/* $1A7A86 */
-void Nightcrawler_Init(void *, long, long, long);	/* $1A7B10 */
-void Nightcrawler_SetFrame(void *, short);	/* $1A7BFE */
-void Nightcrawler_Reset(void);	/* $1A7CA4 */
-long Nightcrawler_SelectSpriteDef(void);	/* $1A7CAC */
-long Nightcrawler_SelectFrame(void);	/* $1A7CBC */
+short Nightcrawler_StateCeilingCrawl(Nightcrawler *self);	/* $1A6A5C */
+short Nightcrawler_CeilingToWall(Nightcrawler *self);	/* $1A6B36 */
+short Nightcrawler_StateCeilingHang(Nightcrawler *self);	/* $1A6C48 */
+short Nightcrawler_StateGrab(Nightcrawler *self);	/* $1A6FDC */
+short Nightcrawler_StateDive(Nightcrawler *self);	/* $1A714C */
+short Nightcrawler_StateDiveHold(Nightcrawler *self);	/* $1A71EE */
+short Nightcrawler_AirAttackDown(Nightcrawler *self);	/* $1A72C6 */
+short Nightcrawler_AirAttack(Nightcrawler *self);	/* $1A73B2 */
+void Nightcrawler_SetTeleportVelocity(Nightcrawler *self);	/* $1A74A2 */
+short Nightcrawler_StartTeleport(Nightcrawler *self);	/* $1A757E */
+short Nightcrawler_TeleportVanish(Nightcrawler *self);	/* $1A76E6 */
+void Nightcrawler_TeleportDown(Nightcrawler *self);	/* $1A7730 */
+void Nightcrawler_StateTeleport(Nightcrawler *self);	/* $1A775E */
+void Nightcrawler_TeleportDone(Nightcrawler *self);	/* $1A77F0 */
+short Nightcrawler_StateTeleportFlash(Nightcrawler *self);	/* $1A7848 */
+short Nightcrawler_TeleportAppear(Nightcrawler *self);	/* $1A78BC */
+void Nightcrawler_GroundSpecial(Nightcrawler *self);	/* $1A7962 */
+void Nightcrawler_AirSpecial(Nightcrawler *self);	/* $1A7984 */
+void Nightcrawler_Attack(Nightcrawler *self, Actor *target, char type, char damage, short sx, short sy);	/* $1A79A6 */
+void Nightcrawler_UpdateCharge(Nightcrawler *self);	/* $1A7A86 */
+void Nightcrawler_Init(Nightcrawler *self, long x, long y, Placement *place);	/* $1A7B10 */
+void Nightcrawler_SetFrame(Nightcrawler *self, short frame);	/* $1A7BFE */
+void Nightcrawler_Reset(Nightcrawler *self);	/* $1A7CA4 */
+void *Nightcrawler_SelectSpriteDef(void);	/* $1A7CAC */
+short Nightcrawler_SelectFrame(void);	/* $1A7CBC */
 long Psylocke_GetSize(void);	/* $1B9060 */
 void Psylocke_SetAirFrame(void *);	/* $1B906E */
 void Psylocke_CrouchCombo2(void *);	/* $1B90E0 */
@@ -3173,79 +3173,79 @@ void Psylocke_AfterState(long);	/* $1B9FE8 */
 long Psylocke_SelectSpriteDef(void);	/* $1BA006 */
 long Psylocke_SelectFrame(void);	/* $1BA016 */
 long Magneto_GetSize(void);	/* $1CDA3A */
-long Magneto_HoverDamp(void *, char, char);	/* $1CDA48 */
-void Magneto_AirSteer(void *);	/* $1CDB32 */
-void Magneto_SetAirFrame(void *);	/* $1CDCE8 */
-long Magneto_StateAirShotEnd(void *);	/* $1CDDA4 */
-long Magneto_StateAirShot(void *);	/* $1CDEB2 */
-void Magneto_StartAirShot(void *);	/* $1CDFD2 */
-void Magneto_AirAttackUp(void *);	/* $1CE05E */
-void Magneto_AirAttack(void *);	/* $1CE0F2 */
-void Magneto_AirAttackDown(void *);	/* $1CE19A */
-void Magneto_FireShot(void *);	/* $1CE22C */
-long Magneto_StartShot(void *);	/* $1CE2CE */
-long Magneto_StateAim(void *);	/* $1CE34E */
-void Magneto_GroundAttack(void *);	/* $1CE618 */
-void Magneto_GroundAttackUp(void *);	/* $1CE646 */
-long Magneto_StateCrouchAim(void *);	/* $1CE674 */
-void Magneto_GroundAttackDown(void *);	/* $1CE73E */
-long Magneto_StateHoldBomb(void *);	/* $1CE778 */
-long Magneto_SpawnBomb(void *);	/* $1CE826 */
-long Magneto_StartBomb(void *);	/* $1CE902 */
-void Magneto_GroundSpecial(void *);	/* $1CE982 */
-void Magneto_GroundSpecialUp(void *);	/* $1CEA2E */
-void Magneto_GroundSpecialDown(void *);	/* $1CEADA */
-void Magneto_Init(void *, long, long, long);	/* $1CEB18 */
-void Magneto_TakeDamage(void *, long, char, char, short, short);	/* $1CEBCC */
-long Magneto_SelectSpriteDef(void);	/* $1CEC28 */
-long Magneto_SelectFrame(void);	/* $1CEC38 */
-void Magneto_Reset(void);	/* $1CEC42 */
+void Magneto_HoverDamp(Magneto *self, char stopSlow, char face);	/* $1CDA48 */
+void Magneto_AirSteer(Magneto *self);	/* $1CDB32 */
+void Magneto_SetAirFrame(Magneto *self);	/* $1CDCE8 */
+short Magneto_StateAirShotEnd(Magneto *self);	/* $1CDDA4 */
+short Magneto_StateAirShot(Magneto *self);	/* $1CDEB2 */
+void Magneto_StartAirShot(Magneto *self);	/* $1CDFD2 */
+void Magneto_AirAttackUp(Magneto *self);	/* $1CE05E */
+void Magneto_AirAttack(Magneto *self);	/* $1CE0F2 */
+void Magneto_AirAttackDown(Magneto *self);	/* $1CE19A */
+void Magneto_FireShot(Magneto *self);	/* $1CE22C */
+short Magneto_StartShot(Magneto *self);	/* $1CE2CE */
+short Magneto_StateAim(Magneto *self);	/* $1CE34E */
+void Magneto_GroundAttack(Magneto *self);	/* $1CE618 */
+void Magneto_GroundAttackUp(Magneto *self);	/* $1CE646 */
+short Magneto_StateCrouchAim(Magneto *self);	/* $1CE674 */
+void Magneto_GroundAttackDown(Magneto *self);	/* $1CE73E */
+short Magneto_StateHoldBomb(Magneto *self);	/* $1CE778 */
+short Magneto_SpawnBomb(Magneto *self);	/* $1CE826 */
+short Magneto_StartBomb(Magneto *self);	/* $1CE902 */
+void Magneto_GroundSpecial(Magneto *self);	/* $1CE982 */
+void Magneto_GroundSpecialUp(Magneto *self);	/* $1CEA2E */
+void Magneto_GroundSpecialDown(Magneto *self);	/* $1CEADA */
+void Magneto_Init(Magneto *self, long x, long y, Placement *pl);	/* $1CEB18 */
+void Magneto_TakeDamage(Magneto *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $1CEBCC */
+void *Magneto_SelectSpriteDef(void);	/* $1CEC28 */
+short Magneto_SelectFrame(void);	/* $1CEC38 */
+void Magneto_Reset(Magneto *self);	/* $1CEC42 */
 long Gambit_GetSize(void);	/* $1CEF6E */
-long Gambit_SetAirFrame(void *);	/* $1CEF7C */
-long Gambit_CardHitEnemy(void *, short, short, void *);	/* $1CF070 */
-long Gambit_CardCollide(void *);	/* $1CF0E2 */
-char Gambit_FindFreeCard(void *);	/* $1CF1B6 */
-long Gambit_SpawnCard(void *, char, char, short, short, short, short, char);	/* $1CF1EC */
-long Gambit_PointNearBody(void *, void *, short, short);	/* $1CF36E */
+void Gambit_SetAirFrame(Gambit *self);	/* $1CEF7C */
+char Gambit_CardHitEnemy(Actor *target, short x, short y, void *data);	/* $1CF070 */
+char Gambit_CardCollide(GambitCard *card);	/* $1CF0E2 */
+GambitCard *Gambit_FindFreeCard(Gambit *self);	/* $1CF1B6 */
+GambitCard *Gambit_SpawnCard(Gambit *self, char kind, char damage, short dx, short dy, short angle, short speed, char up);	/* $1CF1EC */
+char Gambit_PointNearBody(Gambit *self, GambitCard *card, short x, short y);	/* $1CF36E */
 void Gambit_PointNearBody_Type0(void);	/* $1CF3AE fragment */
 void Gambit_PointNearBody_Type1(void);	/* $1CF3C0 fragment */
 void Gambit_PointNearBody_Test(void);	/* $1CF3E2 fragment */
-void Gambit_UpdateCard(void *, void *);	/* $1CF432 */
+void Gambit_UpdateCard(Gambit *self, GambitCard *card);	/* $1CF432 */
 void Gambit_UpdateCard_TrailLoop(void);	/* $1CF74E fragment */
 void Gambit_UpdateCard_TrailNext(void);	/* $1CF7E6 fragment */
-void Gambit_AfterState(void *);	/* $1CF7FA */
-void Gambit_ThrowCards(void *);	/* $1CF84A */
-long Gambit_StateAirThrowEnd(void *);	/* $1CFA48 */
-long Gambit_AirThrow(void *);	/* $1CFA90 */
-void Gambit_GroundThrow(void *);	/* $1CFAD8 */
-long Gambit_StateThrow(void *);	/* $1CFB14 */
-long Gambit_StateGroundAim(void *);	/* $1CFB56 */
-void Gambit_AirThrowAim(void *);	/* $1CFE26 */
-long Gambit_StateAirThrowBrake(void *);	/* $1CFF7E */
-long Gambit_StateAirCharge(void *);	/* $1CFFEA */
-long Gambit_StateCrouchAim(void *);	/* $1D0058 */
-void Gambit_GroundAim(void *);	/* $1D011E */
-void Gambit_CrouchAim(void *);	/* $1D0148 */
-void Gambit_AirCharge(void *);	/* $1D0182 */
-void Gambit_GroundSpecial(void *);	/* $1D01A4 */
-void Gambit_GroundSpecialUp(void *);	/* $1D01C6 */
-void Gambit_GroundSpecialDown(void *);	/* $1D01E8 */
-void Gambit_AirSpecial(void *);	/* $1D020A */
-void Gambit_AirSpecialUp(void *);	/* $1D022C */
-void Gambit_AirSpecialDown(void *);	/* $1D024E */
-void Gambit_ClearCards(void *);	/* $1D0270 */
-void Gambit_Init(void *, long, long, long);	/* $1D029E */
-void Gambit_SetFrame(void *, short);	/* $1D041E */
-long Gambit_StateHardLanding(void *);	/* $1D04C4 */
-void Gambit_HardLanding(void *);	/* $1D052A */
-long Gambit_StateAirKick(void *);	/* $1D0560 */
-long Gambit_AirKick(void *);	/* $1D059C */
-long Gambit_AirAttack(void *);	/* $1D06AE */
+void Gambit_AfterState(Gambit *self);	/* $1CF7FA */
+void Gambit_ThrowCards(Gambit *self);	/* $1CF84A */
+void Gambit_StateAirThrowEnd(Gambit *self);	/* $1CFA48 */
+short Gambit_AirThrow(Gambit *self);	/* $1CFA90 */
+void Gambit_GroundThrow(Gambit *self);	/* $1CFAD8 */
+short Gambit_StateThrow(Gambit *self);	/* $1CFB14 */
+short Gambit_StateGroundAim(Gambit *self);	/* $1CFB56 */
+void Gambit_AirThrowAim(Gambit *self);	/* $1CFE26 */
+void Gambit_StateAirThrowBrake(Gambit *self);	/* $1CFF7E */
+void Gambit_StateAirCharge(Gambit *self);	/* $1CFFEA */
+short Gambit_StateCrouchAim(Gambit *self);	/* $1D0058 */
+void Gambit_GroundAim(Gambit *self);	/* $1D011E */
+void Gambit_CrouchAim(Gambit *self);	/* $1D0148 */
+void Gambit_AirCharge(Gambit *self);	/* $1D0182 */
+void Gambit_GroundSpecial(Gambit *self);	/* $1D01A4 */
+void Gambit_GroundSpecialUp(Gambit *self);	/* $1D01C6 */
+void Gambit_GroundSpecialDown(Gambit *self);	/* $1D01E8 */
+void Gambit_AirSpecial(Gambit *self);	/* $1D020A */
+void Gambit_AirSpecialUp(Gambit *self);	/* $1D022C */
+void Gambit_AirSpecialDown(Gambit *self);	/* $1D024E */
+void Gambit_ClearCards(Gambit *self);	/* $1D0270 */
+void Gambit_Init(Gambit *self, long x, long y, Placement *pl);	/* $1D029E */
+void Gambit_SetFrame(Gambit *self, short frame);	/* $1D041E */
+short Gambit_StateHardLanding(Gambit *self);	/* $1D04C4 */
+void Gambit_HardLanding(Gambit *self);	/* $1D052A */
+void Gambit_StateAirKick(Gambit *self);	/* $1D0560 */
+short Gambit_AirKick(Gambit *self);	/* $1D059C */
+short Gambit_AirAttack(Gambit *self);	/* $1D06AE */
 void Gambit_Nop6A(void);	/* $1D073C */
-long Gambit_SelectSpriteDef(void);	/* $1D0744 */
-long Gambit_SelectFrame(void);	/* $1D0754 */
+void *Gambit_SelectSpriteDef(void);	/* $1D0744 */
+short Gambit_SelectFrame(void);	/* $1D0754 */
 void Cyclops_ResetBeamFlicker(void);	/* $1E15F4 asm */
-void Cyclops_DrawBeam(void *, void *);	/* $1E1604 */
+void Cyclops_DrawBeam(Cyclops *self, CyclopsBeam *beam);	/* $1E1604 */
 void Cyclops_DrawBeam_StepLevel(void);	/* $1E16BC fragment */
 void Cyclops_DrawBeam_StepDown(void);	/* $1E16CC fragment */
 void Cyclops_DrawBeam_StepDiag(void);	/* $1E16D4 fragment */
@@ -3255,126 +3255,126 @@ void Cyclops_DrawBeam_Emit(void);	/* $1E177A fragment */
 void Cyclops_DrawBeam_None(void);	/* $1E1916 fragment */
 void Cyclops_BeamVBlankFlicker(void);	/* $1E1928 asm */
 long Cyclops_GetSize(void);	/* $1E2AB0 */
-void Cyclops_SetAirFrame(void *);	/* $1E2ABE */
-long Cyclops_AirAttack(void *);	/* $1E2B48 */
-void Cyclops_AirAttackDown(void *);	/* $1E2C1A */
-long Cyclops_ResetBeams(void);	/* $1E2C3E */
-void Cyclops_EndBeam(void *);	/* $1E2CBC */
-void Cyclops_StartBeam(void *, void *, char);	/* $1E2CFC */
-long Cyclops_BeamTimeUp(void *);	/* $1E2F24 */
-void Cyclops_BeamHitEnemies(void *);	/* $1E2F46 */
-long Cyclops_StateAirBeam(void *);	/* $1E31BA */
-void Cyclops_StateGroundBeam(void *);	/* $1E3214 */
-void Cyclops_StateCrouchBeam(void *);	/* $1E3246 */
-long Cyclops_StateHardLanding(void *);	/* $1E3278 */
-void Cyclops_HardLanding(void *);	/* $1E32EC */
-void Cyclops_AirBeamAim(void *);	/* $1E3322 */
-long Cyclops_StateAirBeamBrake(void *);	/* $1E34BA */
-long Cyclops_StateAirCharge(void *);	/* $1E3526 */
-long Cyclops_StateGroundAim(void *);	/* $1E3594 */
-long Cyclops_StateCrouchAim(void *);	/* $1E3892 */
-void Cyclops_AirCharge(void *);	/* $1E3966 */
-void Cyclops_GroundAim(void *);	/* $1E3988 */
-void Cyclops_CrouchAim(void *);	/* $1E39B8 */
-void Cyclops_GroundSpecial(void *);	/* $1E39F2 */
-void Cyclops_GroundSpecialUp(void *);	/* $1E3A14 */
-void Cyclops_GroundSpecialDown(void *);	/* $1E3A36 */
-void Cyclops_AirSpecial(void *);	/* $1E3A58 */
-void Cyclops_AirSpecialUp(void *);	/* $1E3A7A */
-void Cyclops_AirSpecialDown(void *);	/* $1E3A9C */
-void Cyclops_Init(void *, long, long, long);	/* $1E3ABE */
-void Cyclops_Draw(void *);	/* $1E3BB0 */
-void Cyclops_TakeDamage(void *, long, char, char, short, short);	/* $1E3BF2 */
-void Cyclops_Nop6A(void);	/* $1E3C52 */
-long Cyclops_SelectSpriteDef(void);	/* $1E3C5A */
-long Cyclops_SelectFrame(void);	/* $1E3C6A */
-char XPlayer_ActionPressed(void *);	/* $1F005C */
+void Cyclops_SetAirFrame(Cyclops *self);	/* $1E2ABE */
+void Cyclops_AirAttack(Cyclops *self);	/* $1E2B48 */
+void Cyclops_AirAttackDown(Cyclops *self);	/* $1E2C1A */
+void Cyclops_ResetBeams(void);	/* $1E2C3E */
+void Cyclops_EndBeam(void *obj);	/* $1E2CBC */
+void Cyclops_StartBeam(Cyclops *obj, void *rec, char vflip);	/* $1E2CFC */
+char Cyclops_BeamTimeUp(Cyclops *self);	/* $1E2F24 */
+void Cyclops_BeamHitEnemies(Cyclops *self);	/* $1E2F46 */
+short Cyclops_StateAirBeam(Cyclops *self);	/* $1E31BA */
+void Cyclops_StateGroundBeam(Cyclops *self);	/* $1E3214 */
+void Cyclops_StateCrouchBeam(Cyclops *self);	/* $1E3246 */
+short Cyclops_StateHardLanding(Cyclops *self);	/* $1E3278 */
+void Cyclops_HardLanding(Cyclops *self);	/* $1E32EC */
+void Cyclops_AirBeamAim(Cyclops *self);	/* $1E3322 */
+void Cyclops_StateAirBeamBrake(Cyclops *self);	/* $1E34BA */
+void Cyclops_StateAirCharge(Cyclops *self);	/* $1E3526 */
+short Cyclops_StateGroundAim(Cyclops *self);	/* $1E3594 */
+short Cyclops_StateCrouchAim(Cyclops *self);	/* $1E3892 */
+void Cyclops_AirCharge(Cyclops *self);	/* $1E3966 */
+void Cyclops_GroundAim(Cyclops *self);	/* $1E3988 */
+void Cyclops_CrouchAim(Cyclops *self);	/* $1E39B8 */
+void Cyclops_GroundSpecial(Cyclops *self);	/* $1E39F2 */
+void Cyclops_GroundSpecialUp(Cyclops *self);	/* $1E3A14 */
+void Cyclops_GroundSpecialDown(Cyclops *self);	/* $1E3A36 */
+void Cyclops_AirSpecial(Cyclops *self);	/* $1E3A58 */
+void Cyclops_AirSpecialUp(Cyclops *self);	/* $1E3A7A */
+void Cyclops_AirSpecialDown(Cyclops *self);	/* $1E3A9C */
+void Cyclops_Init(Cyclops *self, long x, long y, Placement *place);	/* $1E3ABE */
+void Cyclops_Draw(Cyclops *self);	/* $1E3BB0 */
+void Cyclops_TakeDamage(Cyclops *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $1E3BF2 */
+void Cyclops_Nop6A(Cyclops *self);	/* $1E3C52 */
+void *Cyclops_SelectSpriteDef(void);	/* $1E3C5A */
+short Cyclops_SelectFrame(void);	/* $1E3C6A */
+char XPlayer_ActionPressed(XPlayer *self);	/* $1F005C */
 long XPlayer_GetSize(void);	/* $1F00E8 */
-void XPlayer_EnterAirFrame(void *);	/* $1F00F6 */
-void XPlayer_LeaveGround(void *);	/* $1F0188 */
-long XPlayer_CanDoubleJumpNo(void);	/* $1F01F4 */
-long XPlayer_DoubleJumpNone(void *);	/* $1F01FE */
-long XPlayer_CheckGrabNo(void);	/* $1F0222 */
-long XPlayer_StateClimbNone(void *);	/* $1F022C */
-long XPlayer_AirSpecial(void *);	/* $1F0250 */
-void XPlayer_AirSpecialUp(void *);	/* $1F0280 */
-void XPlayer_AirSpecialDown(void *);	/* $1F02A4 */
-long XPlayer_GroundSpecial(void *);	/* $1F02C8 */
-void XPlayer_GroundSpecialUp(void *);	/* $1F02EC */
-void XPlayer_GroundSpecialDown(void *);	/* $1F0310 */
-long XPlayer_StartDeath(void *);	/* $1F0334 */
-long XPlayer_StateDeathBlink(void *);	/* $1F039A */
-void XPlayer_DeathDone(void *);	/* $1F0430 */
-long XPlayer_PushingTetherEdge(void *);	/* $1F049E */
-void XPlayer_TetherClamp(void *, void *, long, long);	/* $1F0542 */
-long XPlayer_TetherToPartner(void *);	/* $1F0582 */
-long XPlayer_PlaceAtSafePos(void *);	/* $1F074E */
-char XPlayer_CanRejoinAt(void *, void *);	/* $1F07CA */
-void XPlayer_StateRejoin(void *);	/* $1F0834 */
-long XPlayer_StateFallOffScreen(void *);	/* $1F0930 */
-long XPlayer_StartFallOffScreen(void *);	/* $1F0998 */
-void XPlayer_StateLookUp(void *);	/* $1F09D6 */
-long XPlayer_StartLookUp(void *);	/* $1F0A48 */
-long XPlayer_StateControl(void *);	/* $1F0A94 */
-void XPlayer_SteerFacing(void *, short, short, char);	/* $1F1372 */
+void XPlayer_EnterAirFrame(XPlayer *self);	/* $1F00F6 */
+void XPlayer_LeaveGround(XPlayer *self);	/* $1F0188 */
+char XPlayer_CanDoubleJumpNo(void);	/* $1F01F4 */
+short XPlayer_DoubleJumpNone(XPlayer *self);	/* $1F01FE */
+char XPlayer_CheckGrabNo(void);	/* $1F0222 */
+short XPlayer_StateClimbNone(XPlayer *self);	/* $1F022C */
+short XPlayer_AirSpecial(XPlayer *self);	/* $1F0250 */
+void XPlayer_AirSpecialUp(XPlayer *self);	/* $1F0280 */
+void XPlayer_AirSpecialDown(XPlayer *self);	/* $1F02A4 */
+short XPlayer_GroundSpecial(XPlayer *self);	/* $1F02C8 */
+void XPlayer_GroundSpecialUp(XPlayer *self);	/* $1F02EC */
+void XPlayer_GroundSpecialDown(XPlayer *self);	/* $1F0310 */
+short XPlayer_StartDeath(XPlayer *self);	/* $1F0334 */
+short XPlayer_StateDeathBlink(XPlayer *self);	/* $1F039A */
+void XPlayer_DeathDone(XPlayer *self);	/* $1F0430 */
+char XPlayer_PushingTetherEdge(XPlayer *self);	/* $1F049E */
+void XPlayer_TetherClamp(XPlayer *self, s32 *coord, long value, long flag);	/* $1F0542 */
+char XPlayer_TetherToPartner(XPlayer *self);	/* $1F0582 */
+short XPlayer_PlaceAtSafePos(XPlayer *self);	/* $1F074E */
+char XPlayer_CanRejoinAt(XPlayer *self, XPlayer *partner);	/* $1F07CA */
+void XPlayer_StateRejoin(XPlayer *self);	/* $1F0834 */
+short XPlayer_StateFallOffScreen(XPlayer *self);	/* $1F0930 */
+short XPlayer_StartFallOffScreen(XPlayer *self);	/* $1F0998 */
+void XPlayer_StateLookUp(XPlayer *self);	/* $1F09D6 */
+short XPlayer_StartLookUp(XPlayer *self);	/* $1F0A48 */
+short XPlayer_StateControl(XPlayer *self);	/* $1F0A94 */
+void XPlayer_SteerFacing(XPlayer *self, short max, short accel, char right);	/* $1F1372 */
 char Player_TopAboveSeg(void *, short, void *);	/* $1F13D0 */
 char Player_BottomBelowSeg(void *, short, void *);	/* $1F1424 */
 char Player_FrontPastSeg(void *, short, void *);	/* $1F1478 */
-long XPlayer_SaveSafePos(void *);	/* $1F1504 */
-long XPlayer_Move(void *, short);	/* $1F153A */
-long XPlayer_Update(void *);	/* $1F1644 */
+void XPlayer_SaveSafePos(XPlayer *self);	/* $1F1504 */
+void XPlayer_Move(XPlayer *self, short step);	/* $1F153A */
+void XPlayer_Update(XPlayer *self);	/* $1F1644 */
 long Spr_UploadFrame18(void *);	/* $1F196E */
-long XPlayer_Draw(void *);	/* $1F1A2E */
-void XPlayer_Deactivate(void *);	/* $1F1C06 */
-void XPlayer_Activate(void *);	/* $1F1CD4 */
-void XPlayer_AddHealth(void *, long, short);	/* $1F1D88 */
-long XPlayer_OutsideActiveWindow(void);	/* $1F1DE2 */
-long XPlayer_TakeDamage(void *, void *, char, char);	/* $1F1DEC */
-void XPlayer_Attack(void *, void *, char, short, short, short);	/* $1F1FEE */
+void XPlayer_Draw(XPlayer *self);	/* $1F1A2E */
+void XPlayer_Deactivate(XPlayer *self);	/* $1F1C06 */
+void XPlayer_Activate(XPlayer *self);	/* $1F1CD4 */
+void XPlayer_AddHealth(XPlayer *self, long unused, short units);	/* $1F1D88 */
+char XPlayer_OutsideActiveWindow(void);	/* $1F1DE2 */
+void XPlayer_TakeDamage(XPlayer *self, Actor *attacker, char type, char damage);	/* $1F1DEC */
+void XPlayer_Attack(XPlayer *self, Actor *target, char type, short damage, short sx, short sy);	/* $1F1FEE */
 void XPlayer_Nop72(void);	/* $1F20D0 */
-void XPlayer_StateFrozen(void *);	/* $1F20D8 */
-void XPlayer_FreezeStanding(void *);	/* $1F20EA */
-long XPlayer_UpdateCharge(void *);	/* $1F2126 */
-long XPlayer_InitSpawnRec(void *, void *);	/* $1F21C0 */
+void XPlayer_StateFrozen(XPlayer *self);	/* $1F20D8 */
+void XPlayer_FreezeStanding(XPlayer *self);	/* $1F20EA */
+void XPlayer_UpdateCharge(XPlayer *self);	/* $1F2126 */
+void XPlayer_InitSpawnRec(SpawnRec *rec, Placement *place);	/* $1F21C0 */
 void XPlayer_ClassInit(void);	/* $1F220E */
 void XPlayer_LevelStart(void);	/* $1F2216 */
-void XPlayer_Nop66(void *);	/* $1F221E */
-void XPlayer_Init(void *, long, long, long);	/* $1F2234 */
-void XPlayer_Jump(void *);	/* $1F2306 */
-void XPlayer_DropThrough(void *);	/* $1F2376 */
-void XPlayer_AirSteer(void *);	/* $1F241C */
-void XPlayer_Steer(void *, short, short, char);	/* $1F2520 */
-long XPlayer_StateFloatFall(void *);	/* $1F2572 */
-void XPlayer_StartFloatFall(void *);	/* $1F26F2 */
+void XPlayer_Nop66(XPlayer *self);	/* $1F221E */
+void XPlayer_Init(XPlayer *self, long x, long y, Placement *place);	/* $1F2234 */
+void XPlayer_Jump(XPlayer *self);	/* $1F2306 */
+void XPlayer_DropThrough(XPlayer *self);	/* $1F2376 */
+void XPlayer_AirSteer(XPlayer *self);	/* $1F241C */
+void XPlayer_Steer(XPlayer *self, short max, short accel, char right);	/* $1F2520 */
+void XPlayer_StateFloatFall(XPlayer *self);	/* $1F2572 */
+void XPlayer_StartFloatFall(XPlayer *self);	/* $1F26F2 */
 void XPlayer_SetAirFrameNop(void);	/* $1F272E */
-long XPlayer_StateAirAttack(void *);	/* $1F2736 */
-long XPlayer_AirAttackUp(void *);	/* $1F27EA */
-long XPlayer_AirAttack(void *);	/* $1F285A */
-long XPlayer_AirAttackDown(void *);	/* $1F28CA */
-long XPlayer_CanDoubleJump(void *);	/* $1F293A */
-long XPlayer_StateDoubleJump(void *);	/* $1F2972 */
-long XPlayer_DoubleJump(void *);	/* $1F2AEA */
-void XPlayer_AttackRecover(void *);	/* $1F2B8E */
-void XPlayer_CrouchAttackRecover(void *);	/* $1F2C6E */
-long XPlayer_AttackCombo2(void *);	/* $1F2D74 */
-long XPlayer_StateAttackCombo(void *);	/* $1F2E56 */
-long XPlayer_GroundAttack(void *);	/* $1F2F0C */
-long XPlayer_GroundAttackUp(void *);	/* $1F2FAC */
-long XPlayer_GroundAttackDown(void *);	/* $1F3044 */
-char XPlayer_Land(void *);	/* $1F30DC */
-void XPlayer_StateHardLanding(void *);	/* $1F31F0 */
-long XPlayer_HardLanding(void *);	/* $1F3226 */
-void XPlayer_WalkAccel(void *, short, short, char);	/* $1F3282 */
-void XPlayer_SetWalkAnim(void *, long, long);	/* $1F32D0 */
-void XPlayer_Walk(void *);	/* $1F3342 */
-long XPlayer_StateWalk(void *);	/* $1F33D0 */
-void XPlayer_StateCrouchLook(void *);	/* $1F35DC */
-long XPlayer_StateCrouch(void *);	/* $1F364E */
-void XPlayer_Crouch(void *);	/* $1F37F2 */
-long XPlayer_StateStand(void *);	/* $1F383A */
-long XPlayer_Stand(void *);	/* $1F39C4 */
-long XPlayer_StateHurtRecover(void *);	/* $1F3ADE */
-long XPlayer_StateHurt(void *);	/* $1F3C7C */
+short XPlayer_StateAirAttack(XPlayer *self);	/* $1F2736 */
+short XPlayer_AirAttackUp(XPlayer *self);	/* $1F27EA */
+short XPlayer_AirAttack(XPlayer *self);	/* $1F285A */
+short XPlayer_AirAttackDown(XPlayer *self);	/* $1F28CA */
+char XPlayer_CanDoubleJump(XPlayer *self);	/* $1F293A */
+void XPlayer_StateDoubleJump(XPlayer *self);	/* $1F2972 */
+short XPlayer_DoubleJump(XPlayer *self);	/* $1F2AEA */
+void XPlayer_AttackRecover(XPlayer *self);	/* $1F2B8E */
+void XPlayer_CrouchAttackRecover(XPlayer *self);	/* $1F2C6E */
+short XPlayer_AttackCombo2(XPlayer *self);	/* $1F2D74 */
+short XPlayer_StateAttackCombo(XPlayer *self);	/* $1F2E56 */
+short XPlayer_GroundAttack(XPlayer *self);	/* $1F2F0C */
+short XPlayer_GroundAttackUp(XPlayer *self);	/* $1F2FAC */
+short XPlayer_GroundAttackDown(XPlayer *self);	/* $1F3044 */
+char XPlayer_Land(XPlayer *self);	/* $1F30DC */
+void XPlayer_StateHardLanding(XPlayer *self);	/* $1F31F0 */
+short XPlayer_HardLanding(XPlayer *self);	/* $1F3226 */
+void XPlayer_WalkAccel(XPlayer *self, short max, short accel, char right);	/* $1F3282 */
+void XPlayer_SetWalkAnim(XPlayer *self, void *slow, void *fast);	/* $1F32D0 */
+void XPlayer_Walk(XPlayer *self);	/* $1F3342 */
+short XPlayer_StateWalk(XPlayer *self);	/* $1F33D0 */
+void XPlayer_StateCrouchLook(XPlayer *self);	/* $1F35DC */
+short XPlayer_StateCrouch(XPlayer *self);	/* $1F364E */
+void XPlayer_Crouch(XPlayer *self);	/* $1F37F2 */
+short XPlayer_StateStand(XPlayer *self);	/* $1F383A */
+short XPlayer_Stand(XPlayer *self);	/* $1F39C4 */
+short XPlayer_StateHurtRecover(XPlayer *self);	/* $1F3ADE */
+short XPlayer_StateHurt(XPlayer *self);	/* $1F3C7C */
 long XClimber_GetSize(void);	/* $1F3CD6 */
 void XClimber_Init(void *, long, long, long);	/* $1F3CE4 */
 void XClimber_Nop66(void *);	/* $1F3D20 */
@@ -3395,19 +3395,19 @@ long Player_ClimbStateBeastPsy(void *);	/* $1F4302 */
 char Player_CeilingEndInView(void *);	/* $1F4334 */
 void EntryPoint(void);	/* $1F43AE fragment */
 void Boot_RegionCheck(void);	/* $1F44A8 fragment */
-void Boot_DrawText(void);	/* $1F45AE asm */
+void Boot_DrawText(char *s, char col, char row);	/* $1F45AE asm regs(a0,d0,d1,a4=$C00000,a5=$C00004) clobbers(d3) */
 void Boot_StartApp(void);	/* $1F483E fragment */
 void Irq_Enable(void);	/* $1F4854 asm */
 void Irq_Disable(void);	/* $1F485A asm */
 void Irq_VBlankVector(void);	/* $1F4860 fragment */
 void Irq_HBlankVector(void);	/* $1F4870 fragment */
-long unk_Sys_1F4890(void);	/* $1F4890 asm */
+void *unk_Sys_1F4890(void);	/* $1F4890 asm regs()->a0 */
 void Mem_Copy(void *dst, void *src, long n);	/* $1F48AA asm */
 void *Mem_Set(void *dst, long c, long n);	/* $1F4900 asm */
-long Obj_FindFreeSlot(void);	/* $1F4A1A asm */
+Actor *Obj_FindFreeSlot(void);	/* $1F4A1A asm */
 void Obj_UpdateBoxes(void *);	/* $1F4A40 asm */
 void Obj_UpdateBox(void *);	/* $1F4BA2 asm */
-void Actor_Move(long, long, long, void *, long, long, void *);	/* $1F4C56 asm */
+void Actor_Move(void *obj);	/* $1F4C56 asm */
 void VDP_UpdateScroll(void);	/* $1F4EFC */
 void Scroll_RequestVsram(void);	/* $1F5228 */
 void Scroll_RequestColumnVs(void);	/* $1F523E */
@@ -3428,8 +3428,8 @@ void Obj_SetAnim(void *obj, void *anim);	/* $1F626A */
 void Obj_ChangeAnim(void *, void *);	/* $1F6296 */
 short SprDef_Add(void *def, short frame);	/* $1F62C0 */
 void Obj_SetSpriteDef(Actor *self, unsigned char n);	/* $1F6334 */
-char Seg_WouldLeaveEnd(void *, short);	/* $1F638A */
-long Seg_AtOpenEndAhead(void *, short);	/* $1F6420 */
+char Seg_WouldLeaveEnd(void *obj, short dx);	/* $1F638A */
+char Seg_AtOpenEndAhead(void *obj, short margin);	/* $1F6420 */
 long Obj_AttachChild(void *, void *);	/* $1F64B4 */
 long Obj_Detach(void *);	/* $1F6530 */
 void Obj_ForEachChild(void *, void *);	/* $1F669A */
@@ -3444,10 +3444,10 @@ void Pal_RestoreCycle(void);	/* $1F68C0 */
 void Pal_FadeOutWait(long);	/* $1F68CE */
 void Pal_FadeInWait(long);	/* $1F690E */
 XPlayer *Player_Nearest(Actor *self);	/* $1F694A */
-long Player_NearestLive(void *);	/* $1F6A32 */
+Actor *Player_NearestLive(void *obj);	/* $1F6A32 */
 long Obj_StandOnSeg(void *, void *);	/* $1F6B56 */
 void Obj_StandOnSegHere(void *);	/* $1F6B9C */
-long Seg_ClearAll(void);	/* $1F6BD2 */
+void Seg_ClearAll(void);	/* $1F6BD2 */
 void Seg_LoadList(void *, char);	/* $1F6C04 */
 long Seg_ApplyObjPos(void *);	/* $1F6D76 */
 void Seg_ApplyObjPos_Cases(void);	/* $1F6E42 fragment */
@@ -3470,26 +3470,26 @@ void Seg_ApplyPushOut_Block(void);	/* $1F7686 fragment */
 void Seg_ApplyPushOut_Default(void);	/* $1F76D6 fragment */
 void Seg_ApplyPushOut_Walls(void);	/* $1F7848 fragment */
 void Seg_ApplyPushOut_Move(void);	/* $1F78CA fragment */
-void Seg_SetLayerFromObj(void *, void *);	/* $1F7940 */
+void Seg_SetLayerFromObj(void *obj, Seg *seg);	/* $1F7940 */
 void Obj_InheritLayer(void *, void *);	/* $1F7956 */
 void Seg_ComputeLength(void *);	/* $1F79A2 */
 void Seg_ComputeLength_Flat(void);	/* $1F7A7C fragment */
 void Seg_ComputeLength_Max(void);	/* $1F7A82 fragment */
-void Seg_InitDefaults(void *, char, char);	/* $1F7A9E */
+void Seg_InitDefaults(Seg *seg, char type, char layer);	/* $1F7A9E */
 void Seg_ComputeSlope(void *);	/* $1F7AF8 */
 void Seg_ComputeSlope_Flat(void);	/* $1F7B36 fragment */
 void Seg_ComputeSlope_Calc(void);	/* $1F7B3C fragment */
 void Seg_Setup(void *, short, short, short, short, short, short);	/* $1F7BB6 */
 short Seg_Alloc(void);	/* $1F7C0A */
-long Seg_Create(char, short, short, short, short, short);	/* $1F7C6A */
-void Seg_Free(void *);	/* $1F7CFE */
-void Seg_ForEachOfObj(void *, void *);	/* $1F7D5E */
+Seg *Seg_Create(char, short, short, short, short, short);	/* $1F7C6A */
+void Seg_Free(Seg *seg);	/* $1F7CFE */
+void Seg_ForEachOfObj(void *obj, SegObjFn func);	/* $1F7D5E */
 long Obj_SnapToNearestSeg(void *, short, short);	/* $1F7DAE */
 void Obj_SnapToNearestFloor(void *, short, short);	/* $1F7F38 */
 Seg *Seg_FindNearestOfType(short x, short y, short type);	/* $1F80CA */
-long Seg_FindContaining(short, short, short);	/* $1F82CC */
+Seg *Seg_FindContaining(short, short, short);	/* $1F82CC */
 Seg *Seg_FindInBlock(short type, short col, short row);	/* $1F8454 */
-void Seg_SetEndpoints(long, void *, short, short, short, short);	/* $1F8494 asm */
+void Seg_SetEndpoints(void *seg, short x1, short y1, short x2, short y2);	/* $1F8494 asm */
 void Seg_BuildGrid(void);	/* $1F84BE */
 void Seg_GatherNearObj(void *, void *);	/* $1F85B6 */
 long Seg_CollideObj(void *, void *, void *);	/* $1F87B2 */
@@ -3502,7 +3502,7 @@ void Seg_CollideObj_Ret(void);	/* $1F8AEE fragment */
 long Obj_CollideSegs(void *);	/* $1F8B42 */
 long DrawList_Init(void);	/* $1F8EF6 */
 long DrawList_AllocNode(void);	/* $1F8F4C */
-short DrawList_Add(long, void *, short, char, short, char);	/* $1F8FA2 */
+short DrawList_Add(AnyFn draw, void *obj, short, char, short, char);	/* $1F8FA2 */
 char DrawList_Remove(short);	/* $1F9122 */
 char DrawList_SetPriority(short, short, char, short);	/* $1F91E8 */
 void DrawList_DrawAll(void);	/* $1F9422 */
@@ -3542,9 +3542,9 @@ void Spr_InitLinks(void);	/* $1FA956 */
 void Spr_BeginFrame(void);	/* $1FA99C */
 void Spr_EndFrame(void);	/* $1FA9D2 */
 short Spr_PreloadTiles(void *, short);	/* $1FAA08 */
-short Spr_PreloadToHeap(long, short);	/* $1FAD08 */
+short Spr_PreloadToHeap(SprInst *spr, short tile);	/* $1FAD08 */
 void Spr_UploadFrame(void *, char);	/* $1FAD44 */
-short Spr_Init(void *, long, void *, short, short, short, char);	/* $1FB026 */
+short Spr_Init(SprInst *spr, long, void *, short, short, short, char);	/* $1FB026 */
 void Spr_InvalidateFrame(void *);	/* $1FB126 */
 void Spr_SetFrame(void *, short);	/* $1FB142 */
 void Obj_ShiftTree(long, void *);	/* $1FB178 */
@@ -3578,7 +3578,7 @@ void Scaler_RowBlocksLast80(void);	/* $1FCE9E fragment */
 void Scaler_RowEnd(void);	/* $1FD43E fragment */
 long Scaler_EmitSprites(short, short, short, char);	/* $1FD520 */
 void Scaler_EmitSprites_Loop(void);	/* $1FD5A0 fragment */
-long Pad_ReadPort(void);	/* $1FD61E asm */
+long Pad_ReadPort(short port);	/* $1FD61E asm regs(d0)->d0 */
 void VDP_ResetDmaQueue(void);	/* $1FD720 */
 long Art_LoadNemToVram(void *, short);	/* $1FD72C */
 void Pal_ApplyFade(void *, void *);	/* $1FD77E */
@@ -3604,36 +3604,37 @@ long Math_SinDeg(short);	/* $1FDEF8 asm */
 void VDP_ClearVram(void);	/* $1FDF6C asm */
 void VDP_ClearVsram(void);	/* $1FDFCE asm */
 void VDP_ClearCram(void);	/* $1FDFE8 asm */
-void VDP_WriteWords(void *, long);	/* $1FE002 asm */
+void VDP_WriteWords(void *src, long n);	/* $1FE002 asm */
 short Pad_GetP1Clean(void);	/* $1FE018 asm */
 short Pad_GetP2Clean(void);	/* $1FE01E asm */
 void Pad_ReadBoth(void);	/* $1FE03C asm */
 short Pad_IsP2Connected(void);	/* $1FE052 asm */
 void unk_VDP_1FE05C(void);	/* $1FE05C asm */
-void VDP_DmaToVram(long, short, long, short);	/* $1FE0EC asm */
+void VDP_DmaToVram(long src, long dest, long len);	/* $1FE0EC asm */
 void VDP_QueueDma(void *src, long dest, long len);	/* $1FE17A asm */
 void VDP_FlushDmaQueue(void);	/* $1FE28C asm */
-void VDP_DmaPalette(long, long, void *);	/* $1FE316 asm */
+void VDP_DmaPalette(s16 *pal);	/* $1FE316 asm */
 void Z80_BusRequest(void);	/* $1FE3D8 asm */
 void Z80_BusFree(void);	/* $1FE3EC asm */
 void Z80_DriverPause(void);	/* $1FE3F6 asm */
 void Z80_DriverResume(void);	/* $1FE434 asm */
 void Z80_LoadDriver(void);	/* $1FE44E asm */
 void Z80_ResetRun(void);	/* $1FE48E asm */
-long Z80_BusAcquire(void);	/* $1FE4B6 asm */
-long Snd_PutCmd(void);	/* $1FE4FE asm */
-long Snd_PutByte(void);	/* $1FE50A asm */
-void Snd_SendByte(void);	/* $1FE518 asm */
-void Snd_SendAddr24(void);	/* $1FE528 asm */
+short Z80_BusAcquire(unsigned short *sr);	/* $1FE4B6 asm conv */
+void Z80_BusRelease(unsigned short sr);	/* $1FE4EC asm conv */
+short Snd_PutCmd(char cmd, short pos);	/* $1FE4FE asm regs(d0,d1,a0=$A00036,a1=$A01B40)->d1 */
+short Snd_PutByte(char b, short pos);	/* $1FE50A asm regs(d0,d1,a0=$A00036,a1=$A01B40)->d1 */
+void Snd_SendByte(long b);	/* $1FE518 asm */
+void Snd_SendAddr24(long v);	/* $1FE528 asm */
 void Snd_Init(long, long, long, long);	/* $1FE544 */
 void Snd_Play(long id);	/* $1FE584 asm */
 void Snd_Stop(long id);	/* $1FE5A2 asm */
-void unk_Snd_1FE5B4(void);	/* $1FE5B4 asm */
+void unk_Snd_1FE5B4(long arg);	/* $1FE5B4 asm */
 void Snd_Pause(void);	/* $1FE5C6 asm */
 void Snd_Resume(void);	/* $1FE5DC asm */
 void Snd_StopAll(void);	/* $1FE5F2 asm */
 void Snd_SendCmd2(void);	/* $1FE618 fragment */
 void Snd_SetParam(long slot, long value);	/* $1FE630 asm */
-char Snd_ReadDriverByte(long, long);	/* $1FE644 asm */
+char Snd_ReadDriverByte(long n);	/* $1FE644 asm */
 
 #endif /* XMEN2_FUNCS_H */

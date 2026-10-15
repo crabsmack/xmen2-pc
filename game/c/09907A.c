@@ -9,7 +9,7 @@
  * another type the theme is whatever the register held (the camera's maximum y). */
 #include "xmen2.h"
 
-#define g_CloneArenaFocus	(*(PTR(Actor) *)g_SceneVar3B30)	/* scene variable: object the arena camera follows */
+#define g_CloneArenaFocus	g_SceneVar3B30	/* scene variable: object the arena camera follows */
 #define g_CloneWallLeft		(*(s16 *)g_SceneVar3B2C)	/* scene variable: x of the arena's left wall */
 #define g_CloneWallRight	(*(s16 *)g_SceneVar3B2A)	/* scene variable: x of the arena's right wall */
 #define g_CloneCamMinX		(*(s16 *)g_SceneVar3B0A)	/* scene variables: arena camera limits */

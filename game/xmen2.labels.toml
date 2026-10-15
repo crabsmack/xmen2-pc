@@ -11353,7 +11353,6 @@ extra_seeds = [
   0x1FE47C,  # loc_1FE47C
   0x1FE49E,  # loc_1FE49E
   0x1FE4DC,  # loc_1FE4DC
-  0x1FE4EC,  # Z80_BusRelease
   0x1FE592,  # loc_1FE592
   0x1FE66A,  # loc_1FE66A
 ]

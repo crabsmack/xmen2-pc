@@ -1,0 +1,5 @@
+# VDP_ClearVram: every corpus call takes an interrupt while it waits for the DMA fill, so no
+# call is comparable. One uninterrupted run from its first call's state; the DMA-busy status
+# reads are supplied as 2 (busy) twice, then 0.
+case plain
+hw $0002 $0002 $0000

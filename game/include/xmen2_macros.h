@@ -75,4 +75,13 @@
    the pending pops of a call before it. */
 #define STOP_MOVING(o)		((o)->ax = 0, (o)->vx = 0, (o)->vy = 0, (o)->ay = 0)
 
+/* The record (SprFrame) of frame f of sprite definition def, as the original computed it: the
+   definition's address as a long, + $24, + (f << 4) + (f << 2) (XPlayer_Draw, XPlayer_Update
+   compute it the same odd way; MPW keeps it in a data register). PC: the same record. */
+#ifdef XMEN2_MPW
+#define SPR_FRAME(def, f)	((SprFrame *)((long)(def) + 0x24 + ((f) << 4) + ((f) << 2)))
+#else
+#define SPR_FRAME(def, f)	(&((SprDef *)(def))->frame[f])
+#endif
+
 #endif /* XMEN2_MACROS_H */

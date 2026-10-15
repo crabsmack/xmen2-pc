@@ -30,7 +30,7 @@ short Tusk_StateChooseAttack(Tusk *self)
 		case 0:
 			self->state = Tusk_AtkVulnerable;
 			return 0;
-		case 1:				/* Tusk_StateChooseAttack_part2 */
+		case 1:				/* cases 1-9: Tusk_StateChooseAttack_part2 */
 			self->state = Tusk_AtkThrowBoulder;
 			return 0;
 		case 2:

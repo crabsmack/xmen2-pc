@@ -49,6 +49,9 @@ typedef unsigned long  u32;
 /* FN_AT(StateFn, p): code at p (ROM the C has no function for, e.g. an AI script's jmp
    thunk) as a stored function pointer of type `type`. */
 #define FN_AT(type, p)         ((type)(p))
+/* FN_DATA(f): the address of function f passed as data (a void *), e.g. a V-blank hook given
+   to Timer_SetVBlankHookCb as its timer argument (Hologram_Init). */
+#define FN_DATA(f)             ((void *)(f))
 /* A class method slot. */
 typedef long (*AnyFn)();
 
@@ -58,6 +61,11 @@ typedef long (*AnyFn)();
 #define CODEPTR(code)          (*(void **)((char *)(code) + 2))
 /* A ROM string: MPW -b places the literal in the code, as the original. */
 #define STR(name, text)        (text)
+
+/* The address the 68000 bus sees for p, as a number (a DMA source, a sound-driver pointer),
+   and back: a pointer to T at a 68000 address computed as a number (work RAM or ROM). */
+#define ADDR68(p)              ((unsigned long)(p))
+#define AT68(T, a)             ((T *)(a))
 
 /* Hardware (68000 addresses) */
 #define HW8(a)                 (*(volatile u8 *)(a))
@@ -299,6 +307,8 @@ struct fnp {
     fnp() = default;
     template <class F, class = typename std::enable_if<std::is_function<F>::value>::type>
     fnp(F *f) { v = fn_value((const void *)f); }
+    /* (StateFn)self->cls->method[n]: a stored pointer cast to another stored type keeps its value */
+    template <class Q> explicit fnp(const fnp<Q> &o) { v = o.raw(); }
     template <class F, class = typename std::enable_if<std::is_function<F>::value>::type>
     fnp &operator=(F *f) { v = fn_value((const void *)f); return *this; }
     fnp &operator=(decltype(nullptr)) { v = 0u; return *this; }
@@ -356,10 +366,15 @@ namespace xm {
 template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f; }
 }
 #define FN_AT(type, p)         (xm::fn_at<type>(p))
+/* a host pointer standing for the function's 68000 value (fn_value), so addr() gives it back */
+#define FN_DATA(f)             (xm::host(xm::fn_value((const void *)(f))))
 
 #define CLASS(code)            ((struct Class *)(code))
 #define CODEPTR(code)          ((void *)(code))
 #define STR(name, text)        ((char *)(name))
+
+#define ADDR68(p)              ((unsigned long)xm::addr(p))
+#define AT68(T, a)             ((T *)xm::host((uint32_t)(a)))
 
 #define HW8(a)                 (xm::hw8{ (uint32_t)(a) })
 #define HW16(a)                (xm::hw16{ (uint32_t)(a) })
@@ -371,6 +386,7 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 /* Hardware names (both modes)                                               */
 /* ======================================================================== */
 #define VDP_DATA       HW16(0xC00000)   /* VDP data port */
+#define VDP_DATA_B     HW8(0xC00000)    /* its byte (the value of a DMA fill) */
 #define VDP_DATA32     HW32(0xC00000)
 #define VDP_CTRL       HW16(0xC00004)   /* VDP control port: status (read), commands (write) */
 #define VDP_CTRL32     HW32(0xC00004)
@@ -381,9 +397,18 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define IO_DATA2       HW8(0xA10005)    /* pad port 2 data */
 #define IO_CTRL1       HW8(0xA10009)    /* pad port 1 control */
 #define IO_CTRL2       HW8(0xA1000B)    /* pad port 2 control */
+#define IO_DATA(n)     HW8(0xA10003 + 2 * (n))   /* pad port n (0, 1) data */
+#define IO_CTRL(n)     HW8(0xA10009 + 2 * (n))   /* pad port n (0, 1) control */
 #define Z80_BUSREQ     HW16(0xA11100)   /* Z80 bus request */
+#define Z80_BUSREQ_B   HW8(0xA11100)    /* its byte (btst #0: 1 = bus not yet granted) */
 #define Z80_RESET      HW16(0xA11200)   /* Z80 reset */
 #define TMSS_PORT      HW32(0xA14000)   /* TMSS "SEGA" */
 #define Z80_RAM(off)   HW8(0xA00000 + (off))   /* Z80 RAM byte (bus held) */
+
+/* The CPU itself: what only the hand-written 68000 (asm) functions do, which C can't say.
+   MPW C never compiles a call to them (no asm function matches); on PC handc_rt.cpp. */
+unsigned short CPU_GetSR(void);           /* status register */
+void           CPU_SetSR(unsigned short sr);   /* move to SR (interrupt mask: Irq_Enable/Disable) */
+unsigned long  CPU_GetSP(void);           /* A7 as the asm function saw it */
 
 #endif /* XMEN2_MEM_H */

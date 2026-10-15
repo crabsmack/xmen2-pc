@@ -106,12 +106,32 @@ def cmd_gen(a) -> dict:
 
 # --- build -----------------------------------------------------------------------------
 
+def snapshot_handc() -> Path:
+    """build/handc_src: game/c/*.c and game/include/*.h as they are now, in one directory, which
+    the bridges and the hand-C compile read (C being edited meanwhile can't mix two states into
+    one build). Unchanged files keep their timestamps, so only edits recompile."""
+    import shutil
+    snap = BUILD / "handc_src"
+    snap.mkdir(parents=True, exist_ok=True)
+    want = {p.name: p for p in list((common.GAME / "c").glob("*.c")) + list((common.GAME / "include").glob("*.h"))}
+    for p in snap.iterdir():
+        if p.name not in want:
+            p.unlink()
+    for name, src in want.items():
+        dst = snap / name
+        data = src.read_bytes()
+        if not dst.exists() or dst.read_bytes() != data:
+            dst.write_bytes(data)
+    return snap
+
+
 def cmd_build(a) -> dict:
     common.ensure_rom()
+    snap = snapshot_handc()
     # the bridge between hand-written C and generated code (build/bridge), before cmake reads it
     for mode, d in (("stepped", "bridge"), ("verify", "bridge_verify")):
         r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "bridge.py"), "--out", str(BUILD / d),
-                            "--mode", mode], capture_output=True, text=True)
+                            "--mode", mode, "--src", str(snap)], capture_output=True, text=True)
         if r.returncode:
             sys.exit(f"bridge.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
     configure()
@@ -341,7 +361,9 @@ def cmd_verify(a) -> dict:
         res = out / f"{run}.json"
         if res.exists():
             res.unlink()
-        env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_VERIFY_OUT": str(res)}
+        # synthetic cases (game/verify/<ADDR>.syn; verify.cpp load_synth)
+        env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_VERIFY_OUT": str(res),
+               "XMEN2_VERIFY_SYNTH": str(common.GAME / "verify")}
         if a.functions:
             env["XMEN2_VERIFY_ONLY"] = a.functions
         frames = a.frames or script_frames(inp)

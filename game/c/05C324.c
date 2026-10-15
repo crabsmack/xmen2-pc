@@ -1,5 +1,6 @@
-/* Tusk_StateBoulderRain - TUSK before the fight: keep the boulders falling at its height until
- * a player stands on the arena floor; then wait for the other player when it is alive
+/* Tusk_StateBoulderRain - TUSK before the fight: keep the boulder rain going (Boulder_SpawnerTick
+ * with its y as the limit, Boulder_UpdateDebris) until a player stands on the arena floor;
+ * then wait for the other player when it is alive
  * (Tusk_StateWaitP2Platform / Tusk_StateWaitP1Platform), else start the fight
  * (Tusk_StateStartFight).
  *

@@ -1,21 +1,22 @@
 /* XClone_TileHookOpenWall - clone-maker map tile hook type 3: once the reward was given (clone
- * flags bit 1) and no player is Magneto, an object touching the tile that a clone of its own
- * character was killed by (clone flags bit 8 + type) blasts open the wall at map columns
- * $5A-$5B: blocks of rows $19-$1C replaced (4, $4A, $4B, $4B; row $1D block 4 flipped), debris
- * from the rows $1A-$1C blocks (landing on the floor below the tile) with their solid and hook
- * bits cleared, sound $35, and the solid wall segment (type $14) in the last block freed.
+ * flags bit 1) and no player is Magneto, an object of a character whose clone was killed by that
+ * character (clone flags bit 8 + type) touching the tile blasts open the wall at map columns
+ * $5A-$5B: the blocks of rows $19-$1C replaced (4, $4A, $4B, $4B; row $1D block 4 flipped),
+ * debris from the row $1A-$1C blocks (landing on the floor below the tile) with their hook type
+ * and priority bits cleared, sound $35, and the solid wall segment (type $14) in the last block
+ * freed.
  *
  * col, row: the tile hit (block column and row).
  * obj:      the object touching it.
- * Returns 0; nothing in particular before the reward (and 0 then by accident). The block value
- * read first (BG block & $1FF) and the 0x4B kept in a variable are never used (dead stores the
- * original had). */
+ * Returns 0 (before the reward by accident: the flag test's result). The block value read first
+ * (BG block & $1FF) and the $4B kept in a variable are never used (dead stores the original
+ * had). */
 #include "xmen2.h"
 
 #define g_CloneFlags	(*(s16 *)g_SceneVar3B08)	/* scene variable: 1 arena locked, 2 reward given, $100 << type killed by its own character */
 #define g_CloneDebris	(*(PTR(DebrisPool) *)g_SceneVar3B1C)	/* scene variable: the clone-maker debris pool */
 
-long XClone_TileHookOpenWall(short col, short row, Actor *obj)
+long XClone_TileHookOpenWall(register short col, short row, Actor *obj)
 {
 	short type;
 	char ownKill;
@@ -74,5 +75,7 @@ long XClone_TileHookOpenWall(short col, short row, Actor *obj)
 			Seg_Free(wall);
 		return 0;
 	}
-	NO_RETURN_VALUE
+#ifndef XMEN2_MPW
+	return 0;		/* MPW: no return; d0 is 0, the flag test's result */
+#endif
 }

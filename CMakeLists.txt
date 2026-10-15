@@ -108,7 +108,8 @@ genesisrecomp_add_generated_sources(XMEN2S_GENERATED xmen2s "${CMAKE_SOURCE_DIR}
 xmen2_runner(XMen2Stepped 4383 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2S_GENERATED_TARGET}
     SOURCES ${XMEN2S_GENERATED} ${XMEN2_HANDC_SOURCES}
             "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
-            "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp")
+            "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp")
 
 # The same stepped runner with ALL generated code (no hand C): the reference D2/D6 compare the
 # C against (xmen2disasm P4-decomp.md decision 5).
@@ -123,4 +124,5 @@ xmen2_runner(XMen2Verify 4384 DEFS XMEN2_VERIFY=1
     SOURCES $<TARGET_OBJECTS:xmen2_timed_code> ${XMEN2_HANDC_SOURCES}
             "${XMEN2_VERIFY_BRIDGE_DIR}/xmen2_bridge.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/verify.cpp")

@@ -1,5 +1,5 @@
-/* Tusk_PlayerToLayer0 - put a present, alive player in front: sprite priority bit off and
- * draw-list priority 0 (DrawList_SetPriority with its layer and flags6 bit 3).
+/* Tusk_PlayerToLayer0 - give a present, alive player low priority: sprite priority bit off
+ * and draw-list priority 0 (DrawList_SetPriority with its layer and flags6 bit 3).
  *
  * p: g_Player1 or g_Player2. */
 #include "xmen2.h"

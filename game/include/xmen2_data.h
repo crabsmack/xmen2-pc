@@ -11,6 +11,7 @@
 #include "xmen2_mem.h"
 
 #ifdef XMEN2_MPW
+extern void Vectors();
 extern void Str_CerebroScreenLogoAndDemo();
 extern void Str_CerebroScreenPlayerSelect_0057F8();
 extern void Str_CerebroScreenFailure();
@@ -1201,6 +1202,7 @@ extern void Tbl_SineQuarter();
 extern void Snd_Z80Driver();
 extern void Snd_Z80DriverEnd();
 #else
+#define Vectors (xm::rom(0x000000))
 #define Str_CerebroScreenLogoAndDemo (xm::rom(0x0057DE))
 #define Str_CerebroScreenPlayerSelect_0057F8 (xm::rom(0x0057F8))
 #define Str_CerebroScreenFailure (xm::rom(0x005814))

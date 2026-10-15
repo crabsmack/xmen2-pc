@@ -531,11 +531,29 @@ extern u8 g_HoloFlickerArmed;
 #else
 #define g_HoloFlickerArmed XM_G(u8, 0xFFC620)
 #endif
+/* $FFC621 byte: hologram flicker running (Hologram_VBlankFlicker: copy of g_HoloFlickerLinks[1] taken when armed; 0 = off). Not named in the disassembly yet. */
+#ifdef XMEN2_MPW
+extern u8 g_HoloFlickerOn;
+#else
+#define g_HoloFlickerOn XM_G(u8, 0xFFC621)
+#endif
 /* $FFC622 2 bytes: sprite slots / link values set by Hologram_Draw; Hologram_VBlankFlicker copies the word and rewrites that sprite link in VRAM on odd V-blanks */
 #ifdef XMEN2_MPW
 extern u8 g_HoloFlickerLinks[2];
 #else
 #define g_HoloFlickerLinks XM_GA(u8, 0xFFC622)
+#endif
+/* $FFC624 2 bytes: Hologram_VBlankFlicker's copy of g_HoloFlickerLinks taken when armed: [0] the sprite slot before the hologram's, [1] the slot after them. Not named in the disassembly yet. */
+#ifdef XMEN2_MPW
+extern u8 g_HoloFlickerSlots[2];
+#else
+#define g_HoloFlickerSlots XM_GA(u8, 0xFFC624)
+#endif
+/* $FFC626 2 bytes: the size and link bytes Hologram_VBlankFlicker writes to sprite slot g_HoloFlickerSlots[0] in VRAM (size saved when armed; link to the hologram's sprites or past them). Not named in the disassembly yet. */
+#ifdef XMEN2_MPW
+extern u8 g_HoloFlickerSpr[2];
+#else
+#define g_HoloFlickerSpr XM_GA(u8, 0xFFC626)
 #endif
 /* $FFC628 word: sprite-definition slot of Art_SentinelsA1Spr26 (SentinelsA1_LoadResources via SprDef_Add; CoreShields_Init) */
 #ifdef XMEN2_MPW
@@ -1019,9 +1037,9 @@ extern u8 g_SceneVar3B32[];
 #endif
 /* $FFC6D0 long, scene-local: player select portrait-frame object (PlayerSelect_DrawFrames/PlaceCursor), XClone current maker/balls object (XClone_LockArena, ActLeaveBalls, ActBecomeBalls) */
 #ifdef XMEN2_MPW
-extern u8 g_SceneVar3B30[];
+extern PTR(Actor) g_SceneVar3B30;
 #else
-#define g_SceneVar3B30 XM_GA(u8, 0xFFC6D0)
+#define g_SceneVar3B30 XM_G(PTR(Actor), 0xFFC6D0)
 #endif
 /* $FFC6D4 long, scene-local: player select P2 cursor object (PlayerSelect_*, CursorInput_*); word: XClone arena camera value (XClone_Init, XClone_LockArena) */
 #ifdef XMEN2_MPW
@@ -1709,9 +1727,9 @@ extern u8 g_TwoPlayerStep;
 #endif
 /* $FFC924 ptr: spawn records, 14 bytes each (Spawn_InitRecords fills them via InitSpawnRec; level loop Level_FrameLoop) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SpawnRecs;
+extern PTR(SpawnRec) g_SpawnRecs;
 #else
-#define g_SpawnRecs XM_G(PTR(void), 0xFFC924)
+#define g_SpawnRecs XM_G(PTR(SpawnRec), 0xFFC924)
 #endif
 /* $FFC928 word: number of spawn records / placement entries (Level_Load, Spawn_InitRecords) */
 #ifdef XMEN2_MPW
@@ -1721,9 +1739,9 @@ extern s16 g_SpawnRecCount;
 #endif
 /* $FFC92A ptr: level placement entries, 16 bytes, word 0 = class index into g_ClassList (Level_Load, Spawn_InitRecords) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_PlacementList;
+extern PTR(Placement) g_PlacementList;
 #else
-#define g_PlacementList XM_G(PTR(void), 0xFFC92A)
+#define g_PlacementList XM_G(PTR(Placement), 0xFFC92A)
 #endif
 /* $FFC92E word: current music track id, -1 = none (Music_Play) */
 #ifdef XMEN2_MPW
@@ -2022,9 +2040,9 @@ extern s16 g_VramTileCursor;
 #endif
 /* $FFCC6A 12 x $14-byte sprite instances (object +$2E layout) for scene effects (lights, shock sprites, animated blocks), Spr_Init/Spr_Draw by the scenes' InitSprite(s)/Anim* functions */
 #ifdef XMEN2_MPW
-extern u8 g_SceneSprites[];
+extern SprInst g_SceneSprites[12];
 #else
-#define g_SceneSprites XM_GA(u8, 0xFFCC6A)
+#define g_SceneSprites XM_GA(SprInst, 0xFFCC6A)
 #endif
 /* $FFCD5A ptr: object pointer table, slot 0 = g_Player1, 1 = g_Player2, then level objects (Obj_AllocPool; indexed by object bytes +$3A/+$3B/+$3C) */
 #ifdef XMEN2_MPW
@@ -2136,15 +2154,15 @@ extern s16 g_SegGridShiftX;
 #endif
 /* $FFCD84 ptr: word grid, per cell the offset of its list in g_SegGridPool (Seg_BuildGrid; Seg_GridCell, Seg_GatherNearObj) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SegGrid;
+extern PTR(s16) g_SegGrid;
 #else
-#define g_SegGrid XM_G(PTR(void), 0xFFCD84)
+#define g_SegGrid XM_G(PTR(s16), 0xFFCD84)
 #endif
 /* $FFCD88 ptr: pool of $FF-terminated segment-index lists, one per grid cell (Seg_BuildGrid builds it on the heap; Seg_FindAt/Below/Above/Left/Right, Boulder_FindFloorBelow, Ninja_FindSegInBox) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SegGridPool;
+extern PTR(u8) g_SegGridPool;
 #else
-#define g_SegGridPool XM_G(PTR(void), 0xFFCD88)
+#define g_SegGridPool XM_G(PTR(u8), 0xFFCD88)
 #endif
 /* $FFCD8C word: highest segment index in use (Seg_Alloc, Seg_LoadList) */
 #ifdef XMEN2_MPW
@@ -2284,6 +2302,12 @@ extern PTR(void) g_SyncPool;
 #else
 #define g_SyncPool XM_G(PTR(void), 0xFFE55E)
 #endif
+/* $FFE562 byte: cleared by BabyBio_LevelStart; no other code reads or writes it (A5 -$1C9E; not yet in the disassembly's ram.asm) */
+#ifdef XMEN2_MPW
+extern u8 g_BabyBioUnused;
+#else
+#define g_BabyBioUnused XM_G(u8, 0xFFE562)
+#endif
 /* $FFE564 128 longs: sine table built by BioBalls_AllocBallList, read by BioBalls_MotionOrbit/Ring/Helix */
 #ifdef XMEN2_MPW
 extern s32 g_BioBallsSine[128];
@@ -2325,6 +2349,12 @@ extern PTR(BigBioOrb) g_BigBioOrbs;
 extern s16 g_BioFlameSprDef;
 #else
 #define g_BioFlameSprDef XM_G(s16, 0xFFE778)
+#endif
+/* $FFE77A word: decremented by FlyBrood_Deactivate; no code increments or reads it (a live FLYBROOD count left unused; A5 -$1A86, not yet in the disassembly's ram.asm) */
+#ifdef XMEN2_MPW
+extern s16 g_FlyBroodCount;
+#else
+#define g_FlyBroodCount XM_G(s16, 0xFFE77A)
 #endif
 /* $FFE77C word: sprite-definition slot of Art_FlyBroodSpr (FlyBrood_ClassInit, XClone_LoadResources via SprDef_Add; FlyBrood_Init, FlyBrood_Draw) */
 #ifdef XMEN2_MPW
@@ -2428,6 +2458,12 @@ extern PTR(void) g_PsylockeFxSpr;
 #else
 #define g_PsylockeFxSpr XM_G(PTR(void), 0xFFE95A)
 #endif
+/* $FFE95E 3 x $10 bytes: GAMBIT's thrown cards (Gambit_Init points player +$BC at them; Gambit_ClearCards, Gambit_UpdateCard). Not in src/ram.asm yet (A5 -$18A2). */
+#ifdef XMEN2_MPW
+extern GambitCard g_GambitCards[3];
+#else
+#define g_GambitCards XM_GA(GambitCard, 0xFFE95E)
+#endif
 /* $FFE98E byte: a new g_BeamFlickerNew is ready (set by Cyclops_DrawBeam_Emit/Cyclops_DrawBeam_None, Cyclops_ResetBeamFlicker clears the word); Cyclops_BeamVBlankFlicker copies it when the frame was updated */
 #ifdef XMEN2_MPW
 extern u8 g_BeamFlickerPending;
@@ -2452,23 +2488,29 @@ extern u8 g_BeamFlickerCur[4];
 #else
 #define g_BeamFlickerCur XM_GA(u8, 0xFFE994)
 #endif
-/* $FFE99C ptr: player-2 start spawn record (XPlayer_InitSpawnRec, placement +6 == 2; Players_PlaceAtStart) */
+/* $FFE998 4 bytes: two {size, link} words of the sprite attribute table that Cyclops_BeamVBlankFlicker writes to VRAM: [0..1] the slot before the beam's sprites (linked to the first or the second piece list by V-blank parity), [2..3] the last sprite of the first list (Cyclops_DrawBeam_Emit sets [3]: past the second list). Not in src/ram.asm yet (A5 -$1868). */
 #ifdef XMEN2_MPW
-extern PTR(void) g_P2StartRec;
+extern u8 g_BeamFlickerSpr[4];
 #else
-#define g_P2StartRec XM_G(PTR(void), 0xFFE99C)
+#define g_BeamFlickerSpr XM_GA(u8, 0xFFE998)
 #endif
-/* $FFE9A0 ptr: player-1 start spawn record (XPlayer_InitSpawnRec, placement +6 != 2); Players_PlaceAtStart and CloneA2_StartCamera take the start x/y from +2/+4, then it is cleared */
+/* $FFE99C ptr: player-2 start placement entry (XPlayer_InitSpawnRec, placement +6 == 2; Players_PlaceAtStart) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_P1StartRec;
+extern PTR(Placement) g_P2StartRec;
 #else
-#define g_P1StartRec XM_G(PTR(void), 0xFFE9A0)
+#define g_P2StartRec XM_G(PTR(Placement), 0xFFE99C)
+#endif
+/* $FFE9A0 ptr: player-1 start placement entry (XPlayer_InitSpawnRec, placement +6 != 2); Players_PlaceAtStart and CloneA2_StartCamera take the start x/y from +2/+4, then it is cleared */
+#ifdef XMEN2_MPW
+extern PTR(Placement) g_P1StartRec;
+#else
+#define g_P1StartRec XM_G(PTR(Placement), 0xFFE9A0)
 #endif
 /* $FFE9A4 sprite instance (same layout as object +$2E) for the player hit spark: Spr_Init by Scene_AllocCommonVram, drawn by XPlayer_Draw, h-flip (bit 2) set by XPlayer_Attack from the attacker */
 #ifdef XMEN2_MPW
-extern u8 g_HitSparkSpr[];
+extern SprInst g_HitSparkSpr;
 #else
-#define g_HitSparkSpr XM_GA(u8, 0xFFE9A4)
+#define g_HitSparkSpr XM_G(SprInst, 0xFFE9A4)
 #endif
 /* $FFE9B8 obj: player 2 object ($FFE9B8), +$9D=1; vtable 0 until P2 joins (TAS frame 49140) */
 #ifdef XMEN2_MPW
@@ -2496,21 +2538,21 @@ extern u8 g_PauseExit;
 #endif
 /* $FFEBA2 ptr: head of the player-side attacker hit list (HitList_Add from Actor_Activate, +6 flag $10; Collide_RunAll vs g_HitListEnemyBody) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_HitListPlayerAtk;
+extern PTR(ListNode) g_HitListPlayerAtk;
 #else
-#define g_HitListPlayerAtk XM_G(PTR(void), 0xFFEBA2)
+#define g_HitListPlayerAtk XM_G(PTR(ListNode), 0xFFEBA2)
 #endif
 /* $FFEBA6 ptr: head of the player-side body hit list (Actor_Activate +$84 node; enemy attackers and projectiles test it) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_HitListPlayerBody;
+extern PTR(ListNode) g_HitListPlayerBody;
 #else
-#define g_HitListPlayerBody XM_G(PTR(void), 0xFFEBA6)
+#define g_HitListPlayerBody XM_G(PTR(ListNode), 0xFFEBA6)
 #endif
 /* $FFEBAA ptr: head of the enemy attacker hit list (Actor_Activate +$80 node; Collide_RunAll vs g_HitListPlayerBody) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_HitListEnemyAtk;
+extern PTR(ListNode) g_HitListEnemyAtk;
 #else
-#define g_HitListEnemyAtk XM_G(PTR(void), 0xFFEBAA)
+#define g_HitListEnemyAtk XM_G(PTR(ListNode), 0xFFEBAA)
 #endif
 /* $FFEBAE ptr: head of the enemy body hit list (Actor_Activate +$84 node; player attacks and projectiles test it) */
 #ifdef XMEN2_MPW
@@ -2604,9 +2646,9 @@ extern u8 g_DrawNodes[];
 #endif
 /* $FFF10C ptr: per-class pointer array, one long per class in g_ClassList (ClassList_InitAll) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_ClassData;
+extern PTR(PTR(void)) g_ClassData;
 #else
-#define g_ClassData XM_G(PTR(void), 0xFFF10C)
+#define g_ClassData XM_G(PTR(PTR(void)), 0xFFF10C)
 #endif
 /* $FFF110 ptr: timer whose callback is running (Timer_RunAll) */
 #ifdef XMEN2_MPW
@@ -2988,9 +3030,9 @@ extern s16 g_Pad2Raw;
 #endif
 /* $FFFA5C array: V-blank DMA queue, $18-byte records of VDP register words (VDP_QueueDma, VDP_FlushDmaQueue) */
 #ifdef XMEN2_MPW
-extern u8 g_DmaQueue[];
+extern DmaEntry g_DmaQueue[];
 #else
-#define g_DmaQueue XM_GA(u8, 0xFFFA5C)
+#define g_DmaQueue XM_GA(DmaEntry, 0xFFFA5C)
 #endif
 /* $FFFFFC word: VDP mode register 3 command shadow $8Bxx, scroll modes (Sys_InitHardware, Scroll_SetParallax) */
 #ifdef XMEN2_MPW

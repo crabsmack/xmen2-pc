@@ -7,7 +7,7 @@
  * self: the clone (a step of its AI script). Returns flags & 8. */
 #include "xmen2.h"
 
-#define g_CloneArenaFocus	(*(PTR(Actor) *)g_SceneVar3B30)	/* scene variable: object the arena camera follows */
+#define g_CloneArenaFocus	g_SceneVar3B30	/* scene variable: object the arena camera follows */
 
 short XClone_ActBecomeBalls(XClone *self)
 {

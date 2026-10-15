@@ -1,0 +1,8 @@
+# Pad_GetP2Clean: the impossible pairs the corpus never holds (Up+Down, Left+Right), in
+# g_Pad2Raw ($FFFA5A).
+case updown
+w $FFFA5A = $0003
+case leftright
+w $FFFA5A = $000C
+case both
+w $FFFA5A = $00FF
