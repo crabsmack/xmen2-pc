@@ -353,7 +353,7 @@ void ExodusBlast_Init(void *, long, long, void *);	/* $02E4A8 */
 long ExodusBlast_Spawn(long, long, char);	/* $02E526 */
 void AvalonA4_NopStatic(void);	/* $034D4E */
 void AvalonA4_ResetEffectCounters(void);	/* $034D56 */
-long AvalonA4_AnimatePalettes(void);	/* $034D7A */
+void AvalonA4_AnimatePalettes(void);	/* $034D7A */
 void AvalonA4_AnimatePalettes_part1(void);	/* $034DF8 fragment */
 void AvalonA4_AnimatePalettes_part2(void);	/* $034EA0 fragment */
 void AvalonA4_AnimatePalettes_part3(void);	/* $034EC6 fragment */
@@ -2119,39 +2119,39 @@ void XNpc_Explode(XNpc *self);	/* $113C14 */
 void XNpc_Move(XNpc *self, short steps);	/* $113C80 */
 void XNpc_Attack(XNpc *self, Actor *target, char type, char damage, short hx, short hy);	/* $113CA6 */
 short XNpc_GetMoveLimit(XNpc *self, char dir, u8 *kind);	/* $113D0E */
-void XNpc_TakeDamage(void *, long, char, char);	/* $113D20 */
+void XNpc_TakeDamage(XNpc *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $113D20 */
 void XNpc_TakeDamage_Type4(void);	/* $113D60 fragment */
 void XNpc_TakeDamage_Default(void);	/* $113D64 fragment */
 void XNpc_TakeDamage_Hurt(void);	/* $113DA0 fragment */
 void XNpc_TakeDamage_Done(void);	/* $113E76 fragment */
-long XNpc_KnockbackDist(void *, char);	/* $113E80 */
-void XNpc_OnHurt(long, char, char);	/* $113EDA */
-void XNpc_EndHurt(void *);	/* $113EFE */
-void XNpc_OnDeath(long, char, char);	/* $113F38 */
-void XNpc_HurtReact(void *, char, char);	/* $113F5C */
+short XNpc_KnockbackDist(XNpc *self, char strength);	/* $113E80 */
+void XNpc_OnHurt(XNpc *self, char damage, char type);	/* $113EDA */
+void XNpc_EndHurt(XNpc *self);	/* $113EFE */
+void XNpc_OnDeath(XNpc *self, char damage, char type);	/* $113F38 */
+void XNpc_HurtReact(XNpc *self, char strength, char type);	/* $113F5C */
 void XNpc_HurtReact_Stun(void);	/* $113FFC fragment */
 void XNpc_HurtReact_Done(void);	/* $114100 fragment */
-void XNpc_DeathReact(void *, char, char);	/* $11410E */
+void XNpc_DeathReact(XNpc *self, char strength, char type);	/* $11410E */
 void XNpc_DeathReact_Explode(void);	/* $1141C6 fragment */
 void XNpc_DeathReact_Done(void);	/* $1142D2 fragment */
 void XNpc_IgnoreHurt(void);	/* $1142E0 */
-void XNpc_KillOrExplode(void *, long, char);	/* $1142E8 */
-void XNpc_StateExplode(void *);	/* $11432E */
-void XNpc_ShakeStep(void *);	/* $11434A */
-void XNpc_CalcKnockback(long, short, void *, void *);	/* $11438A */
-long XNpc_StateStunStart(void *);	/* $1143BC */
-long XNpc_StateStun(void *);	/* $1143EC */
-long XNpc_StateKnockStart(void *);	/* $11446C */
-long XNpc_StateKnockShake(void *);	/* $11449C */
-long XNpc_StateKnockSlide(void *);	/* $114550 */
-long XNpc_StateKnockBStart(void *);	/* $1146C6 */
-long XNpc_StateKnockBShake(void *);	/* $1146F6 */
-long XNpc_StateKnockBSlide(void *);	/* $1147B6 */
-long XNpc_StateKnockBExpire(void *);	/* $114860 */
-void XNpc_StartDeathFling(void *);	/* $1148B2 */
-void XNpc_StateDeathFlingHigh(void *);	/* $114914 */
-void XNpc_StateDeathFling(void *);	/* $11494A */
-long XNpc_StateDeathFlying(void *);	/* $11497C */
+void XNpc_KillOrExplode(XNpc *self, char damage, char type);	/* $1142E8 */
+void XNpc_StateExplode(XNpc *self);	/* $11432E */
+void XNpc_ShakeStep(XNpc *self);	/* $11434A */
+void XNpc_CalcKnockback(XNpc *self, short dist, s16 *speed, s16 *decel);	/* $11438A */
+short XNpc_StateStunStart(XNpc *self);	/* $1143BC */
+short XNpc_StateStun(XNpc *self);	/* $1143EC */
+short XNpc_StateKnockStart(XNpc *self);	/* $11446C */
+short XNpc_StateKnockShake(XNpc *self);	/* $11449C */
+short XNpc_StateKnockSlide(XNpc *self);	/* $114550 */
+short XNpc_StateKnockBStart(XNpc *self);	/* $1146C6 */
+short XNpc_StateKnockBShake(XNpc *self);	/* $1146F6 */
+short XNpc_StateKnockBSlide(XNpc *self);	/* $1147B6 */
+short XNpc_StateKnockBExpire(XNpc *self);	/* $114860 */
+void XNpc_StartDeathFling(XNpc *self);	/* $1148B2 */
+void XNpc_StateDeathFlingHigh(XNpc *self);	/* $114914 */
+void XNpc_StateDeathFling(XNpc *self);	/* $11494A */
+short XNpc_StateDeathFlying(XNpc *self);	/* $11497C */
 long BioNpc_GetSize(void);	/* $114ABA */
 void BioNpc_Nop66(void *);	/* $114AC8 */
 void BioNpc_Init(void *, long, long, long);	/* $114ADE */
@@ -2356,34 +2356,34 @@ void BioBullet_Draw(void *);	/* $11E618 */
 void BioBalls_ScriptIdle(void);	/* $11E77E fragment */
 long BioBalls_GetSize(void);	/* $11E7AA */
 void BioBalls_Reset(void);	/* $11E7B8 */
-void BioBalls_Init(void *, long, long, long);	/* $11E7C4 */
-long BioBalls_Update(void *);	/* $11E8F2 */
-void BioBalls_Draw(void *);	/* $11E9CC */
-void BioBalls_Move(void *, short);	/* $11ED04 */
-void BioBalls_ActCollapse(void *);	/* $11EEA8 */
-long BioBalls_StateIdle(void *);	/* $11EF1E */
-void BioBalls_ActClearDone(void *);	/* $11EF42 */
-void BioBalls_ActSetDone(void *);	/* $11EF96 */
-void BioBalls_WaitPathDone(void *);	/* $11EFF2 */
-void BioBalls_WaitMotionDone(void *);	/* $11F05C */
-void BioBalls_ActClearAnim(void *);	/* $11F0C6 */
-long BioBalls_StateAnimA(void *);	/* $11F11C */
-long BioBalls_StateAnimB(void *);	/* $11F152 */
-char BioBalls_IsDone(void *);	/* $11F188 */
-long BioBalls_AllocBallList(short);	/* $11F1A6 */
-void BioBalls_UpdateBox(void *);	/* $11F22C */
-void BioBalls_SetFormation(void *, void *);	/* $11F2F2 */
-void BioBalls_StartPath(void *balls, void *path, char flags, short dx, short dy);	/* $11F3E2 */
-void BioBalls_SetPathCollapsed(void *, void *);	/* $11F42C */
-void BioBalls_FillFromFirst(void *);	/* $11F4C0 */
-void BioBalls_ResetToPos(void *);	/* $11F538 */
-char BioBalls_MotionGather(void *, short);	/* $11F588 */
-long BioBalls_MotionOrbit(void *, short);	/* $11F67C */
-long BioBalls_MotionRing(void *, short);	/* $11FAA2 */
-long BioBalls_MotionHelix(void *, short);	/* $11FCB8 */
-char BioBalls_MotionPath(void *, short);	/* $11FEE4 */
-long BioBalls_SpawnPuff(short, short, char);	/* $1200AE */
-long BioBalls_MotionRoll(void *, short);	/* $120124 */
+void BioBalls_Init(BioBalls *self, long x, long y, Placement *pl);	/* $11E7C4 */
+void BioBalls_Update(BioBalls *self);	/* $11E8F2 */
+void BioBalls_Draw(BioBalls *self);	/* $11E9CC */
+void BioBalls_Move(BioBalls *self, short steps);	/* $11ED04 */
+void BioBalls_ActCollapse(BioBalls *self);	/* $11EEA8 */
+short BioBalls_StateIdle(BioBalls *self);	/* $11EF1E */
+void BioBalls_ActClearDone(BioBalls *self);	/* $11EF42 */
+void BioBalls_ActSetDone(BioBalls *self);	/* $11EF96 */
+short BioBalls_WaitPathDone(BioBalls *self);	/* $11EFF2 */
+short BioBalls_WaitMotionDone(BioBalls *self);	/* $11F05C */
+void BioBalls_ActClearAnim(BioBalls *self);	/* $11F0C6 */
+short BioBalls_StateAnimA(BioBalls *self);	/* $11F11C */
+short BioBalls_StateAnimB(BioBalls *self);	/* $11F152 */
+char BioBalls_IsDone(BioBalls *self);	/* $11F188 */
+s16 *BioBalls_AllocBallList(short n);	/* $11F1A6 */
+void BioBalls_UpdateBox(BioBalls *self);	/* $11F22C */
+void BioBalls_SetFormation(BioBalls *self, void *formation);	/* $11F2F2 */
+void BioBalls_StartPath(BioBalls *self, void *path, char flags, short dx, short dy);	/* $11F3E2 */
+void BioBalls_SetPathCollapsed(BioBalls *self, void *path);	/* $11F42C */
+void BioBalls_FillFromFirst(BioBalls *self);	/* $11F4C0 */
+void BioBalls_ResetToPos(BioBalls *self);	/* $11F538 */
+char BioBalls_MotionGather(BioBalls *self, short steps);	/* $11F588 */
+char BioBalls_MotionOrbit(BioBalls *self, short steps);	/* $11F67C */
+char BioBalls_MotionRing(BioBalls *self, short steps);	/* $11FAA2 */
+char BioBalls_MotionHelix(BioBalls *self, short steps);	/* $11FCB8 */
+char BioBalls_MotionPath(BioBalls *self, short steps);	/* $11FEE4 */
+void BioBalls_SpawnPuff(short x, short y, char flip);	/* $1200AE */
+char BioBalls_MotionRoll(BioBalls *self, short steps);	/* $120124 */
 void BioBalls_EmptyStub(void);	/* $1203A4 */
 void BigBio_Script(void);	/* $120828 fragment */
 long BasicBioSentinel_GetSize(void);	/* $120868 */
@@ -2896,15 +2896,15 @@ FluxBomb *Magneto_SpawnFluxBomb(long x, long y, char dir, unsigned char byPlayer
 void *Magneto_FrameBank(short frame);	/* $1599CC */
 short Magneto_FrameInBank(short frame);	/* $159A06 */
 void Magneto_SetFrame(Magneto *self, short frame);	/* $159A46 */
-void Cam_ClampLookToPlayers(void *);	/* $159ECC */
+void Cam_ClampLookToPlayers(Camera *cam);	/* $159ECC */
 void Cam_CommitLook(Camera *cam);	/* $159FB8 */
 void Pal_CycleStep(void *, void *, void *, void *, char);	/* $159FD6 */
 void Seg_MoveAlong(void *obj, short dist);	/* $15A0AC */
 void Seg_MoveAlongSteps(void *obj, short n);	/* $15A168 */
-long Obj_RideRail(void *, short);	/* $15A19C */
+void Obj_RideRail(void *obj, short steps);	/* $15A19C */
 void AiScript_Set(AiCursor *cursor, void *table);	/* $15A6DE */
-long Obj_InScreenWindow(void *);	/* $15A6FC */
-long Obj_OutsideActivateWindow(void *);	/* $15A79C */
+char Obj_InScreenWindow(Actor *self);	/* $15A6FC */
+char Obj_OutsideActivateWindow(Actor *self);	/* $15A79C */
 long Seg_GridCell(long x, long y);	/* $15A7C8 */
 Seg *Seg_FindAt(short x, short y, short maxLayer, short height);	/* $15A82A */
 Seg *Seg_FindBelow(short x, short y, short maxLayer);	/* $15A8FE */
@@ -2942,40 +2942,40 @@ void Map_SetBlockFG(short, short, short, char);	/* $15D7F8 */
 void Map_SetBlockFGFlip(short, short, short, char, char, char);	/* $15D858 */
 void Map_SetBlockBG(short, short, short, char);	/* $15D8CC */
 long Actor_GetSize(void);	/* $15D92C */
-void Actor_InitSpawnRec(void *, void *);	/* $15D93A */
+void Actor_InitSpawnRec(SpawnRec *rec, Placement *pl);	/* $15D93A */
 void Actor_Nop5A(void);	/* $15D970 */
 void Actor_ClassInit(void);	/* $15D978 */
 void Actor_Nop62(void);	/* $15D980 */
-void Obj_AllocPool(short);	/* $15D988 */
-long Actor_New(long, void *, long, long, long);	/* $15DA38 */
-long Actor_StateFallDead(void *);	/* $15DA90 */
-void Actor_StateHurt(void *);	/* $15DAD8 */
-long Actor_SpawnRecInView(long, void *);	/* $15DB26 */
-long Actor_SpawnFromRec(void *, void *);	/* $15DB8E */
-long Actor_SpawnRecOutOfView(void *, void *);	/* $15DBF2 */
-void Actor_Despawn(void *, void *);	/* $15DC78 */
-void Actor_Init(void *, long, long);	/* $15DCC4 */
-long Actor_InActivateWindow(void *);	/* $15DE1E */
+void Obj_AllocPool(short count);	/* $15D988 */
+Actor *Actor_New(long unused, Class *cls, long x, long y, void *pl);	/* $15DA38 */
+short Actor_StateFallDead(Actor *self);	/* $15DA90 */
+short Actor_StateHurt(Actor *self);	/* $15DAD8 */
+long Actor_SpawnRecInView(SpawnRec *self, SpawnRec *rec);	/* $15DB26 */
+Actor *Actor_SpawnFromRec(SpawnRec *self, SpawnRec *rec);	/* $15DB8E */
+char Actor_SpawnRecOutOfView(Actor *self, SpawnRec *rec);	/* $15DBF2 */
+void Actor_Despawn(Actor *self, SpawnRec *rec);	/* $15DC78 */
+void Actor_Init(Actor *self, long x, long y, void *pl);	/* $15DCC4 */
+char Actor_InActivateWindow(Actor *self);	/* $15DE1E */
 void HitList_Init(void);	/* $15DEAE */
 long HitList_AllocNode(void);	/* $15DEEE */
 ListNode *HitList_Add(void *obj, PTR(ListNode) *head);	/* $15DF2A */
 void List_Unlink(ListNode *node, PTR(ListNode) *head);	/* $15DF66 */
-void Actor_Activate(void *);	/* $15DFA8 */
-long Actor_OutsideActiveWindow(void *);	/* $15E18C */
-void Actor_Deactivate(void *);	/* $15E222 */
-long Actor_ContainsPoint(void *, short, short);	/* $15E3D4 */
-void Actor_SetFrame(void *, short);	/* $15E410 */
-void Actor_DrawSprite(void *);	/* $15E452 */
-void Actor_Draw(void *);	/* $15E55A */
-void Actor_Attack(void *, void *, char, char, short, short);	/* $15E630 */
-void Actor_TakeDamage(void *, long, long, char);	/* $15E680 */
-void Actor_Kill(void *);	/* $15E6B2 */
-void Obj_CarryChild(void *, void *);	/* $15E76C */
-void Actor_FreeSegCb(long, long);	/* $15E7EA */
-void Actor_Update(void *);	/* $15E7FA */
-short Obj_CountOfClass(void *);	/* $15EA78 */
+void Actor_Activate(Actor *self);	/* $15DFA8 */
+char Actor_OutsideActiveWindow(Actor *self);	/* $15E18C */
+void Actor_Deactivate(Actor *self);	/* $15E222 */
+long Actor_ContainsPoint(Actor *self, short x, short y);	/* $15E3D4 */
+void Actor_SetFrame(void *obj, short f);	/* $15E410 */
+void Actor_DrawSprite(Actor *self);	/* $15E452 */
+void Actor_Draw(Actor *self);	/* $15E55A */
+void Actor_Attack(Actor *self, Actor *target, char type, char damage, short hx, short hy);	/* $15E630 */
+void Actor_TakeDamage(Actor *self, Actor *attacker, char type, char damage, short hx, short hy);	/* $15E680 */
+void Actor_Kill(Actor *self);	/* $15E6B2 */
+void Obj_CarryChild(Actor *parent, Actor *child);	/* $15E76C */
+void Actor_FreeSegCb(Actor *obj, Seg *seg);	/* $15E7EA */
+void Actor_Update(Actor *self);	/* $15E7FA */
+short Obj_CountOfClass(Class *cls);	/* $15EA78 */
 void Actor_Nop6A(void);	/* $15EAC8 */
-void Actor_Nop66(void *);	/* $15EAD0 */
+void Actor_Nop66(Actor *self);	/* $15EAD0 */
 void Map_PutRowBlockA(u16 *defs, unsigned short cell, short r, short vramRow, short *vramCol);	/* $15EAE2 asm regs(a2,d2,d1,d6,&d7) clobbers(d4,d5) */
 void Map_PutRowBlockB(u16 *defs, unsigned short cell, short r, short vramRow, short *vramCol);	/* $15EB78 asm regs(a2,d2,d1,d6,&d7) clobbers(d4,d5) */
 void Map_PutRowPartA(u16 *defs, unsigned short cell, short r, short from, short to, short vramRow, short *vramCol);	/* $15EC0E asm regs(a2,d2,d1,d4,d3,d6,&d7) clobbers(d3,d4,d5) */
@@ -3021,17 +3021,17 @@ void Rand_Seed(short);	/* $160512 */
 void Mem_ClearAboveStack(void);	/* $160550 asm */
 void VDP_InitRegs(void);	/* $160594 */
 void Sys_InitHardware(void);	/* $160642 */
-long Obj_GetLiftCarrier(void *);	/* $1606F4 */
+Actor *Obj_GetLiftCarrier(void *obj);	/* $1606F4 */
 long Cam_GetSize(void);	/* $1607A0 */
 Camera *Cam_New(Class *cls, CamFn hook);	/* $1607AA */
-long Cam_Init(void *);	/* $1607E8 */
+void Cam_Init(Camera *self);	/* $1607E8 */
 void Cam_Nop12(Camera *self);	/* $160996 */
 void Cam_Update(Camera *self);	/* $1609A8 */
 void Cam_FollowBoth(Camera *self, short left, short top, short right, short bottom);	/* $1609CC */
 void Cam_FollowPlayer(Camera *self, short left, short top, short right, short bottom);	/* $160A18 */
 void Cam_FollowObject(Camera *self, void *obj, short left, short top, short right, short bottom);	/* $160ACA */
 void Cam_EaseOffset(Camera *self);	/* $160B0E */
-void Cam_ShakeStep(void *);	/* $160BB0 */
+void Cam_ShakeStep(Camera *self);	/* $160BB0 */
 void Cam_StepLookDown(Camera *self);	/* $160C3E */
 void Cam_StepLookUp(Camera *self);	/* $160D06 */
 char Cam_LookUp(Camera *self);	/* $160DCE */
@@ -3039,13 +3039,13 @@ char Cam_LookDown(Camera *self);	/* $160E0E */
 void Cam_EndLookUp(Camera *self);	/* $160E4E */
 void Cam_EndLookDown(Camera *self);	/* $160E60 */
 void Cam_PanStep(Camera *self);	/* $160E72 */
-void Cam_PanTo(void *, short, short, short, short, char, char);	/* $160F36 */
+void Cam_PanTo(Camera *self, short x, short y, short speedX, short speedY, char lockX, char lockY);	/* $160F36 */
 void Cam_UnlockAxes(Camera *self);	/* $160FCC */
 char Cam_IsPanning(Camera *self);	/* $160FDE */
 void Cam_ApplyPos(Camera *self);	/* $160FFE */
 void Cam_TrackBoth(Camera *self);	/* $16103C */
-long Cam_EaseAxis(short, short, short, short, short);	/* $16118E */
-void Cam_SpringAxis(short, short, short, short, short, short, void *, void *, void *, void *);	/* $161222 */
+long Cam_EaseAxis(short ofs, short cam, short step, short target, short prev);	/* $16118E */
+void Cam_SpringAxis(short target, short prev, short lo, short hi, short catchUp, short maxAccel, s16 *pos, s16 *speed, s16 *accel, s16 *accelStep);	/* $161222 */
 void Cam_TrackPlayer(Camera *self);	/* $16136E */
 void Cam_TrackObject(Camera *self);	/* $161744 */
 void Cam_DefaultUpdate(Camera *self);	/* $161816 */
@@ -3422,19 +3422,19 @@ void Level_LoadMaps(void *, void *, void *, void *, short, short, char, char, ch
 void Cam_SetMinXBlocks(short col);	/* $1F5F40 */
 void Cam_SetMaxXBlocks(short col);	/* $1F5F5A */
 void Cam_SetPos(short x, short y);	/* $1F5F78 */
-void Cam_SetPosScaled(short, short);	/* $1F60E4 */
+void Cam_SetPosScaled(short x, short y);	/* $1F60E4 */
 long Math_MulFix8(short, short);	/* $1F6258 */
 void Obj_SetAnim(void *obj, void *anim);	/* $1F626A */
-void Obj_ChangeAnim(void *, void *);	/* $1F6296 */
+void Obj_ChangeAnim(void *obj, void *anim);	/* $1F6296 */
 short SprDef_Add(void *def, short frame);	/* $1F62C0 */
 void Obj_SetSpriteDef(Actor *self, unsigned char n);	/* $1F6334 */
 char Seg_WouldLeaveEnd(void *obj, short dx);	/* $1F638A */
 char Seg_AtOpenEndAhead(void *obj, short margin);	/* $1F6420 */
-long Obj_AttachChild(void *, void *);	/* $1F64B4 */
-long Obj_Detach(void *);	/* $1F6530 */
-void Obj_ForEachChild(void *, void *);	/* $1F669A */
-void Actor_DeactivateFree(void *);	/* $1F66F0 */
-void Obj_ForEachChildCall(void *, void *);	/* $1F6774 */
+void Obj_AttachChild(void *p, void *c);	/* $1F64B4 */
+void Obj_Detach(void *obj);	/* $1F6530 */
+void Obj_ForEachChild(void *obj, ObjChildFn func);	/* $1F669A */
+void Actor_DeactivateFree(void *obj);	/* $1F66F0 */
+void Obj_ForEachChildCall(Actor *parent, ObjChildFn func);	/* $1F6774 */
 void Pal_StartFadeDelay(short, short, short, long);	/* $1F67C8 */
 void Pal_SaveBase(void);	/* $1F6816 */
 void Pal_RestoreBase(void);	/* $1F684E */
@@ -3445,8 +3445,8 @@ void Pal_FadeOutWait(long);	/* $1F68CE */
 void Pal_FadeInWait(long);	/* $1F690E */
 XPlayer *Player_Nearest(Actor *self);	/* $1F694A */
 Actor *Player_NearestLive(void *obj);	/* $1F6A32 */
-long Obj_StandOnSeg(void *, void *);	/* $1F6B56 */
-void Obj_StandOnSegHere(void *);	/* $1F6B9C */
+void Obj_StandOnSeg(void *obj, Seg *seg);	/* $1F6B56 */
+void Obj_StandOnSegHere(void *obj);	/* $1F6B9C */
 void Seg_ClearAll(void);	/* $1F6BD2 */
 void Seg_LoadList(SegListEntry *list, char append);	/* $1F6C04 */
 void Seg_ApplyObjPos(void *obj);	/* $1F6D76 */
@@ -3471,7 +3471,7 @@ void Seg_ApplyPushOut_Default(void);	/* $1F76D6 fragment */
 void Seg_ApplyPushOut_Walls(void);	/* $1F7848 fragment */
 void Seg_ApplyPushOut_Move(void);	/* $1F78CA fragment */
 void Seg_SetLayerFromObj(void *obj, Seg *seg);	/* $1F7940 */
-void Obj_InheritLayer(void *, void *);	/* $1F7956 */
+void Obj_InheritLayer(Actor *parent, Actor *o);	/* $1F7956 */
 void Seg_ComputeLength(Seg *seg);	/* $1F79A2 */
 void Seg_ComputeLength_Flat(void);	/* $1F7A7C fragment */
 void Seg_ComputeLength_Max(void);	/* $1F7A82 fragment */
@@ -3484,8 +3484,8 @@ short Seg_Alloc(void);	/* $1F7C0A */
 Seg *Seg_Create(char type, short layer, short x1, short y1, short x2, short y2);	/* $1F7C6A */
 void Seg_Free(Seg *seg);	/* $1F7CFE */
 void Seg_ForEachOfObj(void *obj, SegObjFn func);	/* $1F7D5E */
-long Obj_SnapToNearestSeg(void *, short, short);	/* $1F7DAE */
-void Obj_SnapToNearestFloor(void *, short, short);	/* $1F7F38 */
+void Obj_SnapToNearestSeg(void *obj, short type, short pos);	/* $1F7DAE */
+Seg *Obj_SnapToNearestFloor(void *obj, short type, short pos);	/* $1F7F38 */
 Seg *Seg_FindNearestOfType(short x, short y, short type);	/* $1F80CA */
 Seg *Seg_FindContaining(short x, short y, short type);	/* $1F82CC */
 Seg *Seg_FindInBlock(short type, short col, short row);	/* $1F8454 */
@@ -3507,7 +3507,7 @@ char DrawList_Remove(short);	/* $1F9122 */
 char DrawList_SetPriority(short, short, char, short);	/* $1F91E8 */
 void DrawList_DrawAll(void);	/* $1F9422 */
 void Scene_EndAfter(short);	/* $1F944E */
-void Sys_Nop1F945C(void);	/* $1F945C */
+void Sys_Nop1F945C(short x, short y);	/* $1F945C */
 char Scene_Register(long, long);	/* $1F9464 */
 void Sys_Nop1F949E(void);	/* $1F949E */
 long Game_TickFrameCounter(void);	/* $1F94A6 */
@@ -3547,7 +3547,7 @@ void Spr_UploadFrame(void *, char);	/* $1FAD44 */
 short Spr_Init(SprInst *spr, long, void *, short, short, short, char);	/* $1FB026 */
 void Spr_InvalidateFrame(void *);	/* $1FB126 */
 void Spr_SetFrame(void *, short);	/* $1FB142 */
-void Obj_ShiftTree(long, void *);	/* $1FB178 */
+void Obj_ShiftTree(Actor *parent, Actor *o);	/* $1FB178 */
 void Spr_PlaceAttached(void *, short, short);	/* $1FB1C2 */
 void Spr_Draw(void *, short, short);	/* $1FB346 */
 void Spr_EmitPreLinked(void *, short, short, short);	/* $1FB592 */
@@ -3564,16 +3564,16 @@ void Spr_EmitStreamLinked(void *, short, short, short);	/* $1FBCCE */
 void Spr_EmitStreamLinked_Piece(void);	/* $1FBE1A fragment */
 long Art_LoadToVramRecolor(void *, short, short, short, short);	/* $1FBE96 */
 void Scaler_ExpandSource(void);	/* $1FC1CC asm */
-long Scaler_BuildStepTables(void);	/* $1FC1FA asm */
-void Scaler_ClearRows(void);	/* $1FC2A6 asm */
+void Scaler_BuildStepTables(long *pair, short *count);	/* $1FC1FA asm regs(&d1,&d7) clobbers(d3,a4) */
+void Scaler_ClearRows(short *rows, u8 **dst);	/* $1FC2A6 asm regs(&d7,&a1) clobbers(d5,d6,a3,a4) */
 void Scaler_InitParams(void);	/* $1FC2E8 asm */
 void Spr_RenderToBitmap(void *, short, void *);	/* $1FC35C */
 void Spr_RenderToBitmap_Loop(void);	/* $1FC466 fragment */
 ScaleParams *Scaler_Start(ScaleParams *params, void *srcA, void *srcB, void *buf, short vram);	/* $1FC5FE */
-long Scaler_Step(void);	/* $1FC6CA asm */
-long Scaler_Resume(void);	/* $1FC6F6 asm */
-long Scaler_BeginPass(void);	/* $1FC708 asm */
-long Scaler_RowBlocks(void);	/* $1FC8FE asm */
+void Scaler_Step(void);	/* $1FC6CA asm */
+long Scaler_Resume(void);	/* $1FC6F6 asm regs()->d0 clobbers(d3,d4,d5,d6,a2,a3,a4) */
+long Scaler_BeginPass(void);	/* $1FC708 asm regs()->d0 clobbers(d3,d4,d5,d6,a2,a3,a4) */
+long Scaler_RowBlocks(ScalerRegs *r, short at);	/* $1FC8FE asm conv clobbers(d1,d2,d3,d4,d5,d6,a0,a1,a2,a3,a4) */
 void Scaler_RowBlocksLast80(void);	/* $1FCE9E fragment */
 void Scaler_RowEnd(void);	/* $1FD43E fragment */
 long Scaler_EmitSprites(short, short, short, char);	/* $1FD520 */

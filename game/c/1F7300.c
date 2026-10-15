@@ -18,13 +18,13 @@ short Seg_CollideBlock(void *obj, Seg *seg, SegContact *c)
 {
 	register Seg *s = seg;
 	register SegContact *ct = c;
-	register short top;
+	short margin;
+	short top;
 	register short bottom;
 	register short cx = (((Actor *)obj)->boxLeft + ((Actor *)obj)->boxRight) >> 1;
 	short cy = (((Actor *)obj)->boxTop + ((Actor *)obj)->boxBottom) >> 1;
 	short width = ((Actor *)obj)->boxRight - ((Actor *)obj)->boxLeft;
 	long a, b;
-	short margin;
 
 	if (s->y1 >= s->y2) {
 		top = s->y2;
@@ -55,8 +55,18 @@ short Seg_CollideBlock(void *obj, Seg *seg, SegContact *c)
 		if (a > 0) {
 			if (b != 0 && a < b) {
 				if (s->owner != -2 && (ct->flags & 0x40)) {
+#ifdef XMEN2_MPW
 					if ((s->owner == 0xFF ? 0 : g_ObjTable[s->owner])->vy < 0)
 						return 1;
+#else
+					/* an empty object slot: the 68000 reads the vector table */
+					Actor *carrier = (Actor *)g_ObjTable[s->owner];
+
+					if (!carrier)
+						carrier = (Actor *)Vectors;
+					if (carrier->vy < 0)
+						return 1;
+#endif
 				}
 				ct->pushY = a;
 			} else {

@@ -1,0 +1,37 @@
+# Scaler_BeginPass: the corpus's jobs never centre, flip vertically, transpose, use a packed source or packed output, or yield.
+case centre
+# clearMode 2: centred (g_ScalerOffsetX blank bytes per row, blank rows below)
+b $FFF57E = $2
+case halfwidth
+# a packed 4bpp source (g_ScalerHalfWidth, source A): rows expanded through g_ScalerLine5
+b $FFF59E = $FF
+l $FFF590 = [$FFF594]
+case transpose
+# +$18: the output's rows go across the source
+b $FFF582 = $1
+case vflip
+# +$17: flipped vertically
+b $FFF581 = $1
+case flips_transpose_centre
+# both flips, transposed, centred
+b $FFF580 = $1
+b $FFF581 = $1
+b $FFF582 = $1
+b $FFF57E = $2
+case packed
+# +$1A: packed output in 32-row chunks, each DMAed (VDP status reads 0)
+b $FFF584 = $1
+case packed_centre_yield
+# packed and centred, 40 rows per frame: yields in the second chunk
+b $FFF584 = $1
+b $FFF57E = $2
+w $FFF586 = $28
+case yield
+# rowsPerCall 5: yields after 5 rows (g_ScalerRegSave)
+w $FFF586 = $5
+case newkey
+# a new table key: the step tables are rebuilt
+b $FFF57F = $9
+case direct0
+# direct 0 (no job in the game): the picture as sprites, Scaler_EmitSprites given the four longs above the return address (Scaler_Step's saved registers) as arguments
+b $FFF583 = $0

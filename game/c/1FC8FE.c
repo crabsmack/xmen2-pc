@@ -25,10 +25,16 @@
  * one is scaled at the buffer's start; the blank rows (g_ScalerRowsLeft, up to the last chunk's
  * 32) are cleared by Scaler_ClearRows. Kept from the 68000: the DMA is given the byte count / 2
  * as its length, which VDP_DmaToVram halves again.
- * The 68000 keeps the row counter in d7's high word during a row, the other word then holds
- * leftovers; a yield saves every register, so the bits the loop never uses (pix and pix2 above
- * their low byte, width above its low word, d0 = 0 after VDP_DmaToVram) are kept as the 68000
- * has them. Hand-written 68000, entered by jmp (game/runtime/asm_conv.cpp adapts it). */
+ * The coroutine: the 68000 yields by saving its registers and the address to go on at, then
+ * returning 1; Scaler_Resume reloads the registers and returns to that address. The C keeps the
+ * same record and says where it goes on: `at`, the stages below falling through in the 68000's
+ * order; a yield stores the 68000's own resume address (SCALER_RESUME_PC), so generated code
+ * that resumes through g_ScalerResumePC still works. The 68000 keeps the row counter in d7's
+ * high word during a row, the other word then holds leftovers; as a yield saves every register,
+ * the bits the loop never uses (pix and pix2 above their low byte, width above its low word,
+ * d0 = 0 after VDP_DmaToVram) are kept as the 68000 has them. On PC a source pointer stepped
+ * out of game memory after the last row can't be kept (no job's picture lies at its edge).
+ * Hand-written 68000, entered by jmp (game/runtime/asm_conv.cpp adapts it). */
 #include "xmen2.h"
 
 long Scaler_RowBlocks(ScalerRegs *r, short at)

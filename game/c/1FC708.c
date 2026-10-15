@@ -31,7 +31,8 @@ long Scaler_BeginPass(void)
 	unsigned long step, acc, prod;
 	long pair;
 	unsigned short n, nDown, nAcross, stride, i;
-	short s, sum, d, off, count;
+	short s, sum, d, off;
+	short count = 0;		/* d7 as Scaler_BuildStepTables leaves it (overwritten) */
 
 	g_ScalerBudget = g_ScalerParams.rowsPerCall;
 	if (!g_ScalerParams.direct) {
@@ -97,7 +98,7 @@ long Scaler_BeginPass(void)
 	acc = 0;
 	sum = 0;
 	if (g_ScalerParams.unk_16 & 0xFF00) {	/* +$16: flipped horizontally */
-		step = -step;
+		step = 0 - step;
 		sum = -1;
 	}
 	n = nAcross;
@@ -111,11 +112,11 @@ long Scaler_BeginPass(void)
 	Scaler_BuildStepTables(&pair, &count);
 	/* the first source pixel; the 68000 keeps the product's high word (d0) */
 	n = g_ScalerParams.srcY;
-	if (g_ScalerParams.unk_16 & 0x00FF)
+	if (g_ScalerParams.unk_16 & 0x00FF)	/* flipped vertically: its last row */
 		n = (unsigned short)(n + g_ScalerParams.rectH - 1);
 	prod = (unsigned long)n * (unsigned short)g_ScalerSrcStride;
 	off = (short)(prod + g_ScalerParams.srcX);
-	if (g_ScalerParams.unk_16 & 0xFF00)
+	if (g_ScalerParams.unk_16 & 0xFF00)	/* flipped horizontally: its last column */
 		off = (short)(off + g_ScalerParams.rectW - 1);
 	r.src = (u8 *)(g_ScalerHalfWidth ? g_ScalerSrcA : g_ScalerSrcB) + off;
 	g_ScalerRowStep = g_ScalerLine4;

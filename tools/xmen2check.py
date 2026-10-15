@@ -460,7 +460,8 @@ def cmd_handc(a) -> dict:
     # (no MPW frame) are reported for the never-executed rule.
     tags = {}
     for line in (INC / "xmen2_funcs.h").read_text(encoding="utf-8").splitlines():
-        m = re.search(r"\b([A-Za-z_]\w*)\s*\([^;]*\)\s*;\s*/\*\s*\$([0-9A-F]{6})\s*(\w+)?\s*\*/", line)
+        # the first word of the tag: `asm`, `fragment`... (an asm tag may go on: `asm regs(d0)->d0`)
+        m = re.search(r"\b([A-Za-z_]\w*)\s*\([^;]*\)\s*;\s*/\*\s*\$([0-9A-F]{6})\s*(\w+)?[^*]*\*/", line)
         if m:
             tags[m.group(2)] = (m.group(1), m.group(3) or "")
     texts = {a: (CDIR / f"{a}.c").read_text(encoding="utf-8") for a in out}

@@ -14,7 +14,8 @@
  *     on a type-3 floor. $E: players only, raising event 2 instead; $F: others only, with event 3;
  *   4 ceiling: the box top up to 64 px into it, pushY > 0;
  *   $13-$1C solid blocks: Seg_CollideBlock;   $1D trigger box: a player inside raises event 2.
- * Returns 1 no contact (_RetNone), 2 contact (_RetHit), 3 above a floor.
+ * Returns 1 no contact (Seg_CollideObj_RetNone), 2 contact (Seg_CollideObj_RetHit), 3 above a
+ * floor.
  * Hand-written 68000 in an MPW frame (a2, exg, a jump table of its own): it can't byte-match. */
 #include "xmen2.h"
 

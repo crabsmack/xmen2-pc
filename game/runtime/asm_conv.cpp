@@ -19,6 +19,7 @@ void xm_regs_restore(const uint32_t *saved);
 }
 /* the game-memory types of the C prototypes (u8, u16, u32) and host <-> 68000 pointers */
 #include "xmen2_mem.h"
+#include "xmen2_types.h"   /* records the adapters fill (ScalerRegs) */
 
 namespace xm {
 [[noreturn]] void fatal(const char *fmt, ...);
@@ -316,4 +317,79 @@ void conv_call_15F65C(short op, short count, u8 *src, unsigned long bits, short 
         xm::fatal("Eni_Ops left A7 $%08X A6 $%08X (expected $%08X $%08X)", (unsigned)g_cpu.A[7],
                   (unsigned)g_cpu.A[6], (unsigned)sp, (unsigned)a6);
     xm_regs_restore(saved);
+}
+
+/* ---- $1FC8FE Scaler_RowBlocks: the scaler's row loop ---------------------------------------
+   The loop runs in all of d0-d7/a0-a4 (ScalerRegs, movem order) and is entered by jmp: block k
+   of a row at $1FC8FE + 18 * k (C at = k, 0-160; 160 is Scaler_RowEnd, $1FD43E), a row's head
+   $1FC8A0, a pass's rows $1FC89E, the next packed chunk $1FC884, after a yield $1FD480 (C at =
+   SCALER_AT_ROW / ROWS / CHUNK / RESUME). Its rts returns from whoever jumped in, d0 = 0 done or
+   1 yielded. Generated code enters the C only at $1FC8FE (Scaler_BeginPass's jmp for a 320-pixel
+   row). C calling the generated loop (Scaler_BeginPass, Scaler_Resume) is a tail call: the
+   registers stay as the loop leaves them, as after the 68000's jmp (Scaler_Step restores its
+   caller's around the pass). Register values that are no 68000 pointer the C could follow (the
+   loop's leftovers) travel as raw values. */
+static void scaler_regs_get(ScalerRegs *r)
+{
+    r->pix = g_cpu.D[0];
+    r->pix2 = g_cpu.D[1];
+    r->width = g_cpu.D[2];
+    r->srcRow.v = g_cpu.D[3];
+    r->maskL = g_cpu.D[4];
+    r->maskR = g_cpu.D[5];
+    r->dstRow.v = g_cpu.D[6];
+    r->rows = g_cpu.D[7];
+    r->src.v = g_cpu.A[0];
+    r->dst.v = g_cpu.A[1];
+    r->srcStep.v = g_cpu.A[2];
+    r->dstStep.v = g_cpu.A[3];
+    r->rowStep.v = g_cpu.A[4];
+}
+
+static void scaler_regs_set(const ScalerRegs *r)
+{
+    g_cpu.D[0] = r->pix;
+    g_cpu.D[1] = r->pix2;
+    g_cpu.D[2] = r->width;
+    g_cpu.D[3] = r->srcRow.raw();
+    g_cpu.D[4] = r->maskL;
+    g_cpu.D[5] = r->maskR;
+    g_cpu.D[6] = r->dstRow.raw();
+    g_cpu.D[7] = r->rows;
+    g_cpu.A[0] = r->src.raw();
+    g_cpu.A[1] = r->dst.raw();
+    g_cpu.A[2] = r->srcStep.raw();
+    g_cpu.A[3] = r->dstStep.raw();
+    g_cpu.A[4] = r->rowStep.raw();
+}
+
+void conv_slot_1FC8FE(long (*c)(ScalerRegs *r, short at))
+{
+    ScalerRegs r;
+    scaler_regs_get(&r);
+    long d0 = c(&r, 0);           /* jumped in at block 0 */
+    scaler_regs_set(&r);
+    g_cpu.D[0] = (uint32_t)d0;
+    xm_slot_return();             /* the rts: from whoever jumped in */
+}
+
+long conv_call_1FC8FE(ScalerRegs *r, short at)
+{
+    uint32_t a = 0;
+    if (at >= 0 && at <= 160)
+        a = 0x1FC8FEu + 18u * (uint32_t)at;
+    else if (at == SCALER_AT_ROW)
+        a = 0x1FC8A0u;
+    else if (at == SCALER_AT_ROWS)
+        a = 0x1FC89Eu;
+    else if (at == SCALER_AT_CHUNK)
+        a = 0x1FC884u;
+    else if (at == SCALER_AT_RESUME)
+        a = (uint32_t)SCALER_RESUME_PC;
+    else
+        xm::fatal("Scaler_RowBlocks: no 68000 entry for at = %d", (int)at);
+    scaler_regs_set(r);
+    xm::call_raw(a);
+    scaler_regs_get(r);
+    return (long)(int32_t)g_cpu.D[0];
 }

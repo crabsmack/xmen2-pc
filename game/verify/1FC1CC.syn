@@ -1,0 +1,16 @@
+# Scaler_ExpandSource: Scaler_Start calls it for a job given both sources; no job in the corpus is.
+at any
+case art16x8
+# a 16x8 4bpp source (ROM tiles) unpacked into RAM
+reg a5 = $200
+l $FFF590 = $11A76
+l $FFF594 = $FF8100
+w $FFF56A = $10
+w $FFF56C = $8
+case odd15x5
+# an odd width: (15 + 1) / 2 bytes per row
+reg a5 = $200
+l $FFF590 = $11A76
+l $FFF594 = $FF8100
+w $FFF56A = $F
+w $FFF56C = $5

@@ -4,7 +4,7 @@
  * Seg_ComputeObjPos without the clamp and without halving vx: the hook (message 5) first, then
  * segPos = (x - x1) << 8 for floors (Seg_ObjPosUnclamped_Horiz: 3, $E, $F, $13-$1C, $21),
  * (x2 - x) << 8 reversed (_Reverse: 4, $22), (y - y1) << 8 for walls 1/$24, (y2 - y) << 8 for
- * walls 2/$23; others unchanged (_Done). */
+ * walls 2/$23; others unchanged (Seg_ObjPosUnclamped_Done: the exit). */
 #include "xmen2.h"
 
 void Seg_ObjPosUnclamped(Seg *seg, void *obj)

@@ -5,7 +5,8 @@
  * The segment type's hook (g_SegTypeHooks, message 5) may do it (non-zero). Else segPos (8
  * fraction bits) by type (Seg_ComputeObjPos_Cases), its pixel x or y clamped to the segment:
  *   3, $E, $F, $13-$1C, $21 floors: x - x1, and vx is halved;   4, $22 reversed: x2 - x;
- *   1, $24 walls: y - y1;   2, $23 walls: y2 - y;   others: unchanged. */
+ *   1, $24 walls: y - y1;   2, $23 walls: y2 - y;   others: unchanged (Seg_ComputeObjPos_Done:
+ *   the exit). */
 #include "xmen2.h"
 
 /* v clamped to lo..hi, as the original wrote it (tested low end first) */

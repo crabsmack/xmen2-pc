@@ -11,4 +11,5 @@ void XNpc_Init(XNpc *self, long x, long y, Placement *pl)
 	self->health = (self->stats = (NpcStats *)CODEPTR(Tbl_XNpcDefaultStats))->health;
 	self->shake = 0;
 	self->hurtState = 0;
+end:	;	/* (here MPW C pops all the arguments, as the ROM does) */
 }

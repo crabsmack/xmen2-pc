@@ -1,0 +1,65 @@
+# Cam_ClampLookToPlayers: the corpus only ever calls it with no look offset (an early return).
+# The cases give the camera (g_Camera, y 100, dead zone rows $5A..$C0) a look offset and place the
+# players (player 1 $FFEAA8, player 2 $FFE9B8: flags +4, y +$C): within the rows, past the top
+# limit, past the bottom one, both players alive either way round, none alive.
+
+# player 1 alone at y 300: y 100 + 60 stays inside 108..210
+case inside
+w [$FFCC4A]+$32 = 100
+w [$FFCC4A]+$5C = 60
+w arg0+$40 = $5A
+w arg0+$42 = $C0
+w $FFEAAC = $8000
+l $FFEAB4 = $12C00
+w $FFE9BC = 0
+
+# y 100 + 200 past 210: clamped, 90 left in look
+case over
+w [$FFCC4A]+$32 = 100
+w [$FFCC4A]+$5C = 200
+w arg0+$40 = $5A
+w arg0+$42 = $C0
+w $FFEAAC = $8000
+l $FFEAB4 = $12C00
+w $FFE9BC = 0
+
+# y 100 - 50 under 108: clamped, -58 left in look
+case under
+w [$FFCC4A]+$32 = 100
+w [$FFCC4A]+$5C = -50
+w arg0+$40 = $5A
+w arg0+$42 = $C0
+w $FFEAAC = $8000
+l $FFEAB4 = $12C00
+w $FFE9BC = 0
+
+# both alive, player 2 above player 1 (250 vs 300)
+case both2above
+w [$FFCC4A]+$32 = 100
+w [$FFCC4A]+$5C = 60
+w arg0+$40 = $5A
+w arg0+$42 = $C0
+w $FFEAAC = $8000
+l $FFEAB4 = $12C00
+w $FFE9BC = $8000
+l $FFE9C4 = $FA00
+
+# both alive, player 2 below player 1 (350 vs 300)
+case both2below
+w [$FFCC4A]+$32 = 100
+w [$FFCC4A]+$5C = 60
+w arg0+$40 = $5A
+w arg0+$42 = $C0
+w $FFEAAC = $8000
+l $FFEAB4 = $12C00
+w $FFE9BC = $8000
+l $FFE9C4 = $15E00
+
+# nobody alive: the limits come from the +-9999999 starting values
+case none
+w [$FFCC4A]+$32 = 100
+w [$FFCC4A]+$5C = 60
+w arg0+$40 = $5A
+w arg0+$42 = $C0
+w $FFEAAC = 0
+w $FFE9BC = 0

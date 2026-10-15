@@ -1,0 +1,241 @@
+# Scroll_ComputeParallax: the game's descriptors only use modes 0 and 2 (lines) and 0 (columns). Constructed descriptors in the dead stack below the entry (a7-$400; the function pushes 40 bytes at most).
+case none
+# no descriptor: nothing to do
+l $FFC7BC = $0
+case seek_count_y0
+# the search runs out of bands exactly at plane B's top line: done
+l a7-$400 = $30000000
+l a7-$3FC = $280010
+l a7-$3F8 = $0
+l a7-$3F4 = $12C0020
+b a7-$3F0 = $0
+b a7-$3EF = $0
+l $FFC7BC = a7-$400
+w $FFC738 = $28
+w $FFC73E = $123
+case seek_past_count
+# the search runs out with lines left: it goes on past the count
+l a7-$400 = $30000000
+l a7-$3FC = $280010
+l a7-$3F8 = $0
+l a7-$3F4 = $12C0020
+b a7-$3F0 = $0
+b a7-$3EF = $0
+l $FFC7BC = a7-$400
+w $FFC738 = $3C
+w $FFC73E = $123
+case count_out
+# the count runs out after a band: the next bands without the search (modes 0, 1, 2)
+l a7-$400 = $30000000
+l a7-$3FC = $640010
+l a7-$3F8 = $100
+l a7-$3F4 = $640030
+l a7-$3F0 = $200
+l a7-$3EC = $640014
+b a7-$3E8 = $1
+b a7-$3E7 = $C
+l $FFC7BC = a7-$400
+w $FFF9BA = $0
+w $FFF9BC = $0
+w $FFF9BE = $0
+w $FFF9C0 = $123
+w $FFF9C2 = $40
+w $FFF9C4 = $10
+w $FFC738 = $0
+w $FFC73E = $123
+case bad_mode
+# an unknown mode ends the walk
+l a7-$400 = $30030000
+l a7-$3FC = $640010
+l a7-$3F8 = $700
+l a7-$3F4 = $640030
+l a7-$3F0 = $0
+l a7-$3EC = $640020
+b a7-$3E8 = $0
+b a7-$3E7 = $0
+l $FFC7BC = a7-$400
+w $FFC738 = $0
+w $FFC73E = $123
+case gradient
+# mode 1 from the screen's top
+l a7-$400 = $30010100
+l a7-$3FC = $780040
+l a7-$3F8 = $1000000
+l a7-$3F4 = $C80010
+b a7-$3F0 = $0
+b a7-$3EF = $0
+l $FFC7BC = a7-$400
+w $FFF9BA = $0
+w $FFF9BC = $123
+w $FFC738 = $0
+w $FFC73E = $123
+case gradient_above
+# mode 1 starting 30 lines above the screen, negative step
+l a7-$400 = $30010100
+l a7-$3FC = $780040
+l a7-$3F8 = $1000000
+l a7-$3F4 = $C80010
+b a7-$3F0 = $0
+b a7-$3EF = $0
+l $FFC7BC = a7-$400
+w $FFF9BA = $FFFF
+w $FFF9BC = $FF80
+w $FFC738 = $1E
+w $FFC73E = $123
+case gradient_tall
+# mode 1 down past the screen's bottom
+l a7-$400 = $30000100
+l a7-$3FC = $12C0040
+b a7-$3F8 = $1
+b a7-$3F7 = $0
+l $FFC7BC = a7-$400
+w $FFF9BA = $0
+w $FFF9BC = $40
+w $FFC738 = $0
+w $FFC73E = $123
+case drift
+# mode 2 bands
+l a7-$400 = $30010200
+l a7-$3FC = $64000C
+l a7-$3F8 = $10C0200
+l a7-$3F4 = $C80004
+b a7-$3F0 = $FF
+b a7-$3EF = $20
+l $FFC7BC = a7-$400
+w $FFF9BA = $100
+w $FFF9BC = $20
+w $FFF9BE = $7FF0
+w $FFF9C0 = $FFFB
+w $FFC738 = $0
+w $FFC73E = $123
+case drift_above_tall
+# mode 2 from above the screen past its bottom
+l a7-$400 = $30000200
+l a7-$3FC = $190000C
+b a7-$3F8 = $2
+b a7-$3F7 = $F0
+l $FFC7BC = a7-$400
+w $FFF9BA = $100
+w $FFF9BC = $20
+w $FFC738 = $78
+w $FFC73E = $123
+case drift4
+# mode 4 bands
+l a7-$400 = $30010400
+l a7-$3FC = $64000C
+l a7-$3F8 = $10C0400
+l a7-$3F4 = $C8FFFC
+b a7-$3F0 = $FE
+b a7-$3EF = $40
+l $FFC7BC = a7-$400
+w $FFF9BA = $100
+w $FFF9BC = $20
+w $FFF9BE = $0
+w $FFF9C0 = $3
+w $FFC738 = $A
+w $FFC73E = $123
+case drift4_above_tall
+# mode 4 from above the screen past its bottom
+l a7-$400 = $30000400
+l a7-$3FC = $190000C
+b a7-$3F8 = $2
+b a7-$3F7 = $F0
+l $FFC7BC = a7-$400
+w $FFF9BA = $100
+w $FFF9BC = $20
+w $FFC738 = $78
+w $FFC73E = $123
+case wave
+# mode 3 (then mode 4's code)
+l a7-$400 = $30010300
+l a7-$3FC = $320030
+l a7-$3F8 = $120000
+l a7-$3F4 = $12C0010
+l a7-$3F0 = $C03
+l a7-$3EC = $10203
+l a7-$3E8 = $20100FF
+l a7-$3E4 = $FEFDFEFF
+l $FFC7BC = a7-$400
+w $FFF9BA = $5
+w $FFF9BC = $3
+w $FFC738 = $0
+w $FFC73E = $123
+case wave_steps
+# mode 3 on a frame its wave steps (plane A 0), the index wrapping in the band
+l a7-$400 = $30010300
+l a7-$3FC = $320030
+l a7-$3F8 = $120000
+l a7-$3F4 = $12C0010
+l a7-$3F0 = $C03
+l a7-$3EC = $10203
+l a7-$3E8 = $20100FF
+l a7-$3E4 = $FEFDFEFF
+l $FFC7BC = a7-$400
+w $FFF9BA = $1
+w $FFF9BC = $B
+w $FFC738 = $0
+w $FFC73E = $123
+case wave_above
+# mode 3 from above the screen: the index moved by the lines above, wrapped
+l a7-$400 = $30010300
+l a7-$3FC = $500030
+l a7-$3F8 = $120000
+l a7-$3F4 = $12C0010
+l a7-$3F0 = $C03
+l a7-$3EC = $10203
+l a7-$3E8 = $20100FF
+l a7-$3E4 = $FEFDFEFF
+l $FFC7BC = a7-$400
+w $FFF9BA = $4
+w $FFF9BC = $7
+w $FFC738 = $25
+w $FFC73E = $123
+case wave_above_steps
+# the same on a stepping frame
+l a7-$400 = $30010300
+l a7-$3FC = $500030
+l a7-$3F8 = $120000
+l a7-$3F4 = $12C0010
+l a7-$3F0 = $C03
+l a7-$3EC = $10203
+l a7-$3E8 = $20100FF
+l a7-$3E4 = $FEFDFEFF
+l $FFC7BC = a7-$400
+w $FFF9BA = $1
+w $FFF9BC = $B
+w $FFC738 = $D
+w $FFC73E = $123
+case wave_bottom
+# mode 3 down past the screen's bottom (with mode 4's second pass, 24 longs past g_HScrollBuf, as the 68000 does)
+l a7-$400 = $30010000
+l a7-$3FC = $C80010
+l a7-$3F8 = $300
+l a7-$3F4 = $640030
+l a7-$3F0 = $120C03
+l a7-$3EC = $10203
+l a7-$3E8 = $20100FF
+l a7-$3E4 = $FEFDFEFF
+l $FFC7BC = a7-$400
+w $FFF9BA = $0
+w $FFF9BC = $0
+w $FFF9BE = $2
+w $FFF9C0 = $5
+w $FFC738 = $0
+w $FFC73E = $123
+case columns
+# a column descriptor: modes 0, 2 and 4
+l a7-$400 = $32030200
+l a7-$3FC = $600D0
+l a7-$3F8 = $400400
+l a7-$3F4 = $80090
+l a7-$3F0 = $FFD00000
+l a7-$3EC = $60060
+b a7-$3E8 = $0
+b a7-$3E7 = $0
+l $FFC7BC = a7-$400
+w $FFF9BA = $100
+w $FFF9BC = $1
+w $FFF9BE = $7FC0
+w $FFF9C0 = $2
+w $FFC738 = $0
+w $FFC73E = $123

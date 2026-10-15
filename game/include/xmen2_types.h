@@ -90,7 +90,9 @@ CHECK_SIZE(SprFrame, 0x14);
 
 /* A sprite definition (ROM): a header, then its frame records from +$24. */
 typedef struct SprDef {
-	u8 unk_00[0x24];		/* +$00 */
+	u8 type;			/* +$00 how its tiles reach VRAM: $20 preloaded (whole definition in VRAM: Actor_Activate lets it in past g_VramTileLimit), $18/$19 streamed per frame */
+	u8 frameCount;			/* +$01 frames (BioBalls_Draw) */
+	u8 unk_02[0x22];		/* +$02 */
 	SprFrame frame[1];		/* +$24 */
 } SprDef;
 
@@ -228,6 +230,9 @@ FNTYPE(TileHookFn, long);
 FNTYPE(SegHookFn, short);
 /* What Seg_ForEachOfObj runs on each floor segment of an object: func(object, segment). */
 FNTYPE(SegObjFn, void);
+/* What Obj_ForEachChild runs on each object attached to a parent: func(parent, child)
+   (Obj_CarryChild); Obj_ForEachChildCall: func(child) (Obj_Detach). */
+FNTYPE(ObjChildFn, void);
 /* The per-frame callback the intro sequences run while they wait (Intro_WaitFrame). */
 FNTYPE(IntroFrameFn, void);
 
@@ -253,7 +258,7 @@ FNTYPE(IntroFrameFn, void);
 	s16 maxVy;			/* +$24 maximum speed y */ \
 	s16 minVx;			/* +$26 minimum speed x to move */ \
 	s16 minVy;			/* +$28 minimum speed y to move */ \
-	u8 unk_2A[4];			/* +$2A */ \
+	PTR(char) name;			/* +$2A debug name: "UNDEFINED" (Actor_Init) */ \
 	SprInst spr;			/* +$2E sprite instance */ \
 	u8 layer;			/* +$42 draw layer (DrawList_Add sorts by it; Obj_InheritLayer, Obj_StandOnSeg) */ \
 	u8 unk_43;			/* +$43 */ \
@@ -450,10 +455,36 @@ CHECK_SIZE(BabySentinelB, 0xBC);
 typedef struct BabySentinelC { BABYSENTINELC_FIELDS } BabySentinelC;
 CHECK_SIZE(BabySentinelC, 0xBC);
 
-/* BANIMAZADOOR: descriptor $03A7F0, parent ACTOR, $A2 bytes (GetSize $039D16) */
+/* A shard of a shattered BANIMAZADOOR ($12 bytes; BanimazaDoor_InitDebris throws them,
+   BanimazaDoor_DrawDebris draws and moves them). */
+typedef struct DoorShard {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 velocity, added to x per frame */
+	s16 vy;				/* +$0A */
+	s16 ax;				/* +$0C acceleration, added to vx per frame */
+	s16 ay;				/* +$0E (gravity, about $46) */
+	u8 unk_10[2];			/* +$10 */
+} DoorShard;
+CHECK_SIZE(DoorShard, 0x12);
+
+/* BANIMAZADOOR: descriptor $03A7F0, parent ACTOR, $A2 bytes (GetSize $039D16). A breakable
+   column in BaniMaza that rises when a player comes near, blocks as a floor segment
+   (g_Segs[segIndex], type $1C: BanimazaDoor_PushCallback) and shatters after 4 hits, then
+   comes back. py stays its home (lowered) y in pixels; the column is drawn from y up to py. */
 #define BANIMAZADOOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x16];		/* +$8C */
+	PTR(DoorShard) shards;		/* +$8C shard buffer (g_BanimazaDoorBuf, shared by every door) */ \
+	s16 shardCount;			/* +$90 shards (16) */ \
+	PTR(Actor) attacker;		/* +$92 who hit it last: the shards fly away from it */ \
+	s16 hitX;			/* +$96 where the shards start, pixels: x + 16 */ \
+	s16 hitY;			/* +$98 halfway between py and y */ \
+	u8 look;			/* +$9A drawn as: 0-2 the column (2 hit), 3 shards */ \
+	u8 unk_9B;			/* +$9B */ \
+	s16 tileBase;			/* +$9C first VRAM tile of its sprite definition */ \
+	s16 respawnDelay;		/* +$9E frames from shattering to coming back (90; 0: gone for good) */ \
+	u8 solid;			/* +$A0 rising or up: Draw keeps its floor segment and boxes on the column */ \
+	u8 unk_A1;			/* +$A1 (cleared by Init) */
 typedef struct BanimazaDoor { BANIMAZADOOR_FIELDS } BanimazaDoor;
 CHECK_SIZE(BanimazaDoor, 0xA2);
 
@@ -641,19 +672,86 @@ typedef struct ScaleParams {
 	s16 outW;			/* +$10 output size in pixels (the scale) */
 	s16 outH;			/* +$12 */
 	u8 clearMode;			/* +$14 0 keep, 1 clear the buffer, 2 centre */
-	u8 tableKey;			/* +$15 */
-	s16 unk_16;			/* +$16 */
-	u8 unk_18;			/* +$18 */
-	u8 direct;			/* +$19 */
-	u8 packed;			/* +$1A packed/streamed upload */
+	u8 tableKey;			/* +$15 a new key rebuilds the output step tables */
+	s16 unk_16;			/* +$16 two flags (Scaler_BeginPass): high byte (+$16) flip
+					   horizontally, low byte (+$17) flip vertically */
+	u8 unk_18;			/* +$18 transpose: the output's rows go across the source */
+	u8 direct;			/* +$19 1 scale into tiles; 0 show them as sprites (Scaler_EmitSprites) */
+	u8 packed;			/* +$1A packed/streamed upload: 32-row chunks DMAed as they are done */
 	u8 unk_1B;			/* +$1B */
-	s16 rowsPerCall;		/* +$1C */
+	s16 rowsPerCall;		/* +$1C rows scaled per frame before the pass yields (0: 65536) */
 	s16 unk_1E;			/* +$1E */
 	s16 unk_20;			/* +$20 */
 	s16 unk_22;			/* +$22 */
 	s16 unk_24;			/* +$24 */
 } ScaleParams;
 CHECK_SIZE(ScaleParams, 0x26);
+
+/* The scaler's row loop registers (Scaler_RowBlocks; Scaler_BeginPass, Scaler_Resume): the
+   hand-written 68000 runs the loop in all of d0-d7/a0-a4, and a yielded pass keeps them in
+   g_ScalerRegSave in this order (movem). Bits the loop never uses (pix and pix2 above their low
+   byte, width above its low word, the other word of rows) are kept as the 68000 leaves them:
+   a yield saves them. game/runtime/asm_conv.cpp moves the record to and from the registers. */
+typedef struct ScalerRegs {
+	u32 pix;			/* +$00 d0: the output byte being built (low byte) */
+	u32 pix2;			/* +$04 d1: its right pixel (low byte) */
+	u32 width;			/* +$08 d2: the row's width in pixels (low word) */
+	PTR(u8) srcRow;			/* +$0C d3: where the row's source starts */
+	u32 maskL;			/* +$10 d4: $FFFFFFF0, a byte's left pixel */
+	u32 maskR;			/* +$14 d5: $0000000F, its right pixel */
+	PTR(u8) dstRow;			/* +$18 d6: where the row's output starts */
+	u32 rows;			/* +$1C d7: the row counter (low word between rows, high within one) */
+	PTR(u8) src;			/* +$20 a0: the next source pixel */
+	PTR(u8) dst;			/* +$24 a1: the next output byte */
+	PTR(s16) srcStep;		/* +$28 a2: the next source step (g_ScalerLine0) */
+	PTR(s16) dstStep;		/* +$2C a3: the next output step (g_ScalerLine2/3) */
+	PTR(s16) rowStep;		/* +$30 a4: g_ScalerRowStep as the last row's end left it */
+} ScalerRegs;
+CHECK_SIZE(ScalerRegs, 0x34);
+
+/* Where Scaler_RowBlocks goes on, besides 0-160 (the block a row's pixels start at), and the
+   68000 code address a yielded pass resumes at (the value Scaler_RowBlocks keeps in
+   g_ScalerResumePC: the end of a row, before the next one). */
+#define SCALER_AT_ROW		(-1)	/* a row's head ($1FC8A0) */
+#define SCALER_AT_ROWS		(-2)	/* a pass's rows, from the first ($1FC89E) */
+#define SCALER_AT_CHUNK		(-3)	/* the next 32-row chunk of packed output ($1FC884) */
+#define SCALER_AT_RESUME	(-4)	/* after a yield, before the next row ($1FD480) */
+#define SCALER_RESUME_PC	0x1FD480L
+
+/* A band of a parallax descriptor (8 bytes). */
+typedef struct ParallaxBand {
+	u8 mode;			/* +$00 0 fixed speed, 1 gradient, 2 drift, 3 wave, 4 drift alone */
+	u8 unk_01;			/* +$01 */
+	s16 height;			/* +$02 lines (2-cell columns in a column descriptor) */
+	s16 speed;			/* +$04 8.8 share of the foreground scroll; modes 2/4: drift per frame */
+	s16 param;			/* +$06 mode 1: end speed (Scroll_SetParallax); 3: offset of its
+					   ParallaxWave from the descriptor; 2/4: a column band's drift per
+					   frame, a line band's two bytes {change of the line step per frame,
+					   8.8 share of the camera} */
+} ParallaxBand;
+CHECK_SIZE(ParallaxBand, 8);
+
+/* A parallax descriptor (Tbl_<Scene>Parallax; Scroll_SetParallax, Scroll_ComputeParallax). */
+typedef struct ParallaxDesc {
+	u8 type;			/* +$00 '2': column V-scroll, else line H-scroll */
+	u8 count;			/* +$01 bands (a line descriptor: see Scroll_ComputeParallax) */
+	ParallaxBand band[1];		/* +$02 */
+} ParallaxDesc;
+
+/* A parallax band's running state (g_ParallaxBands; Scroll_SetParallax resets it). */
+typedef struct ParallaxState {
+	s16 drift;			/* +$00 modes 2/4: the drift (1/64 pixel); 3: frames to the wave's next step */
+	s16 rate;			/* +$02 modes 2/4: the drift's step per line; 3: the wave's index; 1: the
+					   speed's step per line (the low word of Scroll_SetParallax's long) */
+} ParallaxState;
+CHECK_SIZE(ParallaxState, 4);
+
+/* The wave of a mode 3 parallax band: per-line offsets, stepped every `period` frames. */
+typedef struct ParallaxWave {
+	u8 len;				/* +$00 offsets */
+	u8 period;			/* +$01 frames per step */
+	s8 offset[1];			/* +$02 len signed pixel offsets */
+} ParallaxWave;
 
 /* A debris pool (Debris_CreatePool): this header, then $14-byte pieces. */
 typedef struct DebrisPool {
@@ -747,7 +845,7 @@ CHECK_OFFSET(BigBio, facingRight, 0xB6);
 typedef struct BioBall {
 	s16 x;				/* +$00 pixels */
 	s16 y;				/* +$02 */
-	s16 unk_4;			/* +$04 */
+	s16 tag;			/* +$04 bit 0: drawn in front of the others (BioBalls_Draw with ballFlags bit 0: BioBalls_MotionHelix); BioBalls_MotionOrbit keeps the ball's orbit angle here */
 } BioBall;
 
 /* A BIOBALLS motion function (+$A2, BioBalls_Motion*): func(balls, steps); nonzero = the balls
@@ -759,10 +857,10 @@ FNTYPE(BallMotionFn, char);
 	ACTOR_FIELDS \
 	AiCursor ai;			/* +$8C AI script (SavageBio_StateCrossSurface, SavageBio_ActDie) */ \
 	PTR(s16) ballList;		/* +$92 its ball list: count, then BioBalls (g_BioBallsList) */ \
-	u8 done;			/* +$96 formation / path / motion finished (BioBalls_IsDone) */ \
+	s8 done;			/* +$96 formation / path / motion finished (BioBalls_IsDone: a char) */ \
 	u8 unk_97;			/* +$97 */ \
 	s16 ballFlags;			/* +$98 bits 1/2 mirror the path x/y, 3 no anchor (BioBalls_StartPath); $100 orbit easing in, $200 busy (XCLONE waits), $400 aiming */ \
-	PTR(void) path;			/* +$9A ball path / formation the balls ease to (8-byte entries, x > 999 ends) */ \
+	PTR(struct PathPt) path;	/* +$9A ball path / formation the balls ease to (BioBalls_Move; x >= 1000 ends: back to the start; 0 = arrived) */ \
 	s16 pathDx;			/* +$9E path anchor offset from the object, pixels */ \
 	s16 pathDy;			/* +$A0 */ \
 	BallMotionFn motion;		/* +$A2 motion function run first by BioBalls_Move (0 = none) */ \

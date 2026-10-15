@@ -260,6 +260,12 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
 
 ## Open questions
 
+- **Instructions no state can execute (for the user, D4):** `Scroll_ComputeParallax` ($15FD0E,
+  asm, can't match) has a `beq.s` at $16008E right after a `bne.w` whose flags (from a `cmpi`
+  whose `bls` was just not taken) always take it: no corpus call and no synthetic case can run
+  it, so its `uncovered` stays 1 and D4 can't count it verified as defined. Options: count
+  statically unreachable instructions (shown so, listed in the phase doc) as covered, or leave
+  the function short of done. Collected here until the end of D4 with any others like it.
 - (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
   and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
 - MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe

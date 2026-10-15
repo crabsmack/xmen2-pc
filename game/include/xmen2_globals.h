@@ -99,11 +99,11 @@ extern s16 g_ExodusBlastSprDef;
 #else
 #define g_ExodusBlastSprDef XM_G(s16, 0xFFC54E)
 #endif
-/* $FFC550 byte: AvalonA4 palette animation step (AvalonA4_AnimatePalettes, _part4; AvalonA4_ResetEffectCounters clears) */
+/* $FFC550 byte: AvalonA4 palette animation step, index into Tbl_AvalonA4PalPulse (AvalonA4_AnimatePalettes, _part4; AvalonA4_ResetEffectCounters clears; signed: ext.w) */
 #ifdef XMEN2_MPW
-extern u8 g_AvalonA4PalStep;
+extern s8 g_AvalonA4PalStep;
 #else
-#define g_AvalonA4PalStep XM_G(u8, 0xFFC550)
+#define g_AvalonA4PalStep XM_G(s8, 0xFFC550)
 #endif
 /* $FFC552 word: class index whose g_ClassData entry is the rubble particle pool (MagnetoBoss_ClassInit; MagnetoBoss_SpawnRubble) */
 #ifdef XMEN2_MPW
@@ -1487,15 +1487,15 @@ extern u8 g_FgScrollDirty;
 #endif
 /* $FFC7AC ptr: map column streaming routine, Map_StreamColumns by default (Level_LoadMaps); called by Cam_SetPos/Cam_SetPosScaled before g_MapRowHook */
 #ifdef XMEN2_MPW
-extern PTR(void) g_MapColHook;
+extern FrameHookFn g_MapColHook;
 #else
-#define g_MapColHook XM_G(PTR(void), 0xFFC7AC)
+#define g_MapColHook XM_G(FrameHookFn, 0xFFC7AC)
 #endif
 /* $FFC7B0 ptr: map row streaming routine, Map_StreamRows by default (Level_LoadMaps); called by Cam_SetPos/Cam_SetPosScaled after a camera move and once by Level_LoadMaps to draw the first screen; scenes' CamApply hooks call it too */
 #ifdef XMEN2_MPW
-extern PTR(void) g_MapRowHook;
+extern FrameHookFn g_MapRowHook;
 #else
-#define g_MapRowHook XM_G(PTR(void), 0xFFC7B0)
+#define g_MapRowHook XM_G(FrameHookFn, 0xFFC7B0)
 #endif
 /* $FFC7B4 ptr: per-frame palette hook called by Level_FrameLoop after g_LevelScrollHook; Level_Load sets Pal_RunCycleScript (g_PalCycleScript player) */
 #ifdef XMEN2_MPW
@@ -1511,9 +1511,9 @@ extern PTR(void) g_LevelScrollHook;
 #endif
 /* $FFC7BC ptr: current parallax descriptor (Scroll_SetParallax, Scroll_UpdateParallax) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_ParallaxDesc;
+extern PTR(ParallaxDesc) g_ParallaxDesc;
 #else
-#define g_ParallaxDesc XM_G(PTR(void), 0xFFC7BC)
+#define g_ParallaxDesc XM_G(PTR(ParallaxDesc), 0xFFC7BC)
 #endif
 /* $FFC7C8 word: P2 buttons held this frame (Pad_Update) */
 #ifdef XMEN2_MPW
@@ -2322,9 +2322,9 @@ extern s32 g_BioBallsSine[128];
 #endif
 /* $FFE768 ptr: ball list shared by BIOBALLS objects {word count; records}, allocated by BioBalls_AllocBallList and copied to each object's +$92 (BioBalls_Init, UpdateBox, SetFormation) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BioBallsList;
+extern PTR(s16) g_BioBallsList;
 #else
-#define g_BioBallsList XM_G(PTR(void), 0xFFE768)
+#define g_BioBallsList XM_G(PTR(s16), 0xFFE768)
 #endif
 /* $FFE76C word: sprite-definition slot of Art_BigBioSpr (BigBio_ClassInit via SprDef_Add; BigBio_Draw, BigBio_SpitUpdateAll) */
 #ifdef XMEN2_MPW
@@ -2736,21 +2736,21 @@ extern PTR(void) g_ScaleSrcBitmap;
 #endif
 /* $FFF56A $26-byte scaler parameter block, copied from the caller's record by Scaler_Start (9 longs + word) or set field by field by Scaler_InitParams: +0/+2 source size words, +$C/+$E output width/height in tiles, +$10/+$12 output size in pixels, +$14 byte 0 keep/1 clear buffer/2 centre, +$15 byte table key, +$19 byte 0 = emit hardware sprites directly, +$1A byte packed/streamed upload, +$1C word rows per call */
 #ifdef XMEN2_MPW
-extern u8 g_ScalerParams[];
+extern ScaleParams g_ScalerParams;
 #else
-#define g_ScalerParams XM_GA(u8, 0xFFF56A)
+#define g_ScalerParams XM_G(ScaleParams, 0xFFF56A)
 #endif
-/* $FFF590 long: 2nd argument of Scaler_Start, source (Scaler_ExpandSource preprocesses it when g_ScalerSrcB is also given, then it is zeroed) */
+/* $FFF590 ptr: 2nd argument of Scaler_Start, a packed 4bpp source (two pixels per byte): Scaler_BeginPass expands its rows as it goes (g_ScalerHalfWidth), or, given with g_ScalerSrcB, Scaler_ExpandSource unpacks it into g_ScalerSrcB at once and it is zeroed */
 #ifdef XMEN2_MPW
-extern s32 g_ScalerSrcA;
+extern PTR(void) g_ScalerSrcA;
 #else
-#define g_ScalerSrcA XM_G(s32, 0xFFF590)
+#define g_ScalerSrcA XM_G(PTR(void), 0xFFF590)
 #endif
-/* $FFF594 long: 3rd argument of Scaler_Start, source offset added in Scaler_BeginPass and used by Scaler_ExpandSource */
+/* $FFF594 ptr: 3rd argument of Scaler_Start, a source of one byte per pixel (Scaler_BeginPass; Scaler_ExpandSource's output) */
 #ifdef XMEN2_MPW
-extern s32 g_ScalerSrcB;
+extern PTR(void) g_ScalerSrcB;
 #else
-#define g_ScalerSrcB XM_G(s32, 0xFFF594)
+#define g_ScalerSrcB XM_G(PTR(void), 0xFFF594)
 #endif
 /* $FFF598 ptr: output tile buffer (4th argument of Scaler_Start; Scaler_BeginPass fills it, Scaler_RowEnd DMAs from it) */
 #ifdef XMEN2_MPW
@@ -2778,9 +2778,9 @@ extern u8 g_ScalerReady;
 #endif
 /* $FFF5A0 13 longs: d0-d7/a0-a4 of a yielded scaler pass (movem by Scaler_RowEnd, restored by Scaler_Resume) */
 #ifdef XMEN2_MPW
-extern s32 g_ScalerRegSave[13];
+extern ScalerRegs g_ScalerRegSave;
 #else
-#define g_ScalerRegSave XM_GA(s32, 0xFFF5A0)
+#define g_ScalerRegSave XM_G(ScalerRegs, 0xFFF5A0)
 #endif
 /* $FFF5D4 ptr: code address where a yielded scaler pass resumes (saved by Scaler_RowEnd, pushed and returned to by Scaler_Resume) */
 #ifdef XMEN2_MPW
@@ -2793,6 +2793,12 @@ extern PTR(void) g_ScalerResumePC;
 extern s16 g_ScalerBudget;
 #else
 #define g_ScalerBudget XM_G(s16, 0xFFF5D8)
+#endif
+/* $FFF5DA word: the source's bytes per row, srcW or (srcW + 1) / 2 for a packed source (Scaler_BeginPass). Not named in the disassembly yet (-$C26). */
+#ifdef XMEN2_MPW
+extern s16 g_ScalerSrcStride;
+#else
+#define g_ScalerSrcStride XM_G(s16, 0xFFF5DA)
 #endif
 /* $FFF5DC word: row counter that picks g_ScalerLine2 or g_ScalerLine3 (Scaler_BuildStepTables sets from -$BFA, Scaler_ClearRows/Scaler_BeginPass count down) */
 #ifdef XMEN2_MPW
@@ -2836,11 +2842,23 @@ extern s32 g_ScalerSizeKey;
 #else
 #define g_ScalerSizeKey XM_G(s32, 0xFFF600)
 #endif
+/* $FFF604 byte: cleared by Scaler_BeginPass when the table key changes; nothing reads or sets it. Not named in the disassembly yet (-$BFC). */
+#ifdef XMEN2_MPW
+extern u8 g_ScalerUnusedFlag;
+#else
+#define g_ScalerUnusedFlag XM_G(u8, 0xFFF604)
+#endif
 /* $FFF605 byte: last g_ScalerParams+$15 seen; a change resets g_ScalerSizeKey to -1 (Scaler_BeginPass; Scaler_InitParams sets $FF) */
 #ifdef XMEN2_MPW
 extern u8 g_ScalerTableKey;
 #else
 #define g_ScalerTableKey XM_G(u8, 0xFFF605)
+#endif
+/* $FFF606 word: output rows in full 4-tile sprite bands, (tilesH & ~3) * 8, or 1000 when tilesH is a multiple of 4 (Scaler_BuildStepTables); each pass counts g_ScalerRowCount down from it, the rows after it use g_ScalerLine3. Not named in the disassembly yet (-$BFA). */
+#ifdef XMEN2_MPW
+extern s16 g_ScalerFullRows;
+#else
+#define g_ScalerFullRows XM_G(s16, 0xFFF606)
 #endif
 /* $FFF608 ptr: walks the word offsets in g_ScalerLine4 added to the output pointer (Scaler_BeginPass sets; Scaler_ClearRows, Scaler_RowEnd step) */
 #ifdef XMEN2_MPW
@@ -2926,17 +2944,17 @@ extern s16 g_HBlankCount;
 #else
 #define g_HBlankCount XM_G(s16, 0xFFF638)
 #endif
-/* $FFF63A array: per-line H-scroll longs ($FFF63A), $380 bytes DMAed to VRAM $F400 (Scroll_UpdateParallax) */
+/* $FFF63A 224 longs: per-line H-scroll {plane A, plane B} words, $380 bytes DMAed to VRAM $F400 (Scroll_UpdateParallax); a column descriptor's V-scroll longs per 2-cell column (Scroll_ComputeParallax fills, Scroll_SetParallax clears) */
 #ifdef XMEN2_MPW
-extern u8 g_HScrollBuf[];
+extern u32 g_HScrollBuf[224];
 #else
-#define g_HScrollBuf XM_GA(u8, 0xFFF63A)
+#define g_HScrollBuf XM_GA(u32, 0xFFF63A)
 #endif
-/* $FFF9BA array of long: per-band scroll values of the current parallax descriptor (Scroll_SetParallax fills them, Scroll_ComputeParallax reads them) */
+/* $FFF9BA 32 band states of the current parallax descriptor (Scroll_SetParallax resets them, Scroll_ComputeParallax runs them) */
 #ifdef XMEN2_MPW
-extern u8 g_ParallaxBands[];
+extern ParallaxState g_ParallaxBands[32];
 #else
-#define g_ParallaxBands XM_GA(u8, 0xFFF9BA)
+#define g_ParallaxBands XM_GA(ParallaxState, 0xFFF9BA)
 #endif
 /* $FFFA3A byte: upload g_PalWork at the next V-blank (Pal_Update clears) */
 #ifdef XMEN2_MPW
