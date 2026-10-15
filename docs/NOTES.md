@@ -95,6 +95,28 @@ compares the recompiler's static cost of every X-Men 2 instruction with gpgx's b
   exact mode models the YM timers on gpgx's sample grid (1008 master clocks per sample; reads
   and data writes catch up whole samples).
 - Frames 1-600 of the TAS equal (K5). Z80 RAM differs from frame 379 (reported only; next).
+- 377: the Z80's YM status read was timestamped early: superzazu charges indexed (DD/FD)
+  instructions after their accesses; gpgx (MAME core) charges an instruction's base cost
+  before executing it -> accesses timestamped at start + base cost (`z80_base_cycles`).
+- 380: timer A ticked once more in the reference across a frame end: gpgx re-anchors the FM
+  sample clock at frame end to the first sample boundary at/after the frame end, counted from
+  the frame's first sample, so a sample a late (overshooting) Z80 access already ran is run
+  again -> same re-anchoring (YM access logs with timer counters on both sides found it:
+  `cycle_trace.py --fm-out`, `GENESIS_FMLOG`).
+- 1479: `clr.l -(a7)` never pushed: CLR stored with the read-modify-write flag but no load
+  -> plain store (core fork; a bug in every mode).
+- 2009: dispatch miss inside the scaler's unrolled row blocks (entered at
+  `$1FC8FE + (160 - width/2)*18`) -> `sync_disasm.py COMPUTED_ENTRY_RUNS` exports the 160
+  block starts as label entries.
+- 10094: the reference pushed an exception frame at a frame end: an `andi #$F8FF,sr` that
+  unmasks a pending V-int takes it immediately, before the slice-end test; `set_irq` alone is
+  not a check -> interrupt checks exactly at slice starts, SR writes and IRQ-latency slots.
+- 33389: a V-int pending during the H-int handler is taken right after the handler's RTE
+  (back to back) -> the boundary re-checks after each handler returns.
+- Power-on demo (idle run) reads the HV counter: exact H-counter tables (H40: 14 runs of
+  consecutive values with fixed master-clock lengths; H32: 2).
+- **Whole TAS (57,465 frames) and the idle run (36,000) equal the reference on every column,
+  Z80 RAM included; 0 dispatch misses, 0 interpreted instructions, ~745 fps uncapped.**
 
 ## Open questions
 
