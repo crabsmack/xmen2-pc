@@ -5,7 +5,7 @@
  * self: the player (climbSeg: the segment; climbFlags & 3: 1 ceiling, 2/3 wall).
  * playerFlags 2, 4 and $20 cleared, flags6 $2000 (on a wall or ceiling), B unlatched; his attack
  * sound stops and the claw sound $63 plays; the camera is told (g_CamModeSwitched); stateTimer
- * and unk_A8 cleared, stop, no animation. Ceiling: the hang frame $30 (clawPhase 1), the box
+ * and actionTimer cleared, stop, no animation. Ceiling: the hang frame $30 (clawPhase 1), the box
  * refitted, the end marks (playerFlags $80000, $100000) cleared, his box's top to the ceiling.
  * Wall: facing away from it (h-flipped for 2), the cling frame $1B (clawPhase 0), the box refitted
  * and its front edge against the wall.
@@ -29,7 +29,7 @@ short Wolverine_StateGrab(register Wolverine *self)
 	Snd_Play(0x63);
 	g_CamModeSwitched = 1;
 	self->stateTimer = 0;
-	self->unk_A8 = 0;
+	self->actionTimer = 0;
 	STOP_MOVING(self);
 	self->anim = 0;
 	switch (self->climbFlags & 3) {

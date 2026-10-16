@@ -7,7 +7,7 @@
  * A beam still out ends first (Cyclops_EndBeam). The sprite: Art_CyclopsBeamVertSpr for the
  * up/down sets, Art_CyclopsBeamDiagSpr for the diagonals, else Art_CyclopsBeamLevelSpr. Sound
  * $A2 with a full meter (playerFlags $800), else $A1. Level 0-2: +1 above 7 health units, +1
- * with a full meter; attack strength 1 << level, its BeamLevel, active, unk_A8 = 14, the level's
+ * with a full meter; attack strength 1 << level, its BeamLevel, active, actionTimer = 14, the level's
  * hit type (9 becomes 10 facing right). Spr_Init in the VRAM tiles $2B after his own; the beam
  * takes his facing and priority; its pieces' attribute word is its tiles with palette 1 (and
  * priority); origin on screen from the level's offset (mirrored facing left). */
@@ -50,7 +50,7 @@ void Cyclops_StartBeam(Cyclops *obj, register void *rec, char vflip)
 	self->attack = 1 << level;
 	self->beam.level = (BeamLevel *)((char *)rec + *(((BeamSet *)rec)->level + level));
 	self->beam.active = 1;
-	self->unk_A8 = 14;
+	self->actionTimer = 14;
 	self->hitType = self->beam.level->hitType;
 	tile = Spr_Init((SprInst *)&self->beam, 1, self->beam.def, level, 1, self->spr.tileBase + 0x2B, 1);
 	if (vflip)

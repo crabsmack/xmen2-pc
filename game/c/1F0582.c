@@ -49,7 +49,7 @@ char XPlayer_TetherToPartner(XPlayer *self)
 	} else {
 		d -= 0xE000;
 		if (d > 0 && (!(partner->flags & 0x1000) || (char)Player_ClimbState(partner))) {
-			if (self->spr.unk_0C != 0xFF)
+			if (self->spr.parent != 0xFF)
 				Obj_Detach(self);
 			if (self->flags & 0x1000 && !(char)Player_ClimbState(self)) {
 				self->playerFlags |= 0x20000;

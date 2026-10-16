@@ -6,7 +6,7 @@
  * Nothing with flags6 $4000 (frozen: XPlayer_FreezeStanding). The class's Move (slot +$4E)
  * unless flags $1800 are both set; with flags6 $80 nothing more. Tethered by its partner
  * (XPlayer_TetherToPartner) it skips the floor collision; attached to an object it follows
- * its segment. While unk_AA runs (walking off a ledge) x moves at most 2 px a step. */
+ * its segment. While ledgeTimer runs (walking off a ledge) x moves at most 2 px a step. */
 #include "xmen2.h"
 
 void XPlayer_Move(XPlayer *self, short step)
@@ -23,15 +23,15 @@ void XPlayer_Move(XPlayer *self, short step)
 	if (self->flags6 & 0x80)
 		return;
 	x0 = self->x;
-	self->unk_7B = 0xFF;
+	self->pushSeg = 0xFF;
 	layer = self->layer;
 	tethered = XPlayer_TetherToPartner(self);
 	Obj_UpdateBox(self);
 	if (!tethered)
 		Obj_CollideSegs(self);
-	if (self->spr.unk_0C != 0xFF)
+	if (self->spr.parent != 0xFF)
 		Seg_ObjPosUnclamped(self->seg, self);
-	if (self->unk_AA > 0) {
+	if (self->ledgeTimer > 0) {
 		dx = self->x - x0;
 		if (dx > 0x200)
 			self->x = x0 + 0x200;

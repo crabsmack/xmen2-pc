@@ -3,7 +3,7 @@
  * was pressed as he grabbed it (climbFlags $40), leap off it again (Beast_WallJump in 6 frames).
  *
  * self: the player (climbSeg: the wall; climbFlags & 3: 2 wall on his right, 3 on his left).
- * Clears playerFlags 2 and 4 (dive and double jump used), stateTimer and unk_A8, the animation
+ * Clears playerFlags 2 and 4 (dive and double jump used), stateTimer and actionTimer, the animation
  * and the B latch; tells the camera (g_CamModeSwitched). The grab frame ($F) is fitted to the
  * wall: x moves by the distance from the box's front to the wall's x. Sounds $9E (leap) or
  * $81 and the cling frame ($10).
@@ -18,7 +18,7 @@ short Beast_StateGrabWall(register Beast *self)
 	self->playerFlags &= ~4;
 	g_CamModeSwitched = 1;
 	self->stateTimer = 0;
-	self->unk_A8 = 0;
+	self->actionTimer = 0;
 	STOP_MOVING(self);
 	self->anim = 0;
 	if (!self->pad)

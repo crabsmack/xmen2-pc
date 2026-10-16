@@ -21,7 +21,7 @@ short ExplodeFx_Bounce(void *obj)
 	unsigned char up;
 
 	layer = o->layer;
-	unk43 = o->unk_43;
+	unk43 = o->unread_43;
 	prio = o->spr.flags & 4;
 	flag = o->flags6 & 8 ? 1 : 0;
 	up = !(o->spr.flags & 8) ? 1 : 0;

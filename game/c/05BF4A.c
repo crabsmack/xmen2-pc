@@ -21,10 +21,10 @@ void Boulder_Init(Boulder *self, long x, long y, Placement *pl)
 	self->minVx = 0;
 	self->minVy = 0;
 	self->spr2.firstChild = 0xFF;
-	self->spr2.unk_0C = 0xFF;
+	self->spr2.parent = 0xFF;
 	self->spr2.nextSibling = 0xFF;
-	self->spr2.unk_0F = 0xFF;
-	self->spr2.unk_10 = 0;
+	self->spr2.prevSibling = 0xFF;
+	self->spr2.partStates = 0;
 	self->spr2.flags = 0x80;
 	self->spr2.frame = 0;
 	self->spr2.flags = self->spr2.flags & ~3 | 2;

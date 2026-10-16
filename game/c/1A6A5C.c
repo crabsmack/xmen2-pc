@@ -3,7 +3,7 @@
  * span, else keep crawling.
  *
  * self: the player.
- * Pushed in x (flags $100) by the segment g_Segs[unk_7B]: facing right (no h-flip), x not past
+ * Pushed in x (flags $100) by the segment g_Segs[pushSeg]: facing right (no h-flip), x not past
  * its right end, or facing left, x not before its left end: flags $100 again and hang from the next
  * update. The step animation over: the hanging pose (Tbl_Anim_1A5FEC) and hang.
  * Returns self->flags & 8, as every state. */
@@ -12,7 +12,7 @@
 short Nightcrawler_StateCeilingCrawl(register Nightcrawler *self)
 {
 	if (self->flags & 0x100) {
-		register Seg *seg = &g_Segs[self->unk_7B];
+		register Seg *seg = &g_Segs[self->pushSeg];
 		register short px = self->x >> 8;
 		short right, left;
 

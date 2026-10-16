@@ -2,7 +2,7 @@
  * XClimber_CheckGrab found (climbSeg, climb state in climbFlags bits 0-1).
  *
  * self: the player.
- * playerFlags 2 and 4 off, stateTimer and unk_A8 0, stopped, no animation, B unlatched, sound
+ * playerFlags 2 and 4 off, stateTimer and actionTimer 0, stopped, no animation, B unlatched, sound
  * $81 (tells the camera). Ceiling (1): the hanging pose (Tbl_Anim_1A5FEC), the box's top on the
  * ceiling's y2, then Nightcrawler_StateCeilingHang. Wall on the right (2): h-flipped, the wall
  * pose (Tbl_Anim_1A5FBE), flags6 $2000, the box's left on the wall's x2; wall on the left (3):
@@ -19,7 +19,7 @@ short Nightcrawler_StateGrab(register Nightcrawler *self)
 	self->playerFlags &= ~4;
 	g_CamModeSwitched = 1;
 	self->stateTimer = 0;
-	self->unk_A8 = 0;
+	self->actionTimer = 0;
 	STOP_MOVING(self);
 	self->anim = 0;
 	if (!self->pad)

@@ -4,7 +4,7 @@
  * Every piece is clipped to $60..$1C0 x $60..$160; a piece with tile 0 is the anchor of the
  * attached objects instead: Spr_PlaceAttached at its offset (x mirrored by the h-flip only;
  * when there are any). A piece with attr bit 15 is also left out while the first byte of the
- * instance's unk_10 is set. A piece left out makes the result -1 ($FF). Each piece written goes
+ * instance's partStates is set. A piece left out makes the result -1 ($FF). Each piece written goes
  * into the slot the write pointer links to (g_SprIndex, g_SprWritePtr move there; its link =
  * its index + 1); the list being full there (link 80) ends it all with -1. Returns 0 when no
  * frame is uploaded or nothing was left out. Hand-written 68000 in an MPW frame (the inner
@@ -60,7 +60,7 @@ char Spr_EmitPreLinked(SprInst *spr, long x, long y, short tile)
 		sy += (short)y;
 		/* Spr_EmitPreLinked_Piece */
 		if (sx < 0x60 || sx > 0x1C0 || sy < 0x60 || sy > 0x160
-		    || (p->attr < 0 && *(s8 *)&spr->unk_10 != 0)) {
+		    || (p->attr < 0 && *(s8 *)&spr->partStates != 0)) {
 			clipped = -1;
 			continue;
 		}

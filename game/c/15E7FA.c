@@ -7,7 +7,7 @@
  * On a floor segment (not free-moving, flags $1000), x/y come from it (Seg_ApplyObjPos) when it
  * rides (flags $800) or the segment has flag 4. Unless frozen (flags6 $4000): Move (slot +$4E,
  * steps) unless carried (flags $1800), then, with collisions on (flags6 $80 off) and moving,
- * unk_7B = $FF, the body box (if it moved), Obj_CollideSegs, and a new draw priority if that
+ * pushSeg = $FF, the body box (if it moved), Obj_CollideSegs, and a new draw priority if that
  * changed its layer. A distance-driven animation advances by the movement (flags 4 off; a new
  * frame sets flags 8). Unless flags $200: countdown runs down by steps, and the state function
  * runs when the timer is out (else the timer runs down unless it is $FF or more); the object
@@ -44,7 +44,7 @@ void Actor_Update(Actor *self)
 		if ((self->flags & 0x1800) != 0x1800)
 			(*self->cls->method[18])(self, steps);	/* +$4E Move */
 		if (!(self->flags6 & 0x80) && (self->vx || ((self->flags & 0x1000) && self->vy))) {
-			self->unk_7B = 0xFF;
+			self->pushSeg = 0xFF;
 			if (x0 != self->x || y0 != self->y)
 				Obj_UpdateBox(self);
 			layer = self->layer;

@@ -1,4 +1,4 @@
-/* Cyclops_BeamTimeUp - CYCLOPS: has the beam's time (unk_A8, 14 frames from Cyclops_StartBeam)
+/* Cyclops_BeamTimeUp - CYCLOPS: has the beam's time (actionTimer, 14 frames from Cyclops_StartBeam)
  * run out? Then the beam stops being active.
  *
  * self: the player.
@@ -7,7 +7,7 @@
 
 char Cyclops_BeamTimeUp(Cyclops *self)
 {
-	if (self->unk_A8 <= 0) {
+	if (self->actionTimer <= 0) {
 		self->beam.active = 0;
 		return 1;
 	}

@@ -4,7 +4,7 @@
  * self: the new object.  x, y: position (8 fraction bits): its origin (originX/Y).
  * pl: its placement entry (never null): the position (pixels, also px/py).
  * No gravity; sprite set g_SparkSprDef, palette 1; 1 damage; flags6 |= $80, 8; layer $10; top
- * speeds $128; no target. Placement params: 0 its mode (the low byte, into ACTOR unk_8A[1]: 0
+ * speeds $128; no target. Placement params: 0 its mode (the low byte, into ACTOR classParam: 0
  * free, 1 along its segments, else on a rail), 1 sprite priority, 2 speed (0: $100).
  * Never runs in the corpus. */
 #include "xmen2.h"
@@ -31,7 +31,7 @@ void Spark_Init(register Spark *self, register long x, register long y, register
 	self->maxVx = 0x128;
 	self->maxVy = 0x128;
 	self->target = 0;
-	self->unk_8A[1] = pl->param[0];
+	self->classParam = pl->param[0];
 	if (pl->param[1])
 		self->spr.flags |= 4;
 	else

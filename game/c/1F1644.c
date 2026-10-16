@@ -35,7 +35,7 @@ void XPlayer_Update(XPlayer *self)
 	if (!(self->flags & 0x1000) && (self->flags & 0x800 || (self->seg ? self->seg->flags : 0) & 4))
 #endif
 		Seg_ApplyObjPos(self);
-	if (!(self->flags & 0x800) && self->spr.unk_0C != 0xFF)
+	if (!(self->flags & 0x800) && self->spr.parent != 0xFF)
 		Obj_Detach(self);
 	XPlayer_Move(self, step);
 	(*self->cls->method[39])(self);			/* SaveSafePos */
@@ -51,15 +51,15 @@ void XPlayer_Update(XPlayer *self)
 		if (self->stateTimer < 0)
 			self->stateTimer = 0;
 	}
-	if (self->unk_A8 > 0) {
-		self->unk_A8 -= step;
-		if (self->unk_A8 < 0)
-			self->unk_A8 = 0;
+	if (self->actionTimer > 0) {
+		self->actionTimer -= step;
+		if (self->actionTimer < 0)
+			self->actionTimer = 0;
 	}
-	if (self->unk_AA > 0) {
-		self->unk_AA -= step;
-		if (self->unk_AA < 0)
-			self->unk_AA = 0;
+	if (self->ledgeTimer > 0) {
+		self->ledgeTimer -= step;
+		if (self->ledgeTimer < 0)
+			self->ledgeTimer = 0;
 	}
 	if (self->hitCooldown <= 0)
 		self->flags6 &= ~0x40;

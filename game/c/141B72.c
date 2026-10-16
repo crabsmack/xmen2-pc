@@ -2,7 +2,7 @@
  *
  * self: the tank.
  * A chain explosion (ExplodeFx_ChainStart on a free object slot, Tbl_ScatterExplodeChain, not
- * damaging, once) at the centre of its body box, with its layer, unk_43, sprite priority and
+ * damaging, once) at the centre of its body box, with its layer, unread_43, sprite priority and
  * flags6 bit 3. No health, a hit cooldown of 10000, the x motion stopped, flags bit 2 off, and
  * Tank_StateWreck in 33 frames. When it owns floor segments (flags6 $200) they are freed
  * (Actor_FreeSegCb) and every live object standing on its first one (segIndex) is detached
@@ -22,7 +22,7 @@ void Tank_OnDeath(register Tank *self)
 	register Actor *fx;
 
 	layer = self->layer;
-	unk43 = self->unk_43;
+	unk43 = self->unread_43;
 	prio = self->spr.flags & 4;
 	flag = self->flags6 & 8 ? 1 : 0;
 	fx = Obj_FindFreeSlot();

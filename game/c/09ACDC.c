@@ -9,7 +9,7 @@
  * x = px; its boxes from the start. */
 #include "xmen2.h"
 
-#define SWING_BACK(o)	((o)->unk_8A[1])	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (BroodClaw_Swing; other classes use the byte differently) */
+#define SWING_BACK(o)	((o)->classParam)	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (BroodClaw_Swing; other classes use the byte differently) */
 
 void BroodClaw_Init(register BroodClaw *self, long x, long y, register Placement *place)
 {

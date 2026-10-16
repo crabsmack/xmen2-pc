@@ -3,7 +3,7 @@
  *
  * obj: the object (any Actor class).
  * ACTOR's Deactivate, then the object becomes unused (flags 0) and its timer is freed; its spawn
- * record (unk_14, when not $FF) is no longer live (flags bit 1 off) and has no object ($FF), so
+ * record (spawnRec, when not $FF) is no longer live (flags bit 1 off) and has no object ($FF), so
  * the spawn pass never despawns or respawns it while it waits. */
 #include "xmen2.h"
 
@@ -15,8 +15,8 @@ void Actor_DeactivateFree(void *obj)
 	self->flags = 0;
 	Timer_Free(self->timerObj);
 	self->timerObj = 0;
-	if (self->unk_14 != 0xFF) {
-		g_SpawnRecs[self->unk_14].flags &= ~2;
-		g_SpawnRecs[self->unk_14].object = 0xFF;
+	if (self->spawnRec != 0xFF) {
+		g_SpawnRecs[self->spawnRec].flags &= ~2;
+		g_SpawnRecs[self->spawnRec].object = 0xFF;
 	}
 }

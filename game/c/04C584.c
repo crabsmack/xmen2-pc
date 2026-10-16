@@ -31,17 +31,17 @@ void Apocalypse_Init(register Apocalypse *self, long x, long y, Placement *pl)
 	self->angleStep = 2;
 	self->spr2 = g_ApocalypseSpr2;
 	self->spr2->flags = 3;
-	self->spr2->unk_0B = 0;
+	self->spr2->unread_0B = 0;
 	self->spr2->frame = 0;
 	self->spr2->def = 0;
 	self->spr2->uploaded = 0xFF;
 	self->spr2->tileBase = -1;
 	self->spr2->firstChild = 0xFF;
-	self->spr2->unk_0C = 0xFF;
+	self->spr2->parent = 0xFF;
 	self->spr2->nextSibling = 0xFF;
-	self->spr2->unk_0F = 0xFF;
+	self->spr2->prevSibling = 0xFF;
 	self->spr2->def = CODEPTR(Art_ApocalypseSpr2);
-	self->spr2->unk_10 = 0;
+	self->spr2->partStates = 0;
 	g_VramTileCursor = Spr_Init(self->spr2, 1, self->spr2->def, -1, self->spr2->flags & 3,
 		g_VramTileCursor, 0);
 	self->x = 0xF600;

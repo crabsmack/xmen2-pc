@@ -3,7 +3,7 @@
  * from the next frame).
  *
  * self: the player.
- * The segment just touched (g_Segs[unk_7B]) becomes climbSeg and its kind (ClassifySeg, slot
+ * The segment just touched (g_Segs[pushSeg]) becomes climbSeg and its kind (ClassifySeg, slot
  * +$F2) the climb state; no animation; the camera is told (g_CamModeSwitched); the corner frame
  * $2B or $2E by clawPhase; stop. The pixel y is computed and never used.
  * Returns self->flags & 8, as every state. */
@@ -16,7 +16,7 @@ short Wolverine_CeilingToWall(register Wolverine *self)
 	register short kind;
 
 	py = kind = self->y >> 8;		/* (py is never used) */
-	seg = &g_Segs[self->unk_7B];
+	seg = &g_Segs[self->pushSeg];
 	kind = (*self->cls->method[59])(self, seg);	/* ClassifySeg */
 	self->anim = 0;
 	self->climbSeg = seg;

@@ -5,7 +5,7 @@
  * First the box's top is put back on the ceiling (y2). C latched: the air speed and gravity, no
  * animation, flags6 $2000 off, no climb state, the falling frame 200 with the box top kept in
  * place, then the control state (slot +$A6) from the next update (tells the camera).
- * Pushed in x (flags $100) by g_Segs[unk_7B] that ClassifySeg (slot +$F2) calls a wall: that
+ * Pushed in x (flags $100) by g_Segs[pushSeg] that ClassifySeg (slot +$F2) calls a wall: that
  * becomes climbSeg and the climb state, the corner frame $8D, the box top kept, the box's side on
  * the wall (state 2: its left on x2, else its right on x1), and in 7 frames
  * Nightcrawler_CeilingToWall (tells the camera); not a wall: stop in x and go on.
@@ -38,7 +38,7 @@ short Nightcrawler_StateCeilingHang(register Nightcrawler *self)
 	if (self->flags & 0x100) {
 		register short py = self->y >> 8;
 		register short top = self->boxTop;
-		register Seg *seg = &g_Segs[self->unk_7B];
+		register Seg *seg = &g_Segs[self->pushSeg];
 		register short kind;
 
 		self->anim = 0;

@@ -11,7 +11,7 @@
 short WallCrawlBio_ActCrawlHorizontal(WallCrawlBio *self)
 {
 	short x = self->homeX >> 8;
-	Placement *pl = &g_PlacementList[self->unk_14];
+	Placement *pl = &g_PlacementList[self->spawnRec];
 	void *anim;
 
 	switch (pl->param[2]) {

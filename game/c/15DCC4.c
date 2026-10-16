@@ -35,22 +35,22 @@ void Actor_Init(Actor *self, long x, long y, void *pl)
 	self->minVx = 0;
 	self->minVy = 0;
 	self->spr.flags = 0;
-	self->spr.unk_0B = 0;
+	self->spr.unread_0B = 0;
 	self->spr.frame = 0;
 	self->spr.def = 0;
 	self->spr.uploaded = 0xFF;
 	self->spr.tileBase = -1;
 	self->seg = 0;
-	self->unk_43 = 0;
+	self->unread_43 = 0;
 	self->spr.firstChild = 0xFF;
-	self->spr.unk_0C = 0xFF;
+	self->spr.parent = 0xFF;
 	self->spr.nextSibling = 0xFF;
-	self->spr.unk_0F = 0xFF;
+	self->spr.prevSibling = 0xFF;
 	self->spr.def = 0;
-	self->spr.unk_10 = 0;
+	self->spr.partStates = 0;
 	self->layer = 0x7F;
 	self->segIndex = 0xFF;
-	self->unk_7B = 0xFF;
+	self->pushSeg = 0xFF;
 	self->hitType = 4;
 	self->health = 1;
 	self->attack = 1;
@@ -60,7 +60,7 @@ void Actor_Init(Actor *self, long x, long y, void *pl)
 	self->maxVx = 0x380;
 	self->flags = (short)0xD000;
 	self->name = STR(Str_Undefined, "UNDEFINED");
-	self->unk_14 = 0xFF;
+	self->spawnRec = 0xFF;
 	self->defaultState = 0;
 	self->state = 0;
 	self->hurtState = Actor_StateHurt;
@@ -70,5 +70,5 @@ void Actor_Init(Actor *self, long x, long y, void *pl)
 	self->drawNode = -1;
 	self->animStep = 0;
 	self->animDist = 0;
-	self->unk_8A[0] = 0;
+	self->unread_8A = 0;
 }

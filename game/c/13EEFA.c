@@ -20,7 +20,7 @@ void ExplodeFx_Chain(void *obj, void *path, unsigned char damaging, short dx, sh
 	register unsigned char flag;
 
 	layer = o->layer;
-	unk43 = o->unk_43;
+	unk43 = o->unread_43;
 	prio = o->spr.flags & 4;
 	flag = o->flags6 & 8 ? 1 : 0;
 	(*o->cls->method[19])(o);		/* +$52 Kill */

@@ -1,7 +1,7 @@
 /* Actor_Deactivate - ACTOR Deactivate (class slot +$46): take an object out of play.
  *
  * self: the object.
- * Nothing for an object riding a player (spr.unk_0C, the object it is attached to, is 0 or 1).
+ * Nothing for an object riding a player (spr.parent, the object it is attached to, is 0 or 1).
  * Else: flags |= $4000 (inactive), sprite flags bit 5 off (frame not uploaded). A streamed sprite
  * definition (not type $20) gives its VRAM tiles back: every live object whose tiles lie above
  * them moves down by that many (Spr_InvalidateFrame: it uploads again), and so does the tile
@@ -19,7 +19,7 @@ void Actor_Deactivate(Actor *self)
 	short count;
 	Timer *t;
 
-	if (self->spr.unk_0C < 2)
+	if (self->spr.parent < 2)
 		return;
 	for (i = self->spr.firstChild; i != 0xFF; ) {
 		o = i == 0xFF ? 0 : g_ObjTable[i];
@@ -40,7 +40,7 @@ void Actor_Deactivate(Actor *self)
 		g_VramTileCursor -= count;
 	}
 	self->spr.firstChild = 0xFF;
-	self->spr.unk_0C = 0xFF;
+	self->spr.parent = 0xFF;
 	if (self->flags6 & 0x200)
 		Seg_ForEachOfObj(self, Actor_FreeSegCb);
 	t = self->timerObj;

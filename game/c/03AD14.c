@@ -26,7 +26,7 @@ void RollingDiscs_Init(register RollingDiscs *self, long x, long y, register Pla
 	self->layer = 0;
 	self->vx = pl->param[0] ? pl->param[0] : 0x200;
 	self->maxVx = ABS(self->vx);
-	self->unk_8A[1] = 0;
+	self->classParam = 0;
 	self->bands = g_DiscBands;
 	self->state = self->defaultState = (StateFn)RollingDiscs_InitStub;
 end:	;

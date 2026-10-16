@@ -23,7 +23,7 @@
 #define g_BroodBossFlags	(*(s16 *)g_SceneVar3B0C)	/* scene variable: 1 fight on, 2 floor shock, $10 lower the body, $40 wall smashed */
 #define g_BroodArmFrame		(*(s16 *)g_SceneVar3B10)	/* scene variable: frame of the boss arm */
 #define g_BroodArenaLeft	(*(s32 *)g_SceneVar3B20)	/* scene variable: scroll x the claw swings the arena to */
-#define SWING_BACK(o)		((o)->unk_8A[1])	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (other classes use the byte differently) */
+#define SWING_BACK(o)		((o)->classParam)	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (other classes use the byte differently) */
 
 void BroodClaw_Swing(BroodClaw *self)
 {

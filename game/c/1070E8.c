@@ -9,7 +9,7 @@ void Platform1_StateRide(register Platform1 *self)
 {
 	register short on;
 
-	on = g_BBoard->entry[self->unk_8A[1]] & 0x200;
+	on = g_BBoard->entry[self->classParam] & 0x200;
 	if (!on) {
 		if (self->vx) {
 			self->savedSpeed = self->vx;

@@ -6,7 +6,7 @@
  * Step over (no animation): stop, the cling frame $1B or $20 by clawPhase, playerFlags $20
  * cleared, the claw sound $63, clinging in 14 frames. Blocked (playerFlags $3C000): Up/Down
  * unlatched (pad latch bits 0-1), no animation, the other claw leads, cling from the next frame.
- * Pushed in y (flags $80) or at an end (playerFlags $30000): the segment touched (g_Segs[unk_7B])
+ * Pushed in y (flags $80) or at an end (playerFlags $30000): the segment touched (g_Segs[pushSeg])
  * is classified (ClassifySeg, slot +$F2); Up/Down unlatched, no animation, the other claw leads;
  * a ceiling (1) is climbed onto; else he stops (vy, ay 0) and clings.
  * Returns self->flags & 8; nothing when Wolverine_WallToCeiling runs now. */
@@ -29,7 +29,7 @@ short Wolverine_StateWallClimb(register Wolverine *self)
 			return self->flags & 8;
 		}
 		if (self->flags & 0x80 || self->playerFlags & 0x30000) {
-			seg = &g_Segs[self->unk_7B];
+			seg = &g_Segs[self->pushSeg];
 			kind = (*self->cls->method[59])(self, seg);	/* ClassifySeg */
 			if (!self->pad)
 				g_Pad1Latch = g_Pad1Latch & ~3;

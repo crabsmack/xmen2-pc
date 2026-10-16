@@ -3,7 +3,7 @@
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry.
  * flags6 |= $4082, damage 1, its sprite set (g_LauncherSprDef). Placement params: +6 frames it
- * shows frame 0 (0: $78; a byte, unk_8A[1]), +8 frames it shows frame 1 (0: 5), +$A shot speed
+ * shows frame 0 (0: $78; a byte, classParam), +8 frames it shows frame 1 (0: 5), +$A shot speed
  * (0: $800). State and default state Launcher_StateStart.
  * (The if (1) and do/while (0) put labels where MPW C pops the pending call arguments, as the
  * ROM.) */
@@ -17,7 +17,7 @@ void Launcher_Init(register Launcher *self, long x, long y, register Placement *
 	if (1) {
 		Obj_SetSpriteDef((Actor *)self, g_LauncherSprDef);
 	}
-	self->unk_8A[1] = pl->param[0] ? pl->param[0] : 0x78;
+	self->classParam = pl->param[0] ? pl->param[0] : 0x78;
 	self->frame1Time = pl->param[1] ? pl->param[1] : 5;
 	self->shotSpeed = pl->param[2] ? pl->param[2] : 0x800;
 	Launcher_ClearShots(self);

@@ -39,7 +39,7 @@ void Cam_Init(Camera *self)
 	c->lookStep = 5;
 	c->lookMinScrY = 0x40;
 	c->lookMaxScrY = 0xE0;
-	c->unk_48 = 0;
+	c->unread_48 = 0;
 	c->camFlags = 0;
 	c->climbScrY = 0x56;
 	c->wallMargin = 0x60;

@@ -7,7 +7,7 @@
  * by tgt's flips. With the frame's hitFlags bit 0 the list is one rectangle (x1, y1, x2, y2, in
  * any order): when it overlaps the box, the point is the overlap's centre (from tgt's own pixel
  * position). Else the list is (x, y) pairs ended by (0, 0); a pair ($7F, $7F) is followed by a
- * condition (c, v): unless byte (c >> 6) & 3 of tgt's spr.unk_10 equals v, the next (c & $3F)
+ * condition (c, v): unless byte (c >> 6) & 3 of tgt's spr.partStates equals v, the next (c & $3F)
  * pairs are skipped. The first point inside the box is the result. Returns 1 found, 0 not. */
 #include "xmen2.h"
 
@@ -80,7 +80,7 @@ char Obj_FindHitPoint(Actor *att, Actor *tgt, s8 *pts, short ox, short oy, s16 *
 			if (x == 0x7F && y == 0x7F) {
 				x = *pts++;
 				y = *pts++;
-				if (*((s8 *)&tgt->spr.unk_10 + ((x >> 6) & 3)) == y)
+				if (*((s8 *)&tgt->spr.partStates + ((x >> 6) & 3)) == y)
 					continue;
 				pts += (x & 0x3F) << 1;
 				continue;

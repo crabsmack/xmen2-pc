@@ -4,7 +4,7 @@
  * 8 frames).
  *
  * self: the player (climbSeg: the wall; climbFlags & 3: 2 wall on her right, 3 on her left).
- * Clears playerFlags 2 and 4 (dive and double jump used), stateTimer and unk_A8, the animation
+ * Clears playerFlags 2 and 4 (dive and double jump used), stateTimer and actionTimer, the animation
  * and the B latch; tells the camera (g_CamModeSwitched); sound $81. The cling frame (200) is
  * fitted to the wall: x moves by the distance from the box's front to the wall's x.
  * Returns self->flags & 8, nothing when the climb state is no wall. */
@@ -18,7 +18,7 @@ short Psylocke_StateGrabWall(register Psylocke *self)
 	self->playerFlags &= ~4;
 	g_CamModeSwitched = 1;
 	self->stateTimer = 0;
-	self->unk_A8 = 0;
+	self->actionTimer = 0;
 	STOP_MOVING(self);
 	self->anim = 0;
 	if (!self->pad)

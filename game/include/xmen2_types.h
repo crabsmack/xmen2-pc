@@ -79,7 +79,7 @@ typedef struct AnimScript {
 	u8 flags;			/* +$00 bits 0-1 one-shot (bit 1 also ends the state's wait), 2 per-step flips, 3 face velocity, $30 distance-driven, $80 by the x or y distance (bit 4: y; Anim_AdvanceByDistance) */
 	u8 count;			/* +$01 steps */
 	s16 delay;			/* +$02 frames per step (BabyBio_Move: the step's last frame is animDist = delay - 1); distance per step of a distance-driven one */
-	u8 unk_04[2];			/* +$04 */
+	u8 unused_04[2];		/* +$04 no code reads it (Obj_SetAnim, Anim_* and the other script readers use flags, count, delay and the steps); 0 in 302 of the 307 labelled scripts ($17, $42 in Tbl_XCloneAnim, _Anim2, 3, 4 and 6); never read in any corpus run */
 	AnimStep step[1];		/* +$06 count steps */
 } AnimScript;
 
@@ -152,9 +152,9 @@ typedef struct SprDef {
 	u8 type;			/* +$00 how its tiles reach VRAM: $20 preloaded (whole definition in VRAM: Actor_Activate lets it in past g_VramTileLimit), $18/$19 streamed per frame */
 	u8 frameCount;			/* +$01 frames (BioBalls_Draw) */
 	s16 codes;			/* +$02 type $19: offset from the definition of its Nemesis code list (Spr_PreloadTiles) */
-	u8 unk_04;			/* +$04 */
+	u8 palette0Hi;			/* +$04 its palette line is the 16 colour words from here (BaniMazaA1_InitPalette, BaniMazaB2_InitPalette, BrainChild_StateLand, ChildShip_Init copy them to palette line 3; Spr_PreloadTiles copies the whole header): colour 0 (transparent) shares its word with maxTiles; this byte is 0 in all 117 labelled definitions */
 	u8 maxTiles;			/* +$05 VRAM tiles of its largest frame (0: Spr_Init finds them) */
-	u8 unk_06[0x1E];		/* +$06 */
+	s16 palette[15];		/* +$06 colours 1-15 of its palette line (Genesis colour words in all 117 labelled definitions; no code reads them as fields: the copiers above take 16 words from +$04) */
 	SprFrame frame[1];		/* +$24 */
 } SprDef;
 
@@ -168,12 +168,12 @@ typedef struct SprInst {
 	s16 tileBase;			/* +$06 first VRAM tile of a streamed definition */
 	s16 tileCount;			/* +$08 VRAM tiles reserved */
 	u8 uploaded;			/* +$0A frame whose tiles are in VRAM ($FF = none) */
-	u8 unk_0B;			/* +$0B */
-	u8 unk_0C;			/* +$0C object it is attached to (object-table index, $FF none: Obj_AttachChild); $FF in a fresh instance (Apocalypse_Init/_Deactivate) */
+	u8 unread_0B;			/* +$0B 0 (Spr_Init, Actor_Init, the second sprites of Apocalypse_Init, Deathbird_Init); never read */
+	u8 parent;			/* +$0C object it is attached to (object-table index, $FF none: Obj_AttachChild, Obj_Detach); $FF in a fresh instance (Actor_Init, Apocalypse_Init/_Deactivate) and after the Deactivates */
 	u8 firstChild;			/* +$0D first attached object (object-table index) */
 	u8 nextSibling;			/* +$0E next attached object */
-	u8 unk_0F;			/* +$0F */
-	s32 unk_10;			/* +$10 (a long: Apocalypse_Init clears it with one move.l); its 4 bytes are the states the conditions of a hit-point list test (Obj_FindHitPoint) */
+	u8 prevSibling;			/* +$0F previous attached object of the same parent ($FF none: Obj_AttachChild sets the old first child's, Obj_Detach unlinks through it) */
+	s32 partStates;			/* +$10 four state bytes that switch parts of the frames: a hit-point list's conditions test byte n (Obj_FindHitPoint); byte 0 non-zero hides a preloaded frame's pieces with attr bit 15 (Spr_EmitPreLinked). Only ever written 0, as a long (Actor_Init; the second sprites of Apocalypse_Init, Boulder_Init, Deathbird_Init) */
 } SprInst;
 CHECK_SIZE(SprInst, 0x14);
 
@@ -369,7 +369,7 @@ CHECK_SIZE(PalCycleScript, 4);
 	s32 y;				/* +$0C y, 8 fraction bits */ \
 	s16 px;				/* +$10 x in pixels */ \
 	s16 py;				/* +$12 y in pixels */ \
-	u8 unk_14;			/* +$14 */ \
+	u8 spawnRec;			/* +$14 its spawn record, a g_SpawnRecs index ($FF none: Actor_Init; Actor_SpawnFromRec, Synchronizer_GatherMembers set it); Actor_Kill and the Deactivates free the record through it; the records follow the placement list, so g_PlacementList[spawnRec] is its placement entry (Exodus_NextPattern, WallCrawlBio_ActCrawl*) */ \
 	u8 index;			/* +$15 its index in g_ObjTable (Obj_AllocPool; players 0, 1); kept by the Inits' clear */ \
 	s16 vx;				/* +$16 velocity x */ \
 	s16 vy;				/* +$18 velocity y */ \
@@ -384,7 +384,7 @@ CHECK_SIZE(PalCycleScript, 4);
 	PTR(char) name;			/* +$2A debug name: "UNDEFINED" (Actor_Init) */ \
 	SprInst spr;			/* +$2E sprite instance */ \
 	u8 layer;			/* +$42 draw layer (DrawList_Add sorts by it; Obj_InheritLayer, Obj_StandOnSeg) */ \
-	u8 unk_43;			/* +$43 */ \
+	u8 unread_43;			/* +$43 0 (Actor_Init); never used: ExplodeFx_Burst/_Trail/_Bounce/_Chain* and Tank_OnDeath read it only to pass it to ExplodeFx_*Start (their unk43 argument), which ignore it */ \
 	PTR(void) anim;			/* +$44 animation script playing (Obj_SetAnim; 0 = none) */ \
 	s16 animStep;			/* +$48 animation step (Anim_ApplyStep; Obj_SetAnim clears it and animDist) */ \
 	s16 animDist;			/* +$4A distance-driven animation: movement since the last step (Anim_AdvanceByDistance; 8 fraction bits); Actor_Draw draws that far back in x (script flags & $30 = $20) or y ($30) */ \
@@ -408,12 +408,13 @@ CHECK_SIZE(PalCycleScript, 4);
 	s32 segPos;			/* +$72 position along seg, 8 fraction bits (Actor_Move moves it, Seg_ApplyObjPos turns it into x/y) */ \
 	PTR(Seg) seg;			/* +$76 floor segment it stands on (Obj_StandOnSeg; Seg_WouldLeaveEnd) */ \
 	u8 segIndex;			/* +$7A first floor segment it owns, a g_Segs index ($FF none; flags6 bit $200: Obj_UpdateBoxes) */ \
-	u8 unk_7B;			/* +$7B $FF before each player move (XPlayer_Move); Wolverine reads it as a g_Segs index (Wolverine_WallToCeiling) */ \
+	u8 pushSeg;			/* +$7B the floor segment that last pushed it out, a g_Segs index (Seg_ApplyPushOut, with flags $100 / $80 for a push in x / y); $FF before each move's collision (Actor_Update, XPlayer_Move) and at Init; the climbers grab it (XClimber_CheckGrab, Wolverine_*, Nightcrawler_*); Beast_RollPathClear uses it as a flag (0, 1 from Beast_RollProbeCb) */ \
 	PTR(void) timerObj;		/* +$7C per-object Timer (ACTOR Init) */ \
 	PTR(ListNode) attackNode;	/* +$80 its node in an attacker hit list (Actor_Activate HitList_Add, unless flags6 1) */ \
 	PTR(ListNode) bodyNode;		/* +$84 its node in a body hit list (unless flags6 2; List_Unlink to become unhittable) */ \
 	s16 drawNode;			/* +$88 its draw-list node (Actor_Activate's DrawList_Add; DrawList_SetPriority) */ \
-	u8 unk_8A[2];			/* +$8A */
+	u8 unread_8A;			/* +$8A 0 (Actor_Init); never read */ \
+	u8 classParam;			/* +$8B a byte each class uses its own way: the BBoard entry (SyncActor_Init: placement param 0's low byte; Platform1, SyncActor_IsTriggered), Launcher's frame-0 time, Spark's mode (placement param 0), BroodClaw's swing direction (SWING_BACK); 0 for RollingDiscs */
 typedef struct Actor { ACTOR_FIELDS } Actor;
 CHECK_SIZE(Actor, 0x8C);
 CHECK_OFFSET(Actor, spr, 0x2E);
@@ -494,7 +495,7 @@ CHECK_OFFSET(Apocalypse, wave, 0xB2);
 
 /* BBOARD: descriptor $1197CA, root, $8 bytes (GetSize $11972E). The switch board (g_BBoard,
    BBoard_New: 100 entries): one word of flags per switch / synchronized group (SYNCHRONIZEDACTOR's
-   index, ACTOR unk_8A[1]; bit $100 triggered: SyncActor_IsTriggered; bit $200 on: Platform1). */
+   index, ACTOR classParam; bit $100 triggered: SyncActor_IsTriggered; bit $200 on: Platform1). */
 #define BBOARD_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
 	s16 count;			/* +$04 entries (BBoard_Init) */ \
@@ -740,19 +741,19 @@ CHECK_OFFSET(CharRecord, comboAnim1, 0x36);
 	PTR(Seg) safeSeg;		/* +$94 floor segment of the last safe spot (XPlayer_SaveSafePos, _PlaceAtSafePos) */ \
 	s16 safeX;			/* +$98 its position (pixels) */ \
 	s16 safeY;			/* +$9A */ \
-	u8 unk_9C;			/* +$9C */ \
+	u8 unused_9C;			/* +$9C no code reads or writes it beyond XPlayer_Init's clear of the whole object (pad, +$9D, is a byte) */ \
 	s8 pad;				/* +$9D its pad: 0 pad 1, 1 pad 2 (signed: XPlayer_StateLookUp ext.w's it) */ \
 	s16 charge;			/* +$9E special meter, 0-$20 while A is held (XPlayer_UpdateCharge; the HUD's second bar) */ \
 	s16 sparkX;			/* +$A0 hit spark position (XPlayer_Attack, drawn by XPlayer_Draw) */ \
 	s16 sparkY;			/* +$A2 */ \
 	s16 sparkTimer;			/* +$A4 frames the hit spark shows */ \
 	s16 stateTimer;			/* +$A6 frames, counted down by XPlayer_Update (the states' own timer) */ \
-	s16 unk_A8;			/* +$A8 frames, counted down by XPlayer_Update */ \
-	s16 unk_AA;			/* +$AA frames, counted down by XPlayer_Update; 15 on walking off a ledge (XPlayer_LeaveGround) */ \
-	s32 unk_AC;			/* +$AC 0 at Init */ \
-	u8 unk_B0[4];			/* +$B0 */ \
-	s32 unk_B4;			/* +$B4 0 at Init */ \
-	u8 unk_B8[4];			/* +$B8 */
+	s16 actionTimer;		/* +$A8 frames, counted down by XPlayer_Update: a second timer the states use for one action at a time (the window after B or C in which a touched wall can be grabbed: XClimber_CheckGrab 20 / 10; the air kick: Gambit_AirKick 12; the beam: Cyclops_StartBeam 14; aim poses change at most every 5 frames: *_StateGroundAim, Magneto_StateAim); cleared with stateTimer by many states */ \
+	s16 ledgeTimer;			/* +$AA frames since walking off a ledge: 15 (XPlayer_LeaveGround; 0 after a jump), counted down by XPlayer_Update; while it runs x moves at most 2 px a step (XPlayer_Move) and Beast shows frame $C (Beast_SetAirFrame) */ \
+	s32 unread_AC;			/* +$AC 0 at Init (XPlayer_Init, after its clear of the whole object); never read */ \
+	u8 unused_B0[4];		/* +$B0 no code reads or writes it beyond XPlayer_Init's clear of the whole object */ \
+	s32 unread_B4;			/* +$B4 0 at Init (XPlayer_Init, likewise); never read */ \
+	u8 unused_B8[4];		/* +$B8 no code reads or writes it beyond XPlayer_Init's clear of the whole object */
 typedef struct XPlayer { XPLAYER_FIELDS } XPlayer;
 CHECK_SIZE(XPlayer, 0xBC);
 
@@ -906,7 +907,7 @@ CHECK_SIZE(ScalerRegs, 0x34);
 /* A band of a parallax descriptor (8 bytes). */
 typedef struct ParallaxBand {
 	u8 mode;			/* +$00 0 fixed speed, 1 gradient, 2 drift, 3 wave, 4 drift alone */
-	u8 unk_01;			/* +$01 */
+	u8 unused_01;			/* +$01 no code reads it (Scroll_SetParallax, Scroll_ComputeParallax read mode as a byte); 0 in the bands of all 7 descriptors; never read in any corpus run */
 	s16 height;			/* +$02 lines (2-cell columns in a column descriptor) */
 	s16 speed;			/* +$04 8.8 share of the foreground scroll; modes 2/4: drift per frame */
 	s16 param;			/* +$06 mode 1: end speed (Scroll_SetParallax); 3: offset of its
@@ -1158,7 +1159,7 @@ CHECK_SIZE(BoulderPiece, 8);
    layer it lands on, Boulder_FindFloorBelow), cracks crumbling floors, raises dust (spr2) and
    shakes the camera at each impact, and shatters into three pieces when hit. ACTOR fields it
    uses its own way: maxVx/maxVy = spr2's position (pixels), minVx/minVy = spr2's animation
-   timer and step, hitCooldown > 0 = shattered (1000), spr.unk_0C = the object carrying it. */
+   timer and step, hitCooldown > 0 = shattered (1000), spr.parent = the object carrying it. */
 #define BOULDER_FIELDS \
 	ACTOR_FIELDS \
 	BoulderPiece piece[3];		/* +$8C the three pieces it shatters into */ \
@@ -1327,12 +1328,12 @@ CHECK_OFFSET(BroodBossDamage, rects, 0x92);
 	s16 tileBase;			/* +$22 first VRAM tile of its sprite definition (ICandy_SetSpriteDef) */ \
 	s16 tileCount;			/* +$24 VRAM tiles of the definition */ \
 	u8 uploaded;			/* +$26 frame whose tiles are in VRAM ($FF none; ICandy_Update) */ \
-	u8 unread_27;			/* +$27 the instance's unk_0B: 0 at Init; never read (SprInst +$0B is read nowhere) */ \
-	u8 parent;			/* +$28 the instance's parent link (SprInst unk_0C: Obj_AttachChild): $FF at Init, none; never read for an ICANDY */ \
+	u8 unread_27;			/* +$27 the instance's unread_0B: 0 at Init; never read (SprInst +$0B is read nowhere) */ \
+	u8 parent;			/* +$28 the instance's parent link (SprInst parent: Obj_AttachChild): $FF at Init, none; never read for an ICANDY */ \
 	u8 firstChild;			/* +$29 the instance's firstChild: $FF at Init, nothing attached (Spr_Draw reads it) */ \
 	u8 nextSibling;			/* +$2A the instance's nextSibling: $FF at Init; never read for an ICANDY */ \
-	u8 prevSibling;			/* +$2B the instance's previous-sibling link (SprInst unk_0F: Obj_AttachChild, Obj_Detach): $FF at Init; never read for an ICANDY */ \
-	s32 unread_2C;			/* +$2C the instance's unk_10 (hit-point states: Obj_FindHitPoint): 0 at Init; never read for an ICANDY (Spr_Draw reaches Spr_EmitPreLinked only with a firstChild) */ \
+	u8 prevSibling;			/* +$2B the instance's previous-sibling link (SprInst prevSibling: Obj_AttachChild, Obj_Detach): $FF at Init; never read for an ICANDY */ \
+	s32 unread_2C;			/* +$2C the instance's partStates (hit-point states: Obj_FindHitPoint): 0 at Init; never read for an ICANDY (Spr_Draw reaches Spr_EmitPreLinked only with a firstChild) */ \
 	u8 layer;			/* +$30 draw layer ($7F at Init; DrawList_Add) */ \
 	u8 unused_31;			/* +$31 no code reads or writes it (ICandy_*, BroodBossWall_*: layer, +$30, is a byte) */ \
 	PTR(u8) anim;			/* +$32 animation script (an AnimScript; steps of 2 bytes from +6: ICandy_SetAnim); 0 none: ICandy_Update destroys it */ \
@@ -1437,7 +1438,7 @@ FNTYPE(CamFn, void);
 	s16 deadBottom;			/* +$42 */ \
 	s16 catchUp;			/* +$44 px per frame the spring may move beyond the target's own motion (Cam_SpringAxis; Cam_Init 3) */ \
 	s16 easeStep;			/* +$46 offset easing per frame and Cam_EaseAxis's step (Cam_Init 2) */ \
-	s16 unk_48;			/* +$48 (cleared with camFlags by Cam_Init) */ \
+	s16 unread_48;			/* +$48 0 (Cam_Init, one clr.l with camFlags); never read */ \
 	s16 camFlags;			/* +$4A 1 x locked, 2 y locked, 4 looking up, 8 looking down, $10 look folded into y (Cam_ClampLookToPlayers) */ \
 	s16 accelX;			/* +$4C following speed change per frame, x and y (Cam_SpringAxis: up to maxAccel) */ \
 	s16 accelY;			/* +$4E */ \
@@ -1455,7 +1456,7 @@ FNTYPE(CamFn, void);
 	s16 climbScrY;			/* +$66 screen y of a climbing player (Cam_TrackPlayer; $56, + $20 for one class) */ \
 	s16 wallMargin;			/* +$68 screen x of a player on a wall, from that side ($60) */ \
 	u8 ledgeDist;			/* +$6A look-ahead at a ledge: Seg_WouldLeaveEnd's distance ($A) */ \
-	u8 unk_6B;			/* +$6B */
+	u8 unused_6B;			/* +$6B no code reads or writes it (Cam_Init writes ledgeDist, +$6A, as a byte; Cam_New doesn't clear the object) */
 typedef struct Camera { CAMERA_FIELDS } Camera;
 CHECK_SIZE(Camera, 0x6C);
 CHECK_OFFSET(Camera, target, 0x24);
@@ -1723,7 +1724,7 @@ typedef struct CyclopsBeam {
 	s16 tileBase;			/* +$06 (SprInst) first VRAM tile (Spr_Init; -1 at Cyclops_Init) */
 	s16 attr;			/* +$08 (SprInst tileCount) attribute word of its pieces: tileBase | palette 1 ($2000) | priority ($8000) */
 	u8 uploaded;			/* +$0A (SprInst) $FF at Cyclops_Init */
-	u8 unread_0B;			/* +$0B the SprInst's unk_0B: 0 (Spr_Init in Cyclops_StartBeam); never read */
+	u8 unread_0B;			/* +$0B the SprInst's unread_0B: 0 (Spr_Init in Cyclops_StartBeam); never read */
 	u8 count1;			/* +$0C pieces of the first list Cyclops_DrawBeam went through */
 	u8 count2;			/* +$0D of the second */
 	s16 frameCount;			/* +$0E Cyclops_BeamHitEnemies calls: the parity picks the list hit-tested */
@@ -2438,7 +2439,7 @@ CHECK_SIZE(LauncherShot, 0xA);
 
 /* LAUNCHER: descriptor $0BED0C, parent ACTOR, $B8 bytes (GetSize $0BE7DA). A turret that shows
    frame 0, then frame 1, then fires a shot each way (Launcher_State*). The frames frame 0 shows
-   are a byte in ACTOR's unk_8A[1] (+$8B; placement +6, 0: $78). */
+   are a byte in ACTOR's classParam (+$8B; placement +6, 0: $78). */
 #define LAUNCHER_FIELDS \
 	ACTOR_FIELDS \
 	u8 frame1Time;			/* +$8C frames frame 1 shows before it fires (placement +8, 0: 5) */ \
@@ -2707,7 +2708,7 @@ CHECK_SIZE(Synchronizedactor, 0x8C);
 
 /* PLATFORM1: descriptor $1072E8, parent SYNCHRONIZEDACTOR, $96 bytes (GetSize $106B68). A moving
    platform along its floor-segment path (Platform1_Move): it shuttles end to end, follows the d-pad
-   of a player riding it, or moves while its switch (its BBoard entry, ACTOR unk_8A[1], bit $200)
+   of a player riding it, or moves while its switch (its BBoard entry, ACTOR classParam, bit $200)
    is on. */
 #define PLATFORM1_FIELDS \
 	SYNCHRONIZEDACTOR_FIELDS \
@@ -2729,7 +2730,7 @@ CHECK_SIZE(Pop, 0x8E);
 /* PSYLOCKE: descriptor $11359A, parent XCLIMBER, $DA bytes (GetSize $1B9060) */
 #define PSYLOCKE_FIELDS \
 	XCLIMBER_FIELDS \
-	u8 unk_C2[4];			/* +$C2 */ \
+	u8 unused_C2[4];		/* +$C2 no code reads or writes it beyond XPlayer_Init's clear of the whole object (the Psylocke_* asm never touches +$C2-$C5) */ \
 	SprInst fxSpr;			/* +$C6 the psi effect's sprite (Art_BlastSpr, in the last 16 tiles of her player slot: Psylocke_Init); g_PsylockeFxSpr points at it (BioNpc_DrawStunned draws it over a stunned enemy) */
 typedef struct Psylocke { PSYLOCKE_FIELDS } Psylocke;
 CHECK_SIZE(Psylocke, 0xDA);
@@ -2920,7 +2921,7 @@ typedef struct ShootAcolyte { SHOOTACOLYTE_FIELDS } ShootAcolyte;
 CHECK_SIZE(ShootAcolyte, 0xB2);
 
 /* SPARK: descriptor $1400DE, parent ACTOR, $9C bytes (GetSize $13FA88). An electric spark, by
-   ACTOR unk_8A[1] (placement param 0's low byte): 0 darts at player 1 in short hops, wobbling
+   ACTOR classParam (placement param 0's low byte): 0 darts at player 1 in short hops, wobbling
    around a drifting origin (Spark_Move, Tbl_SparkWobble); 1 flies along its floor segments
    (Obj_RideRail) and starts over at the end; other values hop at player 1 along its rail. A hit
    on it, or its hit on a player, blows it up. */

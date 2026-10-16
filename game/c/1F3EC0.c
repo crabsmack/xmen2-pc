@@ -2,14 +2,14 @@
  * wall or ceiling segment just touched? Yes means the climbing state (slot +$AA) follows.
  *
  * self: the player.
- * On the ground: no. The climb state (climbFlags & 3) is cleared. B pressed keeps it from
- * grabbing for 20 frames (unk_A8 $14) and drops a queued wall jump (climbFlags $40); else, for a
- * character that can (climbFlags $100), C pressed queues one (unk_A8 10). Touching a segment
- * (flags $100 or $80): the last one touched (g_Segs[unk_7B]) is classified (ClassifySeg, slot
+ * On the ground: no. The climb state (climbFlags & 3) is cleared. B pressed lets it grab for the
+ * next 20 frames (actionTimer $14) and drops a queued wall jump (climbFlags $40); else, for a
+ * character that can (climbFlags $100), C pressed queues one (actionTimer 10). Touching a segment
+ * (flags $100 or $80): the last one touched (g_Segs[pushSeg]) is classified (ClassifySeg, slot
  * +$F2) into climbFlags bits 2-3, and a wall (2, 3), or a ceiling (1) with ceilings allowed
  * (climbFlags $80) and Up held, starts the grab window (stateTimer 20) with the segment held
  * (climbSeg); anything else closes it (XClimber_CheckGrab_Case0, XClimber_CheckGrab_Default).
- * With the window and unk_A8 both running it grabs unless playerFlags $10000 / $20000 limit it to
+ * With the window and actionTimer both running it grabs unless playerFlags $10000 / $20000 limit it to
  * below / above the safe spot, a wall's ends are within 10 px of the player's top or bottom
  * (Player_TopAboveSeg / Player_BottomBelowSeg) or it falls at $1050 or faster, a ceiling's end
  * is within 10 px of its front (Player_FrontPastSeg). Grabbing sets the climb state from bits
@@ -27,16 +27,16 @@ char XClimber_CheckGrab(register XClimber *self)
 		return 0;
 	self->climbFlags = self->climbFlags & ~3 | 0;
 	if (!self->pad ? g_Pad1Pressed & g_PadMaskB : g_Pad2Pressed & g_PadMaskB) {
-		self->unk_A8 = 0x14;
+		self->actionTimer = 0x14;
 		self->climbFlags &= ~0x40;
 	} else if (self->climbFlags & 0x100) {
 		if (!self->pad ? g_Pad1Pressed & g_PadMaskC : g_Pad2Pressed & g_PadMaskC) {
-			self->unk_A8 = 0xA;
+			self->actionTimer = 0xA;
 			self->climbFlags |= 0x40;
 		}
 	}
 	if (self->flags & 0x100 || self->flags & 0x80) {
-		seg = &g_Segs[self->unk_7B];
+		seg = &g_Segs[self->pushSeg];
 		kind = (*self->cls->method[59])(self, seg);		/* ClassifySeg */
 		self->climbFlags = self->climbFlags & ~0xC | kind << 2;
 		switch (kind) {
@@ -60,7 +60,7 @@ char XClimber_CheckGrab(register XClimber *self)
 			self->stateTimer = 0;
 		}
 	}
-	if (self->stateTimer > 0 && self->unk_A8 > 0) {
+	if (self->stateTimer > 0 && self->actionTimer > 0) {
 		kind = (self->climbFlags & 0xC) >> 2;
 		limits = self->playerFlags & 0x3C000;
 		y = self->y >> 8;

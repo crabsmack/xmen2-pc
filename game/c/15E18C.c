@@ -2,14 +2,14 @@
  * object has left the active window around the camera (the level loop then Deactivates it).
  *
  * self: the object.
- * Never while it rides another object (spr.unk_0C not $FF), nor with flags6 $1000 while it has
+ * Never while it rides another object (spr.parent not $FF), nor with flags6 $1000 while it has
  * health. Else 1 when its pixel position minus the camera's is outside g_DeactWinLeft..Right
  * (unless flags6 $800) or g_DeactWinTop..Bottom (unless flags6 $20), else 0. */
 #include "xmen2.h"
 
 char Actor_OutsideActiveWindow(Actor *self)
 {
-	if (self->spr.unk_0C != 0xFF)
+	if (self->spr.parent != 0xFF)
 		return 0;
 	if ((self->flags6 & 0x1000) && self->health > 0)
 		return 0;

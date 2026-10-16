@@ -24,5 +24,5 @@ void Apocalypse_Deactivate(register Apocalypse *self)
 	}
 	g_VramTileCursor -= tileCount;
 	spr2->firstChild = 0xFF;
-	spr2->unk_0C = 0xFF;
+	spr2->parent = 0xFF;
 }

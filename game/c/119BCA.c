@@ -1,6 +1,6 @@
 /* Synchronizer_GatherMembers - SYNCHRONIZER state after Init: look at up to 10 spawn records a
  * frame for the members (class memberClass, placement param 0 = its board entry); spawn each one
- * not live (its class's slot +$2E, keeping the record's index in the object's unk_14), activate it
+ * not live (its class's slot +$2E, keeping the record's index in the object's spawnRec), activate it
  * if it isn't (slot +$3E) and add it (up to 10). Past the last record: run the members
  * (Synchronizer_RunMembers).
  *
@@ -30,7 +30,7 @@ void Synchronizer_GatherMembers(register Synchronizer *self)
 		    && pl->param[0] == self->board) {
 			if (!(rec->flags & 2)) {
 				spawned = (Actor *)(*rec->cls->method[10])(rec, rec);	/* +$2E SpawnFromRec */
-				spawned->unk_14 = (u8)i;
+				spawned->spawnRec = (u8)i;
 			}
 			obj = rec->object == 0xFF ? 0 : g_ObjTable[rec->object];
 			if (!IS_ALIVE(obj))

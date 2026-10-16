@@ -8,7 +8,7 @@
  * not skipped (flags bits 7-6 = 10), and its box widened by 64 px overlaps the object's box; a
  * cell segment the object stands on is left out. An owned segment is marked skip (contact flags
  * 4, segment flags bit 6) when its owner (not $FE) is the object or one of the objects it is
- * attached to (SprInst.unk_0C chain), or for a player (index < 2) while its passFrames is
+ * attached to (SprInst.parent chain), or for a player (index < 2) while its passFrames is
  * positive; a player counts passFrames down then. The list ends with a record of flags 1.
  * The two scans differ at the left edge (< against <=), the original's.
  * Hand-written 68000 in an MPW frame (a2, exg, dbra, 16-bit sums): it can't byte-match. */
@@ -101,7 +101,7 @@ void Seg_GatherNearObj(void *obj, SegContact *c)
 					goto next;
 				if (a->index == o->index)
 					break;
-				a = a->spr.unk_0C == 0xFF ? 0 : (Actor *)g_ObjTable[a->spr.unk_0C];
+				a = a->spr.parent == 0xFF ? 0 : (Actor *)g_ObjTable[a->spr.parent];
 			}
 		}
 		c[-1].flags = 4;

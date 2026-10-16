@@ -6,7 +6,7 @@
  * Left/Right turn him. The aim: Up+Left/Right up-diagonal (kind 1), Up up (0), Down down-diagonal
  * (3), else level (2). Once A is no longer latched, that throw's animation and the throw from the
  * next update (Gambit_StateThrow); while A is still held, its aiming animation (changed at most
- * every 5 frames: unk_A8).
+ * every 5 frames: actionTimer).
  * Returns self->flags & 8 after a state change from here, no value otherwise. */
 #include "xmen2.h"
 
@@ -69,8 +69,8 @@ short Gambit_StateGroundAim(register Gambit *self)
 		}
 		anim = CODEPTR(Tbl_Anim_1CEE2E);
 	}
-	if (anim != self->anim && self->unk_A8 <= 0) {
-		self->unk_A8 = 5;
+	if (anim != self->anim && self->actionTimer <= 0) {
+		self->actionTimer = 5;
 		Obj_ChangeAnim(self, anim);
 	}
 	NO_RETURN_VALUE

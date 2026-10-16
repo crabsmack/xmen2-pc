@@ -23,7 +23,7 @@ void ExplodeFx_Burst(void *obj, register short kind)
 	register short i = 0;
 
 	layer = o->layer;
-	unk43 = o->unk_43;
+	unk43 = o->unread_43;
 	prio = o->spr.flags & 4;
 	flag = o->flags6 & 8 ? 1 : 0;
 	up = !(o->spr.flags & 8) ? 1 : 0;

@@ -17,7 +17,7 @@ void Synchronizer_WaitMembers(register Synchronizer *self)
 		m = self->member[i];
 		if ((char)(*m->cls->method[26])(m))			/* +$6E MemberInWindow */
 			self->state = Synchronizer_ActivateMembers;
-		else if ((char)(*m->cls->method[28])(m, &g_SpawnRecs[m->unk_14]))	/* +$76 MemberSpawnRecOutOfView */
+		else if ((char)(*m->cls->method[28])(m, &g_SpawnRecs[m->spawnRec]))	/* +$76 MemberSpawnRecOutOfView */
 			out++;
 	}
 	if (out == self->memberCount)

@@ -15,7 +15,7 @@ void Synchronizer_DespawnMembers(Synchronizer *self)
 
 	for (i = 0; i < self->memberCount; i++) {
 		m = self->member[i];
-		r = m->unk_14;			/* its spawn record */
+		r = m->spawnRec;			/* its spawn record */
 		rec = &g_SpawnRecs[r];
 		pl = rec->placement;
 		(*m->cls->method[12])(m, rec);		/* +$36 Despawn */

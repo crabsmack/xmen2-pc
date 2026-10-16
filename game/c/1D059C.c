@@ -1,6 +1,6 @@
 /* Gambit_AirKick - GAMBIT state: start the air kick: his record's air attack animation and attack
  * sound, B unlatched, a dash at $800 towards a held Left or Right (no acceleration, maximum
- * speed $800), 12 frames (unk_A8) of Gambit_StateAirKick from the next update. Landed: the
+ * speed $800), 12 frames (actionTimer) of Gambit_StateAirKick from the next update. Landed: the
  * control state (slot +$A6), now.
  *
  * self: the player. Returns self->flags & 8 after starting the kick, no value otherwise. */
@@ -30,7 +30,7 @@ short Gambit_AirKick(register Gambit *self)
 		self->vx = 0x800;
 		self->ax = 0;
 	}
-	self->unk_A8 = 12;
+	self->actionTimer = 12;
 	SET_STATE(self, (StateFn)Gambit_StateAirKick);
 	return self->flags & 8;
 }

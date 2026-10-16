@@ -12,7 +12,7 @@ void XPlayer_Deactivate(XPlayer *self)
 		self->flags |= 0x4000;
 		self->spr.flags &= ~0x20;
 		self->spr.firstChild = 0xFF;
-		self->spr.unk_0C = 0xFF;
+		self->spr.parent = 0xFF;
 		Timer_Stop(self->timerObj);
 		if (self->playerFlags & 0x1000000) {
 			List_Unlink(self->attackNode, &g_HitListEnemyAtk);

@@ -3,14 +3,14 @@
  * self: the boss.
  * Patterns 1-5 are followed by the pattern in their placement parameter (param[0] after
  * pattern 1 ... param[4] after pattern 5); a 0 there means the default order 1, 2, 3, 4, 5, 1.
- * Pattern 0 stays. The placement entry is g_PlacementList[self->unk_14] (the byte Actor_SpawnFromRec
+ * Pattern 0 stays. The placement entry is g_PlacementList[self->spawnRec] (the byte Actor_SpawnFromRec
  * copies from $FFF633).
  * The cases are Exodus_NextPattern_part1 (1), _part2 (3) and the tail _part3 in the disassembly. */
 #include "xmen2.h"
 
 void Exodus_NextPattern(Exodus *self)
 {
-	register Placement *pl = &g_PlacementList[self->unk_14];
+	register Placement *pl = &g_PlacementList[self->spawnRec];
 
 	switch (self->pattern) {
 	default:

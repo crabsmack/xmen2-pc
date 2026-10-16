@@ -36,10 +36,10 @@ void XPlayer_Init(register XPlayer *self, long x, long y, Placement *place)
 	self->charge = 0;
 	self->sparkTimer = 0;
 	self->stateTimer = 0;
-	self->unk_A8 = 0;
-	self->unk_AA = 0;
-	self->unk_AC = 0;
-	self->unk_B4 = 0;
+	self->actionTimer = 0;
+	self->ledgeTimer = 0;
+	self->unread_AC = 0;
+	self->unread_B4 = 0;
 	self->safeSeg = 0;
 	self->safeX = self->x >> 8;
 	self->safeY = self->y >> 8;

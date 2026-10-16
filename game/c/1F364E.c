@@ -15,7 +15,7 @@ short XPlayer_StateCrouch(XPlayer *self)
 		self->spr.flags &= ~0x10;
 	else if (!self->pad ? g_Pad1Held & g_PadMaskLeft : g_Pad2Held & g_PadMaskLeft)
 		self->spr.flags |= 0x10;
-	if (self->stateTimer <= 0 && !(g_Camera->camFlags & 8) && self->spr.unk_0C == 0xFF
+	if (self->stateTimer <= 0 && !(g_Camera->camFlags & 8) && self->spr.parent == 0xFF
 	    && !(self->playerFlags & 0x200000)) {
 		self->playerFlags |= 0x40000;
 		(*g_Camera->cls->method[9])(g_Camera);		/* LookDown */

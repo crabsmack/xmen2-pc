@@ -8,7 +8,7 @@
  * control state now. Left/Right turn him. Direction, facing right / left: Up with Left/Right
  * 6 / 3 (pose Tbl_MagnetoAimUpDiagAnim), Up 5 / 4 (Tbl_MagnetoAimUpAnim), Down 8 / 1
  * (Tbl_MagnetoAimDownDiagAnim), else 7 / 2 (Tbl_MagnetoAnim15). A new pose is taken
- * (Obj_ChangeAnim) only once unk_A8 (counted down by XPlayer_Update) has run out; it is then 5.
+ * (Obj_ChangeAnim) only once actionTimer (counted down by XPlayer_Update) has run out; it is then 5.
  * Returns nothing except in the air. */
 #include "xmen2.h"
 
@@ -81,8 +81,8 @@ short Magneto_StateAim(register Magneto *self)
 		}
 		pose = CODEPTR(Tbl_MagnetoAnim15);
 	}
-	if (self->anim != pose && self->unk_A8 <= 0) {
-		self->unk_A8 = 5;
+	if (self->anim != pose && self->actionTimer <= 0) {
+		self->actionTimer = 5;
 		Obj_ChangeAnim(self, pose);
 	}
 	NO_RETURN_VALUE

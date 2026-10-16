@@ -17,7 +17,7 @@ short Spr_Init(SprInst *spr, long unused, void *def, short frame, short pal, sho
 	SprFrame *f;
 
 	spr->flags = 0;
-	spr->unk_0B = 0;
+	spr->unread_0B = 0;
 	spr->uploaded = 0xFF;
 	spr->flags |= pal & 3;
 	spr->frame = (u8)frame;

@@ -2,7 +2,7 @@
  * take hold of it and start crawling along it (Wolverine_StartCeilingCrawl, in 6 frames).
  *
  * self: the player.
- * The segment just touched (g_Segs[unk_7B]) becomes climbSeg and its kind (ClassifySeg, slot
+ * The segment just touched (g_Segs[pushSeg]) becomes climbSeg and its kind (ClassifySeg, slot
  * +$F2) the climb state; the camera is told (g_CamModeSwitched); the corner frame $23 or $1E by
  * clawPhase; stop. The pixel x is computed and never used.
  * Returns self->flags & 8, as every state. */
@@ -16,7 +16,7 @@ short Wolverine_WallToCeiling(register Wolverine *self)
 
 	px = kind = self->x >> 8;		/* (px is never used) */
 	seg = self->climbSeg;
-	seg = &g_Segs[self->unk_7B];
+	seg = &g_Segs[self->pushSeg];
 	kind = (*self->cls->method[59])(self, seg);	/* ClassifySeg */
 	self->climbSeg = seg;
 	self->climbFlags = self->climbFlags & ~3 | kind;

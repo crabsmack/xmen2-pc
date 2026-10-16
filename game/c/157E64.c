@@ -13,7 +13,7 @@ void MagneticGlob_Deactivate(register MagneticGlob *self)
 		self->flags |= 0x4000;
 		self->spr.flags &= ~0x20;
 		self->spr.firstChild = 0xFF;
-		self->spr.unk_0C = 0xFF;
+		self->spr.parent = 0xFF;
 		t = self->timerObj;
 		if (t)
 			Timer_Stop(t);

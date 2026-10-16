@@ -10,7 +10,7 @@
  * (Seg_ApplyPushOut_Walls) the walls and the ceiling zero the speeds into them.
  * Then (Seg_ApplyPushOut_Move) x/y move by the push (<< 8), a grounded object (flags bit $1000
  * clear) gets its position along its segment again (Seg_ComputeObjPos), and a changed vx sets
- * flags bit $100, a changed vy bit $80, each with unk_7B = the contact's segment index. */
+ * flags bit $100, a changed vy bit $80, each with pushSeg = the contact's segment index. */
 #include "xmen2.h"
 
 void Seg_ApplyPushOut(Seg *seg, void *obj, SegContact *c)
@@ -104,10 +104,10 @@ void Seg_ApplyPushOut(Seg *seg, void *obj, SegContact *c)
 		Seg_ComputeObjPos(o->seg, o);
 	if (vx != o->vx) {
 		o->flags |= 0x100;
-		o->unk_7B = c->seg;
+		o->pushSeg = c->seg;
 	}
 	if (vy != o->vy) {
 		o->flags |= 0x80;
-		o->unk_7B = c->seg;
+		o->pushSeg = c->seg;
 	}
 }

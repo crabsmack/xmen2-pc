@@ -9,7 +9,7 @@
  * Down: the down-diagonal set v-flipped (Tbl_CyclopsBeamGroundDownDiag, Tbl_Anim_1E1CBA; $32);
  * else level (Tbl_CyclopsBeamGroundLevel, Tbl_Anim_1E1C90; $29). Firing: then
  * Cyclops_StateGroundBeam from the next update. Aiming: the aiming frame, changed at most every
- * 5 frames (unk_A8).
+ * 5 frames (actionTimer).
  * Returns self->flags & 8 when it changes state the next update; nothing otherwise. */
 #include "xmen2.h"
 
@@ -72,8 +72,8 @@ short Cyclops_StateGroundAim(register Cyclops *self)
 		}
 		frame = 0x29;
 	}
-	if (frame != self->spr.frame && self->unk_A8 <= 0) {
-		self->unk_A8 = 5;
+	if (frame != self->spr.frame && self->actionTimer <= 0) {
+		self->actionTimer = 5;
 		(*self->cls->method[20])(self, frame);		/* SetFrame */
 	}
 	NO_RETURN_VALUE

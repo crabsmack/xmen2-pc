@@ -6,5 +6,5 @@
 
 short SyncActor_IsTriggered(Synchronizedactor *self)
 {
-	return g_BBoard->entry[self->unk_8A[1]] & 0x100;
+	return g_BBoard->entry[self->classParam] & 0x100;
 }

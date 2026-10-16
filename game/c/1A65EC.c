@@ -5,7 +5,7 @@
  * C latched: upright again (upside down, the box is mirrored in y), no animation, the jump frame
  * $21, vy -$834 (0 with playerFlags $10000), the air speed and gravity, no climb state, flags6
  * $2000 off, then the control state (slot +$A6) from the next update.
- * Pushed in y (flags $80) by a segment (g_Segs[unk_7B], ClassifySeg slot +$F2) that is a ceiling
+ * Pushed in y (flags $80) by a segment (g_Segs[pushSeg], ClassifySeg slot +$F2) that is a ceiling
  * (1): that becomes climbSeg and the climb state, stop, the ceiling frame $8C turned towards the
  * wall with the box's wall side kept in place, the box's top on the ceiling, and in 7 frames
  * Nightcrawler_WallToCeiling (tells the camera). Pushed by anything else: stop and cling.
@@ -42,7 +42,7 @@ short Nightcrawler_StateWallCling(register Nightcrawler *self)
 		register Seg *seg = self->climbSeg;	/* dead: overwritten below (the original's, kept) */
 		register short kind;
 
-		seg = &g_Segs[self->unk_7B];
+		seg = &g_Segs[self->pushSeg];
 		kind = (*self->cls->method[59])(self, seg);	/* ClassifySeg */
 		self->anim = 0;
 		if (kind == 1) {

@@ -7,7 +7,7 @@
  * Blocked (playerFlags $3C000): no animation, the other claw leads, hang from the next frame.
  * Pushed in x (flags $100) with his pixel x not yet past the segment's far end (the larger
  * endpoint x crawling right, the smaller crawling left; past it he crawls on): the segment
- * touched (g_Segs[unk_7B], ClassifySeg slot +$F2) not 0 is the wall he goes round to; 0: stop,
+ * touched (g_Segs[pushSeg], ClassifySeg slot +$F2) not 0 is the wall he goes round to; 0: stop,
  * no animation, mark the end reached
  * (playerFlags $100000 crawling right, $80000 left: Wolverine_StateCeilingHang won't crawl on
  * that way), the hang frame $30 / $2D (the other claw leads), hang. Else crawl on. Step over (no
@@ -29,7 +29,7 @@ short Wolverine_StateCeilingCrawl(register Wolverine *self)
 			return self->flags & 8;
 		}
 		if (self->flags & 0x100) {
-			seg = &g_Segs[self->unk_7B];
+			seg = &g_Segs[self->pushSeg];
 			px = self->x >> 8;
 			kind = (*self->cls->method[59])(self, seg);	/* ClassifySeg */
 			if (!(self->spr.flags & 0x10)) {
