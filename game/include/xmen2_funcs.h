@@ -515,8 +515,8 @@ void RollingDiscs_Update(RollingDiscs *self);	/* $03ADC2 */
 void RollingDiscs_Move(RollingDiscs *self, short steps);	/* $03ADEE */
 void RollingDiscs_Draw(RollingDiscs *self);	/* $03AE14 */
 void RollingDiscs_Nop66(RollingDiscs *self);	/* $03AE1C */
-void BaniMazaA2_InitDebrisBuf(void *);	/* $0472CC */
-void BaniMazaA2_UpdateDebrisGroup(void *);	/* $0472E0 */
+void BaniMazaA2_InitDebrisBuf(DebrisGroup *buf);	/* $0472CC */
+void BaniMazaA2_UpdateDebrisGroup(DebrisGroup *g);	/* $0472E0 */
 void BaniMazaA2_UpdateDebris(void);	/* $0473D4 */
 void BaniMazaA2_NopStatic(void);	/* $047402 */
 void BaniMazaA2_ResetCounters(void);	/* $04740A */
@@ -527,12 +527,12 @@ void BaniMazaA2_AnimatePalettes_case4(void);	/* $04757C fragment */
 void BaniMazaA2_AnimatePalettes_copy(void);	/* $047586 fragment */
 void BaniMazaA2_InitSprite(void);	/* $0475B4 */
 void BaniMazaA2_AnimSprite(void);	/* $0475E0 */
-long BaniMazaA2_SetPaletteStep(void);	/* $04760A */
+void BaniMazaA2_SetPaletteStep(void);	/* $04760A */
 void unk_BaniMazaA2_04766A(void);	/* $04766A */
 void BaniMazaA2_PlacePlayers(void);	/* $047712 */
 void BaniMazaA2_FrameHook(void);	/* $0477B4 */
 void BaniMazaA2_DrawHook(void);	/* $0477E4 */
-void BaniMazaA2_CamHook(void *);	/* $047834 */
+void BaniMazaA2_CamHook(Camera *cam);	/* $047834 */
 void BaniMazaA2_InitCamera(void);	/* $047858 */
 void BaniMazaA2_CallEmptyStub(void);	/* $047886 */
 void BaniMazaA2_LoadLevel(void);	/* $047892 */
@@ -863,7 +863,7 @@ void ScalingActor_SetFrame_part1(void);	/* $06730C fragment */
 void ScalingActor_SetFrame_part2(void);	/* $067360 fragment */
 void ScalingActor_SetFrame_part3(void);	/* $06736C fragment */
 void PlayerSelect_CalcPortraitPos(ScalingActor *self);	/* $067376 */
-long PlayerSelect_PlayPickAnim(void *);	/* $067420 */
+void PlayerSelect_PlayPickAnim(ScalingActor *self);	/* $067420 */
 void PlayerSelect_PlayPickAnim_part1(void);	/* $06745C fragment */
 void PlayerSelect_PlayPickAnim_part2(void);	/* $067478 fragment */
 void PlayerSelect_PlayPickAnim_part3(void);	/* $06750E fragment */
@@ -931,12 +931,12 @@ void CloneA1_EmptyStub(void);	/* $0776DA */
 void CloneA1_RunScene(void);	/* $0776E2 */
 long LightBeam_GetSize(void);	/* $0777B4 */
 void LightBeam_NopStatic(void);	/* $0777C2 */
-void LightBeam_Nop66(void *);	/* $0777CA */
+void LightBeam_Nop66(LightBeam *);	/* $0777CA */
 void LightBeam_ClassInit(void);	/* $0777E0 */
-void LightBeam_Activate(void *);	/* $077814 */
-void LightBeam_Init(void *, long, long, void *);	/* $077848 */
-void LightBeam_Draw(void *);	/* $077988 */
-long LightBeam_StateIdle(void *);	/* $077CBC */
+void LightBeam_Activate(LightBeam *);	/* $077814 */
+void LightBeam_Init(LightBeam *, long, long, Placement *);	/* $077848 */
+void LightBeam_Draw(LightBeam *);	/* $077988 */
+short LightBeam_StateIdle(LightBeam *);	/* $077CBC */
 void CloneA2_EmptyStub1(void);	/* $081BBA */
 void CloneA2_FlickerInit(void);	/* $081BC2 */
 void CloneA2_FlickerUpdate(void);	/* $081BE6 */
@@ -1220,15 +1220,15 @@ short XClone_ActWaitStopped(XClone *self);	/* $097C7A */
 void XClone_ActWalkStep(XClone *self);	/* $097D08 */
 void XClone_ActMainScript(XClone *self);	/* $097D60 */
 long EvilBeast_GetSize(void);	/* $097DB4 */
-void EvilBeast_Init(void *, long, long, long);	/* $097DC2 */
-void EvilBeast_UpdateThrows(void *);	/* $097E32 */
-long EvilBeast_ActThrow(void *);	/* $097EE0 */
-void EvilBeast_StateThrow(void *);	/* $097F60 */
+void EvilBeast_Init(EvilBeast *self, long x, long y, Placement *place);	/* $097DC2 */
+void EvilBeast_UpdateThrows(EvilBeast *self);	/* $097E32 */
+short EvilBeast_ActThrow(EvilBeast *self);	/* $097EE0 */
+void EvilBeast_StateThrow(EvilBeast *self);	/* $097F60 */
 long EvilBeam_GetSize(void);	/* $097FD0 */
-long EvilBeam_Construct(void *, short, short, long, char);	/* $097FDA */
-void EvilBeam_Update(void *);	/* $09806C */
-void EvilBeam_Draw(void *);	/* $0981FC */
-void EvilBeam_Destroy(void *);	/* $098236 */
+EvilBeam *EvilBeam_Construct(EvilBeam *self, short x, short y, long unused, char hflip);	/* $097FDA */
+void EvilBeam_Update(EvilBeam *self);	/* $09806C */
+void EvilBeam_Draw(EvilBeam *self);	/* $0981FC */
+void EvilBeam_Destroy(EvilBeam *self);	/* $098236 */
 long EvilCyclops_GetSize(void);	/* $098282 */
 void EvilCyclops_Init(void *, long, long, long);	/* $098290 */
 long EvilGambit_GetSize(void);	/* $0982FC */
@@ -3004,7 +3004,7 @@ char Anim_ApplyStep(void *, char);	/* $15F78E */
 long Anim_AdvanceByDistance(void *, short, long, long);	/* $15F8B6 */
 void Spawn_Nop(void);	/* $15F954 */
 void Spawn_InitRecords(void);	/* $15F95C */
-void VDP_WriteTileRect(void *, void *, long, long, long);	/* $15FA2C */
+void VDP_WriteTileRect(long vram, s16 *src, long w, long h, long stride);	/* $15FA2C */
 void Intro_SegaLogoFlash(long, short);	/* $15FA7A */
 void Intro_WaitFrame(IntroFrameFn cb);	/* $15FBAE asm regs(@8(a6)) */
 void Bitmap_Set(void *, short);	/* $15FC70 asm */
@@ -3583,7 +3583,7 @@ void VDP_ResetDmaQueue(void);	/* $1FD720 */
 long Art_LoadNemToVram(void *, short);	/* $1FD72C */
 void Pal_ApplyFade(void *, void *);	/* $1FD77E */
 void Pal_Update(void);	/* $1FD8D2 */
-void Pal_StartFade(short, short, long);	/* $1FD998 */
+void Pal_StartFade(short level, short line, void *table);	/* $1FD998 */
 short Pad_Get(char);	/* $1FD9E8 */
 void Pad_Update(void);	/* $1FDA56 */
 void Scroll_SetParallax(void *);	/* $1FDAEC */

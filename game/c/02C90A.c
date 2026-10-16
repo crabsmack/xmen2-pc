@@ -2,8 +2,9 @@
  * frames from Exodus_StartPsiFlash): while it runs, both players are hurt (Exodus_HurtPlayer)
  * and colours 0-13 of palette line 0 rotate down by one; on its last frame lines 0 and 2 get
  * back the colours AvalonA3_SavePalettes kept. The palette is uploaded at the next V-blank.
- * MPW: not matched: the ROM also saves d6 (never used; its rotation value is in d5). The
- * block around the two calls is where the ROM pops their arguments. Verified by shadow tests. */
+ * MPW: the ROM keeps d6 for a variable only compiled-out code used, at the start and the end
+ * (live through the whole function: the rotation value goes to d5); `unused` reproduces it.
+ * The block around the two calls is where the ROM pops their arguments. */
 #include "xmen2.h"
 
 #define g_A3SavedPal0	(*(PTR(s16) *)g_SceneVar3B14)	/* scene variable: colours 0-13 of line 0 before the flash */
@@ -13,7 +14,10 @@ void AvalonA3_PsiFlashStep(void)
 {
 	register long i;
 	register long first;
+	register long unused;
 
+	if (0)
+		unused = 0;
 	g_PsiFlashTimer--;
 	g_PalBaseDirty = 1;
 	if (g_PsiFlashTimer) {
@@ -31,4 +35,6 @@ void AvalonA3_PsiFlashStep(void)
 			g_PalBase[32 + i] = g_A3SavedPal2[i];
 		}
 	}
+	if (0)
+		g_PalBase[0] = unused;
 }

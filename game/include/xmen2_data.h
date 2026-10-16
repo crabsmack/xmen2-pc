@@ -61,7 +61,7 @@ extern void Str_CerebroScreenPlayerSelect();
 extern void Str_SentinelsD1Exterior1();
 extern void Str_CerebroScreenSentinels();
 extern void Str_SiberiaB1Blizzard();
-extern void Art_AvalonB1Nem();
+extern void Map_AvalonB1Bg();
 extern void Art_AvalonB1Nem2();
 extern void Art_AvalonA2Nem();
 extern void Art_AvalonB1Nem3();
@@ -705,7 +705,7 @@ extern void Tbl_BioNpc_vtable();
 extern void Tbl_XNpcDefaultStats();
 extern void Tbl_MaintRobotStats();
 extern void Tbl_XCloneStats();
-extern void Tbl_BioNpcVdp();
+extern void Art_CommonSpr();
 extern void Art_PowerUpSpr();
 extern void Tbl_SegmentPowerUpAnim();
 extern void Tbl_XPowerPowerUpAnim();
@@ -927,7 +927,7 @@ extern void Tbl_ToxicCanLeakPuffs2();
 extern void Tbl_ScatterExplodeChain();
 extern void Art_Spr_144FF6();
 extern void Art_EvilMagnetoSpr();
-extern void Art_Spr_14DB16();
+extern void Art_FluxBombSpr();
 extern void Art_MagnetoBossSpr2();
 extern void Art_MagnetoBossSpr3();
 extern void Tbl_FluxBomb_vtable();
@@ -970,7 +970,7 @@ extern void Snd_1618BC();
 extern void Snd_163BF2();
 extern void Snd_1641BE();
 extern void Snd_17B8AA();
-extern void Art_Spr_182690();
+extern void Art_HitSparkSpr();
 extern void Tbl_Anim_182932();
 extern void Tbl_Anim_182954();
 extern void Tbl_Anim_18299C();
@@ -1252,7 +1252,7 @@ extern void Snd_Z80DriverEnd();
 #define Str_SentinelsD1Exterior1 (xm::rom(0x005C38))
 #define Str_CerebroScreenSentinels (xm::rom(0x005C50))
 #define Str_SiberiaB1Blizzard (xm::rom(0x005C68))
-#define Art_AvalonB1Nem (xm::rom(0x006D22))
+#define Map_AvalonB1Bg (xm::rom(0x006D22))
 #define Art_AvalonB1Nem2 (xm::rom(0x009DAE))
 #define Art_AvalonA2Nem (xm::rom(0x00A008))
 #define Art_AvalonB1Nem3 (xm::rom(0x00F548))
@@ -1896,7 +1896,7 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_XNpcDefaultStats (xm::rom(0x114E70))
 #define Tbl_MaintRobotStats (xm::rom(0x114E78))
 #define Tbl_XCloneStats (xm::rom(0x114E80))
-#define Tbl_BioNpcVdp (xm::rom(0x114E88))
+#define Art_CommonSpr (xm::rom(0x114E88))
 #define Art_PowerUpSpr (xm::rom(0x115D70))
 #define Tbl_SegmentPowerUpAnim (xm::rom(0x1174D4))
 #define Tbl_XPowerPowerUpAnim (xm::rom(0x1174EA))
@@ -2118,7 +2118,7 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_ScatterExplodeChain (xm::rom(0x144F2E))
 #define Art_Spr_144FF6 (xm::rom(0x144FF6))
 #define Art_EvilMagnetoSpr (xm::rom(0x145862))
-#define Art_Spr_14DB16 (xm::rom(0x14DB16))
+#define Art_FluxBombSpr (xm::rom(0x14DB16))
 #define Art_MagnetoBossSpr2 (xm::rom(0x14F99E))
 #define Art_MagnetoBossSpr3 (xm::rom(0x152CEA))
 #define Tbl_FluxBomb_vtable (xm::rom(0x159AB4))
@@ -2161,7 +2161,7 @@ extern void Snd_Z80DriverEnd();
 #define Snd_163BF2 (xm::rom(0x163BF2))
 #define Snd_1641BE (xm::rom(0x1641BE))
 #define Snd_17B8AA (xm::rom(0x17B8AA))
-#define Art_Spr_182690 (xm::rom(0x182690))
+#define Art_HitSparkSpr (xm::rom(0x182690))
 #define Tbl_Anim_182932 (xm::rom(0x182932))
 #define Tbl_Anim_182954 (xm::rom(0x182954))
 #define Tbl_Anim_18299C (xm::rom(0x18299C))

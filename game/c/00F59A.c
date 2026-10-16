@@ -1,6 +1,6 @@
 /* AvalonB1_InitIntroPalette - the palettes of the AvalonB1 intro (AvalonB1_CamHookWait2): line 0
  * mostly black (colours 7-9 $200 $220 $0E0, 14-15 $020 $028), line 2 the 16 colours of the
- * background map (Art_AvalonB1Nem); uploaded at the next V-blank. */
+ * background map (Map_AvalonB1Bg); uploaded at the next V-blank. */
 #include "xmen2.h"
 
 /* The 16 colours of a map blob (MapHeader.palette is their offset from the header). MPW: the
@@ -19,7 +19,7 @@ void AvalonB1_InitIntroPalette(void)
 	register short i;
 
 	p = g_PalBase;
-	map = CODEPTR(Art_AvalonB1Nem);
+	map = CODEPTR(Map_AvalonB1Bg);
 	*p++ = 0;
 	*p++ = 0;
 	*p++ = 0;

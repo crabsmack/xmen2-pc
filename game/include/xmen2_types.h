@@ -867,6 +867,25 @@ typedef struct DebrisPool {
 	s16 bounceLimit;		/* +$0A (bounces - 1) * 3 (Debris_SetBounceLimit) */
 } DebrisPool;
 
+/* A bit of BaniMazaA2's scene debris (8 bytes; BaniMazaA2_UpdateDebrisGroup): one 8x8 sprite
+   falling with gravity. */
+typedef struct DebrisBit {
+	s16 x;				/* +$00 map pixels */
+	s16 y;				/* +$02 */
+	s16 attr;			/* +$04 sprite attribute word (tile, palette...) */
+	s8 dx;				/* +$06 pixels per frame */
+	s8 dy;				/* +$07 +1 per frame (gravity) */
+} DebrisBit;
+CHECK_SIZE(DebrisBit, 8);
+/* A group of BaniMazaA2's scene debris ($86 bytes; four in BaniMazaA2_RunScene's frame,
+   g_SceneVar3B14). Nothing in the game starts one (the timer stays 0). */
+typedef struct DebrisGroup {
+	DebrisBit bit[16];		/* +$00 (12 move and are drawn; 16 move again in two-player step mode) */
+	u8 unk_80[4];			/* +$80 */
+	s16 timer;			/* +$84 frames left: > 0 moving (BaniMazaA2_FrameHook tests group 0's) */
+} DebrisGroup;
+CHECK_SIZE(DebrisGroup, 0x86);
+
 /* BIGACOLYTE: descriptor $011938, parent BIONPC, $AA bytes (GetSize $0101CE). A boss: it waits
    behind a wall for the players, grows out of it as a scaled picture (bursting the wall into
    debris), then glides between three heights shooting BIGACBULLETs (its AI scripts
@@ -1144,35 +1163,59 @@ CHECK_OFFSET(BroodBoss, wall, 0xA2);
 typedef struct BroodBossArm { BROODBOSSARM_FIELDS } BroodBossArm;
 CHECK_SIZE(BroodBossArm, 0x90);
 
-/* BROODBOSSDAMAGE: descriptor $088CF0, parent BROODBOSSPARTS, $96 bytes (GetSize $0862CA) */
+/* A rectangle that hurts a player touching it (8 bytes; BROODBOSSDAMAGE rects): a type-$16 floor
+   segment's endpoints, from the boss part's position (pixels). */
+typedef struct DamageRect {
+	s16 left;			/* +$00 the segment's x1 */
+	s16 top;			/* +$02 y1 */
+	s16 right;			/* +$04 x2 */
+	s16 bottom;			/* +$06 y2 */
+} DamageRect;
+CHECK_SIZE(DamageRect, 8);
+
+/* BROODBOSSDAMAGE: descriptor $088CF0, parent BROODBOSSPARTS, $96 bytes (GetSize $0862CA). The
+   boss arena's hurting floor: at Init it takes over the map's type-$16 floor segments as
+   rectangles that move with the boss offsets, and every player touching one takes damage. */
 #define BROODBOSSDAMAGE_FIELDS \
 	BROODBOSSPARTS_FIELDS \
-	u8 unk_90[0x6];		/* +$90 */
+	s16 rectCount;			/* +$90 rectangles */ \
+	PTR(DamageRect) rects;		/* +$92 rectCount rectangles (Mem_StackAlloc); 0 none */
 typedef struct BroodBossDamage { BROODBOSSDAMAGE_FIELDS } BroodBossDamage;
 CHECK_SIZE(BroodBossDamage, 0x96);
+CHECK_OFFSET(BroodBossDamage, rects, 0x92);
 
 /* ICANDY: descriptor $1188AC, root, $42 bytes (GetSize $118426) */
 #define ICANDY_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x10];		/* +$04 */ \
+	u8 unk_04[0x4];			/* +$04 */ \
+	s32 x;				/* +$08 x, 8 fraction bits (ICandy_Init; ICandy_Update adds vx) */ \
+	s32 y;				/* +$0C y, 8 fraction bits */ \
+	u8 unk_10[0x4];			/* +$10 */ \
 	s16 vx;				/* +$14 velocity x (ICandy_Init, ICandy_Update) */ \
 	s16 vy;				/* +$16 velocity y */ \
 	s16 ax;				/* +$18 acceleration x */ \
 	s16 ay;				/* +$1A acceleration y */ \
-	u8 unk_1C;			/* +$1C */ \
+	s8 sprFlags;			/* +$1C its sprite instance (+$1C, Spr_Draw in ICandy_Draw): flags, bits 0-1 palette (ICandy_SetSpriteDef), 2 priority, 5 frame uploaded */ \
 	u8 frame;			/* +$1D frame shown (ICandy_SetAnim: from the animation step) */ \
-	u8 unk_1E[0x24];		/* +$1E */
+	u8 unk_1E[0x4];			/* +$1E */ \
+	s16 tileBase;			/* +$22 first VRAM tile of its sprite definition (ICandy_SetSpriteDef) */ \
+	u8 unk_24[0x1E];		/* +$24 */
 typedef struct ICandy { ICANDY_FIELDS } ICandy;
 CHECK_SIZE(ICandy, 0x42);
+CHECK_OFFSET(ICandy, x, 0x08);
+CHECK_OFFSET(ICandy, tileBase, 0x22);
 
-/* BROODBOSSWALL: descriptor $088C40, parent ICANDY, $48 bytes (GetSize $085FCE) */
+/* BROODBOSSWALL: descriptor $088C40, parent ICANDY, $48 bytes (GetSize $085FCE). The wall the boss
+   pushes in from the left (BroodBoss_ActBringWall) and smashes: a column of 32-px sprites with a
+   solid floor-segment block, blown up from the bottom when smashed. */
 #define BROODBOSSWALL_FIELDS \
 	ICANDY_FIELDS \
-	u8 unk_42;			/* +$42 */ \
+	s8 height;			/* +$42 32-px sprites drawn upward from y (6: BroodBossWall_Init, Draw) */ \
 	u8 smashed;			/* +$43 1: smashed by the boss (BroodBoss_StateHitWall), BroodBossWall_Update blows it up */ \
-	u8 unk_44[0x4];			/* +$44 */
+	PTR(Seg) seg;			/* +$44 its solid block (Seg_Create type $14: x - 8..x + $10, y - $C0..y), moved with vx; 0 none */
 typedef struct BroodBossWall { BROODBOSSWALL_FIELDS } BroodBossWall;
 CHECK_SIZE(BroodBossWall, 0x48);
+CHECK_OFFSET(BroodBossWall, seg, 0x44);
 
 /* A BROODCLAW motion function (+$92): func(claw). */
 FNTYPE(ClawMotionFn, void);
@@ -1535,10 +1578,19 @@ CHECK_SIZE(DropRocket, 0x96);
 typedef struct Elevator { ELEVATOR_FIELDS } Elevator;
 CHECK_SIZE(Elevator, 0x14);
 
-/* EVILBEAM: descriptor $099DAE, root, $2A bytes (GetSize $097FD0) */
+/* EVILBEAM: descriptor $099DAE, root, $2A bytes (GetSize $097FD0). A beam effect built in caller
+   memory (EvilBeam_Construct) that plays an animation and hurts the players at its point while it
+   runs; nothing creates one (XClone_MakerBufSize only asks its size). */
 #define EVILBEAM_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x26];		/* +$04 */
+	s16 x;				/* +$04 position, pixels (EvilBeam_Construct) */ \
+	s16 y;				/* +$06 */ \
+	PTR(u8) anim;			/* +$08 animation script, an AnimScript read as bytes (as LegSprite); 0 = none: EvilBeam_Update destroys it */ \
+	s16 animTime;			/* +$0C frames into the step (+1 per frame, 2 in two-player stepping) */ \
+	s16 animStep;			/* +$0E animation step */ \
+	SprInst spr;			/* +$10 its sprite (flags bit 4: h-flip, EvilBeam_Construct) */ \
+	PTR(Timer) timer;		/* +$24 its Timer, running Update (class slot +$0E) every frame */ \
+	s16 drawNode;			/* +$28 its draw-list node (Draw, class slot +$12) */
 typedef struct EvilBeam { EVILBEAM_FIELDS } EvilBeam;
 CHECK_SIZE(EvilBeam, 0x2A);
 
@@ -1588,7 +1640,10 @@ CHECK_OFFSET(XClone, shotsLeft, 0xB9);
 /* EVILBEAST: descriptor $099D1E, parent XCLONE, $C0 bytes (GetSize $097DB4) */
 #define EVILBEAST_FIELDS \
 	XCLONE_FIELDS \
-	u8 unk_BA[0x6];		/* +$BA */
+	s16 waveLeftX;			/* +$BA left stomp shockwave x, pixels (EvilBeast_ActThrow: x - 20; Beast_ShockwaveStep) */ \
+	s16 waveRightX;			/* +$BC right shockwave x (x + 20) */ \
+	u8 waves;			/* +$BE bit 0 the left wave runs, 1 the right one (EvilBeast_StateThrow; cleared when it ends) */ \
+	u8 unk_BF;			/* +$BF */
 typedef struct EvilBeast { EVILBEAST_FIELDS } EvilBeast;
 CHECK_SIZE(EvilBeast, 0xC0);
 
@@ -1614,7 +1669,7 @@ CHECK_SIZE(EvilGambit, 0xBA);
 /* EVILMAGNETO: descriptor $099EF6, parent XCLONE, $BC bytes (GetSize $0983E8) */
 #define EVILMAGNETO_FIELDS \
 	XCLONE_FIELDS \
-	u8 unk_BA[0x2];		/* +$BA */
+	s16 shotDir;			/* +$BA globe direction (Magneto_SpawnShot): 7 right, 2 left (EvilMagneto_ActBlast); -1 at Init */
 typedef struct EvilMagneto { EVILMAGNETO_FIELDS } EvilMagneto;
 CHECK_SIZE(EvilMagneto, 0xBC);
 
@@ -2030,12 +2085,24 @@ CHECK_SIZE(LaserCannon, 0xA4);
 typedef struct Launcher { LAUNCHER_FIELDS } Launcher;
 CHECK_SIZE(Launcher, 0xB8);
 
-/* LIGHTBEAM: descriptor $07773C, parent ACTOR, $A0 bytes (GetSize $0777B4) */
+/* LIGHTBEAM: descriptor $07773C, parent ACTOR, $A0 bytes (GetSize $0777B4). CloneA1's light beams: a
+   row of beam columns written straight into the sprite table, following the plane-B scroll of
+   their top line (LightBeam_Draw); no update (LightBeam_Activate frees its timer). */
 #define LIGHTBEAM_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x14];		/* +$8C */
+	s16 sprDef;			/* +$8C sprite-definition slot (g_LightBeamSprDef: LightBeam_ClassInit) */ \
+	u8 unk_8E[2];			/* +$8E */ \
+	s16 kind;			/* +$90 placement param 0: 0 three 16x32 sprites high, 1 an 8x24 over an 8x32, 2 one 8x32 */ \
+	s16 spacing;			/* +$92 x step between columns, 32-px units (param 1; 0: 4) */ \
+	s16 count;			/* +$94 columns (param 2; 0: 4) */ \
+	s16 xOff;			/* +$96 x of the first column from its top line's plane-B scroll ($3B kind 0, else $2E) */ \
+	s16 topY;			/* +$98 top y, pixels: the heights of CloneA1's parallax bands 0..kind, - 1 */ \
+	s16 unk_9A;			/* +$9A -1 at Init, not read */ \
+	s16 unk_9C;			/* +$9C -1 at Init, not read */ \
+	s16 unk_9E;			/* +$9E -1 at Init, not read */
 typedef struct LightBeam { LIGHTBEAM_FIELDS } LightBeam;
 CHECK_SIZE(LightBeam, 0xA0);
+CHECK_OFFSET(LightBeam, kind, 0x90);
 
 /* LINESEGKILLER: descriptor $1389CA, parent ACTOR, $92 bytes (GetSize $13884A) */
 #define LINESEGKILLER_FIELDS \

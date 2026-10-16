@@ -1,7 +1,7 @@
 /* AvalonB1_RunScene - the scene "AvalonB1 Exterior" (Scene_RegisterAll): load the level, place
  * the players, run the camera intro and the level until it ends.
  *
- * Level_Load: FG map and tiles Art_AvalonA2Nem, BG map and tiles Art_AvalonB1Nem, FG floor
+ * Level_Load: FG map and tiles Art_AvalonA2Nem, BG map and tiles Map_AvalonB1Bg, FG floor
  * segments Art_AvalonB1Nem2, no BG segments, flags 1 0 1 0, class-init argument $F, music $5C,
  * grid shifts 8 and 8, class list Art_AvalonB1Nem3. Then the HUD on, plane B fixed (scroll
  * factors 0), the players at their start (Players_PlaceAtStart), the tile hooks, the frame hook
@@ -31,8 +31,8 @@ void AvalonB1_RunScene(void)
 #endif
 
 	g_AvalonB1SavedPal = pal;
-	Level_Load(CODEPTR(Art_AvalonA2Nem), CODEPTR(Art_AvalonA2Nem), CODEPTR(Art_AvalonB1Nem),
-		CODEPTR(Art_AvalonB1Nem), CODEPTR(Art_AvalonB1Nem2), 0, 1, 0, 1, 0, 0xF, 0x5C, 8, 8, 0,
+	Level_Load(CODEPTR(Art_AvalonA2Nem), CODEPTR(Art_AvalonA2Nem), CODEPTR(Map_AvalonB1Bg),
+		CODEPTR(Map_AvalonB1Bg), CODEPTR(Art_AvalonB1Nem2), 0, 1, 0, 1, 0, 0xF, 0x5C, 8, 8, 0,
 		CODEPTR(Art_AvalonB1Nem3));
 	g_HudOn = 1;
 	g_BgScrollFactorX = 0;

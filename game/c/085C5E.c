@@ -13,7 +13,7 @@ LittleLeg *LittleLeg_New(long unused, short x, short y)
 {
 	register LittleLeg *self;
 
-	if (self = Mem_StackAlloc(sizeof(LittleLeg), STR(Str_Empty_085D4A, ""))) {
+	if (self = (LittleLeg *)Mem_StackAlloc(sizeof(LittleLeg), STR(Str_Empty_085D4A, ""))) {
 		Mem_Set(self, 0, sizeof(LittleLeg));
 		self->cls = CLASS(Tbl_LittleLeg_vtable);
 		self->px = self->x = x;

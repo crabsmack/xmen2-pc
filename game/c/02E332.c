@@ -5,9 +5,8 @@
  * step of its start point (px, py), x and y each. The frame shown is put back after.
  *
  * self: the blast.
- * MPW: not matched by 2 bytes: the ROM reads the frame shown into d0 and zero-extends it into
- * d1 for the long local (a char temporary); every cast tried folds into one moveq/move.b.
- * Verified by shadow tests. */
+ * MPW: the frame shown is saved and put back with a "+ 0" (an offset that was 0, probably from a
+ * macro): it is what gives the ROM's byte moves through d0 for the long local. */
 #include "xmen2.h"
 
 void ExodusBlast_Draw(register ExodusBlast *self)
@@ -26,7 +25,7 @@ void ExodusBlast_Draw(register ExodusBlast *self)
 			sy = (self->y >> 8) - g_CameraY;
 			ox = self->px - g_CameraX;
 			oy = self->py - g_CameraY;
-			frame = self->spr.frame;
+			frame = self->spr.frame + 0;
 			for (i = 0; i < 4; i++) {
 				sx += self->trailDx;
 				sy += self->trailDy;
@@ -38,7 +37,7 @@ void ExodusBlast_Draw(register ExodusBlast *self)
 				self->spr.frame += frame;
 				Spr_Draw(&self->spr, sx, sy);
 			}
-			self->spr.frame = frame;
+			self->spr.frame = frame + 0;
 		}
 	}
 }
