@@ -4,6 +4,7 @@
  * hurt state Boulder_StateShatter, the floor it will land on (Boulder_FindFloorBelow), rolling
  * $150 left or right at random, and its first state by placement param 0: 0 falling
  * (Boulder_StateStartRoll), 1 carried (Boulder_StateStart), other values none; countdown 75.
+ * With no placement (Boulder_Spawn, pl 0) param 0 is the ROM word at 6: none; the caller sets it.
  *
  * self: the boulder.  x, y: position (8 fraction bits).  pl: its placement entry. */
 #include "xmen2.h"
@@ -41,6 +42,10 @@ hurt:	/* (here MPW C pops all the arguments, as the ROM does: Exodus_Init) */
 		self->vx = 0x150;
 	else
 		self->vx = -0x150;
+#ifndef XMEN2_MPW
+	if (!pl)	/* Boulder_Spawn's boulder: the original reads the vector table ($43AE: no case) */
+		pl = (Placement *)Vectors;
+#endif
 	switch (pl->param[0]) {
 	case 0:
 		self->state = self->defaultState = Boulder_StateStartRoll;

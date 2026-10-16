@@ -229,6 +229,22 @@ def call(f: dict, name: str) -> str:
     return f"{name}(" + ", ".join(f"a{i}" for i in range(len(f["types"]))) + ")"
 
 
+# Structs that are a register set, not memory: a `conv` adapter takes a pointer to one as the
+# registers to enter with (game/runtime/asm_conv.cpp).
+REG_IMAGES = {"ScalerRegs"}
+
+SCALAR_PTR = re.compile(r"((?:(?:signed|unsigned)\s+)?(?:short|long|int)(?:\s+int)?)\s*\*")
+
+
+def slot_arg(t: str, i: int) -> str:
+    """Argument i of a call from generated code, as the C function's parameter type t. A host
+    scalar pointer gets a host copy (host_scalar); the temporary lives until the call returns."""
+    m = SCALAR_PTR.fullmatch(t.strip())
+    if m:
+        return f"host_scalar<{m.group(1)}>(xm_slot_arg({i})).p()"
+    return f"from_slot<{t}>(xm_slot_arg({i}))"
+
+
 def norm_type(t: str) -> str:
     return re.sub(r"\s*\*\s*", "*", re.sub(r"\s+", " ", t.strip()))
 
@@ -333,6 +349,22 @@ def generate(out: Path, mode: str) -> None:
          '    if constexpr (std::is_pointer<T>::value) return 4;',
          '    else return (int)sizeof(T) > 4 ? 4 : (int)sizeof(T);',
          '}',
+         '/* A plain `short *`, `long *` or `int *` parameter points at a host value in the C (a caller\'s local),',
+         '   but from generated code it is a 68000 address of a big-endian one. The C gets a host copy,',
+         '   written back when the call returns: the reverse of call68\'s Scratch. */',
+         'template <class T> struct host_scalar {',
+         '    uint32_t a; T v;',
+         '    explicit host_scalar(uint32_t s) : a(s), v(0)',
+         '    {',
+         '        if (s) v = (T)(sizeof(T) == 2 ? (uint32_t)m68k_read16(s) : m68k_read32(s));',
+         '    }',
+         '    ~host_scalar()',
+         '    {',
+         '        if (!a) return;',
+         '        if (sizeof(T) == 2) m68k_write16(a, (uint16_t)v); else m68k_write32(a, (uint32_t)v);',
+         '    }',
+         '    T *p() { return a ? &v : nullptr; }',
+         '};',
          '']
     stubs, wraps = [], []
     for f in protos:
@@ -356,10 +388,15 @@ def generate(out: Path, mode: str) -> None:
             L.append("{")
             if mode == "verify":
                 # a shadow test runs the C of ONE function; what it calls runs as generated code,
-                # except with a host local passed through a `void *` (size unknown: it can't be
-                # copied to the 68000 stack): generated code can't reach it, the callee's C can
+                # except with a pointer to a host local: generated code can't reach it, and a copy
+                # on the 68000 stack has no length to go by (a `void *`; an array such as
+                # Obj_CollideSegs' contact list, which Seg_GatherNearObj fills past its first
+                # element), so the callee's C runs. Register out-parameters (&dN) go by register,
+                # and so does a register image (REG_IMAGES: Scaler_RowBlocks' adapter loads the
+                # host ScalerRegs into the registers, and they stay as the loop leaves them).
                 hostp = [f"(a{i} && !xm::in_game_memory((const void *)a{i}))" for i, t in enumerate(f["types"])
-                         if re.fullmatch(r"(const\s+)?void\s*\*", t.strip())]
+                         if t.strip().endswith("*") and "(" not in t and pointee(t) not in REG_IMAGES
+                         and not (f["regs"] is not None and f["regs"][i].startswith("&"))]
                 if hostp:
                     hc_call = f"hc_{f['name']}({argv})"
                     L.append(f"    if ({' || '.join(hostp)})")
@@ -398,7 +435,7 @@ def generate(out: Path, mode: str) -> None:
                 continue
             L.append(f"extern \"C\" void hcslot_{a:06X}(void)")
             L.append("{")
-            args = ", ".join(f"from_slot<{t}>(xm_slot_arg({i}))" for i, t in enumerate(f["types"]))
+            args = ", ".join(slot_arg(t, i) for i, t in enumerate(f["types"]))
             if mode == "verify":
                 L.append(f"    uint32_t saved; xm::fn_enter(0x{a:06X}u, &saved);")
             if f["regs"] is not None:

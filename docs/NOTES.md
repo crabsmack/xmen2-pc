@@ -234,6 +234,20 @@ Criteria: `xmen2disasm/docs/phases/P4-decomp.md`; check `uv run tools/phase.py 4
   A5Params +$10/+$14) were fragments too: now C (tag `asm conv vector`), their register saves
   and `rte` in an adapter (asm_conv.cpp) that pops SR and PC exactly as the generated rte does;
   `vector` also means no shadow test.
+- **Game-memory locals whose address is kept (2026-10-16)**: scenario-game-over and
+  scenario-continue (sync 5729) and fuzz-25200-s2 (24145) differed from stepped-gen in RAM only,
+  6 bytes: g_SceneVar3B28 / 3B2C and four objects held `$00FFC48C` / `$00FFC4CE` where the
+  original has `$00FFC43C` / `$00FFC47E`, the player select's two slots (BigSprites on the
+  stack; cursors and portraits keep pointers to them). The C placed them relative to its own A7,
+  but this C keeps no frames on the 68000 stack, so its A7 there was 0x50 higher than the
+  original's. The original's is fixed (only Game_Main -> Game_SceneLoop -> the scene's run ->
+  Cerebro_Run lead there; the TAS emulator's RAM has `$FFC43C` at every player select), so
+  PlayerSelect_Run's PC branch now puts its frame at a6 = $FFC4C0. The TAS never showed it: no
+  sync point falls inside its player select, and by the next one the variables hold other
+  scene values. A
+  function placing stack locals relative to A7 (Cerebro_PlayIntro and the seven others using
+  `xm::sp_reserve`) has the same gap if an address it hands out stays in RAM to a sync point;
+  none does in the corpus.
 
 ### verify (D4, shadow differential tests)
 
@@ -299,7 +313,30 @@ Additions (2026-10-15, the asm functions):
 - Two PC traps the shadow tests found: `(void)IO_DATA(1);` performs no read on PC (a void cast
   never calls the accessor's conversion; assign it), and an object without a sprite definition
   makes the 68000 read the vector table where the host would dereference null
-  (`(SprDef *)Vectors` under `#ifndef XMEN2_MPW`).
+  (`(SprDef *)Vectors` under `#ifndef XMEN2_MPW`). The same for an object made with no
+  placement: Boulder_Spawn's boulder (TUSK carries it) has `pl` 0, and Boulder_Init's
+  `pl->param[0]` is the ROM word at 6 on the 68000 (verify crashed in fuzz-21600-s1 at frame
+  ~23700; bisected to $05BF4A). No other Init that gets a null placement reads it.
+- **Two more bridge gaps (2026-10-16)**, both in calls between generated code and C:
+  (5) a plain `short *` / `long *` parameter (the C's host value, a caller's local) that arrives
+  from generated code points at a big-endian 68000 local, and the C wrote it in host order
+  (Magneto_ShotOrigin and its four siblings: "RAM FFC406: generated 00, C 63"). The slot entry
+  now gives the C a host copy and writes it back after the call (`host_scalar`, the reverse of
+  call68's Scratch). (6) A host array through a typed pointer: Obj_CollideSegs passes its
+  `SegContact list[30]` to Seg_GatherNearObj; call68 copied one element (8 bytes) to the 68000
+  stack, and the generated callee wrote the list's end marker past it, over Obj_CollideSegs' own
+  return address (synthetic case event_wall: "return to: generated 001F15B0, C 00010000", the
+  marker's flags word 1). The verify wrapper now runs the callee's C for any pointer to host
+  memory (gap 4 widened from `void *`). Two kinds of pointer still go by register: register
+  out-parameters (`&dN`) and a register image (bridge.py `REG_IMAGES`): Scaler_RowBlocks'
+  adapter loads the host ScalerRegs into the registers, and Scaler_BeginPass hands back the d7
+  the generated row loop leaves (with the C run instead: 293 synthetic-case mismatches in
+  Scaler_BeginPass / Scaler_Resume). The Nemesis/Enigma `conv` adapters pass their pointers as
+  68000 addresses, so for them a host pointer runs the C too (excluding all `conv` functions
+  stopped fuzz-01800-s1 at "xm::addr: host pointer ... is not in game memory").
+- A C bug the shadow test found: ApocBomb_Draw drew the shadow whether or not the bomb was on
+  screen; the ROM's off-screen tests of the bomb all branch to the end (fuzz-25200-s1, "RAM
+  FFE21D": a sprite slot holding the shadow's attribute where the original left the old one).
 
 ### MPW matching from the game repo
 
@@ -333,6 +370,12 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
   (which updates its parameter on the host) can never pass. Options: treat the callee's
   argument slots as dead stack like the area below A7 (a change to the comparison P4-decomp.md
   defines), or hand-written `conv` adapters that write the slots back.
+  The full corpus verify (2026-10-16) shows ten functions doing it: five byte-match, so D4 has
+  them anyway (AvalonB1_PalFadeStep, BanimazaDoor_DrawDebris, Apocalypse_Move, Cerebro_PrintText,
+  Collide_ObjVsList: MPW C writes a parameter it modifies back to its slot); the five it blocks
+  are the three Spr_EmitPre*, VDP_QueueDma (asm: a request split at a 64 KB boundary rewrites
+  the caller's `$4/$A/$E(a7)` slots, 7 of 117k calls) and Tile_RunHooksAtPoints (C, 4 bytes
+  short of a match). 26 functions in the ROM write a slot of their MPW frame.
 - (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
   and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
 - MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe

@@ -19,9 +19,13 @@
  * $700): present (flags $C000) with its class (cases PlayerSelect_Run_P1Beast .. _P1Magneto,
  * PlayerSelect_Run_P2Beast .. _P2Gambit), or none: no class, not present, character -1
  * (PlayerSelect_Run_SetP2, PlayerSelect_Run_P2None).
- * PC: the two slots are game memory (the cursors and portraits keep their addresses): placed on
- * the 68000 stack where the original's frame had them (-$84(a6) and -$42(a6), a6 = A7 at entry -
- * 4), the rest of the frame (2 bytes of locals, 6 saved registers) reserved below.
+ * PC: the two slots are game memory (the cursors and portraits keep their addresses, and so do
+ * g_SceneVar3B28 / 3B2C and the objects, which the trace compares): placed on the 68000 stack
+ * where the original's frame had them, -$84(a6) and -$42(a6). Its a6 is always $FFC4C0: the only
+ * way here is from the initial SSP $FFC518 through Game_Main (return address + frame: 16 bytes),
+ * Game_SceneLoop (32), the scene's run (4), Cerebro_Run (28) and the call (4), and this C keeps
+ * none of those frames on the 68000 stack. The rest of the frame (2 bytes of locals, 6 saved
+ * registers) is reserved below.
  *
  * Inline here, separate blocks in the disassembly: PlayerSelect_Run_P1Cyclops, PlayerSelect_Run_P1Nightcrawler, PlayerSelect_Run_P1Psylocke, PlayerSelect_Run_P1Wolverine, PlayerSelect_Run_P1Magneto, PlayerSelect_Run_P2Cyclops, PlayerSelect_Run_P2Gambit.
  */
@@ -49,8 +53,16 @@ void PlayerSelect_Run(void)
 #define SLOT2	(&slot2)
 #else
 	unsigned long a7 = CPU_GetSP();
-	BigSprite *slot1 = AT68(BigSprite, xm::sp_reserve(4 + 0x84));
-	BigSprite *slot2 = slot1 + 1;
+	unsigned long sp = a7 & ((1L << 24) - 1);	/* the 68000's 24 address bits */
+	/* the original's a6: the initial SSP less the frames above this one (see the header) */
+	unsigned long fp = ((const u32 *)Vectors)[0] - (16 + 32 + 4 + 28 + 4) - 4;
+	BigSprite *slot1;
+	BigSprite *slot2;
+
+	if (sp < fp - 0x84)
+		xm::fatal("PlayerSelect_Run: A7 $%06lX is below the original's frame", sp);
+	slot1 = AT68(BigSprite, xm::sp_reserve(sp - (fp - 0x84)));
+	slot2 = slot1 + 1;
 #define SLOT1	slot1
 #define SLOT2	slot2
 #endif
