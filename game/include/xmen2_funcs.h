@@ -3399,14 +3399,14 @@ long Player_ClimbState(void *player);	/* $1F429E */
 long Player_ClimbStateNcWolv(void *player);	/* $1F42D0 */
 long Player_ClimbStateBeastPsy(void *player);	/* $1F4302 */
 char Player_CeilingEndInView(void *player);	/* $1F4334 */
-void EntryPoint(void);	/* $1F43AE fragment */
+void EntryPoint(void);	/* $1F43AE asm noreturn */
 void Boot_RegionCheck(void);	/* $1F44A8 fragment */
 void Boot_DrawText(char *s, char col, char row);	/* $1F45AE asm regs(a0,d0,d1,a4=$C00000,a5=$C00004) clobbers(d3) */
 void Boot_StartApp(void);	/* $1F483E fragment */
 void Irq_Enable(void);	/* $1F4854 asm */
 void Irq_Disable(void);	/* $1F485A asm */
-void Irq_VBlankVector(void);	/* $1F4860 fragment */
-void Irq_HBlankVector(void);	/* $1F4870 fragment */
+void Irq_VBlankVector(void);	/* $1F4860 asm conv vector */
+void Irq_HBlankVector(void);	/* $1F4870 asm conv vector */
 void *unk_Sys_1F4890(void);	/* $1F4890 asm regs()->a0 */
 void Mem_Copy(void *dst, void *src, long n);	/* $1F48AA asm */
 void *Mem_Set(void *dst, long c, long n);	/* $1F4900 asm */

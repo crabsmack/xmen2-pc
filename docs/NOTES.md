@@ -117,6 +117,12 @@ compares the recompiler's static cost of every X-Men 2 instruction with gpgx's b
   consecutive values with fixed master-clock lengths; H32: 2).
 - **Whole TAS (57,465 frames) and the idle run (36,000) equal the reference on every column,
   Z80 RAM included; 0 dispatch misses, 0 interpreted instructions, ~745 fps uncapped.**
+- Phase 4, whole game in C (stepped vs stepped-gen), TAS sync 265 (TAS frame 437, SiberiaB1):
+  16 ice-shard records mirrored (each x, y offset the negative of the reference's) ->
+  SiberiaB1_SpawnDebris drew `Rand_Next() & m - Rand_Next() & m` in one expression; MSVC drew
+  the right one first, MPW the left -> the PC branch draws the left into a variable first (as
+  Debris_Spawn already did). Scan for the pattern: only one other statement draws twice, a sum
+  of equally masked draws (order-free).
 
 ## Phase 4: decompilation (hand-written C)
 
@@ -209,6 +215,25 @@ Criteria: `xmen2disasm/docs/phases/P4-decomp.md`; check `uv run tools/phase.py 4
   d0 out, RTS); in the stepped build it IS `func_<ADDR>` and the recompiler leaves the
   function out (`--skip`).
 - `game/runtime/handc_rt.cpp` is the only hand-written code that touches registers.
+- **Whole game in C (D6, 2026-10-16)**: with every function in C, the stepped build's skip list
+  also takes the fragments (switch cases, blocks, AI-script `jmp` tables) whose containing
+  function is C, so it links no generated game code (decision 7). The C reaches a `jmp` table
+  only by calling into it (an AI script's step), so `xm::call_slots` follows `jmp d16(a5)` /
+  `jmp abs.l` to the target before calling (a jump changes nothing but the PC). The function
+  table also maps `hc_<Name>`: inside its own file a function's name is `hc_<Name>`
+  (`-D<Name>=hc_<Name>`), and a function storing its own address (a state that re-arms itself,
+  e.g. CoreElevator_WaitAtBottom) takes that one; `xm::fn_value` stopped the stepped TAS run at
+  sync point 21 on such an address (not in the table).
+- **The boot code in C**: EntryPoint (the reset vector) and its two blocks, Boot_RegionCheck and
+  Boot_StartApp, were tagged fragments with no C parent, so a hand-C-only build had no code to
+  start from. `game/c/1F43AE.c` is EntryPoint (tag `asm noreturn`) with both blocks inline:
+  the ICD_BLK4 set-up from Boot_SetupValues, the region check and lockout screen, then
+  unk_Boot_005458 and Game_Main. A `noreturn` function gets no shadow test (verify runs a call to
+  its return; bridge.py leaves it out of the verify table): the whole-game traces check it. The
+  two interrupt vectors (Irq_VBlankVector $1F4860, Irq_HBlankVector $1F4870: call the hook at
+  A5Params +$10/+$14) were fragments too: now C (tag `asm conv vector`), their register saves
+  and `rte` in an adapter (asm_conv.cpp) that pops SR and PC exactly as the generated rte does;
+  `vector` also means no shadow test.
 
 ### verify (D4, shadow differential tests)
 
@@ -281,6 +306,10 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
   has paths for g_HalfSpeed ($FFC946) and g_SegFlag38C4 ($FFC93C), which no code in the ROM sets
   (they are only cleared); `game/verify/1F4C56.syn` sets them to cover those paths. Whether such
   cases count is the same question.
+- **A function that never returns (for the user, D4):** EntryPoint ($1F43AE, the reset vector,
+  hand-written 68000) can't be shadow-tested (verify compares a call when it returns) and can't
+  byte-match. What checks it is the whole-game comparison of D2/D6 from reset (RAM, VRAM, CRAM,
+  VSRAM at every sync point). Options: count that as its verification, or leave it short of done.
 - **A callee's own argument slots (for the user, D4 `verify`):** Spr_EmitPre, Spr_EmitPreClip and
   Spr_EmitPreLinked (hand-written 68000 in MPW frames) store a computed value into their own
   argument slot (`move.w d7,$16(a6)`), MPW's storage for a by-value parameter the caller pops

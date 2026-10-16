@@ -415,6 +415,9 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define IO_DATA2       HW8(0xA10005)    /* pad port 2 data */
 #define IO_CTRL1       HW8(0xA10009)    /* pad port 1 control */
 #define IO_CTRL2       HW8(0xA1000B)    /* pad port 2 control */
+#define IO_CTRL12_L    HW32(0xA10008)   /* control ports 1 and 2 as one long (the boot's soft-reset test) */
+#define IO_CTRL12_W    HW16(0xA10008)   /* the same as a word (Boot_StartApp's cold-start test) */
+#define IO_CTRL3_W     HW16(0xA1000C)   /* expansion port control (the boot's soft-reset test) */
 #define IO_DATA(n)     HW8(0xA10003 + 2 * (n))   /* pad port n (0, 1) data */
 #define IO_CTRL(n)     HW8(0xA10009 + 2 * (n))   /* pad port n (0, 1) control */
 #define Z80_BUSREQ     HW16(0xA11100)   /* Z80 bus request */

@@ -393,3 +393,32 @@ long conv_call_1FC8FE(ScalerRegs *r, short at)
     scaler_regs_get(r);
     return (long)(int32_t)g_cpu.D[0];
 }
+
+/* ---- $1F4860 Irq_VBlankVector / $1F4870 Irq_HBlankVector --------------------------------
+   The level-6 / level-4 interrupt vectors, entered by the interrupt (SR and PC on the stack):
+     movem.l d0-d2/a0-a1,-(a7) / movea.l ($210 or $214).w,a0 / jsr (a0) / movem.l (a7)+,... / rte
+   C: void Irq_VBlankVector(void) / Irq_HBlankVector(void), the call of the hook. The rte is the
+   generated code's: SR and PC popped, an interrupt check, g_rte_pending. Nothing calls a vector. */
+static void irq_vector(void (*c)(void))
+{
+    push32(g_cpu.A[1]);
+    push32(g_cpu.A[0]);
+    push32(g_cpu.D[2]);
+    push32(g_cpu.D[1]);
+    push32(g_cpu.D[0]);
+    c();
+    g_cpu.D[0] = pop32();
+    g_cpu.D[1] = pop32();
+    g_cpu.D[2] = pop32();
+    g_cpu.A[0] = pop32();
+    g_cpu.A[1] = pop32();
+    g_cpu.SR = pop16();
+    g_cpu.PC = pop32();
+    XSR();
+    g_rte_pending = 1;
+}
+
+void conv_slot_1F4860(void (*c)(void)) { irq_vector(c); }
+void conv_slot_1F4870(void (*c)(void)) { irq_vector(c); }
+void conv_call_1F4860(void) { xm::fatal("Irq_VBlankVector called from C: only an interrupt enters it"); }
+void conv_call_1F4870(void) { xm::fatal("Irq_HBlankVector called from C: only an interrupt enters it"); }

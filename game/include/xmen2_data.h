@@ -1149,6 +1149,10 @@ extern void Art_CyclopsSpr();
 extern void Art_CyclopsBeamDiagSpr();
 extern void Art_CyclopsBeamLevelSpr();
 extern void Art_CyclopsBeamVertSpr();
+extern void A5Params();
+extern void Header_Regions();
+extern void Boot_SetupValues();
+extern void RegionCheck_Data();
 extern void Tbl_RegionCodePairs();
 extern void Str_RegionMsgDeveloped();
 extern void Str_RegionMsgSystemsPos();
@@ -2340,6 +2344,10 @@ extern void Snd_Z80DriverEnd();
 #define Art_CyclopsBeamDiagSpr (xm::rom(0x1EDDAC))
 #define Art_CyclopsBeamLevelSpr (xm::rom(0x1EEB1C))
 #define Art_CyclopsBeamVertSpr (xm::rom(0x1EF774))
+#define A5Params (xm::rom(0x000200))
+#define Header_Regions (xm::rom(0x0001F0))
+#define Boot_SetupValues (xm::rom(0x1F443C))
+#define RegionCheck_Data (xm::rom(0x1F45E4))
 #define Tbl_RegionCodePairs (xm::rom(0x1F45E8))
 #define Str_RegionMsgDeveloped (xm::rom(0x1F45FC))
 #define Str_RegionMsgSystemsPos (xm::rom(0x1F4619))

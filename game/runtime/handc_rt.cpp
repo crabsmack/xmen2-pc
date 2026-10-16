@@ -39,8 +39,27 @@ namespace xm {
    callee hands it back in g_xrts, which proves the call returned to us. */
 static const uint32_t RET_FROM_C = 0xF00001u;
 
+/* A call into a jump: an AI-script step table's `jmp d16(a5)` (A5 is always $200) or a jump-table
+   entry's `jmp abs.l`. A jump changes nothing but the PC, so the call is a call of its target;
+   the hand-C build has no generated code for those tables (bridge.py: fragments go with their
+   parent). */
+static uint32_t through_jumps(uint32_t a)
+{
+    for (int i = 0; i < 4; i++) {
+        uint16_t op = m68k_read16(a);
+        if (op == 0x4EED)
+            a = (0x200u + (uint32_t)(int32_t)(int16_t)m68k_read16(a + 2)) & 0xFFFFFFu;
+        else if (op == 0x4EF9)
+            a = m68k_read32(a + 2) & 0xFFFFFFu;
+        else
+            break;
+    }
+    return a;
+}
+
 uint32_t call_slots(uint32_t a, const uint32_t *slots, int n)
 {
+    a = through_jumps(a & 0xFFFFFFu);
     for (int i = n - 1; i >= 0; i--) {
         g_cpu.A[7] -= 4;
         m68k_write32(g_cpu.A[7], slots[i]);
