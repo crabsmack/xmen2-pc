@@ -281,6 +281,20 @@ static void xmen2_on_frame_post(uint64_t frame)
             crc32_bytes(g_machine.bus.z80_ram, sizeof g_machine.bus.z80_ram));
 }
 
+#ifdef XMEN2_STEPPED
+/* The two-player half-rate waits (Level_FrameLoop $1FA6C0 and PlayerSelect_Run $065BD8:
+   `tst.b g_FrameTick / beq` on itself) spin until the V-int handler sets g_FrameTick, with no
+   sync point before them. A timed run gets that V-int mid-frame; the frame-synchronous runner
+   only at sync points, so it would spin for ever: it takes the V-int at the wait (game.toml
+   game_hook sites here; the hand C's IRQ_WAIT() is the same call). */
+#define XMEN2_FRAME_TICK 0x00FFC7F8u   /* g_FrameTick */
+static int xmen2_instruction_hook(uint32_t pc)
+{
+    if (m68k_read8(XMEN2_FRAME_TICK) == 0) x68k_wait_vint(pc);
+    return 0;
+}
+#endif
+
 const GameSpec g_game_spec = {
     .display_name           = "X-Men 2: Clone Wars",
     .short_name             = "XMEN2",
@@ -306,6 +320,7 @@ const GameSpec g_game_spec = {
     .on_sync                = xmen2_on_sync,
 #ifdef XMEN2_STEPPED
     .stepped                = 1,
+    .instruction_hook       = xmen2_instruction_hook,
 #endif
 #ifdef XMEN2_VERIFY
     .on_entry               = xmen2_verify_entry,

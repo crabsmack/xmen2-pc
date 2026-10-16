@@ -1,6 +1,6 @@
 /* Failure_RunScene - the scene 'CerebroScreen Failure' (game over): the Cerebro screen shows the
  * failure text (Str_FailureText, no intro, no player select); then the screen and the whole
- * plane are cleared, every colour black, the "Game Over" art (Art_FailureNem2, Nemesis) loaded
+ * plane are cleared, every colour black, the "Game Over" art (Art_GameOver, Nemesis) loaded
  * at the free VRAM tiles with palette line 2 = Pal_SceneDefaultLine1, and its 14x2 tilemap
  * (Art_FailureNem, tiles offset by the art's first tile, palette line 2) written at VRAM $059A;
  * the palette fades in (Tbl_FadeBlack), stays $4B0 frames (20 s) or until a button (A, B, C,
@@ -48,7 +48,7 @@ void Failure_RunScene(void)
 		*p = 0;
 	g_PalBaseDirty = 1;
 	VDP_WaitVBlank();
-	Art_LoadNemToVram(CODEPTR(Art_FailureNem2), g_VramTileCursor);
+	Art_LoadNemToVram(CODEPTR(Art_GameOver), g_VramTileCursor);
 	src = (s16 *)CODEPTR(Pal_SceneDefaultLine1);
 	dst = &g_PalBase[0x20];
 	for (j = 0; j < 16; j++)

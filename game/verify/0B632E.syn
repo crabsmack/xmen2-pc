@@ -1,0 +1,65 @@
+# SavageA4_CamUpdate: the corpus only has player 1 alone in the Chamber (and the focus on its
+# near side). The cases set the players (player 1 $FFEAA8, player 2 $FFE9B8: flags +4, x +8,
+# y +$C), g_PlayersAlive ($FFC920) and the focus (g_SceneVar3B20, $FFC6E0); camFlags (arg0+$4A)
+# cleared so both axes follow.
+
+# two players, player 1 left of and above player 2: MIN/MAX take player 1 for the low ends
+case both_p1_low
+b $FFC920 = 2
+w arg0+$4A = 0
+w $FFEAAC = $8000
+l $FFEAB0 = $C000
+l $FFEAB4 = $10000
+w $FFE9BC = $8000
+l $FFE9C0 = $14000
+l $FFE9C4 = $14000
+
+# two players the other way round: MIN/MAX take player 2 for the low ends
+case both_p2_low
+b $FFC920 = 2
+w arg0+$4A = 0
+w $FFEAAC = $8000
+l $FFEAB0 = $14000
+l $FFEAB4 = $14000
+w $FFE9BC = $8000
+l $FFE9C0 = $C000
+l $FFE9C4 = $10000
+
+# player 2 alone (player 1 not alive)
+case p2_only
+b $FFC920 = 1
+w arg0+$4A = 0
+w $FFEAAC = 0
+w $FFE9BC = $8000
+l $FFE9C0 = $12000
+l $FFE9C4 = $11000
+
+# nobody alive, a focus (player 2's record, x 300, y 250): the extent is the focus
+case focus_only
+b $FFC920 = 0
+w arg0+$4A = 0
+w $FFEAAC = 0
+w $FFE9BC = 0
+l $FFE9C0 = $12C00
+l $FFE9C4 = $FA00
+l $FFC6E0 = $FFFFE9B8
+
+# nobody alive, no focus: returns at once
+case nobody
+b $FFC920 = 0
+w $FFEAAC = 0
+w $FFE9BC = 0
+l $FFC6E0 = 0
+
+# player 1 alone at x 600, the focus (player 2's record, not alive) at x 300: the range is wider
+# than $E0 and the focus is on the left, so the camera centres $70 px inside the right end
+case wide_focus_left
+b $FFC920 = 1
+w arg0+$4A = 0
+w $FFEAAC = $8000
+l $FFEAB0 = $25800
+l $FFEAB4 = $10000
+w $FFE9BC = 0
+l $FFE9C0 = $12C00
+l $FFE9C4 = $10000
+l $FFC6E0 = $FFFFE9B8

@@ -213,6 +213,13 @@ typedef struct Placement {
 } Placement;
 CHECK_SIZE(Placement, 0x10);
 
+/* A level's class list (ROM, Tbl_<Scene>ClassList, passed to Level_Load and kept in g_ClassList):
+   its size, then the class descriptors a placement's classIndex selects (CloneA5_SpawnBoss). */
+typedef struct ClassList {
+	s16 size;			/* +$00 bytes, this word included ($52: 20 classes) */
+	PTR(Class) cls[1];		/* +$02 */
+} ClassList;
+
 /* A spawn record (14 bytes each at $FFC924, count $FFC928): built from the placement entries
    by Spawn_InitRecords through each class's InitSpawnRec (class slot +$0A; Actor_InitSpawnRec
    fills it). xmen2disasm NOTES "Override facts". */
@@ -294,6 +301,15 @@ typedef struct SceneEntry {
 	SceneFn run;			/* +$04 its function (AvalonB1_RunScene) */
 } SceneEntry;
 CHECK_SIZE(SceneEntry, 8);
+
+/* A sequence of a palette cycle table (6 bytes; Pal_CycleStep, the table ends with an offset of
+   -1): its colour words, how long each shows and the palette entry they go to. */
+typedef struct PalCycleSeq {
+	s32 colours;			/* +$00 offset of its colour words from the table (ended by -1) */
+	u8 delay;			/* +$04 frames per colour (CloneA5_FrameHook: the boss's health bar) */
+	u8 entry;			/* +$05 g_PalBase entry written */
+} PalCycleSeq;
+CHECK_SIZE(PalCycleSeq, 6);
 
 /* ACTOR: descriptor $1F49A6, root, $8C bytes (GetSize $15D92C). Every game object.
    Fields: xmen2disasm NOTES "Game object layout", "ACTOR object fields". */
@@ -579,7 +595,13 @@ CHECK_OFFSET(Barbarian, segGone, 0xC0);
 /* BARRIER: descriptor $0DCAAA, parent ACTOR, $98 bytes (GetSize $0DC5FE) */
 #define BARRIER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0xC];		/* +$8C */
+	s16 trigger;			/* +$8C placement param 0: 0 closes at once, else once the players have passed */ \
+	s16 height;			/* +$8E blocks of 32 px (placement param 1, 0: 4) */ \
+	s16 side;			/* +$90 side a player came level with it from: 1 right, -1 left, 0 none yet */ \
+	s16 bottom;			/* +$92 bottom y of the closed block (the placement's y) */ \
+	s16 top;			/* +$94 top y (bottom - height * 32) */ \
+	u8 closed;			/* +$96 closed (Barrier_Close): it despawns as a CLOSEDBARRIER */ \
+	u8 unk_97;			/* +$97 */
 typedef struct Barrier { BARRIER_FIELDS } Barrier;
 CHECK_SIZE(Barrier, 0x98);
 
@@ -1037,7 +1059,14 @@ CHECK_SIZE(BioSentinel, 0xA8);
 /* BLAST: descriptor $0DD0E8, parent ACTOR, $9E bytes (GetSize $0DCB20) */
 #define BLAST_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x12];		/* +$8C */
+	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags (bit 2 while it sticks in a wall: Blast_SetFlags) */ \
+	PTR(Actor) target;		/* +$90 the object it latched onto (Blast_Attack; 0 none) */ \
+	s16 switchNum;			/* +$94 switch number (placement param 0) */ \
+	s16 blastFlags;			/* +$96 bit 0 latched onto target */ \
+	s16 speed;			/* +$98 flight speed (placement param 1: its magnitude, 0: $100; negated by param 2) */ \
+	s16 zaps;			/* +$9A zaps left on the target (Blast_StateZap) */ \
+	u8 sticks;			/* +$9C sticks in the wall it hits (placement byte +$0F), else vanishes */ \
+	u8 unk_9D;			/* +$9D */
 typedef struct Blast { BLAST_FIELDS } Blast;
 CHECK_SIZE(Blast, 0x9E);
 
@@ -1091,17 +1120,27 @@ CHECK_SIZE(BoulderDebris, 0x14);
 typedef struct BoxInputActor { BOXINPUTACTOR_FIELDS } BoxInputActor;
 CHECK_SIZE(BoxInputActor, 0x90);
 
-/* BRAINBABYBIO: descriptor $0B7B1C, parent BABYBIO, $C0 bytes (GetSize $0B6740) */
+/* BRAINBABYBIO: descriptor $0B7B1C, parent BABYBIO, $C0 bytes (GetSize $0B6740). The first form
+   of the SavageA4 Chamber's enemy: a BABYBIO in the arena; at death it becomes a SAVAGEMEDIUMBIO
+   (BrainBabyBio_OnDeath). */
 #define BRAINBABYBIO_FIELDS \
 	BABYBIO_FIELDS \
-	u8 unk_BC[0x4];		/* +$BC */
+	s16 homePx;			/* +$BC home position in pixels (its start; BrainBabyBio_SetHome); nothing reads it */ \
+	s16 homePy;			/* +$BE */
 typedef struct BrainBabyBio { BRAINBABYBIO_FIELDS } BrainBabyBio;
 CHECK_SIZE(BrainBabyBio, 0xC0);
 
-/* BRAINCHILD: descriptor $0B7BAC, parent BIONPC, $A6 bytes (GetSize $0B68FC) */
+/* BRAINCHILD: descriptor $0B7BAC, parent BIONPC, $A6 bytes (GetSize $0B68FC). The SavageA4
+   Chamber's child the CHILDSHIP brings: it leaps out, lands, faces the players and shoots; at
+   death it becomes a BRAINBABYBIO (BrainChild_OnDeath). */
 #define BRAINCHILD_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x10];		/* +$96 */
+	s16 xMin;			/* +$96 arena x range in pixels ($60-$220): BrainChild_Move stops it at the ends */ \
+	s16 xMax;			/* +$98 */ \
+	s16 floorY;			/* +$9A lowest y in pixels ($140) */ \
+	s16 ceilY;			/* +$9C its box top stays at or below this ($60) */ \
+	AiCursor ai;			/* +$9E AI script (Tbl_BrainChildAiScript) */ \
+	s16 unk_A4;			/* +$A4 cleared by BrainChild_Init; nothing else uses it */
 typedef struct BrainChild { BRAINCHILD_FIELDS } BrainChild;
 CHECK_SIZE(BrainChild, 0xA6);
 
@@ -1384,10 +1423,19 @@ CHECK_SIZE(CapedAcolyte, 0xB8);
 CHECK_OFFSET(CapedAcolyte, ai, 0x96);
 CHECK_OFFSET(CapedAcolyte, hover, 0xB4);
 
-/* CHILDSHIP: descriptor $0B7C3A, parent XNPC, $AE bytes (GetSize $0B70A2) */
+/* CHILDSHIP: descriptor $0B7C3A, parent XNPC, $AE bytes (GetSize $0B70A2). The SavageA4
+   Chamber's ship: it flies in, drops rockets over the players by its AI script, and when shot
+   down crashes and releases a BRAINCHILD. */
 #define CHILDSHIP_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x1A];		/* +$94 */
+	PTR(struct PathPt) trail;	/* +$94 next offset of its explosion trail (Tbl_ChildShipWreckTrail: one every 3 frames, ChildShip_Update; 0 none) */ \
+	AiCursor ai;			/* +$98 AI script (Tbl_ChildShip_ScriptLen) */ \
+	s16 xMin;			/* +$9E arena x range in pixels ($60-$220): ChildShip_Move stops it at the ends */ \
+	s16 xMax;			/* +$A0 */ \
+	s16 floorY;			/* +$A2 lowest cruise y in pixels ($140) */ \
+	s16 ceilY;			/* +$A4 highest ($60) */ \
+	s32 homeY;			/* +$A6 cruise y without the bob offset, 8 fraction bits */ \
+	PTR(struct HoverStep) bob;	/* +$AA next bob offset (Tbl_BabyBioBobOffsets; dx >= $6400 restarts it; 0 none) */
 typedef struct ChildShip { CHILDSHIP_FIELDS } ChildShip;
 CHECK_SIZE(ChildShip, 0xAE);
 
@@ -1400,21 +1448,63 @@ CHECK_SIZE(ClosedBarrier, 0x8C);
 /* CONTROLBOX: descriptor $0DDA02, parent ACTOR, $A4 bytes (GetSize $0DD5F6) */
 #define CONTROLBOX_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x18];		/* +$8C */
+	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags: bit 0 set = its control panel destroyed */ \
+	PTR(struct PanelPattern) pattern;	/* +$90 firing pattern (Art_ControlBoxNem; ControlBox_StartPattern) */ \
+	s16 step;			/* +$94 pattern step shown */ \
+	s16 stepCount;			/* +$96 steps in the pattern */ \
+	s16 switchNum;			/* +$98 switch number 0-14 (placement param 0) */ \
+	s16 stage;			/* +$9A 0 waiting for the switch, 1 firing (ControlBox_Draw draws the pattern) */ \
+	s16 fireTimer;			/* +$9C frames to the next blast */ \
+	s16 fireInterval;		/* +$9E frames between blasts (placement param 1, 0: $B4) */ \
+	s16 blastSpeed;			/* +$A0 its blasts' speed (placement param 2, 0: $300) */ \
+	u8 blastReverse;		/* +$A2 its blasts fly the other way (placement byte +$0D) */ \
+	u8 blastSticks;			/* +$A3 its blasts stick in walls (placement byte +$0F; Blast.sticks) */
 typedef struct ControlBox { CONTROLBOX_FIELDS } ControlBox;
 CHECK_SIZE(ControlBox, 0xA4);
 
-/* CONTROLPANEL: descriptor $0DE48E, parent ACTOR, $A4 bytes (GetSize $0DDEB8) */
+/* A step of a CONTROLPANEL firing pattern (ROM, 4 bytes): its light sprite's offset, frame and
+   how long it stays (ControlPanel_Draw, _StartPattern, _StateFire). */
+typedef struct PanelStep {
+	s8 dx;				/* +$00 pixels from the panel's position */
+	s8 dy;				/* +$01 */
+	u8 frame;			/* +$02 frame of the g_ControlPanelSprDef2 sprite */
+	s8 time;			/* +$03 frames shown (the panel's countdown) */
+} PanelStep;
+CHECK_SIZE(PanelStep, 4);
+typedef struct PanelPattern {
+	s16 size;			/* +$00 bytes of steps ($80: 32 steps) */
+	PanelStep step[1];		/* +$02 */
+} PanelPattern;
+
+/* CONTROLPANEL: descriptor $0DE48E, parent ACTOR, $A4 bytes (GetSize $0DDEB8). A SentinelsD1
+   wall panel: three hits damage it, the fourth destroys it, which sets its switch's flag bit 0
+   (activating the switch's CONTROLBOX) and starts its firing pattern of BLASTs. */
 #define CONTROLPANEL_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x18];		/* +$8C */
+	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags: bit 0 destroyed, 2 damaged once, 3 twice */ \
+	PTR(PanelPattern) pattern;	/* +$90 firing pattern (Art_ControlPanelNem) */ \
+	s16 step;			/* +$94 pattern step shown */ \
+	s16 stepCount;			/* +$96 steps in the pattern */ \
+	s16 switchNum;			/* +$98 switch number 0-14 (placement param 0) */ \
+	s16 stage;			/* +$9A 1 intact, 2/3 damaged, 5 firing (ControlPanel_Draw draws the pattern) */ \
+	s16 fireTimer;			/* +$9C frames to the next blast */ \
+	s16 fireInterval;		/* +$9E frames between blasts (placement param 1, 0: $B4) */ \
+	s16 blastSpeed;			/* +$A0 its blasts' speed (placement param 2, 0: $300) */ \
+	u8 blastReverse;		/* +$A2 its blasts' direction flag (placement byte +$0D) */ \
+	u8 unk_A3;			/* +$A3 */
 typedef struct ControlPanel { CONTROLPANEL_FIELDS } ControlPanel;
 CHECK_SIZE(ControlPanel, 0xA4);
 
-/* COREELEVATOR: descriptor $0EC98E, parent ACTOR, $94 bytes (GetSize $0EC526) */
+/* COREELEVATOR: descriptor $0EC98E, parent ACTOR, $94 bytes (GetSize $0EC526). A lift between
+   two stops (Hologram's two: HOLOGRAM sends them, CoreElevator_SendDown / _SendUp); left alone,
+   it waits at the top for a player below it, makes one trip down and comes back. */
 #define COREELEVATOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x8];		/* +$8C */
+	s16 bottom;			/* +$8C lower stop, y in pixels (placement param[2]; 0: placement y + $60) */ \
+	s16 top;			/* +$8E upper stop (placement param[1]; 0: placement y - $60) */ \
+	s16 speed;			/* +$90 vertical speed (placement param[3]; 0: $200) */ \
+	u8 trips;			/* +$92 1: come back up from the bottom (WaitAtTop sets it, SendDown clears it); 0: stay there */ \
+	u8 unk_93;			/* +$93 */
 typedef struct CoreElevator { COREELEVATOR_FIELDS } CoreElevator;
 CHECK_SIZE(CoreElevator, 0x94);
 
@@ -2099,12 +2189,27 @@ CHECK_SIZE(HornetBullet, 0x8C);
 typedef struct LaserCannon { LASERCANNON_FIELDS } LaserCannon;
 CHECK_SIZE(LaserCannon, 0xA4);
 
-/* LAUNCHER: descriptor $0BED0C, parent ACTOR, $B8 bytes (GetSize $0BE7DA) */
+/* A LAUNCHER shot (10 bytes, 4 in the object: Launcher_AddShot, moved and drawn by
+   Launcher_Draw). */
+typedef struct LauncherShot {
+	s32 x;				/* +$00 8 fraction bits; 0: a free slot */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 added to x per step (2 steps a frame in two-player stepping or on g_FrameTick) */
+} LauncherShot;
+CHECK_SIZE(LauncherShot, 0xA);
+
+/* LAUNCHER: descriptor $0BED0C, parent ACTOR, $B8 bytes (GetSize $0BE7DA). A turret that shows
+   frame 0, then frame 1, then fires a shot each way (Launcher_State*). The frames frame 0 shows
+   are a byte in ACTOR's unk_8A[1] (+$8B; placement +6, 0: $78). */
 #define LAUNCHER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x2C];		/* +$8C */
+	u8 frame1Time;			/* +$8C frames frame 1 shows before it fires (placement +8, 0: 5) */ \
+	u8 unk_8D;			/* +$8D */ \
+	s16 shotSpeed;			/* +$8E x speed of its shots (placement +$A, 0: $800) */ \
+	LauncherShot shots[4];		/* +$90 */
 typedef struct Launcher { LAUNCHER_FIELDS } Launcher;
 CHECK_SIZE(Launcher, 0xB8);
+CHECK_OFFSET(Launcher, shots, 0x90);
 
 /* LIGHTBEAM: descriptor $07773C, parent ACTOR, $A0 bytes (GetSize $0777B4). CloneA1's light beams: a
    row of beam columns written straight into the sprite table, following the plane-B scroll of
@@ -2297,7 +2402,9 @@ CHECK_SIZE(Ninja, 0xA4);
 /* PERIMETERDOOR: descriptor $0AC3B2, parent ACTOR, $92 bytes (GetSize $0AC432) */
 #define PERIMETERDOOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x6];		/* +$8C */
+	s16 blockId;			/* +$8C solid-block id of the opening's floor segment (placement param 0; Seg_Create when it breaks) */ \
+	s16 tileRow;			/* +$8E top-left map block of the 3x3 door: row (placement y / 32 - 1) */ \
+	s16 tileCol;			/* +$90 column (placement x / 32 - 1) */
 typedef struct PerimeterDoor { PERIMETERDOOR_FIELDS } PerimeterDoor;
 CHECK_SIZE(PerimeterDoor, 0x92);
 
@@ -2382,15 +2489,15 @@ CHECK_SIZE(RollingDiscs, 0x90);
 #define SAVAGEBIOBASE_FIELDS \
 	BIONPC_FIELDS \
 	AiCursor ai;			/* +$96 AI script */ \
-	u8 unk_9C[2];			/* +$9C */ \
+	s16 bioFlags;			/* +$9C bit 0: takes no damage (SavageBigBio_TakeDamage) and its y, not its box top, is kept under arenaCeiling (SavageBioBase_Move); only SavageBioBase_Init writes it (0) */ \
 	s16 arenaLeft;			/* +$9E arena x range in pixels (charges and dashes stop at its ends) */ \
 	s16 arenaRight;			/* +$A0 */ \
 	s16 arenaFloor;			/* +$A2 y in pixels standing on the floor ($140) */ \
 	s16 arenaCeiling;		/* +$A4 y in pixels hanging from the ceiling ($60) */ \
-	u8 unk_A6[2];			/* +$A6 */ \
+	s16 unk_A6;			/* +$A6 cleared by SavageBioBase_Init; nothing else uses it */ \
 	s16 dashBrakeX;			/* +$A8 dash: brake within 15 px of this x (SavageBio_StateDash) */ \
 	s16 dashStopX;			/* +$AA dash: stop near this x once slow (SavageBio_StateDashBrake) */ \
-	u8 unk_AC[2];			/* +$AC */
+	s16 flashTimer;			/* +$AC frames left of the hurt flash (flags6 bit $40, off at 0: SavageBioBase_Update; SavageBigBio_TakeDamage 20) */
 typedef struct SavageBioBase { SAVAGEBIOBASE_FIELDS } SavageBioBase;
 CHECK_SIZE(SavageBioBase, 0xAE);
 CHECK_OFFSET(SavageBioBase, ai, 0x96);
@@ -2421,10 +2528,14 @@ typedef struct SavageBigBio { SAVAGEBIGBIO_FIELDS } SavageBigBio;
 CHECK_SIZE(SavageBigBio, 0xB8);
 CHECK_OFFSET(SavageBigBio, tentacle, 0xB0);
 
-/* SAVAGEMEDIUMBIO: descriptor $0BD39C, parent SAVAGEBIOBASE, $B2 bytes (GetSize $0BCC6A) */
+/* SAVAGEMEDIUMBIO: descriptor $0BD39C, parent SAVAGEBIOBASE, $B2 bytes (GetSize $0BCC6A). The
+   SavageA4 Chamber enemy's second form (BrainBabyBio_OnDeath makes it): it walks, faces the
+   player and shoots (Tbl_SavageMediumBioAiScript), and at death bursts into a BIOBALLS whose
+   script (SavageBioBalls_*) makes it the SAVAGEBIGBIO. */
 #define SAVAGEMEDIUMBIO_FIELDS \
 	SAVAGEBIOBASE_FIELDS \
-	u8 unk_AE[0x4];		/* +$AE */
+	s16 homeX;			/* +$AE home position in pixels (its start; SavageMediumBio_SetHome); nothing reads it */ \
+	s16 homeY;			/* +$B0 */
 typedef struct SavageMediumBio { SAVAGEMEDIUMBIO_FIELDS } SavageMediumBio;
 CHECK_SIZE(SavageMediumBio, 0xB2);
 
@@ -2458,10 +2569,15 @@ CHECK_SIZE(SegmentMinusPowerUp, 0x8E);
 typedef struct SegmentPlusPowerUp { SEGMENTPLUSPOWERUP_FIELDS } SegmentPlusPowerUp;
 CHECK_SIZE(SegmentPlusPowerUp, 0x8E);
 
-/* SENTINELDOOR: descriptor $0DE9A0, parent ACTOR, $98 bytes (GetSize $0DE516) */
+/* SENTINELDOOR: descriptor $0DE9A0, parent ACTOR, $98 bytes (GetSize $0DE516). A SentinelsD1
+   door: a solid segment over its doorway while closed; it opens (frames 1-6) while its switch's
+   flag bit 1 is set and closes again when it clears. */
 #define SENTINELDOOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0xC];		/* +$8C */
+	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags (bit 1: open) */ \
+	s16 switchNum;			/* +$90 switch number 0-14 (placement param 0) */ \
+	s16 moving;			/* +$92 1 opening, 2 closing, 0 neither */ \
+	PTR(Seg) doorSeg;		/* +$94 the solid type-$13 segment over the doorway (flags bit 6: off while open) */
 typedef struct SentinelDoor { SENTINELDOOR_FIELDS } SentinelDoor;
 CHECK_SIZE(SentinelDoor, 0x98);
 
@@ -2500,38 +2616,102 @@ CHECK_SIZE(ShootAcolyte, 0xB2);
 typedef struct Spark { SPARK_FIELDS } Spark;
 CHECK_SIZE(Spark, 0x9C);
 
-/* SPIKEBALL: descriptor $0BF820, parent ACTOR, $90 bytes (GetSize $0BF5F8) */
+/* SPIKEBALL: descriptor $0BF820, parent ACTOR, $90 bytes (GetSize $0BF5F8). A spike ball that
+   pushes its spikes out for part of a fixed cycle (SpikeBall_StateCycle). */
 #define SPIKEBALL_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x4];		/* +$8C */
+	u8 phase;			/* +$8C frame-counter offset of its cycle (placement +$B) */ \
+	u8 mask;			/* +$8D cycle length - 1, 2^n - 1 (placement +6: n, 0 = 6) */ \
+	u8 onTime;			/* +$8E frames per cycle with the spikes out (placement +8, 0: mask / 4) */ \
+	u8 unk_8F;			/* +$8F */
 typedef struct SpikeBall { SPIKEBALL_FIELDS } SpikeBall;
 CHECK_SIZE(SpikeBall, 0x90);
 
-/* SPOREMINE: descriptor $0BF580, parent ACTOR, $92 bytes (GetSize $0BED84) */
+/* SPOREMINE: descriptor $0BF580, parent ACTOR, $92 bytes (GetSize $0BED84). The class is only a
+   spawner: its SpawnFromRec makes a Spore record in g_SporeMinePool, never an object (its Init
+   never runs in the corpus). */
 #define SPOREMINE_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x6];		/* +$8C */
+	s32 unk_8C;			/* +$8C (0, SporeMine_Init) */ \
+	s16 unk_90;			/* +$90 (0, SporeMine_Init) */
 typedef struct SporeMine { SPOREMINE_FIELDS } SporeMine;
 CHECK_SIZE(SporeMine, 0x92);
 
-/* SWAMPBUBBLES: descriptor $0BFCE4, parent ACTOR, $9A bytes (GetSize $0BFA7C) */
+/* A spore mine: $26-byte records in g_SporeMinePool (20, the first g_SporeMinePoolCount in use;
+   SporeMine_AddSpore / _RemoveSpore), run by SporeMine_UpdatePool (a timer) and drawn by
+   SporeMine_DrawPool (a draw-list entry). Its handler is a little state machine
+   (SporeMine_Rec*): idle, watch the nearest player, arm in four steps when one comes near,
+   explode. */
+FNTYPE(SporeFn, void);			/* func(spore) */
+typedef struct Spore {
+	u8 unk_00[4];			/* +$00 */
+	s16 x;				/* +$04 position in pixels (its placement's) */
+	s16 y;				/* +$06 */
+	PTR(SpawnRec) rec;		/* +$08 its spawn record (waiting again when it leaves the window) */
+	u8 unk_0C[2];			/* +$0C */
+	s16 frame;			/* +$0E frame shown: its animation step's (SporeMine_DrawPool tests the first spore's only) */
+	PTR(u8) anim;			/* +$10 animation playing, an AnimScript read as bytes (step i's frame at +7 + 2i); 0 none */
+	s16 animStep;			/* +$14 */
+	s16 animTime;			/* +$16 frames into the step */
+	SporeFn handler;		/* +$18 what it does when delay runs out (SporeMine_Rec*); 0: gone (UpdatePool removes it) */
+	s16 delay;			/* +$1C frames before the handler runs */
+	s16 watchTime;			/* +$1E frames it keeps watching its target (SporeMine_RecWatch) */
+	PTR(Actor) target;		/* +$20 the player it watches (Player_NearestLive) */
+	s16 unk_24;			/* +$24 (0, SporeMine_AddSpore; never read) */
+} Spore;
+CHECK_SIZE(Spore, 0x26);
+
+/* SWAMPBUBBLES: descriptor $0BFCE4, parent ACTOR, $9A bytes (GetSize $0BFA7C). A row of 1-5
+   swamp bubbles drawn with one sprite (SwampBubbles_Draw); never placed in the corpus. */
 #define SWAMPBUBBLES_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0xE];		/* +$8C */
+	s16 unk_8C;			/* +$8C (0, SwampBubbles_Init; never read) */ \
+	u8 count;			/* +$8E bubbles drawn, 1-5 (1, SwampBubbles_Init; SwampBubbles_Draw) */ \
+	u8 unk_8F[0xB];			/* +$8F */
 typedef struct SwampBubbles { SWAMPBUBBLES_FIELDS } SwampBubbles;
 CHECK_SIZE(SwampBubbles, 0x9A);
 
-/* SWAMPFLY: descriptor $0C0CEA, parent BIONPC, $B4 bytes (GetSize $0C095A) */
+/* A SWAMPFLY flight path (ROM, Tbl_SwampFlyPath0-5): the size in bytes of its (dx, dy) byte
+   pairs, then the pairs; the fly flies from pair 1 to pair count / 2 - 1 (SwampFly_StateFly). */
+typedef struct FlyPathPt {
+	s8 dx;				/* +$00 offset from home, << the fly's shiftX */
+	s8 dy;				/* +$01 << shiftY */
+} FlyPathPt;
+typedef struct FlyPath {
+	s16 count;			/* +$00 bytes of pt (0: Tbl_SwampFlyPath5, none) */
+	FlyPathPt pt[1];		/* +$02 */
+} FlyPath;
+
+/* SWAMPFLY: descriptor $0C0CEA, parent BIONPC, $B4 bytes (GetSize $0C095A). A fly of the swamp
+   (SavageJungle) that loops along a flight path around its placement, facing the nearest
+   player (SwampFly_StateFly); a new path when one ends. */
 #define SWAMPFLY_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x1E];		/* +$96 */
+	PTR(Actor) target;		/* +$96 the player it faces (Player_Nearest at each new path) */ \
+	u8 unk_9A[0xA];			/* +$9A */ \
+	PTR(FlyPath) path;		/* +$A4 flight path (Tbl_SwampFlyPath<pathKind>) */ \
+	s16 pathStep;			/* +$A8 pair reached */ \
+	s16 pathEnd;			/* +$AA path's pairs - 1: a new path once pathStep reaches it */ \
+	u8 unk_AC[2];			/* +$AC */ \
+	u8 flapShift;			/* +$AE wings flap every 2^flapShift frames (2; SwampFly_Draw) */ \
+	u8 stepTime;			/* +$AF frames per path step, doubled outside two-player stepping (placement +9) */ \
+	u8 shiftX;			/* +$B0 path dx scale: dx << shiftX (placement +$A, + 8) */ \
+	u8 shiftY;			/* +$B1 (placement +$C, + 8) */ \
+	u8 pathKind;			/* +$B2 its path, Tbl_SwampFlyPath0-5 (placement +7; above 5: 0) */ \
+	u8 unk_B3;			/* +$B3 (0, SwampFly_Init; never read) */
 typedef struct SwampFly { SWAMPFLY_FIELDS } SwampFly;
 CHECK_SIZE(SwampFly, 0xB4);
+CHECK_OFFSET(SwampFly, path, 0xA4);
 
-/* SWAMPPLATFORM: descriptor $0C005A, parent ACTOR, $9C bytes (GetSize $0BFD60) */
+/* SWAMPPLATFORM: descriptor $0C005A, parent ACTOR, $9C bytes (GetSize $0BFD60). A platform
+   bobbing up and down in the swamp (SwampPlatform_Move), drawn as two 32x32 sprites. */
 #define SWAMPPLATFORM_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x10];		/* +$8C */
+	s16 phase;			/* +$8C bob phase, frames (placement param 0) */ \
+	u8 unk_8E[0xA];			/* +$8E */ \
+	s16 tile;			/* +$98 first VRAM tile with palette 3 (SwampPlatform_Draw) */ \
+	u8 unk_9A;			/* +$9A cleared by Init, never read */ \
+	u8 shift;			/* +$9B bob height shift: $80 >> shift px (placement param 1) */
 typedef struct SwampPlatform { SWAMPPLATFORM_FIELDS } SwampPlatform;
 CHECK_SIZE(SwampPlatform, 0x9C);
 

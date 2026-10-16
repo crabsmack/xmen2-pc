@@ -1,0 +1,18 @@
+# SavageA2_SetBlockTiles: the corpus never hits a cell without a solid block, and never removes a
+# block with a live object standing on it. Both cases mutate the first corpus call (TAS frame
+# 31704; args col, row, tile, remove, edge in slots 0-4, short/char values in their low bytes).
+# The TAS RAM at frame 31680 has in-use type-$14 segment $0F at $FFCF5A, box (384,1568)-(448,1696),
+# the only one containing block (12, 49)'s centre (400, 1584).
+
+# block (0, 0): no type-$14 segment contains (16, 16): returns 0 at once
+case no_block
+w a7+6 = 0
+w a7+$A = 0
+
+# block (12, 49) removed (remove = 1) with player 1 (alive) standing on its segment: Obj_Detach on
+# it, then Seg_Free and the 2x4 cells rewritten with puffs (the edge tile on the top row)
+case remove_with_player_on_it
+w a7+6 = 12
+w a7+$A = 49
+b a7+$13 = 1
+l $FFEB1E = $FFFFCF5A

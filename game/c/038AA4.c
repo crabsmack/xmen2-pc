@@ -1,11 +1,11 @@
-/* BaniMazaA1_InitPalette - the Moving Blocks' palette: line 3 from Art_BaniMazaA1Nem3 (after its
+/* BaniMazaA1_InitPalette - the Moving Blocks' palette: line 3 from Art_TusketteSpr (after its
  * 4-byte header), colour 0 black, and colours 5, 7, 9 and 14 of line 2 ($068, $4AC, $ACE,
  * $022). */
 #include "xmen2.h"
 
 void BaniMazaA1_InitPalette(void)
 {
-	register s16 *src = (s16 *)CODEPTR(Art_BaniMazaA1Nem3) + 2;
+	register s16 *src = (s16 *)CODEPTR(Art_TusketteSpr) + 2;
 	register s16 *dst = &g_PalBase[48];
 	register long i;
 

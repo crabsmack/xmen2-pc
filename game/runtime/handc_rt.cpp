@@ -101,6 +101,10 @@ unsigned long CPU_GetSP(void) { return g_cpu.A[7]; }
 
 namespace xm {
 
+/* IRQ_WAIT() (xmen2_mem.h): the program waits for the V-int with no sync point; the
+   frame-synchronous runner takes it now, any other runner nothing. */
+void irq_wait(void) { x68k_wait_vint(0); }
+
 /* NO_RETURN_VALUE / RETURN_NO_VALUE (xmen2_macros.h): the C function ended on a path where the
    original returns no value; its slot entry then leaves d0 alone and verify doesn't compare it. */
 uint32_t g_frame, g_seq, g_novalue;

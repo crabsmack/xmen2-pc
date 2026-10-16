@@ -5,7 +5,7 @@
  * self: the wall.  x, y: position (8 fraction bits). */
 #include "xmen2.h"
 
-#define g_WallSprDef	(*(s16 *)g_SceneVar3B08)	/* scene variable (CloneA5): sprite-definition slot of Art_CloneA5Nem3, the wall and the clone debris */
+#define g_WallSprDef	(*(s16 *)g_SceneVar3B08)	/* scene variable (CloneA5): sprite-definition slot of Art_BroodBossWallSpr, the wall and the clone debris */
 
 void BroodBossWall_Init(BroodBossWall *self, long x, long y)
 {

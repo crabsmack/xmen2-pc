@@ -56,7 +56,7 @@ void Cerebro_PlayIntro(void)
 	s16 *buf = AT68(s16, fp - 0x1A6);
 	SprInst *SPR = AT68(SprInst, fp - 0x14);
 #endif
-	register s16 *q = buf;
+	register s16 *map = buf;
 	register short i;
 	register short n;
 	register short tile;
@@ -65,7 +65,6 @@ void Cerebro_PlayIntro(void)
 	register long j;
 	register short h0;
 	register short offY;
-	register SprFrame *fr;
 
 #ifndef XMEN2_MPW
 	xm::sp_reserve(28);
@@ -85,10 +84,10 @@ void Cerebro_PlayIntro(void)
 		Art_LoadNemToVram(CODEPTR(Art_CerebroNem6), g_VramTileCursor);
 		tile = g_VramTileCursor | 0x4000;
 		count = 0x30;
-		Mem_Copy(q, CODEPTR(Art_CerebroNem5), count << 1);
-		for (i = 0, p = &q[0]; i < count; i++, p++)
+		Mem_Copy(map, CODEPTR(Art_CerebroNem5), count << 1);
+		for (i = 0, p = &map[0]; i < count; i++, p++)
 			*p += tile;
-		VDP_WriteTileRect(0x51C, q, 0xC, 4, 0x40);
+		VDP_WriteTileRect(0x51C, map, 0xC, 4, 0x40);
 		Intro_SegaLogoFlash(0, 2);
 		Cerebro_ClearScreen();
 		for (i = 0, p = &g_PalBase[0x10]; i < 0x30; i++, p++)
@@ -98,10 +97,10 @@ void Cerebro_PlayIntro(void)
 		Art_LoadNemToVram(CODEPTR(Art_CerebroIntroPic1), g_VramTileCursor);
 		tile = g_VramTileCursor | 0x4000;
 		count = 0xC0;
-		Mem_Copy(q, CODEPTR(Map_CerebroIntroPic1), count << 1);
-		for (i = 0, p = &q[0]; i < count; i++, p++)
+		Mem_Copy(map, CODEPTR(Map_CerebroIntroPic1), count << 1);
+		for (i = 0, p = &map[0]; i < count; i++, p++)
 			*p += tile;
-		VDP_WriteTileRect(0x318, q, 0x10, 0xC, 0x40);
+		VDP_WriteTileRect(0x318, map, 0x10, 0xC, 0x40);
 		n = 0xB4;
 		p = (s16 *)CODEPTR(Pal_CerebroTitleGlow);
 		while (n) {
@@ -166,20 +165,24 @@ void Cerebro_PlayIntro(void)
 	Art_LoadNemToVram(CODEPTR(Art_CerebroIntroPic2), g_VramTileCursor);
 	tile = g_VramTileCursor | 0x4000;
 	count = 0x9A;
-	Mem_Copy(q, CODEPTR(Map_CerebroIntroPic2), count << 1);
-	for (i = 0, p = &q[0]; i < count; i++, p++)
+	Mem_Copy(map, CODEPTR(Map_CerebroIntroPic2), count << 1);
+	for (i = 0, p = &map[0]; i < count; i++, p++)
 		*p += tile;
-	VDP_WriteTileRect(0x1AC, q, 0xB, 0xE, 0x40);
+	VDP_WriteTileRect(0x1AC, map, 0xB, 0xE, 0x40);
 	g_VramTileCursor += 0xC0;
 	BS->params = g_ScaleParamsPtr;
 	BS->tiles = 0xAB;
 	BS->tileBase = g_VramTileCursor;
 	BS->unk_0C = 1;
 	g_VramTileCursor += 0xAB;
-	p = (s16 *)CODEPTR(Pal_CerebroIntroLine1);
-	q = &g_PalBase[0x10];
-	for (j = 0; j < 16; j++)
-		*q++ = *p++;
+	{
+		register s16 *dst;
+
+		p = (s16 *)CODEPTR(Pal_CerebroIntroLine1);
+		dst = &g_PalBase[0x10];
+		for (j = 0; j < 16; j++)
+			*dst++ = *p++;
+	}
 	g_PalBase[0x3F] = 0xA0;
 	g_PalBase[0x3E] = 0x80;
 	g_PalBase[0x3D] = 0x660;
@@ -246,10 +249,14 @@ void Cerebro_PlayIntro(void)
 
 	/* Frame 0 stays as a sprite; frame 1 grows from a line, then opens. */
 	Spr_Init(SPR, 1, CODEPTR(Art_CerebroSpr), 0, 1, BS->tileBase, 0);
-	def = CODEPTR(Art_CerebroSpr);
-	fr = ((SprDef *)def)->frame;
-	offX = -fr->left;
-	offY = -fr->top;
+	{
+		register SprFrame *fr;
+
+		def = CODEPTR(Art_CerebroSpr);
+		fr = ((SprDef *)def)->frame;
+		offX = -fr->left;
+		offY = -fr->top;
+	}
 	BS->params = g_ScaleParamsPtr;
 	BS->tiles = 0x2C;
 	BS->tileBase = g_VramTileCursor;
@@ -280,10 +287,13 @@ void Cerebro_PlayIntro(void)
 	BS->y = (long)y0 << 16;
 	BS->w = (long)w0 << 16;
 	BS->h = (long)h0 << 16;
-	q = (s16 *)CODEPTR(Pal_CerebroIntroLine2);
-	p = &g_PalBase[0x20];
-	for (j = 0; j < 16; j++)
-		*p++ = *q++;
+	{
+		register s16 *src = (s16 *)CODEPTR(Pal_CerebroIntroLine2);
+
+		p = &g_PalBase[0x20];
+		for (j = 0; j < 16; j++)
+			*p++ = *src++;
+	}
 	g_PalBaseDirty = 1;
 	while (n) {
 		Spr_BeginFrame();

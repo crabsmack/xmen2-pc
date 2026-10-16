@@ -1,8 +1,7 @@
 /* Cerebro_ClearTextWindow - fill the Cerebro text window (rows g_TextWinTop..g_TextWinBottom,
  * columns g_TextWinLeft..g_TextWinRight of the 64-column plane at VRAM $E000) with the blank
  * tile $86C0, then home the text cursor. The original swaps the two: the cursor column gets the
- * window's top row and the cursor row its left column (the same value in every window the game
- * uses with text after a clear, or overwritten before printing). */
+ * window's top row and the cursor row its left column (kept). */
 #include "xmen2.h"
 
 #define g_TextCol	(*(s16 *)g_SceneVar3B04)	/* scene variable: Cerebro text cursor column */

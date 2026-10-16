@@ -219,7 +219,7 @@ void PlayerSelect_Run(void)
 			PlayerSelect_CheckDone();
 			if (g_TwoPlayerStep && !g_LevelFreeze)
 				while (!g_FrameTick)
-					;
+					IRQ_WAIT();
 			VDP_WaitVBlank();
 		} while (g_LevelFreeze || g_SceneExitTimer <= 0);
 		g_SceneExitTimer -= (char)(g_TwoPlayerStep ? 2 : 1);

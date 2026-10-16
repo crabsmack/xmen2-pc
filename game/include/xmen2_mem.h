@@ -423,6 +423,16 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define TMSS_PORT      HW32(0xA14000)   /* TMSS "SEGA" */
 #define Z80_RAM(off)   HW8(0xA00000 + (off))   /* Z80 RAM byte (bus held) */
 
+/* A loop waiting for a flag only an interrupt handler sets (`while (!g_FrameTick) IRQ_WAIT();`):
+   on the 68000 the interrupt simply arrives, so MPW compiles nothing for it; on PC the
+   frame-synchronous runner takes the V-int there (handc_rt.cpp, x68k_wait_vint). */
+#ifdef XMEN2_MPW
+#define IRQ_WAIT()
+#else
+namespace xm { void irq_wait(void); }
+#define IRQ_WAIT()             xm::irq_wait()
+#endif
+
 /* The CPU itself: what only the hand-written 68000 (asm) functions do, which C can't say.
    MPW C never compiles a call to them (no asm function matches); on PC handc_rt.cpp. */
 unsigned short CPU_GetSR(void);           /* status register */

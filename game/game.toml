@@ -48,3 +48,16 @@ level_modes    = []
 # Entry and the V-int / H-int wrappers (also in the seeds; listed for clarity).
 extra = [0x1F43AE, 0x1F4860, 0x1F4870]
 blacklist = []
+
+# ---------------------------------------------------------------------------
+# Game hooks (xmen2_spec.c instruction_hook): the two-player half-rate waits that spin on
+# g_FrameTick until the V-int sets it, with no sync point before them. The frame-synchronous
+# stepped runner takes the V-int there; every other runner does nothing at them.
+# ---------------------------------------------------------------------------
+[[widescreen_site]]
+addr = 0x1FA6C0   # Level_FrameLoop: tst.b g_FrameTick(a5) / beq.s *
+kind = "game_hook"
+
+[[widescreen_site]]
+addr = 0x065BD8   # PlayerSelect_Run: tst.b g_FrameTick(a5) / beq.s *
+kind = "game_hook"

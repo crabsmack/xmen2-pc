@@ -274,7 +274,7 @@ extern s16 g_BoulderDebrisSprDef;
 #else
 #define g_BoulderDebrisSprDef XM_G(s16, 0xFFC59E)
 #endif
-/* $FFC5A0 word: sprite-definition slot of Art_BaniMazaA1Nem3 (Tuskette_ClassInit via SprDef_Add; Tuskette_Init) */
+/* $FFC5A0 word: sprite-definition slot of Art_TusketteSpr (Tuskette_ClassInit via SprDef_Add; Tuskette_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_TusketteSprDef;
 #else
@@ -310,11 +310,23 @@ extern s16 g_TextWinLeft;
 #else
 #define g_TextWinLeft XM_G(s16, 0xFFC5AA)
 #endif
-/* $FFC5AC 3 words: CloneA5 palette-cycle step counters passed by address (CloneA5_FrameHook; CloneA5_ResetPalCycle clears) */
+/* $C5AC word: CloneA5 palette cycle: sequence index (Pal_CycleStep's third counter); CloneA5_FrameHook, CloneA5_ResetPalCycle */
 #ifdef XMEN2_MPW
-extern s16 g_CloneA5PalCycles[3];
+extern s16 g_CloneA5PalSeq;
 #else
-#define g_CloneA5PalCycles XM_GA(s16, 0xFFC5AC)
+#define g_CloneA5PalSeq XM_G(s16, 0xFFC5AC)
+#endif
+/* $C5AE word: CloneA5 palette cycle: colour index (Pal_CycleStep's second counter); CloneA5_FrameHook, CloneA5_ResetPalCycle */
+#ifdef XMEN2_MPW
+extern s16 g_CloneA5PalColour;
+#else
+#define g_CloneA5PalColour XM_G(s16, 0xFFC5AE)
+#endif
+/* $C5B0 word: CloneA5 palette cycle: frames to the next step (Pal_CycleStep's first counter); CloneA5_FrameHook, CloneA5_ResetPalCycle */
+#ifdef XMEN2_MPW
+extern s16 g_CloneA5PalTimer;
+#else
+#define g_CloneA5PalTimer XM_G(s16, 0xFFC5B0)
 #endif
 /* $FFC5B2 word: CloneA5 camera flags; bit 0 set by CloneA5_InitCamera, tested by CloneA5_CamApply */
 #ifdef XMEN2_MPW
@@ -372,9 +384,9 @@ extern s16 g_FloatBubbleSprDef;
 #endif
 /* $FFC5C8 ptr: the PERIMETERDOOR object (PerimeterDoor_Init stores itself; PerimeterDoor_TileHook) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_PerimeterDoorObj;
+extern PTR(struct PerimeterDoor) g_PerimeterDoorObj;
 #else
-#define g_PerimeterDoorObj XM_G(PTR(void), 0xFFC5C8)
+#define g_PerimeterDoorObj XM_G(PTR(struct PerimeterDoor), 0xFFC5C8)
 #endif
 /* $FFC5CC word: hits taken by the perimeter door (PerimeterDoor_ClassInit clears, PerimeterDoor_TileHit counts; PerimeterDoor_StateWaitBroken compares) */
 #ifdef XMEN2_MPW
@@ -408,9 +420,9 @@ extern s16 g_LauncherSprDef;
 #endif
 /* $FFC5D8 ptr: spore pool records (SporeMine_InitPool allocates; Add/Remove/Update/Draw) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SporeMinePool;
+extern PTR(Spore) g_SporeMinePool;
 #else
-#define g_SporeMinePool XM_G(PTR(void), 0xFFC5D8)
+#define g_SporeMinePool XM_G(PTR(Spore), 0xFFC5D8)
 #endif
 /* $FFC5DC word: spores in use (SporeMine_InitPool clears; SporeMine_AddSpore/RemoveSpore/UpdatePool/DrawPool) */
 #ifdef XMEN2_MPW
@@ -442,11 +454,11 @@ extern s16 g_JunglePalPhase;
 #else
 #define g_JunglePalPhase XM_G(s16, 0xFFC5E4)
 #endif
-/* $FFC5E6 ptr: current palette-phase script entry (SavageJungle_InitPalPhases from the BG map's +$12 list; SavageJungle_PalPhaseUpdate cases) */
+/* $FFC5E6 ptr: the level's palette-phase words, 0 = no phases (SavageJungle_InitPalPhases: the BG map's +$12 list after its count word, when the count is 1); words 3-7 are phases 1-5's lengths in seconds (SavageJungle_PalPhaseUpdate) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_JunglePalScript;
+extern PTR(s16) g_JunglePalScript;
 #else
-#define g_JunglePalScript XM_G(PTR(void), 0xFFC5E6)
+#define g_JunglePalScript XM_G(PTR(s16), 0xFFC5E6)
 #endif
 /* $FFC5EA word: sprite-definition slot of Art_SwampPlatformSpr (SwampPlatform_ClassInit via SprDef_Add; SwampPlatform_Init) */
 #ifdef XMEN2_MPW
@@ -474,9 +486,9 @@ extern s16 g_WaterSurfaceY;
 #endif
 /* $FFC5F2 ptr: splash sprite record from SprDef_Add in Water_Init; drawn by Water_DrawSplash */
 #ifdef XMEN2_MPW
-extern PTR(void) g_WaterSplashSpr;
+extern PTR(SprInst) g_WaterSplashSpr;
 #else
-#define g_WaterSplashSpr XM_G(PTR(void), 0xFFC5F2)
+#define g_WaterSplashSpr XM_G(PTR(SprInst), 0xFFC5F2)
 #endif
 /* $FFC5F6 word: frames left of player 2's water splash (Water_DrawHook, Water_Init clears) */
 #ifdef XMEN2_MPW
@@ -489,6 +501,30 @@ extern s16 g_P2SplashTimer;
 extern s16 g_P1SplashTimer;
 #else
 #define g_P1SplashTimer XM_G(s16, 0xFFC5F8)
+#endif
+/* $FFC5FA word: y (world pixels) of player 2's water splash (g_WaterSplashY when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C06) */
+#ifdef XMEN2_MPW
+extern s16 g_P2SplashY;
+#else
+#define g_P2SplashY XM_G(s16, 0xFFC5FA)
+#endif
+/* $FFC5FC word: x (world pixels) of player 2's water splash (the player's x when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C04) */
+#ifdef XMEN2_MPW
+extern s16 g_P2SplashX;
+#else
+#define g_P2SplashX XM_G(s16, 0xFFC5FC)
+#endif
+/* $FFC5FE word: y (world pixels) of player 1's water splash (g_WaterSplashY when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C02) */
+#ifdef XMEN2_MPW
+extern s16 g_P1SplashY;
+#else
+#define g_P1SplashY XM_G(s16, 0xFFC5FE)
+#endif
+/* $FFC600 word: x (world pixels) of player 1's water splash (the player's x when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C00) */
+#ifdef XMEN2_MPW
+extern s16 g_P1SplashX;
+#else
+#define g_P1SplashX XM_G(s16, 0xFFC600)
 #endif
 /* $FFC602 word: sprite-definition slot of Art_SentinelsD1Spr (SentinelsD1_LoadResources via SprDef_Add; ControlBox_Init, ControlPanel_Init) */
 #ifdef XMEN2_MPW
@@ -504,9 +540,9 @@ extern s16 g_ControlPanelSprDef2;
 #endif
 /* $FFC606 ptr: flag-bit array allocated by SentinelsD1_InitFlagBits; Blast/ControlBox/ControlPanel/SentinelDoor/SentinelElevator Init link to it */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SentinelsD1Flags;
+extern PTR(s16) g_SentinelsD1Flags;
 #else
-#define g_SentinelsD1Flags XM_G(PTR(void), 0xFFC606)
+#define g_SentinelsD1Flags XM_G(PTR(s16), 0xFFC606)
 #endif
 /* $FFC60A word: sprite-definition slot of Art_BlastSpr (Blast_ClassInit via SprDef_Add; Blast_Draw) */
 #ifdef XMEN2_MPW

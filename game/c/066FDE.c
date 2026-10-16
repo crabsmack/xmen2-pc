@@ -1,4 +1,4 @@
-/* Credits_RunScene - the scene 'CerebroScreen Credits': the credits text script (Snd_Credits: a
+/* Credits_RunScene - the scene 'CerebroScreen Credits': the credits text script (Tbl_CreditsScript: a
  * Cerebro text script despite its name; Cerebro_Run, no intro, no player select), with sound $A
  * (restarted) unless the game was finished (progress flag $4000); then a new game
  * (Game_ResetPlayers, progress flags 0). */
@@ -12,7 +12,7 @@ void Credits_RunScene(void)
 {
 	g_CerebroIntro = 0;
 	g_CerebroSelect = 0;
-	g_CerebroScript = CODEPTR(Snd_Credits);
+	g_CerebroScript = CODEPTR(Tbl_CreditsScript);
 	if (!(g_ProgressFlags & 0x4000)) {
 		Snd_Stop(0xA);
 		Snd_Play(0xA);
