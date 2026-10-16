@@ -15,14 +15,24 @@ void Spr_PlaceAttached(SprInst *spr, short x, short y)
 	register short ay;
 	register short cx;
 	register short cy;
+#ifndef XMEN2_MPW
+	SprDef *def;
+#endif
 
-	o = spr->firstChild == 0xFF ? 0 : g_ObjTable[spr->firstChild];
+	o =spr->firstChild == 0xFF ? 0 : g_ObjTable[spr->firstChild];
 	for (;;) {
 		if ((o->flags & 0x1800) == 0x1800) {
 			fr = o->spr.frame;
 			if (fr == 0xFF)
 				fr = 0;
+#ifdef XMEN2_MPW
 			ay = y - SPR_FRAME(o->spr.def, fr)->boxBottom;
+#else
+			def = (SprDef *)o->spr.def;
+			if (!def)	/* no definition: the 68000 reads the vector table */
+				def = (SprDef *)Vectors;
+			ay = y - SPR_FRAME(def, fr)->boxBottom;
+#endif
 			cx = o->anim && (((AnimScript *)o->anim)->flags & 0x30) == 0x20
 				? ((o->x - o->animDist) >> 8) - g_CameraX : (o->x >> 8) - g_CameraX;
 			cy = o->anim && (((AnimScript *)o->anim)->flags & 0x30) == 0x30

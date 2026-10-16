@@ -23,6 +23,10 @@ void Spr_UploadFrame18(SprInst *spr)
 	if (spr->frame == 0xFF)
 		return;
 	def = (SprDef *)spr->def;
+#ifndef XMEN2_MPW
+	if (!def)	/* no definition: the 68000 reads the vector table */
+		def = (SprDef *)Vectors;
+#endif
 	spr->flags |= 0x20;
 	tile = spr->frame;
 	f = SPR_FRAME(def, tile);

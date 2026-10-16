@@ -19,12 +19,25 @@ void Collide_ObjVsList(register Actor *att, ListNode *node)
 
 	{
 		register short frame = att->spr.frame;
+#ifdef XMEN2_MPW
 		register SprFrame *fr = SPR_FRAME(att->spr.def, frame);
 
 		if (frame == 0xFF || !fr->hitPoints)
 			pts = 0;
 		else
 			pts = (s8 *)att->spr.def + fr->hitPoints;
+#else
+		SprDef *def = (SprDef *)att->spr.def;
+		SprFrame *fr;
+
+		if (!def)	/* no definition: the 68000 reads the vector table */
+			def = (SprDef *)Vectors;
+		fr = SPR_FRAME(def, frame);
+		if (frame == 0xFF || !fr->hitPoints)
+			pts = 0;
+		else
+			pts = (s8 *)def + fr->hitPoints;
+#endif
 	}
 	x = att->x >> 8;
 	y = att->y >> 8;

@@ -29,6 +29,10 @@ void Spr_UploadFrame(SprInst *spr, char now)
 	register SprTiles *src;
 
 	def = (SprDef *)spr->def;
+#ifndef XMEN2_MPW
+	if (!def)	/* no definition: the 68000 reads the vector table */
+		def = (SprDef *)Vectors;
+#endif
 	spr->uploaded = spr->frame;
 	if (spr->flags & 0x20)
 		return;

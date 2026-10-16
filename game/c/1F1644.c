@@ -106,12 +106,25 @@ void XPlayer_Update(XPlayer *self)
 	(*self->cls->method[28])(self);			/* UpdateCharge */
 	frame = self->spr.frame;
 	{
+#ifdef XMEN2_MPW
 		SprFrame *rec = SPR_FRAME(self->spr.def, frame);
 
 		if (frame == 0xFF || !rec->hitPoints)
 			points = 0;
 		else
 			points = (char *)self->spr.def + rec->hitPoints;
+#else
+		SprDef *def = (SprDef *)self->spr.def;
+		SprFrame *rec;
+
+		if (!def)	/* no definition: the 68000 reads the vector table */
+			def = (SprDef *)Vectors;
+		rec = SPR_FRAME(def, frame);
+		if (frame == 0xFF || !rec->hitPoints)
+			points = 0;
+		else
+			points = (char *)def + rec->hitPoints;
+#endif
 	}
 	if (points && g_TileHooksOn && !(self->playerFlags & 0x20))
 		while (self->attack > 0 && Tile_RunHooksAtPoints(self, points, self->x >> 8, self->y >> 8)) {

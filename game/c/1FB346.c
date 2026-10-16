@@ -15,14 +15,25 @@ void Spr_Draw(SprInst *spr, short x, short y)
 	short tile = spr->tileBase;
 	register short type;
 	SprFrame *f;
+#ifndef XMEN2_MPW
+	SprDef *def;
+#endif
 
 	if ((spr->flags & 0x20) == 0)
 		Spr_UploadFrame(spr, 0);
 	frame = spr->uploaded;
 	if (frame == 0xFF)
 		return;
+#ifdef XMEN2_MPW
 	type = ((SprDef *)spr->def)->type;
 	f = SPR_FRAME(spr->def, frame);
+#else
+	def = (SprDef *)spr->def;
+	if (!def)	/* no definition: the 68000 reads the vector table (type $00: nothing drawn) */
+		def = (SprDef *)Vectors;
+	type = def->type;
+	f = SPR_FRAME(def, frame);
+#endif
 	if (type == 0x20) {
 		if (spr->firstChild == 0xFF) {
 			if (f->left + x >= g_CameraX && f->right + x <= g_CameraX + 0x140

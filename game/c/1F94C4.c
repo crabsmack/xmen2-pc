@@ -22,6 +22,9 @@ char Obj_FindHitPoint(Actor *att, Actor *tgt, s8 *pts, short ox, short oy, s16 *
 	short left;
 	short top;
 	SprFrame *frame;
+#ifndef XMEN2_MPW
+	SprDef *def;
+#endif
 	register short right;
 	register short bottom;
 	register short y;
@@ -30,7 +33,14 @@ char Obj_FindHitPoint(Actor *att, Actor *tgt, s8 *pts, short ox, short oy, s16 *
 	hflip = vflip = 0;
 	if (att->spr.frame == 0xFF)
 		return 0;
+#ifdef XMEN2_MPW
 	frame = SPR_FRAME(tgt->spr.def, tgt->spr.frame);
+#else
+	def = (SprDef *)tgt->spr.def;
+	if (!def)	/* no definition: the 68000 reads the vector table */
+		def = (SprDef *)Vectors;
+	frame = SPR_FRAME(def, tgt->spr.frame);
+#endif
 	*ry = -1;
 	*rx = -1;
 	if (tgt->spr.flags & 0x10) {
