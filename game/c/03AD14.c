@@ -10,7 +10,7 @@
  * MPW: the label at the end is where the ROM pops the call's arguments. */
 #include "xmen2.h"
 
-#define g_RollingDiscsObj	(*(PTR(RollingDiscs) *)(&g_DiscBandCount + 1))	/* $FFC588 */
+#define g_RollingDiscsObj	g_RollingDiscs
 
 void RollingDiscs_Init(register RollingDiscs *self, long x, long y, register Placement *pl)
 {

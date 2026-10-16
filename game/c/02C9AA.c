@@ -11,8 +11,8 @@
 
 #define g_A3Countdown	(*(s16 *)g_SceneVar3B06)	/* scene variable: counted down every frame (nothing reads it) */
 
-#define SPR_DELAY(n)	g_AvalonA3SprDelays[8 - 2 * (n)]	/* frames to sprite n's next frame */
-#define SPR_STEP(n)	g_AvalonA3SprDelays[7 - 2 * (n)]	/* sprite n's animation step (0-2) */
+#define SPR_DELAY(n)	g_AvalonA3SprAnim[4 - (n)].delay	/* frames to sprite n's next frame */
+#define SPR_STEP(n)	g_AvalonA3SprAnim[4 - (n)].step	/* sprite n's animation step (0-2) */
 
 void AvalonA3_FrameHook(void)
 {

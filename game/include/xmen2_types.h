@@ -37,6 +37,12 @@ typedef struct AiCursor {
 } AiCursor;
 CHECK_SIZE(AiCursor, 6);
 
+/* One AvalonA3 effect sprite's animation (g_AvalonA3SprAnim). */
+typedef struct A3SprAnim {
+	s16 step;			/* +$00 frame step 0-2 */
+	s16 delay;			/* +$02 frames to the next step */
+} A3SprAnim;
+
 /* A queued VRAM DMA (g_DmaQueue; VDP_QueueDma fills, VDP_FlushDmaQueue writes regMode..cmd to
    the VDP control port in V-blank). Contiguous requests merge; one never crosses a 64 KB
    source boundary. */
@@ -1225,9 +1231,12 @@ FNTYPE(ClawMotionFn, void);
 	ACTOR_FIELDS \
 	u8 unk_8C[0x4];			/* +$8C */ \
 	u8 mode;			/* +$90 BroodClaw_Swing: 0 pushes g_BroodBossOffsetX, 1 the scroll step */ \
-	u8 unk_91;			/* +$91 */ \
+	u8 scrollEnded;			/* +$91 the scroll's frames are over (BroodClaw_StateScroll): BroodClaw_Swing hands the camera back once the scroll passes g_BroodArenaLeft */ \
 	ClawMotionFn motion;		/* +$92 motion function run by BroodClaw_Move (BroodClaw_Swing; 0 none) */ \
-	u8 unk_96[0xC];			/* +$96 */
+	PTR(struct BroodClaw) pair;	/* +$96 the other claw of a pair (BroodClaw_Spawn: the second's is the first); Move mirrors this one's swing on it, Kill kills it too */ \
+	s16 swingLen;			/* +$9A swing length, pixels ($32: BroodClaw_Move resets it every frame) */ \
+	s32 swingOffset;		/* +$9C how far the claw has swung out, 8 fraction bits (0 .. swingLen << 8; BroodClaw_Swing) */ \
+	s16 homeX;			/* +$A0 px at Init (not read) */
 typedef struct BroodClaw { BROODCLAW_FIELDS } BroodClaw;
 CHECK_SIZE(BroodClaw, 0xA2);
 
@@ -1550,10 +1559,13 @@ CHECK_OFFSET(Deathbird, moveKind, 0xAE);
 CHECK_OFFSET(Deathbird, spr2, 0xB0);
 CHECK_SIZE(Deathbird, 0xB6);
 
-/* DROPBOMB: descriptor $082294, parent ACTOR, $90 bytes (GetSize $08230C) */
+/* DROPBOMB: descriptor $082294, parent ACTOR, $90 bytes (GetSize $08230C). A bomb that waits in
+   view, falls to the floor under it and explodes (CloneA4/CloneA5: placed, or dropped by BROODBOSS
+   through DropBomb_Spawn). */
 #define DROPBOMB_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x4];		/* +$8C */
+	s16 floorY;			/* +$8C y it explodes at, pixels: the floor segment below it (DropBomb_Init; none: y + $A0) */ \
+	s16 dropDelay;			/* +$8E frames from coming into view to falling (placement param 0; 0: $78; -1: at once) */
 typedef struct DropBomb { DROPBOMB_FIELDS } DropBomb;
 CHECK_SIZE(DropBomb, 0x90);
 
@@ -1653,12 +1665,20 @@ CHECK_SIZE(EvilBeast, 0xC0);
 typedef struct EvilCyclops { EVILCYCLOPS_FIELDS } EvilCyclops;
 CHECK_SIZE(EvilCyclops, 0xBA);
 
-/* EVILDROP: descriptor $095126, parent BIOBALLS, $C6 bytes (GetSize $094C82) */
+/* EVILDROP: descriptor $095126, parent BIOBALLS, $C6 bytes (GetSize $094C82). A capsule EVILMAKER
+   drops (EvilDrop_Spawn): it falls, bounces twice, then its AI script opens it (the balls spread
+   along openPath) and releases the clone its record names. Never runs in the corpus. */
 #define EVILDROP_FIELDS \
 	BIOBALLS_FIELDS \
-	u8 unk_AC[0x1A];		/* +$AC */
+	PTR(void) openPath;		/* +$AC ball path played when it opens (EvilDrop_ActOpen; Tbl_EvilDropDefaultBallPath) */ \
+	Placement clone;		/* +$B0 copy of its spawn record: param 0 = the clone type XClone_SpawnByType makes */ \
+	u8 unk_C0[2];			/* +$C0 */ \
+	s16 floorY;			/* +$C2 y it lands on, pixels: the floor segment below its record (EvilDrop_Init; none: y + $80) */ \
+	u8 falling;			/* +$C4 1 while falling and bouncing: EvilDrop_Move moves it and keeps ball 0 on it */ \
+	u8 unk_C5;			/* +$C5 */
 typedef struct EvilDrop { EVILDROP_FIELDS } EvilDrop;
 CHECK_SIZE(EvilDrop, 0xC6);
+CHECK_OFFSET(EvilDrop, floorY, 0xC2);
 
 /* EVILGAMBIT: descriptor $099E64, parent XCLONE, $BA bytes (GetSize $0982FC) */
 #define EVILGAMBIT_FIELDS \
@@ -1686,7 +1706,8 @@ CHECK_OFFSET(EvilMaker, ai, 0x8C);
 /* EVILNIGHTCRAWLER: descriptor $099F88, parent XCLONE, $BE bytes (GetSize $098606) */
 #define EVILNIGHTCRAWLER_FIELDS \
 	XCLONE_FIELDS \
-	u8 unk_BA[0x4];		/* +$BA */
+	s16 targetX;			/* +$BA teleport target, pixels: the player it goes for (EvilNightcrawler_ActTeleport) */ \
+	s16 targetY;			/* +$BC */
 typedef struct EvilNightcrawler { EVILNIGHTCRAWLER_FIELDS } EvilNightcrawler;
 CHECK_SIZE(EvilNightcrawler, 0xBE);
 
@@ -2573,18 +2594,25 @@ CHECK_SIZE(WallGunBullet, 0x10);
 typedef struct TechWallGun { TECHWALLGUN_FIELDS } TechWallGun;
 CHECK_SIZE(TechWallGun, 0xA8);
 
-/* TELEPORTRECEIVER: descriptor $085300, parent ACTOR, $8C bytes (GetSize $085402) */
+/* TELEPORTRECEIVER: descriptor $085300, parent ACTOR, $8C bytes (GetSize $085402). Only a placement:
+   where a TELEPORTER of the same channel sends the players (never spawned: its InitSpawnRec
+   clears the record's flags). Placement params: 0 channel, 1/2 the players' offset (x, y) from
+   it, 4 non-zero: the CloneA2 camera's alternate mode there. */
 #define TELEPORTRECEIVER_FIELDS \
 	ACTOR_FIELDS
 typedef struct TeleportReceiver { TELEPORTRECEIVER_FIELDS } TeleportReceiver;
 CHECK_SIZE(TeleportReceiver, 0x8C);
 
-/* TELEPORTER: descriptor $085380, parent ACTOR, $92 bytes (GetSize $085444) */
+/* TELEPORTER: descriptor $085380, parent ACTOR, $92 bytes (GetSize $085444). A CloneA2 teleport pad:
+   a player stepping on it is sent, with the other, to the TELEPORTRECEIVER of its channel behind
+   a fade to black. */
 #define TELEPORTER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x6];		/* +$8C */
+	s16 channel;			/* +$8C placement param 0 (0 without one): the receiver it pairs with, and the CloneA2 camera zone there */ \
+	PTR(Placement) receiver;	/* +$8E the paired receiver's placement entry (Teleporter_Init; left as is when none matches) */
 typedef struct Teleporter { TELEPORTER_FIELDS } Teleporter;
 CHECK_SIZE(Teleporter, 0x92);
+CHECK_OFFSET(Teleporter, receiver, 0x8E);
 
 /* THRONEPHONE: descriptor $037A18, parent ACTOR, $A8 bytes (GetSize $037A96). The Throne Room's
    beam that ends the Magneto fight: once MAGNETOBOSS comes within its box it catches him and pulls
@@ -2629,10 +2657,16 @@ CHECK_SIZE(ToxicCan, 0x92);
 typedef struct ToxicCanDamaged { TOXICCANDAMAGED_FIELDS } ToxicCanDamaged;
 CHECK_SIZE(ToxicCanDamaged, 0x92);
 
-/* TRAPDOOR: descriptor $0AD956, parent XNPC, $A0 bytes (GetSize $0AD9E6) */
+/* TRAPDOOR: descriptor $0AD956, parent XNPC, $A0 bytes (GetSize $0AD9E6). A trapdoor in the
+   floor: a type-$13 floor segment drawn with map blocks; a player standing on it makes it sag,
+   spring back, open (the players fall through) and close again. */
 #define TRAPDOOR_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0xC];		/* +$94 */
+	s16 tileClosed;			/* +$94 map block across the door: closed ($7F in SavageA2, else $82) */ \
+	s16 tileSag;			/* +$96 sagging (closed + 1) */ \
+	s16 tileOpen;			/* +$98 half open, opening and closing (closed + 2) */ \
+	s16 tileWide;			/* +$9A wide open (closed + 3) */ \
+	PTR(Seg) door;			/* +$9C its type-$13 floor segment, found under the placement point (0: none) */
 typedef struct TrapDoor { TRAPDOOR_FIELDS } TrapDoor;
 CHECK_SIZE(TrapDoor, 0xA0);
 

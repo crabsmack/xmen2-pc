@@ -1,10 +1,9 @@
 /* BaniMazaA1_InitTablePtrs - point four scene pointers at the Moving Blocks' colour sequences
- * (Tbl_BaniMazaA1ColourSeq1-4). Nothing found reads them.
- * The four pointers sit just below g_DiscBandReverse ($FFC558-$FFC567) and have no names in the
- * disassembly (-$3CA8..-$3C9C): the macro reaches them from there. */
+ * (Tbl_BaniMazaA1ColourSeq1-4, into g_BmA1ColourSeqs[0..3] in reverse). Nothing found reads
+ * them. */
 #include "xmen2.h"
 
-#define g_BmA1ColourSeq	(&((PTR(void) *)g_DiscBandReverse)[-4])	/* [0] $FFC558 .. [3] $FFC564 */
+#define g_BmA1ColourSeq	g_BmA1ColourSeqs
 
 void BaniMazaA1_InitTablePtrs(void)
 {

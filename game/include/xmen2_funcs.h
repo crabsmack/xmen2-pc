@@ -964,16 +964,16 @@ void CloneA2_CallEmptyStubs(void);	/* $0821D4 */
 void CloneA2_StartCamera(void);	/* $0821E8 */
 void CloneA2_RunScene(void);	/* $082244 */
 long DropBomb_GetSize(void);	/* $08230C */
-void DropBomb_Nop66(void *);	/* $08231A */
-void DropBomb_Nop6A(void);	/* $082330 */
-long DropBomb_ClassInit(void);	/* $082338 */
-void DropBomb_Init(void *, long, long, void *);	/* $082340 */
-long DropBomb_StateStart(void *);	/* $08243E */
-long DropBomb_StateWaitInView(void *);	/* $082472 */
-long DropBomb_StateDrop(void *);	/* $082508 */
-long DropBomb_StateFall(void *);	/* $082542 */
-void DropBomb_StateExplode(void *);	/* $0825CC */
-long DropBomb_Spawn(long, long, long);	/* $08270E */
+void DropBomb_Nop66(DropBomb *);	/* $08231A */
+void DropBomb_Nop6A(DropBomb *);	/* $082330 */
+void DropBomb_ClassInit(void);	/* $082338 */
+void DropBomb_Init(DropBomb *, long, long, Placement *);	/* $082340 */
+short DropBomb_StateStart(DropBomb *);	/* $08243E */
+short DropBomb_StateWaitInView(DropBomb *);	/* $082472 */
+short DropBomb_StateDrop(DropBomb *);	/* $082508 */
+short DropBomb_StateFall(DropBomb *);	/* $082542 */
+void DropBomb_StateExplode(DropBomb *);	/* $0825CC */
+DropBomb *DropBomb_Spawn(long x, long y, Placement *pl);	/* $08270E */
 void SmallBrood_ScrStepKamikaze(void);	/* $0840CE fragment */
 void SmallBrood_ScrStepApproach(void);	/* $0840D8 fragment */
 void SmallBrood_ScrStepWalk(void);	/* $0840E6 fragment */
@@ -1012,18 +1012,18 @@ short SmallBrood_StateFlash(SmallBrood *);	/* $08515A */
 void SmallBrood_StateExplode(SmallBrood *);	/* $0851BE */
 void Teleporter_NoPause(void);	/* $0853FA */
 long TeleportReceiver_GetSize(void);	/* $085402 */
-void TeleportReceiver_InitSpawnRec(void *, long);	/* $085410 */
+void TeleportReceiver_InitSpawnRec(SpawnRec *rec, Placement *pl);	/* $085410 */
 long Teleporter_GetSize(void);	/* $085444 */
-void Teleporter_Nop66(void *);	/* $085452 */
-void Teleporter_Nop6A(void);	/* $085468 */
-long Teleporter_ClassInit(void);	/* $085470 */
-void Teleporter_Init(void *, long, long, void *);	/* $085478 */
-long Teleporter_StateStart(void *);	/* $08555E */
-long Teleporter_StateWait(void *);	/* $085582 */
-long Teleporter_StateTeleport(void *);	/* $085696 */
-long Teleporter_StateHold(void *);	/* $0857DC */
-long Teleporter_StateArrive(void *);	/* $085850 */
-void Teleporter_StateWaitFade(void *);	/* $0858F6 */
+void Teleporter_Nop66(Teleporter *);	/* $085452 */
+void Teleporter_Nop6A(Teleporter *);	/* $085468 */
+void Teleporter_ClassInit(void);	/* $085470 */
+void Teleporter_Init(Teleporter *, long, long, Placement *);	/* $085478 */
+short Teleporter_StateStart(Teleporter *);	/* $08555E */
+short Teleporter_StateWait(Teleporter *);	/* $085582 */
+short Teleporter_StateTeleport(Teleporter *);	/* $085696 */
+short Teleporter_StateHold(Teleporter *);	/* $0857DC */
+short Teleporter_StateArrive(Teleporter *);	/* $085850 */
+short Teleporter_StateWaitFade(Teleporter *);	/* $0858F6 */
 void unk_CloneA5_085932(void);	/* $085932 */
 long BroodBossParts_GetSize(void);	/* $08593E */
 void BroodBossParts_Init(BroodBossParts *, long, long, Placement *);	/* $08594C */
@@ -1132,17 +1132,17 @@ void EvilMaker_NopStatic(void);	/* $094BA4 */
 void EvilMaker_ScrStepKill(void);	/* $094C26 fragment */
 long EvilDrop_GetSize(void);	/* $094C82 */
 EvilDrop *EvilDrop_Spawn(Placement *, void *);	/* $094C90 */
-void EvilDrop_Nop6A(void);	/* $094CDA */
-long EvilDrop_ClassInit(void);	/* $094CE6 */
-void EvilDrop_Init(void *, long, long, void *);	/* $094CF2 */
-void EvilDrop_Move(void *, short);	/* $094E7A */
-long EvilDrop_StateStart(void *);	/* $094EFC */
-long EvilDrop_StateDrop(void *);	/* $094F20 */
-long EvilDrop_StateFall(void *);	/* $094F50 */
-long EvilDrop_StateBounce1(void *);	/* $094FB2 */
-long EvilDrop_StateBounce2(void *);	/* $095014 */
-void EvilDrop_ActOpen(void *);	/* $095094 */
-void EvilDrop_ActRelease(void *);	/* $0950D6 */
+void EvilDrop_Nop6A(EvilDrop *);	/* $094CDA */
+void EvilDrop_ClassInit(void);	/* $094CE6 */
+void EvilDrop_Init(EvilDrop *, long, long, Placement *);	/* $094CF2 */
+void EvilDrop_Move(EvilDrop *, short);	/* $094E7A */
+short EvilDrop_StateStart(EvilDrop *);	/* $094EFC */
+short EvilDrop_StateDrop(EvilDrop *);	/* $094F20 */
+short EvilDrop_StateFall(EvilDrop *);	/* $094F50 */
+short EvilDrop_StateBounce1(EvilDrop *);	/* $094FB2 */
+short EvilDrop_StateBounce2(EvilDrop *);	/* $095014 */
+void EvilDrop_ActOpen(EvilDrop *);	/* $095094 */
+void EvilDrop_ActRelease(EvilDrop *);	/* $0950D6 */
 void EvilDrop_NopStatic(void);	/* $09511E */
 long XClone_GetSize(void);	/* $095208 */
 void XClone_Nop66(XClone *self);	/* $095216 */
@@ -1230,32 +1230,32 @@ void EvilBeam_Update(EvilBeam *self);	/* $09806C */
 void EvilBeam_Draw(EvilBeam *self);	/* $0981FC */
 void EvilBeam_Destroy(EvilBeam *self);	/* $098236 */
 long EvilCyclops_GetSize(void);	/* $098282 */
-void EvilCyclops_Init(void *, long, long, long);	/* $098290 */
+void EvilCyclops_Init(EvilCyclops *self, long x, long y, Placement *place);	/* $098290 */
 long EvilGambit_GetSize(void);	/* $0982FC */
-void EvilGambit_Init(void *, long, long, long);	/* $09830A */
-long EvilGambit_ActBallsPath(void *);	/* $098376 */
+void EvilGambit_Init(EvilGambit *self, long x, long y, Placement *place);	/* $09830A */
+void EvilGambit_ActBallsPath(EvilGambit *self);	/* $098376 */
 long EvilMagneto_GetSize(void);	/* $0983E8 */
-void EvilMagneto_Init(void *, long, long, long);	/* $0983F6 */
-long EvilMagneto_StateBlast(void *);	/* $098468 */
-long EvilMagneto_ActBlast(void *);	/* $098568 */
+void EvilMagneto_Init(EvilMagneto *self, long x, long y, Placement *place);	/* $0983F6 */
+void EvilMagneto_StateBlast(EvilMagneto *self);	/* $098468 */
+short EvilMagneto_ActBlast(EvilMagneto *self);	/* $098568 */
 long EvilNightcrawler_GetSize(void);	/* $098606 */
-void EvilNightcrawler_Init(void *, long, long, long);	/* $098614 */
-void EvilNightcrawler_StateLand(void *);	/* $098680 */
-long EvilNightcrawler_StateFall(void *);	/* $0986E8 */
-long EvilNightcrawler_StateAppear(void *);	/* $09874E */
-long EvilNightcrawler_StateTeleportIn(void *);	/* $0987E2 */
-long EvilNightcrawler_StateTeleportOut(void *);	/* $098830 */
-long EvilNightcrawler_ActTeleport(void *);	/* $0988F6 */
+void EvilNightcrawler_Init(EvilNightcrawler *self, long x, long y, Placement *place);	/* $098614 */
+void EvilNightcrawler_StateLand(EvilNightcrawler *self);	/* $098680 */
+short EvilNightcrawler_StateFall(EvilNightcrawler *self);	/* $0986E8 */
+short EvilNightcrawler_StateAppear(EvilNightcrawler *self);	/* $09874E */
+short EvilNightcrawler_StateTeleportIn(EvilNightcrawler *self);	/* $0987E2 */
+short EvilNightcrawler_StateTeleportOut(EvilNightcrawler *self);	/* $098830 */
+short EvilNightcrawler_ActTeleport(EvilNightcrawler *self);	/* $0988F6 */
 long EvilPsylocke_GetSize(void);	/* $098990 */
-void EvilPsylocke_Init(void *, long, long, long);	/* $09899E */
-void EvilPsylocke_StateDashEnd(void *);	/* $098A0A */
-long EvilPsylocke_ActDash(void *);	/* $098A66 */
-long EvilPsylocke_ActBallsPath(void *);	/* $098AD2 */
+void EvilPsylocke_Init(EvilPsylocke *self, long x, long y, Placement *place);	/* $09899E */
+void EvilPsylocke_StateDashEnd(EvilPsylocke *self);	/* $098A0A */
+short EvilPsylocke_ActDash(EvilPsylocke *self);	/* $098A66 */
+void EvilPsylocke_ActBallsPath(EvilPsylocke *self);	/* $098AD2 */
 long EvilWolverine_GetSize(void);	/* $098B44 */
-void EvilWolverine_Init(void *, long, long, long);	/* $098B52 */
-long EvilWolverine_StateLeap(void *);	/* $098BBE */
-long EvilWolverine_ActLeap(void *);	/* $098C4E */
-short Clone_CharTypeOf(void *);	/* $098CC8 */
+void EvilWolverine_Init(EvilWolverine *self, long x, long y, Placement *place);	/* $098B52 */
+short EvilWolverine_StateLeap(EvilWolverine *self);	/* $098BBE */
+short EvilWolverine_ActLeap(EvilWolverine *self);	/* $098C4E */
+short Clone_CharTypeOf(void *obj);	/* $098CC8 */
 XClone *XClone_SpawnByType(Placement *place, XPlayer *player);	/* $098DA8 */
 void XClone_SpawnByType_Case1(void);	/* $098DF8 fragment */
 void XClone_SpawnByType_Case7(void);	/* $098F50 fragment */
@@ -1297,21 +1297,21 @@ void XClone_Script11(void);	/* $09A8F8 fragment */
 void XClone_Script12(void);	/* $09A90A fragment */
 void XClone_Script13(void);	/* $09AA8A fragment */
 long BroodClaw_GetSize(void);	/* $09ACCE */
-long BroodClaw_Init(void *, long, long, void *);	/* $09ACDC */
+void BroodClaw_Init(BroodClaw *self, long x, long y, Placement *place);	/* $09ACDC */
 BroodClaw *BroodClaw_Spawn(Placement *rec, char pair);	/* $09AD96 */
-long BroodClaw_Update(void *);	/* $09AE80 */
-long BroodClaw_Draw(void *);	/* $09AF3E */
-long BroodClaw_Kill(void *);	/* $09B168 */
-long BroodClaw_Move(void *, short);	/* $09B1AC */
-void BroodClaw_Swing(void *);	/* $09B224 */
-long BroodClaw_StateWaitMusic(void *);	/* $09B45E */
-long BroodClaw_StateScroll(void *);	/* $09B4BC */
-long BroodClaw_StateStartScroll(void *);	/* $09B50C */
-long BroodClaw_StateEnterView(void *);	/* $09B55C */
-long BroodClaw_StateMoveToDrop(void *);	/* $09B60A */
-long BroodClaw_StateDropClone(void *);	/* $09B6A2 */
-void BroodClaw_CamApplyShake(void *);	/* $09B8A0 */
-long BroodClaw_StateIdle(void *);	/* $09B968 */
+void BroodClaw_Update(BroodClaw *self);	/* $09AE80 */
+void BroodClaw_Draw(BroodClaw *self);	/* $09AF3E */
+void BroodClaw_Kill(BroodClaw *self);	/* $09B168 */
+void BroodClaw_Move(BroodClaw *self, short steps);	/* $09B1AC */
+void BroodClaw_Swing(BroodClaw *self);	/* $09B224 */
+short BroodClaw_StateWaitMusic(BroodClaw *self);	/* $09B45E */
+short BroodClaw_StateScroll(BroodClaw *self);	/* $09B4BC */
+short BroodClaw_StateStartScroll(BroodClaw *self);	/* $09B50C */
+short BroodClaw_StateEnterView(BroodClaw *self);	/* $09B55C */
+short BroodClaw_StateMoveToDrop(BroodClaw *self);	/* $09B60A */
+short BroodClaw_StateDropClone(BroodClaw *self);	/* $09B6A2 */
+void BroodClaw_CamApplyShake(Camera *cam);	/* $09B8A0 */
+short BroodClaw_StateIdle(BroodClaw *self);	/* $09B968 */
 long BubbleManager_GetSize(void);	/* $0AB038 */
 void BubbleManager_NopStatic(void);	/* $0AB046 */
 void BubbleManager_Nop6A(BubbleManager *self);	/* $0AB04E */
@@ -1415,24 +1415,24 @@ void SavageA2_InstallFrameHook(void);	/* $0AD90A */
 void SavageA2_RunScene(void);	/* $0AD91A */
 long TrapDoor_GetSize(void);	/* $0AD9E6 */
 void TrapDoor_NopStatic(void);	/* $0AD9F4 */
-void TrapDoor_Nop66(void *);	/* $0AD9FC */
-long TrapDoor_ClassInit(void);	/* $0ADA12 */
-long TrapDoor_Init(void *, long, long, void *);	/* $0ADA1E */
-long TrapDoor_SetTiles(void *, short);	/* $0ADB1A */
-long TrapDoor_StateStart(void *);	/* $0ADB7E */
-long TrapDoor_StateArm(void *);	/* $0ADBBE */
-long TrapDoor_StateWaitPlayer(void *);	/* $0ADBE8 */
-long TrapDoor_StateSag(void *);	/* $0ADC26 */
-long TrapDoor_StateSpring(void *);	/* $0ADCD8 */
-long TrapDoor_StateOpen(void *);	/* $0ADD8A */
-long TrapDoor_StateOpenWide(void *);	/* $0ADE06 */
-long TrapDoor_StateClosing(void *);	/* $0ADE40 */
-long TrapDoor_StateClosed(void *);	/* $0ADE7A */
+void TrapDoor_Nop66(TrapDoor *self);	/* $0AD9FC */
+void TrapDoor_ClassInit(void);	/* $0ADA12 */
+void TrapDoor_Init(TrapDoor *self, long x, long y, Placement *pl);	/* $0ADA1E */
+void TrapDoor_SetTiles(TrapDoor *self, short tile);	/* $0ADB1A */
+short TrapDoor_StateStart(TrapDoor *self);	/* $0ADB7E */
+short TrapDoor_StateArm(TrapDoor *self);	/* $0ADBBE */
+short TrapDoor_StateWaitPlayer(TrapDoor *self);	/* $0ADBE8 */
+short TrapDoor_StateSag(TrapDoor *self);	/* $0ADC26 */
+short TrapDoor_StateSpring(TrapDoor *self);	/* $0ADCD8 */
+short TrapDoor_StateOpen(TrapDoor *self);	/* $0ADD8A */
+short TrapDoor_StateOpenWide(TrapDoor *self);	/* $0ADE06 */
+short TrapDoor_StateClosing(TrapDoor *self);	/* $0ADE40 */
+short TrapDoor_StateClosed(TrapDoor *self);	/* $0ADE7A */
 void SavageA3_EmptyStub2(void);	/* $0B02EC */
 void SavageA3_FrameStub(void);	/* $0B02F4 */
-void SavageA3_TileHookCrack(short, short);	/* $0B02FC */
+long SavageA3_TileHookCrack(short col, short row);	/* $0B02FC */
 void SavageA3_InstallTileHooks(void);	/* $0B03A2 */
-void SavageA3_CamSetHooks(void *);	/* $0B03DA */
+void SavageA3_CamSetHooks(Camera *cam);	/* $0B03DA */
 void SavageA3_InitCamera(void);	/* $0B0408 */
 void SavageA3_FrameHook(void);	/* $0B042E */
 void SavageA3_LoadResources(void);	/* $0B0468 */

@@ -69,6 +69,13 @@ extern s16 g_ZapperSprDef;
 #else
 #define g_ZapperSprDef XM_G(s16, 0xFFC534)
 #endif
+/* $FFC536 4 records {word step 0-2, word delay}: AvalonA3's effect sprites 4..1 (the delays are
+   g_AvalonA3SprDelays; AvalonA3_FrameHook steps them) */
+#ifdef XMEN2_MPW
+extern A3SprAnim g_AvalonA3SprAnim[4];
+#else
+#define g_AvalonA3SprAnim XM_GA(A3SprAnim, 0xFFC536)
+#endif
 /* $FFC538 4 words at stride 4: AvalonA3 effect-sprite frame delays (AvalonA3_InitSprites staggers them 3, 2, 1, 0; AvalonA3_FrameHook reloads 5) */
 #ifdef XMEN2_MPW
 extern s16 g_AvalonA3SprDelays[4];
@@ -122,6 +129,12 @@ extern s16 g_MagnetoBossSprDef;
 extern s16 g_ThronePhoneSprDef;
 #else
 #define g_ThronePhoneSprDef XM_G(s16, 0xFFC556)
+#endif
+/* $FFC558 4 ptrs: BaniMazaA1_InitTablePtrs points them at Tbl_BaniMazaA1ColourSeq4, 3, 2, 1; nothing reads them */
+#ifdef XMEN2_MPW
+extern PTR(void) g_BmA1ColourSeqs[4];
+#else
+#define g_BmA1ColourSeqs XM_GA(PTR(void), 0xFFC558)
 #endif
 /* $FFC568 bytes: per-band direction flags of the rolling discs (RollingDiscs_UpdateScroll); BaniMazaA1_AnimateBlocks reverses its block animations with them */
 #ifdef XMEN2_MPW
@@ -200,6 +213,12 @@ extern PTR(DiscBand) g_DiscBands;
 extern s16 g_DiscBandCount;
 #else
 #define g_DiscBandCount XM_G(s16, 0xFFC586)
+#endif
+/* $FFC588 ptr: the ROLLINGDISCS object (RollingDiscs_Init stores self) */
+#ifdef XMEN2_MPW
+extern PTR(RollingDiscs) g_RollingDiscs;
+#else
+#define g_RollingDiscs XM_G(PTR(RollingDiscs), 0xFFC588)
 #endif
 /* $FFC58C word: sprite-definition slot of Art_ApocalypseSpr (Apocalypse_ClassInit via SprDef_Add; Apocalypse_Init) */
 #ifdef XMEN2_MPW

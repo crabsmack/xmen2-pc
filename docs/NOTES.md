@@ -266,6 +266,8 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
   it, so its `uncovered` stays 1 and D4 can't count it verified as defined. Options: count
   statically unreachable instructions (shown so, listed in the phase doc) as covered, or leave
   the function short of done. Collected here until the end of D4 with any others like it.
+  Also: Player_NearestLive ($1F6A32, unmatched C) `$1F6AB6-$1F6AB8`, a `return 0` after re-testing
+  player 1, who was just found alive.
 - **A callee's own argument slots (for the user, D4 `verify`):** Spr_EmitPre, Spr_EmitPreClip and
   Spr_EmitPreLinked (hand-written 68000 in MPW frames) store a computed value into their own
   argument slot (`move.w d7,$16(a6)`), MPW's storage for a by-value parameter the caller pops

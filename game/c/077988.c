@@ -14,32 +14,32 @@
 /* Put one hardware sprite at screen (sx, sy): the next slot of the sprite table. */
 #define EMIT(sy, sz, at, sx) \
 	g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link); \
-	g_SprWritePtr->y = (sy) + 0x80; \
+	g_SprWritePtr->y = (short)(sy) + 0x80; \
 	g_SprWritePtr->size = (sz); \
 	g_SprWritePtr->attr = (at); \
-	g_SprWritePtr->x = (sx) + 0x80
+	g_SprWritePtr->x = (short)(sx) + 0x80
+
+/* g_HScrollBuf as words: line i's plane A scroll at [2i], plane B at [2i + 1]. */
+#define g_HScrollWord	((s16 *)g_HScrollBuf)
 
 void LightBeam_Draw(LightBeam *self)
 {
-	short attr;		/* the definition's first tile, palette 2 */
-	short attr18;		/* + $18 */
-	short attr1C;		/* + $1C */
-	short step;		/* x between columns, pixels */
-	short left;		/* columns left */
-	long n;			/* columns done (kind 1; never read) */
-	long sy;
-	long line;
-	long sx;
+	short attr = g_SpriteDefs[self->sprDef].tileBase | 0x4000;	/* the definition's first tile, palette 2 */
+	short attr18 = attr + 0x18;
+	short attr1C = attr18 + 4;
+	short step = self->spacing << 5;	/* x between columns, pixels */
+	short left = self->count;		/* columns left */
+	register long n = 0;			/* columns done (kind 1; never read) */
+	register long sy = self->topY - g_CameraY;
+	register long line = sy - 1;		/* the screen line above the top */
+#ifdef XMEN2_MPW
+	register long sx = self->xOff + g_HScrollWord[(line << 1) + 1];	/* its plane-B H-scroll */
+#else
+	/* PC: the 68000 reads the word even for a line off the screen (any RAM or ROM within 32 KB:
+	   no side effect, and sx is not used then); the host must not read outside the buffer */
+	register long sx = line < 0 || line > 0xDF ? 0 : self->xOff + g_HScrollWord[(line << 1) + 1];
+#endif
 
-	attr = 0x4000 | g_SpriteDefs[self->sprDef].tileBase;
-	attr18 = attr + 0x18;
-	attr1C = attr18 + 4;
-	step = self->spacing << 5;
-	left = self->count;
-	n = 0;
-	sy = self->topY - g_CameraY;
-	line = sy - 1;
-	sx = ((s16 *)g_HScrollBuf + 1)[line << 1] + self->xOff;
 	if (line < 0 || line > 0xDF)
 		return;
 	switch (self->kind) {

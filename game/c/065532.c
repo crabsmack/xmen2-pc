@@ -49,8 +49,8 @@ void Cerebro_RunTextScript(void)
 		p += 2;
 		switch (op) {
 		case 1:
-			g_TextCol = g_TextWinLeft + *p++;
-			g_TextRow = g_TextWinTop + *p++;
+			g_TextCol = *p++ + g_TextWinLeft;
+			g_TextRow = *p++ + g_TextWinTop;
 			break;
 		case 2:
 			n = NEXT_WORD(p);
@@ -67,8 +67,8 @@ void Cerebro_RunTextScript(void)
 		case 3:
 			g_TextState = 2;
 			Cerebro_ClearTextWindow();
-			g_TextCol = g_TextWinLeft + *p++;
-			g_TextRow = g_TextWinTop + *p++;
+			g_TextCol = *p++ + g_TextWinLeft;
+			g_TextRow = *p++ + g_TextWinTop;
 			break;
 		case 4:
 			Pal_StartFade(7, -1, CODEPTR(Tbl_FadeBlack));
