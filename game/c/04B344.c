@@ -3,7 +3,10 @@
  *
  * self: the boss.
  * The cases are Apocalypse_SelectBombPattern_part1 (0-4), _part2 (5) and _part3 (the default,
- * then the store). */
+ * then the store).
+ *
+ * Inline here, separate blocks in the disassembly: Apocalypse_SelectBombPattern_part2, Apocalypse_SelectBombPattern_part3.
+ */
 #include "xmen2.h"
 
 void Apocalypse_SelectBombPattern(register Apocalypse *self)

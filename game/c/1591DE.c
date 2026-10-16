@@ -4,7 +4,10 @@
  *      there is no straight-down shot).
  * Returns the animation script (Tbl_MagnetoShotDownDiagAnim, Tbl_MagnetoAnim5 level,
  * Tbl_MagnetoAnim3 up-diagonal, Tbl_MagnetoShotUpAnim); 0 for any other dir. Cases:
- * Magneto_ShotAnim_Case1/2/4/7/8 (the others are unnamed blocks), _Default, _Result, _Ret. */
+ * Magneto_ShotAnim_Case1/2/4/7/8 (the others are unnamed blocks), _Default, _Result, _Ret.
+ *
+ * Inline here, separate blocks in the disassembly: Magneto_ShotAnim_Ret.
+ */
 #include "xmen2.h"
 
 void *Magneto_ShotAnim(short dir)

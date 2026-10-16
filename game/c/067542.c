@@ -2,7 +2,10 @@
  * select (cases PlayerSelect_PlayIdleAnim_part1 .. _part6; _part7 is the exit, also with no
  * character).
  *
- * self: the portrait. */
+ * self: the portrait.
+ *
+ * Inline here, separate blocks in the disassembly: PlayerSelect_PlayIdleAnim_part2, PlayerSelect_PlayIdleAnim_part3, PlayerSelect_PlayIdleAnim_part4, PlayerSelect_PlayIdleAnim_part5, PlayerSelect_PlayIdleAnim_part6, PlayerSelect_PlayIdleAnim_part7.
+ */
 #include "xmen2.h"
 
 void PlayerSelect_PlayIdleAnim(register ScalingActor *self)

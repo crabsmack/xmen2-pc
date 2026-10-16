@@ -5,7 +5,10 @@
  * landing, height step -100; 2 and 3 bounce, steps 100 and 200; other values as 0), high nibble
  * = type: 0 harmless (palette 2), $10 hittable (palette 1, frame 9, in the enemy body hit list).
  * The cases are ApocBomb_Spawn_part1 (0 and default), _part2 (1), _part3 (2 and 3) and _part4
- * (the type). */
+ * (the type).
+ *
+ * Inline here, separate blocks in the disassembly: ApocBomb_Spawn_part2, ApocBomb_Spawn_part3, ApocBomb_Spawn_part4.
+ */
 #include "xmen2.h"
 
 void ApocBomb_Spawn(short speed, register short param)

@@ -10,7 +10,10 @@
  *     param 0 when there is a placement and it isn't 0.
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on;
- * mode 1 reads it even when it is 0). */
+ * mode 1 reads it even when it is 0).
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): FloatBio_Script1_Part2.
+ */
 #include "xmen2.h"
 
 void FloatBio_Init(FloatBio *self, long x, long y, Placement *pl)

@@ -9,7 +9,10 @@
  * spawn y (floor = y, ceiling = y - 1); the others find the floor below and the ceiling above
  * (none above: floor - $A0). The sprite priority bit (2) is copied from the live player (player 1
  * when neither is). Starts at SmallBrood_StateStart (variant 1: SmallBrood_StateWaitForPlayer),
- * keeps 80 pixels from the player, frame $FF. */
+ * keeps 80 pixels from the player, frame $FF.
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): SmallBrood_ScrStepKamikaze, SmallBrood_ScrStepApproach, SmallBrood_ScrStepWalk.
+ */
 #include "xmen2.h"
 
 void SmallBrood_Init(SmallBrood *self, long x, long y, Placement *pl)

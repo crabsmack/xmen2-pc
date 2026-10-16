@@ -12,7 +12,10 @@
  * x, y: the object's position (8 fraction bits).  vx, vy, prevVx, prevVy: its velocities.
  * steps: at least 1.
  * The cases are Deathbird_MovePolar_Case0 (0-2), _Case3, _Case4 (4-15) and _Case16 (16 and
- * anything else, then the step's end). */
+ * anything else, then the step's end).
+ *
+ * Inline here, separate blocks in the disassembly: Deathbird_MovePolar_Case3, Deathbird_MovePolar_Case4, Deathbird_MovePolar_Case16.
+ */
 #include "xmen2.h"
 
 void Deathbird_MovePolar(s16 *speed, s16 *accel, s16 *maxSpeed, register s32 *heading,

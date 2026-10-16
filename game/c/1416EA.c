@@ -6,7 +6,10 @@
  * Stats Tbl_TankStats, but 8 health; sprite set g_TankSprDef; flags6 |= $80, $200; sprite
  * priority (bit 2) as the live player's (player 1's when neither is alive); not moving, the
  * animation Tbl_TankAnim. Placement params: 0 the track's half-length (0: 96; Tank_SetTrackLimits),
- * 1 speed << 8 (0: $100), 3 driveTime (0: 120). No rocket. */
+ * 1 speed << 8 (0: $100), 3 driveTime (0: 120). No rocket.
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): Tank_ScriptWaitDrive.
+ */
 #include "xmen2.h"
 
 void Tank_Init(register Tank *self, long x, long y, register Placement *pl)

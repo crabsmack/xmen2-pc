@@ -16,7 +16,7 @@
 #include "xmen2_types.h"
 
 void unk_Boot_005458(void);	/* $005458 */
-void Game_Main(void);	/* $005466 */
+void Game_Main(void);	/* $005466 noreturn */
 void Scene_RegisterAll(void);	/* $0054C6 */
 void Game_ResetPlayers(void);	/* $005C7C */
 void Game_SceneLoop(void);	/* $005CC6 */
@@ -3001,7 +3001,7 @@ void Nem_DecodeLoop_Inline(void);	/* $15F540 fragment */
 char Nem_PutRowVdp(unsigned long row, short *rowsLeft);	/* $15F566 asm conv */
 char Nem_PutRowRam(unsigned long row, short *rowsLeft, u32 **dest);	/* $15F572 asm conv */
 char Nem_PutRowMasked(unsigned long row, short *rowsLeft, char *skip, u8 *mask);	/* $15F57E asm conv */
-u8 *Nem_BuildCodeTable(void *list, void *table);	/* $15F5CA asm */
+u8 *Nem_BuildCodeTable(void *list, NemCodeTable *table);	/* $15F5CA asm */
 void Eni_Decode(u8 *src, u16 *dest, long base);	/* $15F5FC */
 void Eni_Ops(short op, short count, u8 *src, unsigned long bits, short nbits, u16 *dest, short inc, short common, short flags, short base, short width);	/* $15F65C asm conv clobbers(d0,d1,d2,a0,a1) */
 unsigned short Eni_ReadInline(u8 **src, unsigned long *bits, short *nbits, short width, short flags, short base, short *shift);	/* $15F6F0 asm regs(&a0,&d5,&d6,d4,d3,a3,&d7)->d1 */

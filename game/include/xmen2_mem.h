@@ -256,6 +256,7 @@ inline bool in_game_memory(const void *p)
    call, copied back after it, A7 restored. Game-memory types go as their bytes (they are the
    68000 layout); a plain scalar (char, short, long) in the 68000's byte order and size. A
    `void *` can't: its size is unknown. */
+inline uint32_t g_call68_to;   /* the 68000 code being called (for the errors below) */
 struct Scratch {
     uint32_t sp0 = 0;
     int nc = 0;
@@ -277,7 +278,8 @@ struct Scratch {
             if (!a || in_game_memory((const void *)a)) return addr((const void *)a);
             typedef typename std::remove_cv<typename std::remove_pointer<A>::type>::type T;
             if constexpr (std::is_void<T>::value) {
-                fatal("call68: a host void pointer can't be passed to 68000 code (its size is unknown)");
+                fatal("call68 to $%06X: a host void pointer can't be passed to 68000 code (its size is unknown)",
+                      (unsigned)g_call68_to);
             } else if constexpr (std::is_arithmetic<T>::value) {
                 static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4, "call68: a 1, 2 or 4 byte scalar");
                 if (nc == 8) fatal("call68: too many host pointers");
@@ -306,6 +308,7 @@ struct Scratch {
 };
 template <class... A> inline ret68 call68(uint32_t a, A... args)
 {
+    g_call68_to = a & 0xFFFFFFu;
     Scratch sc;
     uint32_t s[sizeof...(A) + 1] = { sc.arg(args)... };
     return ret68{ call_slots(a, s, (int)sizeof...(A)) };
@@ -372,7 +375,8 @@ typedef xm::be<uint16_t>      u16;
 typedef xm::be<int32_t>       s32;
 typedef xm::be<uint32_t>      u32;
 
-/* The original wrote egister where it wanted a variable in a register (it decides MPW's
+/* The original wrote 
+egister where it wanted a variable in a register (it decides MPW's
    register choice, so matching keeps it); C++17 has no register storage class. */
 #define register
 

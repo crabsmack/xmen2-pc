@@ -13,7 +13,7 @@ void Art_LoadNemToVram(void *art, short tile)
 	switch (n) {
 	case 4:
 		n = p[1];
-		p = (s16 *)Nem_BuildCodeTable(p + 2, table);
+		p = (s16 *)Nem_BuildCodeTable(p + 2, (NemCodeTable *)table);
 		Nem_Decode(p, (NemCodeTable *)table, n, 1, tile << 5);
 		break;
 	}

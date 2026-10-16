@@ -4,7 +4,10 @@
  * dir: aim direction 1-8 (1/8 down-diagonal, 2/7 level, 3/6 up-diagonal, 4/5 up).
  * Returns the animation script (Tbl_MagnetoShotDownDiagEndAnim, Tbl_MagnetoAnim6 level,
  * Tbl_MagnetoAnim4 up-diagonal, Tbl_MagnetoShotUpEndAnim); 0 for any other dir. Cases:
- * Magneto_ShotEndAnim_Case1/2/4/7/8 (the others are unnamed blocks), _Default, _Result, _Ret. */
+ * Magneto_ShotEndAnim_Case1/2/4/7/8 (the others are unnamed blocks), _Default, _Result, _Ret.
+ *
+ * Inline here, separate blocks in the disassembly: Magneto_ShotEndAnim_Ret.
+ */
 #include "xmen2.h"
 
 void *Magneto_ShotEndAnim(short dir)

@@ -6,7 +6,10 @@
  *
  * self: the object. Returns nothing in particular.
  * (The do/while (0), as a macro would be: its loop end keeps the last pop, and the loop makes
- * MPW C flush the pending pops before each branch, as the ROM.) */
+ * MPW C flush the pending pops before each branch, as the ROM.)
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): SavageBio_Script4.
+ */
 #include "xmen2.h"
 
 short SavageMediumBio_StateBurst(SavageMediumBio *self)

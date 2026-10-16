@@ -1,7 +1,10 @@
 /* PlayerSelect_CharSpriteDef - the select-screen sprite definition of a slot's character
  * (<Char>_SelectSpriteDef; cases PlayerSelect_CharSpriteDef_Beast .. _Magneto).
  *
- * slot: the player's select slot. Returns 0 with no character (PlayerSelect_CharSpriteDef_None). */
+ * slot: the player's select slot. Returns 0 with no character (PlayerSelect_CharSpriteDef_None).
+ *
+ * Inline here, separate blocks in the disassembly: PlayerSelect_CharSpriteDef_Cyclops, PlayerSelect_CharSpriteDef_Nightcrawler, PlayerSelect_CharSpriteDef_Psylocke, PlayerSelect_CharSpriteDef_Wolverine, PlayerSelect_CharSpriteDef_Magneto.
+ */
 #include "xmen2.h"
 
 void *PlayerSelect_CharSpriteDef(BigSprite *slot)

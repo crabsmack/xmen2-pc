@@ -5,7 +5,10 @@
  * Bug kept: the mask is and-ed with !bit (logical not: 0 for every zone) where ~bit was meant,
  * so any zone clears the whole mask. The switch cases are the fragments
  * AvalonA4_ClearCameraZone_case0 (zones 0-2), _case3, _case4, _case5; _apply is the rest. A zone
- * outside 0-5 uses whatever bit held (d7; !bit is then 0 unless d7's word was 0). */
+ * outside 0-5 uses whatever bit held (d7; !bit is then 0 unless d7's word was 0).
+ *
+ * Inline here, separate blocks in the disassembly: AvalonA4_ClearCameraZone_case3, AvalonA4_ClearCameraZone_case4, AvalonA4_ClearCameraZone_case5, AvalonA4_ClearCameraZone_apply.
+ */
 #include "xmen2.h"
 
 #define g_A4CamZones	(*(s16 *)g_SceneVar3B02)	/* scene variable: bit n = camera zone n held (AvalonA4_SetCameraZone) */

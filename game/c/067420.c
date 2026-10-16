@@ -4,7 +4,10 @@
  * plays the sound.
  *
  * self: the portrait. With no character the 68000 tests whatever its caller left in a4 (never
- * happens: a portrait lands with a character); the PC version plays nothing then. */
+ * happens: a portrait lands with a character); the PC version plays nothing then.
+ *
+ * Inline here, separate blocks in the disassembly: PlayerSelect_PlayPickAnim_part2, PlayerSelect_PlayPickAnim_part3.
+ */
 #include "xmen2.h"
 
 void PlayerSelect_PlayPickAnim(register ScalingActor *self)

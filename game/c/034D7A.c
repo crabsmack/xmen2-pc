@@ -9,7 +9,10 @@
  * and 10). Both mark g_PalBaseDirty.
  * The jump tables of the three switches are the fragments AvalonA4_AnimatePalettes_part1-6
  * (part1/part3/part5 the cases, part2 the highlight switch, part4/part6 the step counts).
- * Returns nothing (no caller reads d0). */
+ * Returns nothing (no caller reads d0).
+ *
+ * Inline here, separate blocks in the disassembly: AvalonA4_AnimatePalettes_part3.
+ */
 #include "xmen2.h"
 
 #define g_A4PulseDelay	(*(s16 *)g_SceneVar3B32)	/* scene variable: frames before the next pulse step */

@@ -5,7 +5,10 @@
  * Returns the animation script (Tbl_MagnetoAnim14 down, Tbl_MagnetoAnim12 down-diagonal,
  * Tbl_MagnetoAnim10 level, Tbl_MagnetoAirShotUpDiagEndAnim, Tbl_MagnetoAirShotUpEndAnim); 0 for
  * any other dir. Cases: Magneto_AirShotEndAnim_Case0/2/3/7/9 (the others are unnamed blocks),
- * _Default, _Result, _Ret. MAGNETOBOSS uses it too (MagnetoBoss_StateShootRecover). */
+ * _Default, _Result, _Ret. MAGNETOBOSS uses it too (MagnetoBoss_StateShootRecover).
+ *
+ * Inline here, separate blocks in the disassembly: Magneto_AirShotEndAnim_Ret.
+ */
 #include "xmen2.h"
 
 void *Magneto_AirShotEndAnim(short dir)

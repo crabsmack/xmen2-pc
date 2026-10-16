@@ -54,7 +54,7 @@ short Level_LoadUsedTiles(void *map, void *tileset, short vram, s16 *layout, voi
 #endif
 		i = *p++;
 	}
-	p = (s16 *)Nem_BuildCodeTable(p, remap);
+	p = (s16 *)Nem_BuildCodeTable(p, (NemCodeTable *)remap);
 	/* Mode 2: masked, with the used-tile mask (bits) as a sixth argument, which Nem_Decode reads
 	   ($1C(a6)). MPW sees its five-argument prototype (the mode-1 callers'), so this call goes
 	   without one, as the original's. */

@@ -1,7 +1,10 @@
 /* PlayerSelect_CharFrameNum - the select-screen frame of a slot's character (<Char>_SelectFrame;
  * cases PlayerSelect_CharFrameNum_Beast .. _Magneto).
  *
- * slot: the player's select slot. Returns $FF with no character (PlayerSelect_CharFrameNum_None). */
+ * slot: the player's select slot. Returns $FF with no character (PlayerSelect_CharFrameNum_None).
+ *
+ * Inline here, separate blocks in the disassembly: PlayerSelect_CharFrameNum_Cyclops, PlayerSelect_CharFrameNum_Nightcrawler, PlayerSelect_CharFrameNum_Psylocke, PlayerSelect_CharFrameNum_Wolverine, PlayerSelect_CharFrameNum_Magneto.
+ */
 #include "xmen2.h"
 
 short PlayerSelect_CharFrameNum(BigSprite *slot)

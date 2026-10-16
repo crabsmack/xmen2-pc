@@ -3,7 +3,10 @@
  *
  * self: the boss (never runs in the corpus).
  * The cases are Apocalypse_ActPickScript_part1 (0 and default), _part2 (1-3) and _part3 (the
- * script start). */
+ * script start).
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): Apocalypse_ActPickScript_part2, Apocalypse_ActPickScript_part3.
+ */
 #include "xmen2.h"
 
 void Apocalypse_ActPickScript(register Apocalypse *self)

@@ -21,7 +21,10 @@
  * (PlayerSelect_Run_SetP2, PlayerSelect_Run_P2None).
  * PC: the two slots are game memory (the cursors and portraits keep their addresses): placed on
  * the 68000 stack where the original's frame had them (-$84(a6) and -$42(a6), a6 = A7 at entry -
- * 4), the rest of the frame (2 bytes of locals, 6 saved registers) reserved below. */
+ * 4), the rest of the frame (2 bytes of locals, 6 saved registers) reserved below.
+ *
+ * Inline here, separate blocks in the disassembly: PlayerSelect_Run_P1Cyclops, PlayerSelect_Run_P1Nightcrawler, PlayerSelect_Run_P1Psylocke, PlayerSelect_Run_P1Wolverine, PlayerSelect_Run_P1Magneto, PlayerSelect_Run_P2Cyclops, PlayerSelect_Run_P2Gambit.
+ */
 #include "xmen2.h"
 
 #define g_TextState	(*(s16 *)g_SceneVar3B02)	/* scene variable: Cerebro text state */

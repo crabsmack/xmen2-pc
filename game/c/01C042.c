@@ -11,7 +11,10 @@
  * _Script1to4, then YoyoAcolyte_Init_SetScript): 0 (and anything outside 0-4)
  * Tbl_YoyoAcolyte_ScriptLevel, 1 ..ScriptHighLen, 2 ..ScriptLowLen, 3 ..ScriptMixALen,
  * 4 ..ScriptMixBLen (thunks YoyoAcolyte_ScriptLevel, _ScriptHigh, _ScriptLow, _ScriptMixA,
- * _ScriptMixB: throws, each followed by ActIdle); +$C idleTime (0: 80). */
+ * _ScriptMixB: throws, each followed by ActIdle); +$C idleTime (0: 80).
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): YoyoAcolyte_ScriptHigh, YoyoAcolyte_ScriptLow, YoyoAcolyte_ScriptMixA, YoyoAcolyte_ScriptMixB.
+ */
 #include "xmen2.h"
 
 void YoyoAcolyte_Init(register YoyoAcolyte *self, register long x, register long y, register Placement *pl)

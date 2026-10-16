@@ -4,7 +4,10 @@
  * script Tbl_Tank_ScriptDriveIn; out of sight it goes on with its script.
  *
  * self: the object.
- * Returns self->flags & 8 while waiting, nothing otherwise. */
+ * Returns self->flags & 8 while waiting, nothing otherwise.
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): Tank_ScriptDriveIn.
+ */
 #include "xmen2.h"
 
 short TankLeft_StateWaitDrive(register TankLeft *self)

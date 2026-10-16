@@ -58,12 +58,13 @@ uint32_t xmen2_stack_low(void);
 struct XmVerifyFn { uint32_t addr, end; void (*slot)(void); void (*gen)(void); int ret_bytes;
                     int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; };
 namespace xm { extern bool g_retnv; }   /* the C call just made returned no value (handc_rt.cpp) */
+
 extern const XmVerifyFn xm_verify_fns[];
 extern const int xm_verify_fn_count;
 
 namespace {
 
-const int MAX_DEPTH = 4;
+const int MAX_DEPTH = 16;
 
 struct Stat {
     uint64_t checked = 0, mismatches = 0, irq = 0, seen = 0, synth = 0;
@@ -91,6 +92,8 @@ struct Ctx {
     std::vector<uint32_t> cov;
     const std::vector<uint16_t> *supply;
     size_t supply_pos;
+    uint64_t irq0;                 /* g_xirq_taken when the test started */
+    bool doomed;                   /* its generated run took an interrupt: it won't be compared */
 };
 
 std::unordered_map<uint32_t, const XmVerifyFn *> s_fns;
@@ -101,6 +104,19 @@ int s_depth;
 uint32_t s_entering;              /* the function whose generated code is being started */
 bool s_any_done;
 
+/* A generated run that has taken an interrupt can't be compared (its test is skipped as soon as
+   it ends): stop collecting for it. A long-running function (a scene, the level loop) is such a
+   test for minutes, and the per-frame code tested inside it would otherwise add to its logs. */
+bool live(Ctx &c)
+{
+    if (!c.doomed && c.mode == 1 && g_xirq_taken != c.irq0) {
+        c.doomed = true;
+        std::vector<Hw>().swap(c.logA);
+        std::vector<uint32_t>().swap(c.cov);
+    }
+    return !c.doomed;
+}
+
 int hw_hook(uint32_t a, int size, int kind, uint16_t v, uint16_t *out)
 {
     if (!s_depth) return 0;
@@ -108,7 +124,7 @@ int hw_hook(uint32_t a, int size, int kind, uint16_t v, uint16_t *out)
     if (t.mode == 1) {
         /* a generated run: part of every enclosing generated run too */
         for (int d = 0; d < s_depth; d++) {
-            if (s_ctx[d]->mode != 1) continue;
+            if (s_ctx[d]->mode != 1 || !live(*s_ctx[d])) continue;
             if (kind == 1) s_ctx[d]->logA.push_back({ a, size, 0, v });
             else if (kind == 2) s_ctx[d]->logA.push_back({ a, size, 1, v });
         }
@@ -144,6 +160,7 @@ void insn_hook(uint32_t pc)
 {
     for (int d = 0; d < s_depth; d++) {
         Ctx &c = *s_ctx[d];
+        if (c.mode == 1 && !live(c)) continue;
         if ((c.mode == 1 || c.mode == 3) && pc >= c.fn->addr && pc < c.fn->end) c.cov.push_back(pc);
     }
 }
@@ -352,6 +369,8 @@ Ctx *push(const XmVerifyFn *fn, int mode)
     c->readpos = 0;
     c->supply = nullptr;
     c->supply_pos = 0;
+    c->irq0 = g_xirq_taken;
+    c->doomed = false;
     s_depth++;
     g_xhw_hook = hw_hook;
     g_xinsn_hook = insn_hook;
@@ -416,7 +435,9 @@ void run_case(const XmVerifyFn *fn, Stat &st, const SynCase &k)
     M68KState r0 = g_cpu;
     uint32_t xrts0 = g_xrts;
     c.supply = &k.reads;
+    g_xirq_hold = 1;   /* untimed: an SR write takes no interrupt (exact_sched.c) */
     run_gen(fn);
+    g_xirq_hold = 0;
     M68KState r1 = g_cpu;
     uint32_t xrts1 = g_xrts;
     memcpy(c.post, g_ram, 0x10000);
@@ -425,7 +446,9 @@ void run_case(const XmVerifyFn *fn, Stat &st, const SynCase &k)
     g_xrts = xrts0;
     c.mode = 2;
     c.readpos = 0;
+    g_xirq_hold = 1;   /* untimed: an SR write takes no interrupt (exact_sched.c) */
     fn->slot();
+    g_xirq_hold = 0;
     std::string bad = compare(c, fn, r1, xrts1, "synthetic case " + (k.name.empty() ? std::string("?") : k.name));
     if (g_xirq_taken != irq0) bad = "synthetic case " + k.name + ": an interrupt was taken";
     if (bad.empty()) {
@@ -511,7 +534,9 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
     g_xrts = xrts0;
     c.mode = 2;
     c.readpos = 0;
+    g_xirq_hold = 1;   /* untimed: an SR write takes no interrupt (exact_sched.c) */
     fn->slot();
+    g_xirq_hold = 0;
 
     /* 4. compare */
     char call[48];

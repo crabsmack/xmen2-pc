@@ -280,6 +280,22 @@ Additions (2026-10-15, the asm functions):
 - **Builds while C is being written**: `xmen2check.py build` compiles a snapshot of game/c and
   game/include (`build/handc_src`), and bridge.py leaves out a file whose definition doesn't fit
   its prototype (caught mid-edit), so concurrent edits can't mix two states into one link.
+- **The whole game in C showed four harness gaps (2026-10-16)**, all in verify, none in the C:
+  (1) Game_Main never returns, and a test opened on it (then the scene, level and frame loops,
+  all spanning frames) used up the 4 nesting levels, so the per-frame code (Rand_Next, every
+  Update...) was never tested in a full run. Game_Main is `noreturn` (no test); a test whose
+  generated run takes an interrupt is "doomed" (it will be skipped) and stops collecting
+  hardware accesses and coverage; nesting goes to 16 levels (cost is linear: a nested test adds
+  one generated run per enclosing C run, and a doomed test has none). (2) The C run and a
+  synthetic case's generated run are untimed, but an SR write still forced an interrupt check
+  that took a V-int fallen due during the generated run (g_VBlankCount +1 in Music_SetPlayerParams
+  and Cam_New): engine `g_xirq_hold` makes `x68k_sr_written` request no check while verify holds
+  it. (3) The same in PlayerSelect_Run's synthetic case: it took a V-int, and the run never left
+  that case's context, so no test ran after the player-select screen. (4) A C function passing a
+  host local through a `void *` (Mem_Set(&placement), the Bitmap_* and Nem tables) to a callee
+  that verify runs as generated code: the bridge can't copy it (size unknown); the verify
+  wrapper now runs the callee's C for a host pointer (generated code couldn't reach it anyway),
+  and Nem_BuildCodeTable's table is typed (NemCodeTable).
 - Two PC traps the shadow tests found: `(void)IO_DATA(1);` performs no read on PC (a void cast
   never calls the accessor's conversion; assign it), and an object without a sprite definition
   makes the 68000 read the vector table where the host would dereference null

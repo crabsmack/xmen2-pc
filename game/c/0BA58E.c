@@ -8,7 +8,10 @@
  * step on its first update (no script: the default state); sprite Art_SavageBioSpr with palette 3;
  * no tentacle; top x speed $580 (g_A4BossMaxSpeed); no frame shown ($FF, slot +$56) and its boxes
  * (Obj_UpdateBoxes). Then its companion: a BIOBALLS at its position (balls), palette 3, no frame
- * shown. */
+ * shown.
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): SavageBio_Script2.
+ */
 #include "xmen2.h"
 
 #define g_A4Stats		(*(PTR(NpcStats) *)g_SceneVar3B14)	/* scene variable: the stats record of the Chamber's enemies */

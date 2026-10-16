@@ -7,7 +7,7 @@
  * Art_LoadToVramRecolor, Art_LoadNemToVram. */
 #include "xmen2.h"
 
-u8 *Nem_BuildCodeTable(void *list, void *table)
+u8 *Nem_BuildCodeTable(void *list, NemCodeTable *table)
 {
 	u8 *p = (u8 *)list;
 	s16 *t = (s16 *)table;

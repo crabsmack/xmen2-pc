@@ -4,7 +4,10 @@
  * big-sprite picture at its own size (Cerebro_BigSpriteInit). No character: nothing
  * (PlayerSelect_LoadCharFrame_part1 is the default and the rendering).
  *
- * slot: the player's select slot. */
+ * slot: the player's select slot.
+ *
+ * Inline here, separate blocks in the disassembly: PlayerSelect_LoadCharFrame_Cyclops, PlayerSelect_LoadCharFrame_Nightcrawler, PlayerSelect_LoadCharFrame_Psylocke, PlayerSelect_LoadCharFrame_Wolverine, PlayerSelect_LoadCharFrame_Magneto.
+ */
 #include "xmen2.h"
 
 void PlayerSelect_LoadCharFrame(register BigSprite *slot)

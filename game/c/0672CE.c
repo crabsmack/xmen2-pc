@@ -3,7 +3,10 @@
  * Psylocke_SetFrame, Wolverine_SetFrame, Magneto_SetFrame (cases ScalingActor_SetFrame_part1 and
  * _part2); no character, nothing (_part3, the exit).
  *
- * self: the portrait.  f: the frame. */
+ * self: the portrait.  f: the frame.
+ *
+ * Inline here, separate blocks in the disassembly: ScalingActor_SetFrame_part2, ScalingActor_SetFrame_part3.
+ */
 #include "xmen2.h"
 
 void ScalingActor_SetFrame(register ScalingActor *self, register short f)

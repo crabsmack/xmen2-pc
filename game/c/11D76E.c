@@ -7,7 +7,10 @@
  * ActPlayAnimD, ActStopWait60, ActAttachFlame, ActStopWaitParam, ActDropFlame, ActStopWait30,
  * ActPlayAnimA, ActPlayAnimB, ActStopWait60, ActStopWait30): a flame-carrying sentinel.
  *
- * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry or 0. */
+ * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry or 0.
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): BabySentinelB_Script2_Part2, BabySentinelB_Script1_Part2.
+ */
 #include "xmen2.h"
 
 void BabySentinelB_Init(register BabySentinelB *self, long x, long y, Placement *pl)

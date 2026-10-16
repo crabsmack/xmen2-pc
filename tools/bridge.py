@@ -346,7 +346,15 @@ def generate(out: Path, mode: str) -> None:
             L.append(f"{sig(f, f['name'])}")
             L.append("{")
             if mode == "verify":
-                # a shadow test runs the C of ONE function; what it calls runs as generated code
+                # a shadow test runs the C of ONE function; what it calls runs as generated code,
+                # except with a host local passed through a `void *` (size unknown: it can't be
+                # copied to the 68000 stack): generated code can't reach it, the callee's C can
+                hostp = [f"(a{i} && !xm::in_game_memory((const void *)a{i}))" for i, t in enumerate(f["types"])
+                         if re.fullmatch(r"(const\s+)?void\s*\*", t.strip())]
+                if hostp:
+                    hc_call = f"hc_{f['name']}({argv})"
+                    L.append(f"    if ({' || '.join(hostp)})")
+                    L.append(f"        {'{ ' + hc_call + '; return; }' if ret_void else 'return ' + hc_call + ';'}")
                 if odd:
                     c = f"{'conv' if f['conv'] else 'regs'}_call_{a:06X}({argv})"
                     L.append(f"    {c};" if ret_void else f"    return {c};")

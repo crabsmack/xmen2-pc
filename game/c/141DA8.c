@@ -2,7 +2,10 @@
  * is Tbl_Tank_ScriptDrive) that leaves the active window is gone for good (Actor_DeactivateFree);
  * otherwise the parent's (TANK) Deactivate.
  *
- * self: the object. */
+ * self: the object.
+ *
+ * The AI script's jmp-thunk tables (separate in the disassembly): Tank_ScriptDrive.
+ */
 #include "xmen2.h"
 
 void TankLeft_Deactivate(register TankLeft *self)
