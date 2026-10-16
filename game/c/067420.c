@@ -16,31 +16,31 @@ void PlayerSelect_PlayPickAnim(register ScalingActor *self)
 #endif
 	switch (self->slot->charIndex) {
 	case 0:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_182954));
+		Obj_SetAnim(self, CODEPTR(Tbl_BeastSelectPickAnim));
 		rec = (CharRecord *)CODEPTR(Tbl_BeastCharRecord);
 		break;
 	case 1:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_1E1C60));
+		Obj_SetAnim(self, CODEPTR(Tbl_CyclopsSelectPickAnim));
 		rec = (CharRecord *)CODEPTR(Tbl_CyclopsCharRecord);
 		break;
 	case 2:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_1CECBE));
+		Obj_SetAnim(self, CODEPTR(Tbl_GambitSelectPickAnim));
 		rec = (CharRecord *)CODEPTR(Tbl_GambitCharRecord);
 		break;
 	case 3:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_1A601E));
+		Obj_SetAnim(self, CODEPTR(Tbl_NightcrawlerSelectPickAnim));
 		rec = (CharRecord *)CODEPTR(Tbl_NightcrawlerCharRecord);
 		break;
 	case 4:
-		Obj_SetAnim(self, CODEPTR(Tbl_PlayerSelectAnim2));
+		Obj_SetAnim(self, CODEPTR(Tbl_PsylockeSelectPickAnim));
 		rec = (CharRecord *)CODEPTR(Tbl_PsylockeCharRecord);
 		break;
 	case 5:
-		Obj_SetAnim(self, CODEPTR(Tbl_PlayerSelectAnim6));
+		Obj_SetAnim(self, CODEPTR(Tbl_WolverineSelectPickAnim));
 		rec = (CharRecord *)CODEPTR(Tbl_WolverineCharRecord);
 		break;
 	case 6:
-		Obj_SetAnim(self, CODEPTR(Tbl_PlayerSelectAnim2_2));
+		Obj_SetAnim(self, CODEPTR(Tbl_MagnetoSelectPickAnim));
 		rec = 0;
 		break;
 	}

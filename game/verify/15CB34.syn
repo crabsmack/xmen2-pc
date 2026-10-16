@@ -1,0 +1,22 @@
+# Tile_RunHooksAtPoints ($15CB34): the corpus never takes, in hit-point (pair) mode, the v-flip
+# of dy ($15CDEE-$15CDF4) nor a point on a block with a hook type ($15CE84-$15CEBA). One case
+# reaches both: a fake sprite definition (in free stack RAM, a7-$800) whose frame 0 has
+# hitFlags 0 (pairs), a pair list (a7-$300: (1, 1), end) passed as the points argument, both
+# flips, the position (4, 4): the point lands on block (0, 0) of the FG map, given hook type 1
+# ($0800) with an empty function as g_TileHooks[1] (ToxicCan_NopStatic).
+case pairs_vflip_hook
+b arg0+$2E = $18          # sprite flags: h-flip and v-flip
+b arg0+$2F = 0            # frame 0
+l arg0+$30 = a7-$800      # sprite definition: the fake one
+w a7-$7CE = 0             # its frame 0 hitFlags (def + $24 + $0E): a pair list
+b a7-$300 = 1             # pair (1, 1)
+b a7-$2FF = 1
+b a7-$2FE = 0             # end
+b a7-$2FD = 0
+l a7+8 = a7-$300          # points argument
+l a7+12 = 4               # x
+l a7+16 = 4               # y
+b $FFCC36 = 0             # g_SolidMapIsBg: the FG map
+w [$FFC78E] = 0           # g_FgRowTable[0]
+w [$FFC77C] = $0800       # g_FgBlockMap[0]: hook type 1
+l $FFC70C = $144D88       # g_TileHooks[1] = ToxicCan_NopStatic

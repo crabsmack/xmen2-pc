@@ -1,5 +1,5 @@
 /* SavageA4_RunScene - the scene 'SavageA4 Chamber': the stats record the Chamber's enemies share
- * (8 bytes in this frame, SavageA4_InitBossStages), load the level, the hooks and resources, the
+ * (8 bytes in this frame, SavageA4_InitStats), load the level, the hooks and resources, the
  * parallax (Tbl_SavageA4Parallax), no camera focus yet, the camera (CAMERA's New, Cam_New, with
  * SavageA4_CamSetHooks as its post-update hook) in g_Camera, the gauss bullet pool, a BIOBALLS
  * list of 16, sounds stopped, then the level loop (Level_Run) until the scene ends, and all
@@ -23,7 +23,7 @@ void SavageA4_RunScene(void)
 
 	g_A4Stats = AT68(NpcStats, xm::sp_reserve(4 + 8));
 #endif
-	SavageA4_InitBossStages();
+	SavageA4_InitStats();
 	SavageA4_CallEmptyStub();
 	SavageA4_LoadLevel();
 	SavageA4_InstallHooks();

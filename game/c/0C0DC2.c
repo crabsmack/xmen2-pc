@@ -1,4 +1,4 @@
-/* Water_Init - set up a stage's hazard water: the splash sprite set Art_Spr_0D0DCA (in palette
+/* Water_Init - set up a stage's hazard water: the splash sprite set Art_WaterSplashSpr (in palette
  * `palette`, g_WaterSplashSpr), the surface and splash heights, no splashes running, and water
  * that hurts (g_WaterHurts).
  *
@@ -11,7 +11,7 @@ void Water_Init(short palette, short surfaceY, short splashY)
 {
 	register long n;
 
-	g_WaterSplashSpr = &g_SpriteDefs[n = SprDef_Add(CODEPTR(Art_Spr_0D0DCA), palette)];
+	g_WaterSplashSpr = &g_SpriteDefs[n = SprDef_Add(CODEPTR(Art_WaterSplashSpr), palette)];
 	g_WaterSurfaceY = surfaceY;
 	g_WaterSplashY = splashY;
 	g_P2SplashTimer = 0;

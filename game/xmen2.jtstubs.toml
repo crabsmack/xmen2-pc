@@ -449,8 +449,8 @@ extra = [
   0x0019FA,  # jt 763 -> 097D60 XClone_ActMainScript
   0x001A02,  # jt 764 -> 097DB4 EvilBeast_GetSize
   0x001A0A,  # jt 765 -> 097DC2 EvilBeast_Init
-  0x001A12,  # jt 766 -> 097E32 EvilBeast_UpdateThrows
-  0x001A1A,  # jt 767 -> 097EE0 EvilBeast_ActThrow
+  0x001A12,  # jt 766 -> 097E32 EvilBeast_UpdateShockwaves
+  0x001A1A,  # jt 767 -> 097EE0 EvilBeast_ActStomp
   0x001A22,  # jt 768 -> 097FD0 EvilBeam_GetSize
   0x001A2A,  # jt 769 -> 097FDA EvilBeam_Construct
   0x001A32,  # jt 770 -> 09806C EvilBeam_Update
@@ -531,7 +531,7 @@ extra = [
   0x001E52,  # jt 902 -> 0ADB1A TrapDoor_SetTiles
   0x001E72,  # jt 906 -> 0B0538 SavageA3_RunScene
   0x001EA2,  # jt 912 -> 0B65C6 SavageA4_RunScene
-  0x001ECA,  # jt 917 -> 0B66DC SavageA4_InitBossStages
+  0x001ECA,  # jt 917 -> 0B66DC SavageA4_InitStats
   0x001ED2,  # jt 918 -> 0B6740 BrainBabyBio_GetSize
   0x001EDA,  # jt 919 -> 0B674E BrainBabyBio_Init
   0x001EE2,  # jt 920 -> 0B6824 BrainBabyBio_OnDeath

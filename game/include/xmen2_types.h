@@ -185,12 +185,29 @@ typedef struct Timer {
 } Timer;
 CHECK_SIZE(Timer, 0x16);
 
+/* An explosion puff (14 bytes; 10 slots in g_Explosions): one 32x32 hardware sprite of the
+   g_FxTileBase tiles, stepped by its own Timer (Explosion_SpawnEx, Explosion_Update). */
+typedef struct Explosion {
+	s16 x;				/* +$00 top-left in world pixels (the spawn point - 16) */
+	s16 y;				/* +$02 */
+	u8 step;			/* +$04 animation step 0-4 (16 tiles each); freed after the 5th */
+	s8 delay;			/* +$05 frames left in this step (4 per step; signed: tst.b / bgt) */
+	PTR(Timer) timer;		/* +$06 its Timer (period 1, runs Explosion_Update); 0: the slot is free */
+	s16 attr;			/* +$0A sprite attribute: $8000 priority, palette 1 ($2000), tile */
+	s16 hurts;			/* +$0C non-zero: hurts the objects in its box (Explosion_HurtActor) */
+} Explosion;
+CHECK_SIZE(Explosion, 0xE);
+
 /* A node of the game's doubly linked lists (List_Unlink): next, prev, owner. */
 typedef struct ListNode {
 	PTR(struct ListNode) next;	/* +$00 */
 	PTR(struct ListNode) prev;	/* +$04 */
 	PTR(void) owner;		/* +$08 */
 } ListNode;
+/* What ObjList_ForEachInBox / ObjList_ForEachAtPoint run on each object of a hit list they find:
+   func(object, x, y) / func(object, x, y, arg); a non-zero low byte of the result stops the walk.
+   Passed as data (FN_DATA). */
+FNTYPE(ObjListFn, char);
 
 /* A hardware sprite in g_SpriteTable, the VDP sprite attribute table (80 slots, emitted
    along the link bytes: Spr_BeginFrame / Spr_EndFrame). */
@@ -232,6 +249,14 @@ typedef struct SpawnRec {
 	PTR(Placement) placement;	/* +$0A its placement entry */
 } SpawnRec;
 CHECK_SIZE(SpawnRec, 0x0E);
+
+/* The header of a heap block (Mem_StackAlloc: the heap is a stack growing up from g_HeapTop;
+   Mem_StackFree pops the top block). The block follows it. */
+typedef struct MemBlock {
+	PTR(void) next;			/* +$00 the heap top after the block (its end, rounded up to even) */
+	PTR(char) tag;			/* +$04 C string naming the block; "FREE ME" once freed below the top */
+} MemBlock;
+CHECK_SIZE(MemBlock, 8);
 
 /* A floor segment: $14-byte records in g_Segs (xmen2disasm NOTES "Floor segments"). */
 typedef struct Seg {
@@ -306,10 +331,22 @@ CHECK_SIZE(SceneEntry, 8);
    -1): its colour words, how long each shows and the palette entry they go to. */
 typedef struct PalCycleSeq {
 	s32 colours;			/* +$00 offset of its colour words from the table (ended by -1) */
-	u8 delay;			/* +$04 frames per colour (CloneA5_FrameHook: the boss's health bar) */
-	u8 entry;			/* +$05 g_PalBase entry written */
+	s8 delay;			/* +$04 frames per colour (CloneA5_FrameHook: the boss's health bar); signed (Pal_CycleStep: ext.w) */
+	s8 entry;			/* +$05 g_PalBase entry written (signed: ext.w) */
 } PalCycleSeq;
 CHECK_SIZE(PalCycleSeq, 6);
+
+/* The header of a level's palette-cycle script (ROM; g_PalCycleScript, Pal_RunCycleScript). The
+   steps' colour words follow from +4: each step is (last - first + 1) words for
+   g_PalBase[first..last]; a word -1 where a step would start loops to the first, -2 ends the
+   script, a word >= $1000 after a step is that step's delay (& $3FF). */
+typedef struct PalCycleScript {
+	u8 unk_00;			/* +$00 not read by Pal_RunCycleScript */
+	s8 delay;			/* +$01 frames per step (when the step gives none) */
+	s8 first;			/* +$02 first g_PalBase entry of a step */
+	s8 last;			/* +$03 last */
+} PalCycleScript;
+CHECK_SIZE(PalCycleScript, 4);
 
 /* ACTOR: descriptor $1F49A6, root, $8C bytes (GetSize $15D92C). Every game object.
    Fields: xmen2disasm NOTES "Game object layout", "ACTOR object fields". */
@@ -444,10 +481,13 @@ CHECK_SIZE(Apocalypse, 0xBA);
 CHECK_OFFSET(Apocalypse, ai, 0xA2);
 CHECK_OFFSET(Apocalypse, wave, 0xB2);
 
-/* BBOARD: descriptor $1197CA, root, $8 bytes (GetSize $11972E) */
+/* BBOARD: descriptor $1197CA, root, $8 bytes (GetSize $11972E). The switch board (g_BBoard,
+   BBoard_New: 100 entries): one word of flags per switch / synchronized group (SYNCHRONIZEDACTOR's
+   index, ACTOR unk_8A[1]; bit $100 triggered: SyncActor_IsTriggered; bit $200 on: Platform1). */
 #define BBOARD_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x4];		/* +$04 */
+	s16 count;			/* +$04 entries (BBoard_Init) */ \
+	s16 entry[1];			/* +$06 count words (the object is BBoard_CalcSize bytes) */
 typedef struct BBoard { BBOARD_FIELDS } BBoard;
 CHECK_SIZE(BBoard, 0x8);
 
@@ -471,10 +511,12 @@ typedef struct NpcStats {
 typedef struct XNpc { XNPC_FIELDS } XNpc;
 CHECK_SIZE(XNpc, 0x94);
 
-/* BIONPC: descriptor $113B10, parent XNPC, $96 bytes (GetSize $114ABA) */
+/* BIONPC: descriptor $113B10, parent XNPC, $96 bytes (GetSize $114ABA). A bio-creature: psychic
+   hits (types $D-$F) stun it (BioNpc_TakeDamage: it shakes and flickers palettes while its timer
+   runs BioNpc_UpdateStunned instead of Update; BioNpc_DrawStunned draws the psychic effect). */
 #define BIONPC_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x2];		/* +$94 */
+	u16 stun;			/* +$94 bits 0-13: stun frames left (30 from a psychic hit); bits 14-15: the palette (spr.flags & 3) to restore after it */
 typedef struct BioNpc { BIONPC_FIELDS } BioNpc;
 CHECK_SIZE(BioNpc, 0x96);
 
@@ -885,15 +927,32 @@ typedef struct ParallaxWave {
 	s8 offset[1];			/* +$02 len signed pixel offsets */
 } ParallaxWave;
 
-/* A debris pool (Debris_CreatePool): this header, then $14-byte pieces. */
+/* A debris pool (Debris_CreatePool): this header, then $14-byte pieces (DebrisPiece). */
 typedef struct DebrisPool {
-	u8 used;			/* +$00 pieces flying */
-	u8 max;				/* +$01 */
+	s8 used;			/* +$00 pieces flying (signed: Debris_Spawn slt, Debris_Update ext.w) */
+	s8 max;				/* +$01 */
 	s16 floorY;			/* +$02 floor line in pixels the pieces bounce on (Debris_SetFloorY; 400) */
-	s16 sprDef;			/* +$04 sprite-definition slot (Debris_SetSprDef; -1: not drawn) */
+	s16 sprDef;			/* +$04 sprite-definition slot (Debris_SetSprDef; -1: not drawn, not moved) */
 	PTR(Timer) timer;		/* +$06 its update timer (Debris_Update) */
-	s16 bounceLimit;		/* +$0A (bounces - 1) * 3 (Debris_SetBounceLimit) */
+	u8 bounceLimit;			/* +$0A (bounces - 1) * 3 (Debris_SetBounceLimit): a piece whose bounce passes it is gone */
+	u8 unk_0B;			/* +$0B */
 } DebrisPool;
+CHECK_SIZE(DebrisPool, 0xC);
+/* A piece of a debris pool ($14 bytes; Debris_Spawn throws them, Debris_Update moves and draws them
+   as 16x16 hardware sprites). */
+typedef struct DebrisPiece {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 unk_0C;			/* +$0C 2 with the sign of vx (Debris_Spawn; never read) */
+	s16 gravity;			/* +$0E added to vy every frame ($20) */
+	s8 frame;			/* +$10 animation frame 0-2 (Debris_Spawn starts it at 0-3) */
+	s8 bounce;			/* +$11 0 or 1, + 3 per bounce: tile offset (4 tiles each) and the bounce count */
+	s8 frameDelay;			/* +$12 frames to the next animation frame */
+	s8 spin;			/* +$13 counts frames: bit 1 is the h-flip */
+} DebrisPiece;
+CHECK_SIZE(DebrisPiece, 0x14);
 
 /* A bit of BaniMazaA2's scene debris (8 bytes; BaniMazaA2_UpdateDebrisGroup): one 8x8 sprite
    falling with gravity. */
@@ -1033,7 +1092,7 @@ CHECK_SIZE(BioBullet, 0x8C);
 	PTR(Actor) owner;		/* +$8C object it follows (BioFlame_Update; set by BabyBio_ActAttachFlame) */ \
 	s16 offX;			/* +$90 its offset from the owner in pixels */ \
 	s16 offY;			/* +$92 */ \
-	u8 unk_94[0x6];		/* +$94 */
+	s16 flameX[3];			/* +$94 x of its three flame sprites from the nozzle (0/10/20 at Init; 19 px further a frame, back to the start past 96; negative when h-flipped) */
 typedef struct BioFlame { BIOFLAME_FIELDS } BioFlame;
 CHECK_SIZE(BioFlame, 0x9A);
 
@@ -1144,10 +1203,16 @@ CHECK_SIZE(BrainBabyBio, 0xC0);
 typedef struct BrainChild { BRAINCHILD_FIELDS } BrainChild;
 CHECK_SIZE(BrainChild, 0xA6);
 
-/* BRAINROCKET: descriptor $133CFC, parent ACTOR, $96 bytes (GetSize $133630) */
+/* BRAINROCKET: descriptor $133CFC, parent ACTOR, $96 bytes (GetSize $133630). A rocket that flies
+   one of six headings (BrainRocket_StateSetDirection) from whoever fired it (Rocket_SetAngleA/B:
+   SAVAGEBIO, TANK...); it blows up on a solid map cell (BrainRocket_Update) or on what it hits
+   (BrainRocket_Attack). DROPROCKET is the one a CHILDSHIP drops. */
 #define BRAINROCKET_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0xA];		/* +$8C */
+	s16 angle;			/* +$8C heading, degrees: 0 right, 45 up-right, 90 up, 135 up-left, 180 left, 270 down (Rocket_SetAngleOwner) */ \
+	u8 unk_8E[4];			/* +$8E */ \
+	s16 marginX;			/* +$92 the deactivation window is this much wider in x (BrainRocket_OutsideActiveWindow; 0 from Init, nothing sets it) */ \
+	s16 marginY;			/* +$94 the same in y */
 typedef struct BrainRocket { BRAINROCKET_FIELDS } BrainRocket;
 CHECK_SIZE(BrainRocket, 0x96);
 
@@ -1229,26 +1294,49 @@ typedef struct BroodBossDamage { BROODBOSSDAMAGE_FIELDS } BroodBossDamage;
 CHECK_SIZE(BroodBossDamage, 0x96);
 CHECK_OFFSET(BroodBossDamage, rects, 0x92);
 
-/* ICANDY: descriptor $1188AC, root, $42 bytes (GetSize $118426) */
+/* ICANDY: descriptor $1188AC, root, $42 bytes (GetSize $118426). Eye candy: a light sprite object
+   (not an ACTOR) taken from a pool (ICandy_PoolInit, g_ICandyPool), moved, animated and drawn by
+   its own Timer and draw-list node. Bytes +$1C..+$2F are a sprite instance (SprInst: ICandy_Draw
+   passes &sprFlags to Spr_Draw); its fields are flat here (sprFlags, frame, sprDef, tileBase...). */
 #define ICANDY_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x4];			/* +$04 */ \
+	s16 poolFlags;			/* +$04 bit 15: its pool slot is in use (ICandy_PoolAlloc / _PoolFree; signed: ext.l there) */ \
+	s16 flags;			/* +$06 bit 3 goes to DrawList_Add (ICandy_New); 0 at Init */ \
 	s32 x;				/* +$08 x, 8 fraction bits (ICandy_Init; ICandy_Update adds vx) */ \
 	s32 y;				/* +$0C y, 8 fraction bits */ \
-	u8 unk_10[0x4];			/* +$10 */ \
+	s16 px;				/* +$10 x in pixels at Init (not kept up to date) */ \
+	s16 py;				/* +$12 */ \
 	s16 vx;				/* +$14 velocity x (ICandy_Init, ICandy_Update) */ \
 	s16 vy;				/* +$16 velocity y */ \
 	s16 ax;				/* +$18 acceleration x */ \
 	s16 ay;				/* +$1A acceleration y */ \
 	s8 sprFlags;			/* +$1C its sprite instance (+$1C, Spr_Draw in ICandy_Draw): flags, bits 0-1 palette (ICandy_SetSpriteDef), 2 priority, 5 frame uploaded */ \
 	u8 frame;			/* +$1D frame shown (ICandy_SetAnim: from the animation step) */ \
-	u8 unk_1E[0x4];			/* +$1E */ \
+	PTR(void) sprDef;		/* +$1E the instance's sprite definition (ICandy_SetSpriteDef) */ \
 	s16 tileBase;			/* +$22 first VRAM tile of its sprite definition (ICandy_SetSpriteDef) */ \
-	u8 unk_24[0x1E];		/* +$24 */
+	s16 tileCount;			/* +$24 VRAM tiles of the definition */ \
+	u8 uploaded;			/* +$26 frame whose tiles are in VRAM ($FF none; ICandy_Update) */ \
+	u8 unk_27;			/* +$27 the instance's unk_0B (0 at Init) */ \
+	u8 unk_28;			/* +$28 the instance's unk_0C ($FF at Init) */ \
+	u8 unk_29;			/* +$29 firstChild ($FF at Init) */ \
+	u8 unk_2A;			/* +$2A nextSibling ($FF at Init) */ \
+	u8 unk_2B;			/* +$2B the instance's unk_0F ($FF at Init) */ \
+	s32 unk_2C;			/* +$2C the instance's unk_10 (0 at Init) */ \
+	u8 layer;			/* +$30 draw layer ($7F at Init; DrawList_Add) */ \
+	u8 unk_31;			/* +$31 */ \
+	PTR(u8) anim;			/* +$32 animation script (an AnimScript; steps of 2 bytes from +6: ICandy_SetAnim); 0 none: ICandy_Update destroys it */ \
+	s16 animStep;			/* +$36 step shown */ \
+	s16 animTime;			/* +$38 frames into the step (1 a frame, 2 in two-player stepping) */ \
+	u8 unk_3A;			/* +$3A cleared by Init, not read */ \
+	u8 unk_3B;			/* +$3B */ \
+	s16 drawNode;			/* +$3C its draw-list node (ICandy_New's DrawList_Add; -1 none) */ \
+	PTR(Timer) timer;		/* +$3E its Timer (Init: period 1, the class's Update slot +$12; started by ICandy_New) */
 typedef struct ICandy { ICANDY_FIELDS } ICandy;
 CHECK_SIZE(ICandy, 0x42);
 CHECK_OFFSET(ICandy, x, 0x08);
 CHECK_OFFSET(ICandy, tileBase, 0x22);
+CHECK_OFFSET(ICandy, layer, 0x30);
+CHECK_OFFSET(ICandy, timer, 0x3E);
 
 /* BROODBOSSWALL: descriptor $088C40, parent ICANDY, $48 bytes (GetSize $085FCE). The wall the boss
    pushes in from the left (BroodBoss_ActBringWall) and smashes: a column of 32-px sprites with a
@@ -1293,6 +1381,19 @@ CHECK_SIZE(BroodClaw, 0xA2);
 	s16 burstPause;			/* +$A4 frames between bursts */
 typedef struct BubbleManager { BUBBLEMANAGER_FIELDS } BubbleManager;
 CHECK_SIZE(BubbleManager, 0xA6);
+
+/* A draw-list node (30 in g_DrawNodes; DrawList_Init, _Add, _DrawAll): DrawList_DrawAll calls
+   draw(object) for each node, in sort order. */
+FNTYPE(DrawFn, void);
+typedef struct DrawNode {
+	PTR(struct DrawNode) next;	/* +$00 */
+	PTR(struct DrawNode) prev;	/* +$04 */
+	DrawFn draw;			/* +$08 func(object), 0 none: the object's class Draw, or a stand-in (BioNpc_DrawStunned) */
+	PTR(void) object;		/* +$0C */
+	s16 key;			/* +$10 sort key ($5FF: free, DrawList_Init) */
+	s16 flags;			/* +$12 */
+} DrawNode;
+CHECK_SIZE(DrawNode, 0x14);
 
 /* A camera function kept in the CAMERA object: func(camera). */
 FNTYPE(CamFn, void);
@@ -1449,7 +1550,7 @@ CHECK_SIZE(ClosedBarrier, 0x8C);
 #define CONTROLBOX_FIELDS \
 	ACTOR_FIELDS \
 	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags: bit 0 set = its control panel destroyed */ \
-	PTR(struct PanelPattern) pattern;	/* +$90 firing pattern (Art_ControlBoxNem; ControlBox_StartPattern) */ \
+	PTR(struct PanelPattern) pattern;	/* +$90 firing pattern (Tbl_ControlBoxPattern; ControlBox_StartPattern) */ \
 	s16 step;			/* +$94 pattern step shown */ \
 	s16 stepCount;			/* +$96 steps in the pattern */ \
 	s16 switchNum;			/* +$98 switch number 0-14 (placement param 0) */ \
@@ -1482,7 +1583,7 @@ typedef struct PanelPattern {
 #define CONTROLPANEL_FIELDS \
 	ACTOR_FIELDS \
 	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags: bit 0 destroyed, 2 damaged once, 3 twice */ \
-	PTR(PanelPattern) pattern;	/* +$90 firing pattern (Art_ControlPanelNem) */ \
+	PTR(PanelPattern) pattern;	/* +$90 firing pattern (Tbl_ControlPanelPattern) */ \
 	s16 step;			/* +$94 pattern step shown */ \
 	s16 stepCount;			/* +$96 steps in the pattern */ \
 	s16 switchNum;			/* +$98 switch number 0-14 (placement param 0) */ \
@@ -1508,10 +1609,29 @@ CHECK_SIZE(ControlPanel, 0xA4);
 typedef struct CoreElevator { COREELEVATOR_FIELDS } CoreElevator;
 CHECK_SIZE(CoreElevator, 0x94);
 
-/* CORESHIELDS: descriptor $0EBE7E, parent ACTOR, $9C bytes (GetSize $0EB662) */
+/* A CORESHIELDS panel as drawn (ROM, 8 bytes; Tbl_CoreShieldsLayout0-2: the front panels, then
+   the back ones): one hardware sprite. */
+typedef struct ShieldPiece {
+	s16 dx;				/* +$00 pixels from the shields' position */
+	s16 dy;				/* +$02 */
+	s8 attrHi;			/* +$04 high byte of the sprite attribute (flips, palette) */
+	s8 size;			/* +$05 low 4 bits: hardware sprite size code (a signed char: and.b, CoreShields_Draw) */
+	s16 tile;			/* +$06 tile, from the sprite set's first */
+} ShieldPiece;
+CHECK_SIZE(ShieldPiece, 8);
+
+/* CORESHIELDS: descriptor $0EBE7E, parent ACTOR, $9C bytes (GetSize $0EB662). The Coolant Core's
+   ring of 8 shield panels around the HOLOGRAM's core: it turns (CoreShields_Move), each hit
+   breaks the panel in front, it fires a COREZAP through a broken front panel, and once all 8
+   are broken the hologram dies (CoreShields_StateAllDown). */
 #define CORESHIELDS_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x10];		/* +$8C */
+	s16 unk_8C;			/* +$8C placement param 1 (0: $B4; param 0 is stored first, then overwritten), never read */ \
+	u8 unk_8E[2];			/* +$8E */ \
+	s8 rotation;			/* +$90 panel in front, 0-7 (CoreShields_Move) */ \
+	s8 phase;			/* +$91 step between two panels, 0-2 (picks the layout table) */ \
+	u8 broken[8];			/* +$92 panel i broken (CoreShields_TakeDamage) */ \
+	s16 zapCooldown;		/* +$9A frames to the next COREZAP (20 after one) */
 typedef struct CoreShields { CORESHIELDS_FIELDS } CoreShields;
 CHECK_SIZE(CoreShields, 0x9C);
 
@@ -1742,9 +1862,9 @@ CHECK_OFFSET(XClone, shotsLeft, 0xB9);
 /* EVILBEAST: descriptor $099D1E, parent XCLONE, $C0 bytes (GetSize $097DB4) */
 #define EVILBEAST_FIELDS \
 	XCLONE_FIELDS \
-	s16 waveLeftX;			/* +$BA left stomp shockwave x, pixels (EvilBeast_ActThrow: x - 20; Beast_ShockwaveStep) */ \
+	s16 waveLeftX;			/* +$BA left stomp shockwave x, pixels (EvilBeast_ActStomp: x - 20; Beast_ShockwaveStep) */ \
 	s16 waveRightX;			/* +$BC right shockwave x (x + 20) */ \
-	u8 waves;			/* +$BE bit 0 the left wave runs, 1 the right one (EvilBeast_StateThrow; cleared when it ends) */ \
+	u8 waves;			/* +$BE bit 0 the left wave runs, 1 the right one (EvilBeast_StateStompRelease; cleared when it ends) */ \
 	u8 unk_BF;			/* +$BF */
 typedef struct EvilBeast { EVILBEAST_FIELDS } EvilBeast;
 CHECK_SIZE(EvilBeast, 0xC0);
@@ -1975,17 +2095,28 @@ CHECK_SIZE(FarAcolyte, 0xC0);
 CHECK_OFFSET(FarAcolyte, orb, 0x94);
 CHECK_OFFSET(FarAcolyte, hover, 0xB4);
 
-/* FIREWALL: descriptor $134214, parent ACTOR, $96 bytes (GetSize $133F3C) */
+/* FIREWALL: descriptor $134214, parent ACTOR, $96 bytes (GetSize $133F3C). A column of fire: once
+   on screen it starts a repeating chain explosion (ExplodeFx_ChainRepeat on a fresh ACTOR, its
+   flame) rising or dropping 2, 4 or 6 steps, and waits on it (FireWall_State*). */
 #define FIREWALL_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0xA];		/* +$8C */
+	s16 delay;			/* +$8C frames between the chain's repeats (placement param 0, 120) */ \
+	s16 size;			/* +$8E chain length: 0 two steps, 1 four, 2 six (placement param 1; other: 0) */ \
+	u8 rise;			/* +$90 1: the chain rises (Tbl_FireWallChain*Rise), 0: drops (placement param 2 non-zero) */ \
+	u8 unk_91;			/* +$91 */ \
+	PTR(Actor) flame;		/* +$92 the ACTOR running the chain (FireWall_StateSpawnFlame; 0 none) */
 typedef struct FireWall { FIREWALL_FIELDS } FireWall;
 CHECK_SIZE(FireWall, 0x96);
 
-/* FLOATBIO: descriptor $11BA14, parent BABYBIO, $C0 bytes (GetSize $11DA54) */
+/* FLOATBIO: descriptor $11BA14, parent BABYBIO, $C0 bytes (GetSize $11DA54). A floating
+   BABYBIO; its mode (variant & 3) picks the AI script: 0 face and fire, 1 float up and down
+   (its y range from placement params 0 / 1), 2 float along its patrol range, 3 fire after a
+   wait of waitTime. */
 #define FLOATBIO_FIELDS \
 	BABYBIO_FIELDS \
-	u8 unk_BC[0x4];		/* +$BC */
+	s16 waitTime;			/* +$BC frames of FloatBio_ActWaitParam (60; mode 3: placement param 0) */ \
+	u8 mode;			/* +$BE variant & 3: the AI script (FloatBio_Init) */ \
+	u8 unk_BF;			/* +$BF */
 typedef struct FloatBio { FLOATBIO_FIELDS } FloatBio;
 CHECK_SIZE(FloatBio, 0xC0);
 
@@ -2113,12 +2244,45 @@ CHECK_SIZE(GambitThrow, 0x10);
 typedef struct Gambit { GAMBIT_FIELDS } Gambit;
 CHECK_SIZE(Gambit, 0xC4);
 
-/* GAUSSBULLET: descriptor $118D32, root, $20 bytes (GetSize $118D4C) */
+/* GAUSSBULLET: descriptor $118D32, root, $20 bytes (GetSize $118D4C). An enemy energy bullet: a
+   record of g_GaussPool (not an object of the object table), fired by GaussBullet_Fire, moved,
+   animated, drawn and hit-tested by GaussBullet_Update (all of them each frame: the pool's timer
+   runs GaussBullet_UpdateAll). */
 #define GAUSSBULLET_FIELDS \
-	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x1C];		/* +$04 */
+	PTR(Class) cls;			/* +$00 class descriptor (Tbl_GaussBullet_vtable, set by GaussBullet_InitPool) */ \
+	PTR(Actor) owner;		/* +$04 object it sticks to (flags bit 2; GaussBullet_Fire); 0 none */ \
+	s32 x;				/* +$08 8 fraction bits */ \
+	s32 y;				/* +$0C */ \
+	s16 vx;				/* +$10 */ \
+	s16 vy;				/* +$12 */ \
+	s16 ax;				/* +$14 */ \
+	s16 ay;				/* +$16 */ \
+	s16 offX;			/* +$18 offset from the owner, pixels */ \
+	s16 offY;			/* +$1A */ \
+	u16 flags;			/* +$1C GaussBullet_Fire's flags | $6000: bit 0 diagonal, 1 animating in place (does not move), 2 follows owner, 3 silent; $F800 sprite attribute bits (priority $8000, palette $6000, v-flip $1000, h-flip $800) */ \
+	u8 frame;			/* +$1E GaussFrame shown: 0-3 (5-8 diagonal); reaching 4 or 9 ends the in-place animation (flags bits 1-2 cleared) */ \
+	u8 delay;			/* +$1F frames left on this frame (4) */
 typedef struct GaussBullet { GAUSSBULLET_FIELDS } GaussBullet;
 CHECK_SIZE(GaussBullet, 0x20);
+
+/* A frame of a gauss bullet (ROM, 4 bytes: Tbl_GaussBulletFrames): one hardware sprite. */
+typedef struct GaussFrame {
+	u8 size;			/* +$00 hardware sprite size code */
+	u8 dx;				/* +$01 drawn this far left of the position */
+	u8 dy;				/* +$02 drawn this far above */
+	u8 tile;			/* +$03 tile, from the sprite definition's first VRAM tile */
+} GaussFrame;
+CHECK_SIZE(GaussFrame, 4);
+
+/* The gauss bullet pool (g_GaussPool, Mem_StackAlloc(200) by GaussBullet_InitPool): the live
+   bullets are rec[0..count-1]; one removed is replaced by the last. */
+typedef struct GaussPool {
+	s16 count;			/* +$00 live bullets */
+	s16 max;			/* +$02 6 */
+	PTR(GaussFrame) frames;		/* +$04 Tbl_GaussBulletFrames */
+	GaussBullet rec[6];		/* +$08 */
+} GaussPool;
+CHECK_SIZE(GaussPool, 200);
 
 /* HOLOBOLT: descriptor $0E83AC, parent ACTOR, $8C bytes (GetSize $0E808A) */
 #define HOLOBOLT_FIELDS \
@@ -2182,10 +2346,20 @@ CHECK_OFFSET(Hornet, lifetime, 0xB6);
 typedef struct HornetBullet { HORNETBULLET_FIELDS } HornetBullet;
 CHECK_SIZE(HornetBullet, 0x8C);
 
-/* LASERCANNON: descriptor $1386B4, parent XNPC, $A4 bytes (GetSize $13814A) */
+/* LASERCANNON: descriptor $1386B4, parent XNPC, $A4 bytes (GetSize $13814A). A floor gun: it
+   watches the nearest live player for 60 frames, and when the player is in range in front of it
+   raises its barrel and fires a burst of diagonal gauss shots, then lowers it and reloads
+   (LaserCannon_State*). */
 #define LASERCANNON_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x10];		/* +$94 */
+	PTR(Actor) target;		/* +$94 the player it watches (Player_NearestLive; 0 none) */ \
+	s16 unk_98;			/* +$98 bit 0: LaserCannon_StateWaitExtended waits while it is set (cleared by Init; nothing seen setting it) */ \
+	s16 shotsLeft;			/* +$9A shots left in this burst */ \
+	s16 burst;			/* +$9C shots per burst (placement param 2, 3) */ \
+	s16 reloadDelay;		/* +$9E frames from a burst to watching again (placement param 1, 90; -1: none) */ \
+	s16 shotDelay;			/* +$A0 frames between the shots of a burst (placement param 3, 40; -1: none) */ \
+	u8 tracks;			/* +$A2 it turns to face its target (placement param 4 non-zero) */ \
+	u8 unk_A3;			/* +$A3 */
 typedef struct LaserCannon { LASERCANNON_FIELDS } LaserCannon;
 CHECK_SIZE(LaserCannon, 0xA4);
 
@@ -2230,10 +2404,14 @@ typedef struct LightBeam { LIGHTBEAM_FIELDS } LightBeam;
 CHECK_SIZE(LightBeam, 0xA0);
 CHECK_OFFSET(LightBeam, kind, 0x90);
 
-/* LINESEGKILLER: descriptor $1389CA, parent ACTOR, $92 bytes (GetSize $13884A) */
+/* LINESEGKILLER: descriptor $1389CA, parent ACTOR, $92 bytes (GetSize $13884A). An invisible
+   marker (no Update, no Draw) for a box of floor segments: killed (LineSegKiller_KillAll, from
+   BroodClaw_Swing) it removes every segment in the box (LineSegKiller_Kill). */
 #define LINESEGKILLER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x6];		/* +$8C */
+	s16 right;			/* +$8C right edge of its box, pixels: x + placement param 0 (0: 128); the box starts at its position */ \
+	s16 bottom;			/* +$8E bottom edge: y + param 1 (0: 128) */ \
+	s16 segType;			/* +$90 placement param 2 (0: $3E9, any type); not read: LineSegKiller_Kill passes $3E9 */
 typedef struct LineSegKiller { LINESEGKILLER_FIELDS } LineSegKiller;
 CHECK_SIZE(LineSegKiller, 0x92);
 
@@ -2339,10 +2517,21 @@ typedef struct MagnetoRubbleSprite {
 	u8 size;			/* +$01 HwSprite size code */
 } MagnetoRubbleSprite;
 
-/* MAINTROBOT: descriptor $1391FE, parent XNPC, $A8 bytes (GetSize $138B42) */
+/* MAINTROBOT: descriptor $1391FE, parent XNPC, $A8 bytes (GetSize $138B42). A maintenance robot
+   that drives along its floor segments towards the nearest player (or patrols, reversing at walls)
+   and stops to fire volleys of MAINTROBOTFIREs when the player is in range. */
 #define MAINTROBOT_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x14];		/* +$94 */
+	s32 unk_94;			/* +$94 (0, MaintRobot_Init; never read) */ \
+	s16 unk_98;			/* +$98 (0, MaintRobot_Init; never read) */ \
+	s16 patrolVx;			/* +$9A patrol velocity, kept while it stops to fire (MaintRobot_StatePatrol) */ \
+	s16 speed;			/* +$9C drive speed (placement param 0 << 8; 0: $200) */ \
+	s16 fireDelay;			/* +$9E frames of driving before it may fire (its countdown; param 1, 0: 60) */ \
+	s16 volley;			/* +$A0 shots per volley (param 2, 0: 2) */ \
+	s16 shotDelay;			/* +$A2 frames between the shots of a volley (param 3, 0: 20) */ \
+	s16 shotsLeft;			/* +$A4 shots left of the volley */ \
+	u8 unk_A6;			/* +$A6 (0, MaintRobot_Init; never read) */ \
+	u8 patrol;			/* +$A7 param 4: 0 chases the player, else patrols */
 typedef struct MaintRobot { MAINTROBOT_FIELDS } MaintRobot;
 CHECK_SIZE(MaintRobot, 0xA8);
 
@@ -2352,17 +2541,45 @@ CHECK_SIZE(MaintRobot, 0xA8);
 typedef struct MaintRobotFire { MAINTROBOTFIRE_FIELDS } MaintRobotFire;
 CHECK_SIZE(MaintRobotFire, 0x8C);
 
-/* MINE: descriptor $13AF1A, parent ACTOR, $92 bytes (GetSize $13A736) */
+/* MINE: descriptor $13AF1A, parent ACTOR, $92 bytes (GetSize $13A736). SPOREMINE's twin: the class
+   is only a spawner, its SpawnFromRec makes a MineRec record in g_MinePool, never an object (its
+   Init never runs in the corpus). */
 #define MINE_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x6];		/* +$8C */
+	s32 unk_8C;			/* +$8C (0, Mine_Init) */ \
+	s16 unk_90;			/* +$90 (0, Mine_Init) */
 typedef struct Mine { MINE_FIELDS } Mine;
 CHECK_SIZE(Mine, 0x92);
 
-/* POWERUP: descriptor $117C28, parent ACTOR, $8E bytes (GetSize $11753C) */
+/* A mine: $26-byte records in g_MinePool (20, the first g_MinePoolCount in use; Mine_PoolAdd /
+   _PoolRemove), run by Mine_PoolUpdate (a timer) and drawn by Mine_PoolDraw (a draw-list entry).
+   The same layout and state machine as a Spore (Mine_State*): idle, watch the nearest player,
+   arm in four steps when one comes near, explode. */
+FNTYPE(MineFn, void);			/* func(mine) */
+typedef struct MineRec {
+	u8 unk_00[4];			/* +$00 */
+	s16 x;				/* +$04 position in pixels (its placement's) */
+	s16 y;				/* +$06 */
+	PTR(SpawnRec) rec;		/* +$08 its spawn record (waiting again when it leaves the window) */
+	u8 unk_0C[2];			/* +$0C */
+	s16 frame;			/* +$0E frame shown: its animation step's */
+	PTR(u8) anim;			/* +$10 animation playing, an AnimScript read as bytes (step i's frame at +7 + 2i); 0 none */
+	s16 animStep;			/* +$14 */
+	s16 animTime;			/* +$16 frames into the step */
+	MineFn handler;			/* +$18 what it does when delay runs out (Mine_State*); 0: gone (PoolUpdate removes it) */
+	s16 delay;			/* +$1C frames before the handler runs */
+	s16 watchTime;			/* +$1E frames it keeps watching its target (Mine_StateWatch) */
+	PTR(Actor) target;		/* +$20 the player it watches (Player_NearestLive) */
+	s16 unk_24;			/* +$24 (0, Mine_PoolAdd; never read) */
+} MineRec;
+CHECK_SIZE(MineRec, 0x26);
+
+/* POWERUP: descriptor $117C28, parent ACTOR, $8E bytes (GetSize $11753C). A pick-up (the
+   subclasses' Collect, slot +$6E, give what it is): PowerUp_Update hands it to a live player whose
+   body box holds its position, whose health is above 0 and below $900. */
 #define POWERUP_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x2];		/* +$8C */
+	s16 lifetime;			/* +$8C frames left before it vanishes (placement param[0]; 0: for ever) */
 typedef struct PowerUp { POWERUP_FIELDS } PowerUp;
 CHECK_SIZE(PowerUp, 0x8E);
 
@@ -2392,10 +2609,17 @@ CHECK_SIZE(MysteryPowerUp, 0x8E);
 typedef struct Nightcrawler { NIGHTCRAWLER_FIELDS } Nightcrawler;
 CHECK_SIZE(Nightcrawler, 0xC6);
 
-/* NINJA: descriptor $13D7FE, parent BIONPC, $A4 bytes (GetSize $13CC14) */
+/* NINJA: descriptor $13D7FE, parent BIONPC, $A4 bytes (GetSize $13CC14). A ninja that waits, then
+   (its combat script) faces the nearest player, leaps forward inside its patrol bounds, attacks,
+   and after leaveCount leaps runs its leave script; Ninja_Move moves it unclamped and keeps it out
+   of floor segments while airborne (Ninja_ClipToSegs). */
 #define NINJA_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0xE];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script (Tbl_NinjaIntroScript, Tbl_NinjaCombatScript, Tbl_NinjaLeaveScript) */ \
+	s16 patrolLeft;			/* +$9C x range in pixels it leaps in: placement x -/+ |param 0| (0: 160; Ninja_CalcPatrolBounds) */ \
+	s16 patrolRight;		/* +$9E */ \
+	s16 waitTime;			/* +$A0 frames of Ninja_ActWait (param 3, 0: 90) */ \
+	s16 leaveCount;			/* +$A2 leaps left before it leaves (Ninja_ActLeap counts it down, Ninja_ActCheckLeave; param 4, 0: -1 never) */
 typedef struct Ninja { NINJA_FIELDS } Ninja;
 CHECK_SIZE(Ninja, 0xA4);
 
@@ -2414,24 +2638,32 @@ CHECK_SIZE(PerimeterDoor, 0x92);
 typedef struct Synchronizedactor { SYNCHRONIZEDACTOR_FIELDS } Synchronizedactor;
 CHECK_SIZE(Synchronizedactor, 0x8C);
 
-/* PLATFORM1: descriptor $1072E8, parent SYNCHRONIZEDACTOR, $96 bytes (GetSize $106B68) */
+/* PLATFORM1: descriptor $1072E8, parent SYNCHRONIZEDACTOR, $96 bytes (GetSize $106B68). A moving
+   platform along its floor-segment path (Platform1_Move): it shuttles end to end, follows the d-pad
+   of a player riding it, or moves while its switch (its BBoard entry, ACTOR unk_8A[1], bit $200)
+   is on. */
 #define PLATFORM1_FIELDS \
 	SYNCHRONIZEDACTOR_FIELDS \
-	u8 unk_8C[0xA];		/* +$8C */
+	PTR(Seg) ownSeg;		/* +$8C its own floor segment, the one riders stand on (Platform1_StateStart) */ \
+	s16 mode;			/* +$90 bits 0-1: 0 shuttle, 1 ridden (steered by the pad), 2 switched (placement param[4]) */ \
+	s16 savedSpeed;			/* +$92 speed kept while stopped (at a path end, switch off) */ \
+	s16 speed;			/* +$94 speed along the path (placement param[3] << 8; 0: $200) */
 typedef struct Platform1 { PLATFORM1_FIELDS } Platform1;
 CHECK_SIZE(Platform1, 0x96);
 
-/* POP: descriptor $13F28A, parent ACTOR, $8E bytes (GetSize $13F04A) */
+/* POP: descriptor $13F28A, parent ACTOR, $8E bytes (GetSize $13F04A). An invisible placed object
+   that waits, then turns itself into an explosion effect (Pop_StateWait: the Pop_Fx* states). */
 #define POP_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x2];		/* +$8C */
+	s16 fxType;			/* +$8C effect (placement param 0): 0 medium burst, 1 bounce, 2 trail arc, 3 small burst, 4 scatter chain, 5 spiral chain; others as 0 */
 typedef struct Pop { POP_FIELDS } Pop;
 CHECK_SIZE(Pop, 0x8E);
 
 /* PSYLOCKE: descriptor $11359A, parent XCLIMBER, $DA bytes (GetSize $1B9060) */
 #define PSYLOCKE_FIELDS \
 	XCLIMBER_FIELDS \
-	u8 unk_C2[0x18];		/* +$C2 */
+	u8 unk_C2[4];			/* +$C2 */ \
+	SprInst fxSpr;			/* +$C6 the psi effect's sprite (Art_BlastSpr, in the last 16 tiles of her player slot: Psylocke_Init); g_PsylockeFxSpr points at it (BioNpc_DrawStunned draws it over a stunned enemy) */
 typedef struct Psylocke { PSYLOCKE_FIELDS } Psylocke;
 CHECK_SIZE(Psylocke, 0xDA);
 
@@ -2508,7 +2740,9 @@ CHECK_OFFSET(SavageBioBase, dashBrakeX, 0xA8);
 typedef struct PathPt {
 	s16 x;				/* +$00 */
 	s16 y;				/* +$02 */
-	u8 unk_4[4];			/* +$04 */
+	s8 attr;			/* +$04 SAVAGEBIGBIO tentacle paths: the segment sprite's attribute high byte (flips $08/$10, priority $80; SavageBigBio_Draw) */
+	s8 size;			/* +$05 tentacle paths: its hardware size code (bits 2-3: width in tiles - 1, for the mirrored x) */
+	s16 tile;			/* +$06 tentacle paths: its tiles, in steps of 4 from the definition's first */
 } PathPt;
 /* One step of the SAVAGEBIGBIO tentacle wave (Tbl_SavageBigBioTentacleWave, 32 of them): the
    offset added to a segment. */
@@ -2581,10 +2815,19 @@ CHECK_SIZE(SegmentPlusPowerUp, 0x8E);
 typedef struct SentinelDoor { SENTINELDOOR_FIELDS } SentinelDoor;
 CHECK_SIZE(SentinelDoor, 0x98);
 
-/* SENTINELELEVATOR: descriptor $0DF556, parent ACTOR, $9E bytes (GetSize $0DF1FC) */
+/* SENTINELELEVATOR: descriptor $0DF556, parent ACTOR, $9E bytes (GetSize $0DF1FC). A SentinelsD1
+   lift between two heights: it waits for its switch's flag bit 0, rides up, waits, rides down;
+   placement param 4 = 99 makes it run by itself. */
 #define SENTINELELEVATOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x12];		/* +$8C */
+	PTR(s16) switchFlags;		/* +$8C its switch's flag word in g_SentinelsD1Flags (bit 0: go) */ \
+	s16 switchNum;			/* +$90 switch number 0-14 (placement param 0) */ \
+	s16 unk_92;			/* +$92 cleared by Init, never read here */ \
+	s16 topY;			/* +$94 top of its ride, pixels (placement y - 32 * param 1) */ \
+	s16 bottomY;			/* +$96 bottom (placement y + 32 * param 2) */ \
+	u8 topWait;			/* +$98 frames it waits at the top before going down (0: for the switch again) */ \
+	u8 bottomWait;			/* +$99 frames at the bottom before going up (0: the switch) */ \
+	s32 unk_9A;			/* +$9A cleared by Init (one long), never read here */
 typedef struct SentinelElevator { SENTINELELEVATOR_FIELDS } SentinelElevator;
 CHECK_SIZE(SentinelElevator, 0x9E);
 
@@ -2609,12 +2852,27 @@ CHECK_SIZE(SentinelElevator, 0x9E);
 typedef struct ShootAcolyte { SHOOTACOLYTE_FIELDS } ShootAcolyte;
 CHECK_SIZE(ShootAcolyte, 0xB2);
 
-/* SPARK: descriptor $1400DE, parent ACTOR, $9C bytes (GetSize $13FA88) */
+/* SPARK: descriptor $1400DE, parent ACTOR, $9C bytes (GetSize $13FA88). An electric spark, by
+   ACTOR unk_8A[1] (placement param 0's low byte): 0 darts at player 1 in short hops, wobbling
+   around a drifting origin (Spark_Move, Tbl_SparkWobble); 1 flies along its floor segments
+   (Obj_RideRail) and starts over at the end; other values hop at player 1 along its rail. A hit
+   on it, or its hit on a player, blows it up. */
 #define SPARK_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x10];		/* +$8C */
+	s16 speed;			/* +$8C speed along its segments (placement param 2, 0: $100) */ \
+	PTR(Actor) target;		/* +$8E who it darts at (g_Player1; Spark_StateStart) */ \
+	s32 originX;			/* +$92 position without the wobble, 8 fraction bits (Spark_Move) */ \
+	s32 originY;			/* +$96 */ \
+	s16 wobble;			/* +$9A step of Tbl_SparkWobble (one every other frame) */
 typedef struct Spark { SPARK_FIELDS } Spark;
 CHECK_SIZE(Spark, 0x9C);
+/* A step of Tbl_SparkWobble (ROM): the offset in pixels from a free spark's origin; dx >= $100
+   ends the table (back to its start). */
+typedef struct SparkWobbleStep {
+	s16 dx;				/* +$00 */
+	s16 dy;				/* +$02 */
+} SparkWobbleStep;
+CHECK_SIZE(SparkWobbleStep, 4);
 
 /* SPIKEBALL: descriptor $0BF820, parent ACTOR, $90 bytes (GetSize $0BF5F8). A spike ball that
    pushes its spikes out for part of a fixed cycle (SpikeBall_StateCycle). */
@@ -2715,23 +2973,62 @@ CHECK_OFFSET(SwampFly, path, 0xA4);
 typedef struct SwampPlatform { SWAMPPLATFORM_FIELDS } SwampPlatform;
 CHECK_SIZE(SwampPlatform, 0x9C);
 
-/* SWITCH: descriptor $107A3E, parent ACTOR, $8C bytes (GetSize $1077AC) */
+/* SWITCH: descriptor $107A3E, parent ACTOR, $8C bytes (GetSize $1077AC). Never spawned
+   (Switch_InitSpawnRec): its placements only mark switch tiles. A switch tile hit (Switch_TileHit)
+   looks for the SWITCH placement in its map block and toggles bit $200 of the BBoard entry its
+   placement param[1] names (Switch_FindAndToggle). */
 #define SWITCH_FIELDS \
 	ACTOR_FIELDS
 typedef struct Switch { SWITCH_FIELDS } Switch;
 CHECK_SIZE(Switch, 0x8C);
 
-/* SYNCHRONIZER: descriptor $119CFE, root, $3A bytes (GetSize $1197E8) */
+/* SWITCH's placement search (16 bytes, g_SwitchSearchRec: Switch_ClassInit allocates it,
+   Switch_TileHit fills it, the timer callbacks Switch_FindAndToggle / Switch_DebounceWait get it). */
+typedef struct SwitchSearch {
+	PTR(Placement) cur;		/* +$00 next placement entry to look at */
+	PTR(Placement) end;		/* +$04 the last one + 1 (g_PlacementList + g_SpawnRecCount) */
+	s16 col;			/* +$08 the switch tile's map block */
+	s16 row;			/* +$0A */
+	s16 frame;			/* +$0C g_FrameCounter (low word) when the switch was toggled (debounce) */
+	u8 unk_0E[2];			/* +$0E */
+} SwitchSearch;
+CHECK_SIZE(SwitchSearch, 0x10);
+
+/* A SYNCHRONIZER state (+$2C, run by Synchronizer_Run every frame): func(synchronizer). */
+FNTYPE(SyncStateFn, void);
+/* SYNCHRONIZER: descriptor $119CFE, root, $3A bytes (GetSize $1197E8). Drives a group of
+   SYNCHRONIZEDACTORs (moving platforms...) together: the members are the level's objects of one
+   class whose placement param 0 is the group's g_BBoard entry. Started by the first member to come
+   into view (SyncActor_InActivateWindow), it gathers them all, runs their updates while any is in
+   the active window, deactivates them together and despawns them together. One of 4 slots of
+   g_SyncPool (Synchronizer_New), with its own Timer (Run). */
 #define SYNCHRONIZER_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x36];		/* +$04 */
+	PTR(Actor) member[10];		/* +$04 the members gathered (memberCount of them) */ \
+	SyncStateFn state;		/* +$2C Synchronizer_GatherMembers, _RunMembers, _DeactivateMembers, _WaitMembers, _ActivateMembers, _DespawnMembers */ \
+	PTR(Class) memberClass;		/* +$30 class of its members */ \
+	s16 scan;			/* +$34 next spawn record GatherMembers looks at (10 per frame) */ \
+	u8 memberCount;			/* +$36 */ \
+	u8 board;			/* +$37 its g_BBoard entry (bit $100 set while it runs: Synchronizer_SetFlag) */ \
+	u8 inUse;			/* +$38 bit 0: its g_SyncPool slot is taken */ \
+	u8 unk_39;			/* +$39 */
 typedef struct Synchronizer { SYNCHRONIZER_FIELDS } Synchronizer;
 CHECK_SIZE(Synchronizer, 0x3A);
+CHECK_OFFSET(Synchronizer, state, 0x2C);
+CHECK_OFFSET(Synchronizer, inUse, 0x38);
 
-/* TANK: descriptor $1420DE, parent XNPC, $A8 bytes (GetSize $1416C0) */
+/* TANK: descriptor $1420DE, parent XNPC, $A8 bytes (GetSize $1416C0). A tank on a track: its AI
+   script (TANKLEFT's actions) pauses, fires BRAINROCKETs and drives inside its track limits;
+   destroyed, it explodes into a wreck (Tank_OnDeath, Tank_StateWreck). */
 #define TANK_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x14];		/* +$94 */
+	AiCursor ai;			/* +$94 AI script (Tbl_Tank_ScriptWaitDriveLen at Init) */ \
+	s16 trackLeft;			/* +$9A x range in pixels it drives in (Tank_SetTrackLimits; placement param 0, 0: 96) */ \
+	s16 trackRight;			/* +$9C (built from the placement y: a bug kept) */ \
+	s16 speed;			/* +$9E drive speed (param 1 << 8, 0: $100) */ \
+	s16 driveTime;			/* +$A0 frames of TANKLEFT's drive and wait actions (param 3, 0: 120) */ \
+	PTR(Actor) rocket;		/* +$A2 its live rocket, killed with it (Tank_Deactivate); 0 none */ \
+	u8 unk_A6[2];			/* +$A6 */
 typedef struct Tank { TANK_FIELDS } Tank;
 CHECK_SIZE(Tank, 0xA8);
 
@@ -2885,10 +3182,16 @@ CHECK_SIZE(Tuskette, 0xA8);
 CHECK_OFFSET(Tuskette, kind, 0x96);
 CHECK_OFFSET(Tuskette, partner, 0xA0);
 
-/* WALLCRAWLBIO: descriptor $11BAA0, parent BABYBIO, $C0 bytes (GetSize $11DC32) */
+/* WALLCRAWLBIO: descriptor $11BAA0, parent BABYBIO, $C0 bytes (GetSize $11DC32). A BABYBIO that
+   crawls along a wall (mode 0, 1: h-flipped) or a ceiling (mode 2, v-flipped) between two ends,
+   stopping at each (WallCrawlBio_Script1 / _Script2). It keeps BABYBIO's patrol range xMin / xMax
+   (and wallLeft / wallRight) for its crawl range: in y on a wall, in x on a ceiling
+   (WallCrawlBio_Move). */
 #define WALLCRAWLBIO_FIELDS \
 	BABYBIO_FIELDS \
-	u8 unk_BC[0x4];		/* +$BC */
+	u8 mode;			/* +$BC variant & 3: 0 / 1 on a wall (1 h-flipped), 2 on a ceiling (WallCrawlBio_Init) */ \
+	u8 unk_BD;			/* +$BD */ \
+	s16 waitTime;			/* +$BE frames it stops at each end (placement param 3, 30) */
 typedef struct WallCrawlBio { WALLCRAWLBIO_FIELDS } WallCrawlBio;
 CHECK_SIZE(WallCrawlBio, 0xC0);
 

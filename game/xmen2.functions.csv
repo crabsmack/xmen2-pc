@@ -797,7 +797,7 @@ addr,name,end,purpose
 064E14,Cerebro_AnimatePalettes_CasesB,064E7E,cases of the second palette sequence in Cerebro_AnimatePalettes
 064E82,Cerebro_AnimatePalettes_EndB,064E9C,tail of Cerebro_AnimatePalettes: advance the second sequence index (wraps after 7)
 064E9C,Cerebro_FrameHook,064EDE,"per-frame hook of Cerebro screens: frame counter, a button ends a text wait, palette animation"
-064EDE,Cerebro_SetupPalCycles,064F70,register the Cerebro screen's five palette ranges with Art_LoadToVramRecolor
+064EDE,Cerebro_LoadFonts,064F70,"load the Cerebro font (Art_CerebroFont) to VRAM five times, recoloured to five palette pairs (the text styles)"
 064F70,Cerebro_PrintText,06531C,"print a word-wrapped string into the Cerebro text window (plane at VRAM $E000), optionally typing it out with a colour flash"
 065326,Cerebro_PrintText_part1,065370,part 1 of Cerebro_PrintText: code block split off by the code-flow tools (not a separate function)
 065374,Cerebro_PrintText_part2,06539C,part 2 of Cerebro_PrintText: code block split off by the code-flow tools (not a separate function)
@@ -1089,7 +1089,7 @@ addr,name,end,purpose
 0883AE,CloneA5_InitTileHooks,0883C2,CloneA5 setup step: call XClone_InstallTileHooks (jt 794); result into byte -$33C8
 0883C2,CloneA5_InitShockSprites,088422,"CloneA5: set up the two shockwave effect sprites ($FFCC6A/$FFCC7E, art jt[$38F8])"
 088422,CloneA5_AnimShockSprites,0884D2,CloneA5: animate the two shockwave sprites while the boss shockwave is on
-0884D2,CloneA5_ResetPalCycle,0884E6,CloneA5: clear the three palette-cycle counters -$3C50/-$3C52/g_CloneA5PalCycles
+0884D2,CloneA5_ResetPalCycle,0884E6,CloneA5: clear the three palette-cycle counters g_CloneA5PalTimer/Colour/Seq
 0884E6,CloneA5_FrameHook,088588,CloneA5 per-frame scene hook: first frame loads resources and spawns the boss; then shockwave sprites and palette cycling at the boss's health-based speed
 088588,CloneA5_LoadResources,088600,CloneA5: load the scene's four resource sets
 088600,CloneA5_SpawnBoss,08867C,CloneA5: create the BROODBOSS from its placement entry
@@ -1205,9 +1205,9 @@ addr,name,end,purpose
 097D60,XClone_ActMainScript,097DB4,XCLONE script action: restart the clone's main script (clone record + word 8) from step 0
 097DB4,EvilBeast_GetSize,097DC2,vtable +$06: return sizeof(EVILBEAST) = $C0 bytes
 097DC2,EvilBeast_Init,097E32,"parent (XCLONE) Init, then the Beast look: sprite def jt $4342, clone record jt $199A (+$A8), move set jt $429A (+$AC), AI script from the record, XClone_SetBgPalette(1), +$BE = 0 (EVILBEAST override of slot +$12 Init)"
-097E32,EvilBeast_UpdateThrows,097EE0,"EVILBEAST slot +$82 (per frame): advance its two thrown objects (+$BA, +$BC) until each reports done"
-097EE0,EvilBeast_ActThrow,097F60,"EVILBEAST script action: throw (set up the two thrown objects, stop, throw animation)"
-097F60,EvilBeast_StateThrow,097FD0,"EVILBEAST state: release both thrown objects (+$BE bits 0 and 1) with the follow-through animation, next step"
+097E32,EvilBeast_UpdateShockwaves,097EE0,"EVILBEAST slot +$82 (per frame): move its two stomp shockwaves (+$BA, +$BC) on until each ends"
+097EE0,EvilBeast_ActStomp,097F60,"EVILBEAST script action: the weak stomp (start the two shockwaves at its feet, stop, impact animation)"
+097F60,EvilBeast_StateStompRelease,097FD0,"EVILBEAST state: after the stomp's impact animation, release both shockwaves (+$BE bits 0 and 1) with the follow-through animation, next step"
 097FD0,EvilBeam_GetSize,097FDA,EVILBEAM slot +$06: return the object size $2A
 097FDA,EvilBeam_Construct,09806C,"EVILBEAM slot +$0A: construct a beam in caller memory at (x, y): update timer and draw-list entry"
 09806C,EvilBeam_Update,0981FC,EVILBEAM slot +$0E (timer callback): step the animation and hurt players at the beam while it plays; destroy itself when it ends
@@ -1227,9 +1227,9 @@ addr,name,end,purpose
 098680,EvilNightcrawler_StateLand,0986E8,"EVILNIGHTCRAWLER state: landing pose (move-set +$46), next step after 6 frames"
 0986E8,EvilNightcrawler_StateFall,09874E,"EVILNIGHTCRAWLER state: fall using the Nightcrawler player's slot +$7E until reaching the floor, then land"
 09874E,EvilNightcrawler_StateAppear,0987E2,"EVILNIGHTCRAWLER state: after reappearing, fall (gravity $C0) if in the air, else stand and run the next step"
-0987E2,EvilNightcrawler_StateTeleportIn,098830,EVILNIGHTCRAWLER state: reappear at the teleport target (+$BA/+$BC) with the arrival animation jt[$46B2]
+0987E2,EvilNightcrawler_StateTeleportIn,098830,EVILNIGHTCRAWLER state: reappear at the teleport target (+$BA/+$BC) with the arrival animation Tbl_EvilNightcrawlerAnim2 (jt entry $46B2)
 098830,EvilNightcrawler_StateTeleportOut,0988F6,"EVILNIGHTCRAWLER state: invisible for (distance to the target)/8 frames, then reappear"
-0988F6,EvilNightcrawler_ActTeleport,098990,"EVILNIGHTCRAWLER script action: teleport - target the other player (or the only one), vanish with animation jt[$46A2]"
+0988F6,EvilNightcrawler_ActTeleport,098990,"EVILNIGHTCRAWLER script action: teleport - target the other player (or the only one), vanish with animation Tbl_EvilNightcrawlerAnim (jt entry $46A2)"
 098990,EvilPsylocke_GetSize,09899E,vtable +$06: return sizeof(EVILPSYLOCKE) = $BA bytes
 09899E,EvilPsylocke_Init,098A0A,"parent (XCLONE) Init, then the Psylocke look: sprite def jt $464A, clone record jt $19FA (+$A8), move set jt $45CA (+$AC), AI script from the record, XClone_SetBgPalette(1) (EVILPSYLOCKE override of slot +$12 Init)"
 098A0A,EvilPsylocke_StateDashEnd,098A66,"EVILPSYLOCKE state: dash finished - stop, next step"
@@ -1416,7 +1416,7 @@ addr,name,end,purpose
 0B02F4,SavageA3_FrameStub,0B02FC,empty per-frame stub of the SavageA3 frame hook
 0B02FC,SavageA3_TileHookCrack,0B03A2,SavageA3 tile hook [2]: crack a breakable tile one step ($86 -> $8B -> $8C -> $2A broken; broken removes its block)
 0B03A2,SavageA3_InstallTileHooks,0B03DA,"SavageA3: install the tile hooks ([2] SavageA3_TileHookCrack, [3] PerimeterDoor_TileHook)"
-0B03DA,SavageA3_CamSetHooks,0B0408,"SavageA3 camera creation hook: the SavageA2 flood camera hooks, bounds +$40 = 100, +$42 = $A0"
+0B03DA,SavageA3_CamSetHooks,0B0408,"SavageA3 camera post-update hook (Cam_New, +$1C): the SavageA2 flood camera hooks, bounds +$40 = 100, +$42 = $A0"
 0B0408,SavageA3_InitCamera,0B042E,SavageA3: create the camera (CAMERA +$0A with SavageA3_CamSetHooks) into g_Camera
 0B042E,SavageA3_FrameHook,0B0468,"SavageA3 per-frame scene hook: counter, light animation (SavageA2_AnimLights), empty stub; twice with g_TwoPlayerStep"
 0B0468,SavageA3_LoadResources,0B0484,SavageA3: load its resource set into g_BioFlameSprDef
@@ -1425,7 +1425,7 @@ addr,name,end,purpose
 0B0520,SavageA3_EmptyStub1,0B0528,empty function (first SavageA3 setup stub)
 0B0528,SavageA3_InstallFrameHook,0B0538,SavageA3: install SavageA3_FrameHook in g_SceneFrameHook
 0B0538,SavageA3_RunScene,0B0574,"scene function for 'SavageA3 Perimeter_2': set up the level (reusing the SavageA2 lights and flood), run it, stop all sounds"
-0B600A,SavageA4_ResetPalCycles,0B602A,SavageA4: reset the six palette-cycle counters
+0B600A,SavageA4_ResetPalCycles,0B602A,"SavageA4: reset the palette-cycle counters (three used by SavageA4_CyclePalettes, three nothing in the scene reads)"
 0B602A,SavageA4_CyclePalettes,0B6086,"SavageA4: run the three palette cycles (tables $0B664C, $0B667C, $0B66AC)"
 0B6086,SavageA4_InitEffectSprite,0B60BE,"SavageA4: set up the chamber effect sprite ($FFCC6A, art $0B533E)"
 0B60BE,SavageA4_AnimEffectSprite,0B611E,"SavageA4: animate the effect sprite (frames 0-5, 4 frames each)"
@@ -1434,11 +1434,11 @@ addr,name,end,purpose
 0B626E,SavageA4_LoadLevel,0B62F2,SavageA4: load the Chamber level (Level_Load with the class list jt[$1E8A]) and set the parallax factors
 0B62F2,SavageA4_InstallHooks,0B6322,"SavageA4: install the frame hook, load resources, effect sprite, palette reset, place the players at ($140, $180)"
 0B6322,SavageA4_CallEmptyStub,0B632E,SavageA4: call the empty stub SavageA4_EmptyStub
-0B632E,SavageA4_CamUpdate,0B65A0,"SavageA4 camera update: follow the players (and the object g_SceneVar3B20 when set), using the dead zones"
-0B65A0,SavageA4_CamSetHooks,0B65C6,"SavageA4 camera creation hook: dead zones $A0/$A0, update SavageA4_CamUpdate"
+0B632E,SavageA4_CamUpdate,0B65A0,"SavageA4 camera tracking function (+8): follow the players (and the object g_SceneVar3B20 when set), using the dead zones"
+0B65A0,SavageA4_CamSetHooks,0B65C6,"SavageA4 camera post-update hook (Cam_New, +$1C): dead zones $A0/$A0, tracking function (+8) SavageA4_CamUpdate"
 0B65C6,SavageA4_RunScene,0B6632,"scene function for 'SavageA4 Chamber': boss stages, level, hooks, camera, run"
 0B6632,SavageA4_EmptyStub,0B663A,empty function (SavageA4 setup stub)
-0B66DC,SavageA4_InitBossStages,0B6740,"SavageA4: fill the boss stage table (2, 0, 2, 5, 10, $F, $1E, $FF) and set the boss value g_SceneVar3B02/g_SceneVar3B04 to 50"
+0B66DC,SavageA4_InitStats,0B6740,"SavageA4: fill the stats record its enemies share (attack 2, hurt sound 0, health 2, knockback 5/10/15/30, no hurt frame $FF) and set the boss health g_SceneVar3B02/g_SceneVar3B04 to 50"
 0B6740,BrainBabyBio_GetSize,0B674E,vtable +$06: return sizeof(BRAINBABYBIO) = $C0 bytes
 0B674E,BrainBabyBio_Init,0B6824,"parent (BABYBIO) Init, then SavageA4_NopStatic, palette 3, arena box x $60-$220 / y $60-$140 (+$AC..+$B2), stats record g_SceneVar3B14 with health 4, AI script jt $1DA2, state BrainBabyBio_StateStart (+$5C/+$64), flags |= $1000, home +$BC/+$BE = position, frame 4, Obj_UpdateBoxes, sound $46, camera focus g_SceneVar3B20 := this (BRAINBABYBIO override of slot +$12 Init)"
 0B6824,BrainBabyBio_OnDeath,0B689A,"BRAINBABYBIO slot +$72 OnDeath: turn into a SAVAGEMEDIUMBIO (same facing, 20-frame invulnerability, SavageMediumBio_SetHome($18E, $140)) and remove itself"
@@ -1932,7 +1932,7 @@ addr,name,end,purpose
 0EC572,CoreElevator_StateIdle,0EC5B0,CoreElevator idle state: clear its segment's byte +2 and stay
 0EC5B0,CoreElevator_StartDown,0EC5E0,"CoreElevator: start moving down (vy = +speed +$90), active"
 0EC5E0,CoreElevator_MoveDown,0EC622,CoreElevator: stop at the bottom limit (+$8C) and go to WaitAtBottom
-0EC622,CoreElevator_WaitAtBottom,0EC668,CoreElevator: wait at the bottom; when the trip counter +$92 reaches 0 start back up
+0EC622,CoreElevator_WaitAtBottom,0EC668,"CoreElevator: at the bottom, trips +$92 = 1 (sent down by WaitAtTop) starts back up, 0 (SendDown) stays, re-checking every 255 frames"
 0EC668,CoreElevator_StartUp,0EC69E,"CoreElevator: start moving up (vy = -speed), active"
 0EC69E,CoreElevator_MoveUp,0EC6E0,CoreElevator: stop at the top limit (+$8E) and go to WaitAtTop
 0EC6E0,CoreElevator_WaitAtTop,0EC740,"CoreElevator: wait at the top until a player is below, then go down for one trip"
@@ -2007,7 +2007,7 @@ addr,name,end,purpose
 1071DE,Platform1_StateSwitched,107254,"Platform1 mode 2: move only while its switch flag is set (reverse when blocked), stop and remember the speed when it is cleared"
 107254,Platform1_StateStart,1072E8,"Platform1 first state: bind its floor segment (+$8C) and enter the mode's state (Shuttle, Ride or Switched)"
 107370,SpaceB1_EmptyStub,107378,SpaceB1: empty function
-107378,SpaceB1_ResetPalCycles,1073A8,SpaceB1: initialise the two palette-cycle counters and delays
+107378,SpaceB1_ResetPalCycles,1073A8,SpaceB1: set four palette cycles' delay and step (only the first two are ever read)
 1073A8,SpaceB1_CyclePalettes,1073E2,"SpaceB1: two colour cycles (14 steps every 4 frames, 8 steps every 3) written through switch tables"
 107400,SpaceB1_CyclePalettes_SetA,107468,"case of SpaceB1_CyclePalettes (first cycle): set colour $E4E, then advance"
 10746C,SpaceB1_CyclePalettes_NextA,1074A6,SpaceB1_CyclePalettes: advance the first cycle (wrap after 14) and run the second

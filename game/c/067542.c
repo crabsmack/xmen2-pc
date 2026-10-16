@@ -9,25 +9,25 @@ void PlayerSelect_PlayIdleAnim(register ScalingActor *self)
 {
 	switch (self->slot->charIndex) {
 	case 0:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_182932));
+		Obj_SetAnim(self, CODEPTR(Tbl_BeastSelectIdleAnim));
 		break;
 	case 1:
 		Obj_SetAnim(self, CODEPTR(Tbl_CyclopsSelectIdleAnim));
 		break;
 	case 2:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_1CEC5C));
+		Obj_SetAnim(self, CODEPTR(Tbl_GambitSelectIdleAnim));
 		break;
 	case 3:
-		Obj_SetAnim(self, CODEPTR(Tbl_Anim_1A5F46));
+		Obj_SetAnim(self, CODEPTR(Tbl_NightcrawlerSelectIdleAnim));
 		break;
 	case 4:
-		Obj_SetAnim(self, CODEPTR(Tbl_PlayerSelectAnim_2));
+		Obj_SetAnim(self, CODEPTR(Tbl_PsylockeSelectIdleAnim));
 		break;
 	case 5:
-		Obj_SetAnim(self, CODEPTR(Tbl_PlayerSelectAnim));
+		Obj_SetAnim(self, CODEPTR(Tbl_WolverineSelectIdleAnim));
 		break;
 	case 6:
-		Obj_SetAnim(self, CODEPTR(Tbl_PlayerSelectAnim_3));
+		Obj_SetAnim(self, CODEPTR(Tbl_MagnetoSelectIdleAnim));
 		break;
 	}
 }

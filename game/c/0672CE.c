@@ -22,7 +22,7 @@ void ScalingActor_SetFrame(register ScalingActor *self, register short f)
 		Nightcrawler_SetFrame((Nightcrawler *)self, f);
 		break;
 	case 4:
-		Psylocke_SetFrame(self, f);
+		Psylocke_SetFrame((Psylocke *)self, f);
 		break;
 	case 5:
 		Wolverine_SetFrame((Wolverine *)self, f);

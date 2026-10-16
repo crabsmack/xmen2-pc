@@ -1,0 +1,13 @@
+/* XPowerMinusPowerUp_Init - XPOWERMINUSPOWERUP Init (class slot +$12): the parent's (POWERUP)
+ * Init, then palette 3 (the minus power-ups are drawn in it), the X-power animation
+ * (Tbl_XPowerPowerUpAnim) showing its first frame.
+ *
+ * self: the power-up.  x, y: position (8 fraction bits).  pl: its placement entry or 0. */
+#include "xmen2.h"
+
+void XPowerMinusPowerUp_Init(XPowerMinusPowerUp *self, long x, long y, Placement *pl)
+{
+	(*CLASS(Tbl_XPowerMinusPowerUp_vtable)->parent->method[3])(self, x, y, pl);	/* POWERUP Init */
+	self->spr.flags = self->spr.flags & ~3 | 3;	/* palette 3 */
+	self->spr.frame = ((u8 *)(self->anim = CODEPTR(Tbl_XPowerPowerUpAnim)))[7];	/* step 0's frame */
+}

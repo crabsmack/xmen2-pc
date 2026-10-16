@@ -19,7 +19,7 @@ void XPlayer_Update(XPlayer *self)
 	short step;
 	long x0, y0;
 	short frame;
-	void *points;
+	char *points;
 
 	if (g_TwoPlayerStep)
 		step = 2;

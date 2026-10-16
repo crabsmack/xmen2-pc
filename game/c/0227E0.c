@@ -2,9 +2,9 @@
  * load the level, place the players, install the hooks, the scene sprite and the camera, then
  * run the level loop (Level_Run) until the scene ends.
  *
- * Every sound stops first. Level_Load: FG map Map_AvalonB2Eni, FG tiles Art_AvalonA2Nem, BG map
- * and tiles Map_AvalonB1Bg, FG floor segments Lvl_AvalonB2Segs, no BG segments, flags 1 0 1 0,
- * class-init argument $F, no music, grid shifts 8 and 8, class list Map_AvalonB2Eni2. Then plane
+ * Every sound stops first. Level_Load: FG map Lvl_AvalonB2FgMap, FG tiles Lvl_AvalonB1Fg, BG map
+ * and tiles Lvl_AvalonB1Bg, FG floor segments Lvl_AvalonB2FgSegs, no BG segments, flags 1 0 1 0,
+ * class-init argument $F, no music, grid shifts 8 and 8, class list Tbl_AvalonB2ClassList. Then plane
  * B fixed (scroll factors 0), the HUD on, the frame hook AvalonB2_FrameHook, one-player stepping,
  * the players at their start, the tile hooks, the scene sprite (AvalonB2_InitSprite), the camera
  * (CAMERA's New, Cam_New, with AvalonB2_CamHook), the gauss bullet pool, and a 60-frame timer that
@@ -18,9 +18,9 @@ void AvalonB2_RunScene(void)
 	register Timer *t;
 
 	Snd_StopAll();
-	Level_Load(CODEPTR(Map_AvalonB2Eni), CODEPTR(Art_AvalonA2Nem), CODEPTR(Map_AvalonB1Bg),
-		CODEPTR(Map_AvalonB1Bg), CODEPTR(Lvl_AvalonB2Segs), 0, 1, 0, 1, 0, 0xF, 0, 8, 8, 0,
-		CODEPTR(Map_AvalonB2Eni2));
+	Level_Load(CODEPTR(Lvl_AvalonB2FgMap), CODEPTR(Lvl_AvalonB1Fg), CODEPTR(Lvl_AvalonB1Bg),
+		CODEPTR(Lvl_AvalonB1Bg), CODEPTR(Lvl_AvalonB2FgSegs), 0, 1, 0, 1, 0, 0xF, 0, 8, 8, 0,
+		CODEPTR(Tbl_AvalonB2ClassList));
 	g_BgScrollFactorX = 0;
 	g_BgScrollFactorY = 0;
 	g_HudOn = 1;

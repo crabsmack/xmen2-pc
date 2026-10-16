@@ -64,5 +64,6 @@ long SiberiaB1_IceTileHit(register short col, short row)
 		Snd_Stop(0x33);
 		Snd_Play(0x33);
 	}
+	if (0) { (void)col; (void)crack; }	/* MPW: keeps both live, so the object count shares r's register */
 	return 0;
 }

@@ -7,7 +7,7 @@
 
 void XClone_LoadResources(void)
 {
-	g_EvilBeastThrowSprDef = SprDef_Add(CODEPTR(Art_PlayerSpr), 2);
+	g_EvilBeastShockwaveSprDef = SprDef_Add(CODEPTR(Art_PlayerSpr), 2);
 	g_CloneDebris->sprDef = SprDef_Add(CODEPTR(Art_CloneA5Spr), 2);
 	g_FlyBroodSprDef = SprDef_Add(CODEPTR(Art_FlyBroodSpr), 1);
 	g_BioFlameSprDef = SprDef_Add(CODEPTR(Art_CloneA1Spr), 3);

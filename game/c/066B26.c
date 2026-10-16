@@ -1,8 +1,8 @@
 /* Cerebro_Run - run a Cerebro screen, as its scene asked (g_SceneVar3B0C intro, g_SceneVar3B14
  * text script, g_SceneVar3B0A player select).
  *
- * The Cerebro level loads (Level_Load: maps and tiles Art_CerebroNem2 / Art_CerebroNem, class
- * list Art_CerebroNem3), no HUD, a fixed background, the sprite set, the frame hook
+ * The Cerebro level loads (Level_Load: maps and tiles Lvl_CerebroFg / Lvl_CerebroBg, class
+ * list Tbl_CerebroClassList), no HUD, a fixed background, the sprite set, the frame hook
  * (Cerebro_FrameHook), the fonts, the palette animations reset, the text window rows 3-$16,
  * columns 5-$22 (the cursor homed, swapped as in Cerebro_ClearTextWindow), the frame counters
  * cleared, the display on and the window plane off, and the palette fades in. FinalText clears
@@ -44,15 +44,15 @@ void Cerebro_Run(void)
 		music = -1;
 	if (music != -1)
 		Snd_StopAll();
-	Level_Load(CODEPTR(Art_CerebroNem2), CODEPTR(Art_CerebroNem2), CODEPTR(Art_CerebroNem),
-		CODEPTR(Art_CerebroNem), 0, 0, 0, 0, 1, 0, 6, -1, 8, 8, 0, CODEPTR(Art_CerebroNem3));
+	Level_Load(CODEPTR(Lvl_CerebroFg), CODEPTR(Lvl_CerebroFg), CODEPTR(Lvl_CerebroBg),
+		CODEPTR(Lvl_CerebroBg), 0, 0, 0, 0, 1, 0, 6, -1, 8, 8, 0, CODEPTR(Tbl_CerebroClassList));
 	g_HudOn = 0;
 	g_BgScrollFactorX = 0;
 	g_BgScrollFactorY = 0;
 	Cerebro_LoadSpriteTiles();
 	g_SceneFrameHook = Cerebro_FrameHook;
 	g_TwoPlayerStep = 0;
-	Cerebro_SetupPalCycles();
+	Cerebro_LoadFonts();
 	g_PalAnim1Timer = 2;
 	g_PalAnim1Stage = 0;
 	g_PalAnim1Dir = 1;
@@ -120,7 +120,7 @@ void Cerebro_Run(void)
 				for (j = 0; j < 16; j++)
 					*q++ = *p++;
 			}
-			Cerebro_SetupPalCycles();
+			Cerebro_LoadFonts();
 		}
 	}
 	if (g_CerebroScript) {

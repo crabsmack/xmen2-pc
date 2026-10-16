@@ -3,7 +3,7 @@
  * starts a new row (the row stops at the window's bottom; leading blanks are then skipped), NEWLINE
  * starts a new row. The text cursor ends after the text.
  *
- * text: the string.  style: 0 white, 1 blue, 2, 3 the other font banks (Cerebro_SetupPalCycles'
+ * text: the string.  style: 0 white, 1 blue, 2, 3 the other font banks (Cerebro_LoadFonts'
  * recoloured fonts: tiles $6C0, $680, $640, $600); 4/5: each word appears in a flash font (tiles
  * $5C0, palette line 3 colour 7 stepping through green or blue shades, 2 frames each), then in
  * white / blue; 6/7: the same letter by letter (typed out, a frame per shade and one after each

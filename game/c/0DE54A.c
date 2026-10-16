@@ -51,4 +51,5 @@ void SentinelDoor_Init(register SentinelDoor *self, register long x, register lo
 	self->moving = 0;
 	(*self->cls->method[20])(self, 0);	/* +$56 SetFrame */
 	Obj_UpdateBoxes(self);
+end:	;	/* (a label: MPW C pops the calls' arguments before it and before the if, as the ROM) */
 }

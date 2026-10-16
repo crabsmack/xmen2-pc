@@ -364,11 +364,11 @@ extern s16 g_CloneWaveKills;
 #else
 #define g_CloneWaveKills XM_G(s16, 0xFFC5C0)
 #endif
-/* $FFC5C2 word: sprite-definition slot of Art_PlayerSpr used for the objects EVILBEAST throws (XClone_LoadResources via SprDef_Add; EvilBeast_ActThrow, EvilBeast_UpdateThrows) */
+/* $FFC5C2 word: sprite-definition slot of Art_PlayerSpr used for the objects EVILBEAST throws (XClone_LoadResources via SprDef_Add; EvilBeast_ActStomp, EvilBeast_UpdateShockwaves) */
 #ifdef XMEN2_MPW
-extern s16 g_EvilBeastThrowSprDef;
+extern s16 g_EvilBeastShockwaveSprDef;
 #else
-#define g_EvilBeastThrowSprDef XM_G(s16, 0xFFC5C2)
+#define g_EvilBeastShockwaveSprDef XM_G(s16, 0xFFC5C2)
 #endif
 /* $FFC5C4 word: clones killed while the clone maker runs (XClone_KillAndCount; EvilMaker_StateWaitKills compares; XClone_ClassInit clears; BroodClaw_StateDropClone tests) */
 #ifdef XMEN2_MPW
@@ -436,7 +436,7 @@ extern s16 g_SporeMineSprDef;
 #else
 #define g_SporeMineSprDef XM_G(s16, 0xFFC5DE)
 #endif
-/* $FFC5E0 word: sprite-definition slot of Tbl_SpikeBallVdp (SpikeBall_ClassInit via SprDef_Add; SpikeBall_Init) */
+/* $FFC5E0 word: sprite-definition slot of Art_SpikeBallSpr (SpikeBall_ClassInit via SprDef_Add; SpikeBall_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_SpikeBallSprDef;
 #else
@@ -502,25 +502,25 @@ extern s16 g_P1SplashTimer;
 #else
 #define g_P1SplashTimer XM_G(s16, 0xFFC5F8)
 #endif
-/* $FFC5FA word: y (world pixels) of player 2's water splash (g_WaterSplashY when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C06) */
+/* $FFC5FA word: y (world pixels) of player 2's water splash (g_WaterSplashY when it starts; Water_DrawHook) */
 #ifdef XMEN2_MPW
 extern s16 g_P2SplashY;
 #else
 #define g_P2SplashY XM_G(s16, 0xFFC5FA)
 #endif
-/* $FFC5FC word: x (world pixels) of player 2's water splash (the player's x when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C04) */
+/* $FFC5FC word: x (world pixels) of player 2's water splash (the player's x when it starts; Water_DrawHook) */
 #ifdef XMEN2_MPW
 extern s16 g_P2SplashX;
 #else
 #define g_P2SplashX XM_G(s16, 0xFFC5FC)
 #endif
-/* $FFC5FE word: y (world pixels) of player 1's water splash (g_WaterSplashY when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C02) */
+/* $FFC5FE word: y (world pixels) of player 1's water splash (g_WaterSplashY when it starts; Water_DrawHook) */
 #ifdef XMEN2_MPW
 extern s16 g_P1SplashY;
 #else
 #define g_P1SplashY XM_G(s16, 0xFFC5FE)
 #endif
-/* $FFC600 word: x (world pixels) of player 1's water splash (the player's x when it starts; Water_DrawHook). Provisional name: unnamed in the disassembly (-$3C00) */
+/* $FFC600 word: x (world pixels) of player 1's water splash (the player's x when it starts; Water_DrawHook) */
 #ifdef XMEN2_MPW
 extern s16 g_P1SplashX;
 #else
@@ -532,7 +532,7 @@ extern s16 g_ControlPanelSprDef;
 #else
 #define g_ControlPanelSprDef XM_G(s16, 0xFFC602)
 #endif
-/* $FFC604 word: sprite-definition slot of Art_Spr_0DBFC0 (SentinelsD1_LoadResources via SprDef_Add; ControlBox_Draw, ControlPanel_Draw) */
+/* $FFC604 word: sprite-definition slot of Art_PanelLightSpr (SentinelsD1_LoadResources via SprDef_Add; ControlBox_Draw, ControlPanel_Draw) */
 #ifdef XMEN2_MPW
 extern s16 g_ControlPanelSprDef2;
 #else
@@ -556,11 +556,43 @@ extern s16 g_BarrierSprDef;
 #else
 #define g_BarrierSprDef XM_G(s16, 0xFFC60C)
 #endif
-/* $FFC60E 6 words: SentinelsA1 palette-cycle step counters passed by address to the cycle stepper (SentinelsA1_CyclePalettes; SentinelsA1_ResetPalCycles clears) */
+/* $FFC60E-$FFC618: two Pal_CycleStep states of SentinelsA1 (SentinelsA1_CyclePalettes passes each
+   word by address; SentinelsA1_ResetPalCycles clears them one by one). */
+/* $FFC60E word: sequence index of the exit's palette cycles (Pal_SentinelsA1Cycle7-22, once g_SentinelsA1ExitOpen) */
 #ifdef XMEN2_MPW
-extern s16 g_SentinelsA1PalCycles[6];
+extern s16 g_SentinelsA1ExitPalSeq;
 #else
-#define g_SentinelsA1PalCycles XM_GA(s16, 0xFFC60E)
+#define g_SentinelsA1ExitPalSeq XM_G(s16, 0xFFC60E)
+#endif
+/* $FFC610 word: colour index of the exit's palette cycles */
+#ifdef XMEN2_MPW
+extern s16 g_SentinelsA1ExitPalColour;
+#else
+#define g_SentinelsA1ExitPalColour XM_G(s16, 0xFFC610)
+#endif
+/* $FFC612 word: timer of the exit's palette cycles */
+#ifdef XMEN2_MPW
+extern s16 g_SentinelsA1ExitPalTimer;
+#else
+#define g_SentinelsA1ExitPalTimer XM_G(s16, 0xFFC612)
+#endif
+/* $FFC614 word: sequence index of the Pal_SentinelsA1Cycle6 palette cycle */
+#ifdef XMEN2_MPW
+extern s16 g_SentinelsA1PalSeq;
+#else
+#define g_SentinelsA1PalSeq XM_G(s16, 0xFFC614)
+#endif
+/* $FFC616 word: colour index of the Pal_SentinelsA1Cycle6 palette cycle */
+#ifdef XMEN2_MPW
+extern s16 g_SentinelsA1PalColour;
+#else
+#define g_SentinelsA1PalColour XM_G(s16, 0xFFC616)
+#endif
+/* $FFC618 word: timer of the Pal_SentinelsA1Cycle6 palette cycle */
+#ifdef XMEN2_MPW
+extern s16 g_SentinelsA1PalTimer;
+#else
+#define g_SentinelsA1PalTimer XM_G(s16, 0xFFC618)
 #endif
 /* $FFC61A byte: SentinelsA1 exit opened by Hologram_OpenExit; SentinelsA1_CyclePalettes switches palette cycles on it (SentinelsA1_InstallHooks clears) */
 #ifdef XMEN2_MPW
@@ -568,13 +600,13 @@ extern u8 g_SentinelsA1ExitOpen;
 #else
 #define g_SentinelsA1ExitOpen XM_G(u8, 0xFFC61A)
 #endif
-/* $FFC61C word: sprite-definition slot of Art_SentinelsA1Spr24 (SentinelsA1_LoadResources via SprDef_Add; HoloBolt_Init) */
+/* $FFC61C word: sprite-definition slot of Art_HoloBoltSpr (SentinelsA1_LoadResources via SprDef_Add; HoloBolt_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_HoloBoltSprDef;
 #else
 #define g_HoloBoltSprDef XM_G(s16, 0xFFC61C)
 #endif
-/* $FFC61E word: sprite-definition slot of Art_SentinelsA1Spr25 (SentinelsA1_LoadResources via SprDef_Add; Hologram_Init) */
+/* $FFC61E word: sprite-definition slot of Art_HologramSpr (SentinelsA1_LoadResources via SprDef_Add; Hologram_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_HologramSprDef;
 #else
@@ -610,13 +642,13 @@ extern u8 g_HoloFlickerSpr[2];
 #else
 #define g_HoloFlickerSpr XM_GA(u8, 0xFFC626)
 #endif
-/* $FFC628 word: sprite-definition slot of Art_SentinelsA1Spr26 (SentinelsA1_LoadResources via SprDef_Add; CoreShields_Init) */
+/* $FFC628 word: sprite-definition slot of Art_CoreShieldsSpr (SentinelsA1_LoadResources via SprDef_Add; CoreShields_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_CoreShieldsSprDef;
 #else
 #define g_CoreShieldsSprDef XM_G(s16, 0xFFC628)
 #endif
-/* $FFC62A word: sprite-definition slot of Art_SentinelsA1Spr27 (SentinelsA1_LoadResources via SprDef_Add; CoreElevator_Init) */
+/* $FFC62A word: sprite-definition slot of Art_CoreElevatorSpr (SentinelsA1_LoadResources via SprDef_Add; CoreElevator_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_CoreElevatorSprDef;
 #else
@@ -628,11 +660,23 @@ extern s16 g_Platform1SprDef;
 #else
 #define g_Platform1SprDef XM_G(s16, 0xFFC62C)
 #endif
+/* $FFC62E word: step of a fourth SpaceB1 palette cycle: SpaceB1_ResetPalCycles clears it, nothing reads it. */
+#ifdef XMEN2_MPW
+extern s16 g_SpaceB1Cycle4Step;
+#else
+#define g_SpaceB1Cycle4Step XM_G(s16, 0xFFC62E)
+#endif
+/* $FFC630 word: delay of a fourth SpaceB1 palette cycle: SpaceB1_ResetPalCycles sets 2, nothing reads it. */
+#ifdef XMEN2_MPW
+extern s16 g_SpaceB1Cycle4Delay;
+#else
+#define g_SpaceB1Cycle4Delay XM_G(s16, 0xFFC630)
+#endif
 /* $FFC632 ptr: 16-byte record allocated by Switch_ClassInit for the tile Switch_TileHit is looking up */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SwitchSearchRec;
+extern PTR(SwitchSearch) g_SwitchSearchRec;
 #else
-#define g_SwitchSearchRec XM_G(PTR(void), 0xFFC632)
+#define g_SwitchSearchRec XM_G(PTR(SwitchSearch), 0xFFC632)
 #endif
 /* $FFC636 byte: a SWITCH lookup timer is running; Switch_TileHit only starts one when clear (Switch_ClassInit, Switch_DebounceWait, Switch_FindAndToggle clear) */
 #ifdef XMEN2_MPW
@@ -1830,15 +1874,15 @@ extern s16 g_PalCycleDelay;
 #endif
 /* $FFC932 ptr: next word of g_PalCycleScript (Pal_RunCycleScript; Level_Load clears) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_PalCycleCursor;
+extern PTR(s16) g_PalCycleCursor;
 #else
-#define g_PalCycleCursor XM_G(PTR(void), 0xFFC932)
+#define g_PalCycleCursor XM_G(PTR(s16), 0xFFC932)
 #endif
 /* $FFC936 ptr: palette-cycle script run by Pal_RunCycleScript each level frame {byte ?, byte delay, byte first colour, byte last colour; then colour words, -1 = loop, -2 = end, >= $1000 = delay & $3FF}; 0 = none (Level_Load clears) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_PalCycleScript;
+extern PTR(PalCycleScript) g_PalCycleScript;
 #else
-#define g_PalCycleScript XM_G(PTR(void), 0xFFC936)
+#define g_PalCycleScript XM_G(PTR(PalCycleScript), 0xFFC936)
 #endif
 /* $FFC93A byte: a demo was ended with Start (Level_FrameLoop); Game_PlayAttractDemo then sets progress flag 2; cleared by Level_Run, Cerebro_RunTextScript */
 #ifdef XMEN2_MPW
@@ -2359,9 +2403,9 @@ extern s16 g_HScrollFreeTile;
 #endif
 /* $FFE4C0 10 x 14-byte explosion slots {word x, word y, byte step, byte delay, long timer, word attr, word damage} (Explosion_SpawnEx) */
 #ifdef XMEN2_MPW
-extern u8 g_Explosions[];
+extern Explosion g_Explosions[];
 #else
-#define g_Explosions XM_GA(u8, 0xFFE4C0)
+#define g_Explosions XM_GA(Explosion, 0xFFE4C0)
 #endif
 /* $FFE54C word: ICandy pool slot size in bytes (ICandy_PoolInit) */
 #ifdef XMEN2_MPW
@@ -2383,9 +2427,9 @@ extern s16 g_ICandyCount;
 #endif
 /* $FFE554 ptr: GAUSSBULLET pool {word count, word max 6, long anim table, 32-byte records} (GaussBullet_InitPool) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_GaussPool;
+extern PTR(GaussPool) g_GaussPool;
 #else
-#define g_GaussPool XM_G(PTR(void), 0xFFE554)
+#define g_GaussPool XM_G(PTR(GaussPool), 0xFFE554)
 #endif
 /* $FFE558 word: sprite-definition slot of the gauss bullet graphics (GaussBullet_InitPool, GaussBullet_Update) */
 #ifdef XMEN2_MPW
@@ -2395,9 +2439,9 @@ extern s16 g_GaussSprDef;
 #endif
 /* $FFE55A ptr: BBOARD trigger-flag board, 100 word entries (Switch_ClassInit, Synchronizer_SetFlag) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_BBoard;
+extern PTR(BBoard) g_BBoard;
 #else
-#define g_BBoard XM_G(PTR(void), 0xFFE55A)
+#define g_BBoard XM_G(PTR(BBoard), 0xFFE55A)
 #endif
 /* $FFE55E ptr: pool of 4 SYNCHRONIZER objects (Synchronizer_New) */
 #ifdef XMEN2_MPW
@@ -2485,9 +2529,9 @@ extern s16 g_MaintRobotSprDef;
 #endif
 /* $FFE784 ptr: mine pool records allocated by Mine_InitPool (Mine_PoolAdd/Remove/Update/Draw) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_MinePool;
+extern PTR(MineRec) g_MinePool;
 #else
-#define g_MinePool XM_G(PTR(void), 0xFFE784)
+#define g_MinePool XM_G(PTR(MineRec), 0xFFE784)
 #endif
 /* $FFE788 word: mines in use in g_MinePool (Mine_InitPool clears; Mine_PoolAdd/Remove, Mine_PoolUpdate/Draw) */
 #ifdef XMEN2_MPW
@@ -2665,9 +2709,9 @@ extern PTR(ListNode) g_HitListEnemyBody;
 #endif
 /* $FFEBB2 array: 50 hit-list nodes x $C {next, prev, owner} (HitList_Init, HitList_AllocNode) */
 #ifdef XMEN2_MPW
-extern u8 g_HitNodes[];
+extern ListNode g_HitNodes[50];
 #else
-#define g_HitNodes XM_GA(u8, 0xFFEBB2)
+#define g_HitNodes XM_GA(ListNode, 0xFFEBB2)
 #endif
 /* $FFEE0A ptr: storage for level objects, $C2 bytes each (Obj_AllocPool) */
 #ifdef XMEN2_MPW
@@ -2695,9 +2739,9 @@ extern u8 g_BgNarrow;
 #endif
 /* $FFEE14 ptr: saved g_PalCycleScript (Pal_SaveCycle saves, Pal_RestoreCycle restores after a fade) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_PalCycleSave;
+extern PTR(PalCycleScript) g_PalCycleSave;
 #else
-#define g_PalCycleSave XM_G(PTR(void), 0xFFEE14)
+#define g_PalCycleSave XM_G(PTR(PalCycleScript), 0xFFEE14)
 #endif
 /* $FFEE18 64 words: copy of g_PalBase saved by Pal_SaveBase and restored by Pal_RestoreBase (around palette fades, Pal_FadeInWait) */
 #ifdef XMEN2_MPW
@@ -2761,9 +2805,9 @@ extern PTR(void) g_DrawListHead;
 #endif
 /* $FFEEB4 30 x $14-byte draw-list nodes {next, prev, func, object, word key, word flags} (DrawList_Init) */
 #ifdef XMEN2_MPW
-extern u8 g_DrawNodes[];
+extern DrawNode g_DrawNodes[30];
 #else
-#define g_DrawNodes XM_GA(u8, 0xFFEEB4)
+#define g_DrawNodes XM_GA(DrawNode, 0xFFEEB4)
 #endif
 /* $FFF10C ptr: per-class pointer array, one long per class in g_ClassList (ClassList_InitAll) */
 #ifdef XMEN2_MPW
@@ -3031,15 +3075,15 @@ extern s16 g_SpawnScanPerFrame;
 #endif
 /* $FFF62A ptr: end of the spawn records = g_SpawnRecs + count*14, where each scan round restarts (Spawn_InitRecords, Level_FrameLoop) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SpawnRecEnd;
+extern PTR(SpawnRec) g_SpawnRecEnd;
 #else
-#define g_SpawnRecEnd XM_G(PTR(void), 0xFFF62A)
+#define g_SpawnRecEnd XM_G(PTR(SpawnRec), 0xFFF62A)
 #endif
 /* $FFF62E ptr: spawn record being examined; walks backwards 14 bytes per step from g_SpawnRecEnd (Level_FrameLoop, Spawn_InitRecords) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SpawnScanPtr;
+extern PTR(SpawnRec) g_SpawnScanPtr;
 #else
-#define g_SpawnScanPtr XM_G(PTR(void), 0xFFF62E)
+#define g_SpawnScanPtr XM_G(PTR(SpawnRec), 0xFFF62E)
 #endif
 /* $FFF632 word: spawn records left in the current round-robin scan; reloaded from g_SpawnRecCount at 0 (Level_FrameLoop; Spawn_InitRecords clears) */
 #ifdef XMEN2_MPW
@@ -3049,9 +3093,9 @@ extern s16 g_SpawnScanLeft;
 #endif
 /* $FFF634 ptr: when non-zero the level loop calls it instead of the spawn-record scan (Level_FrameLoop); Spawn_InitRecords sets Spawn_Nop when the level has no spawn records, else 0 */
 #ifdef XMEN2_MPW
-extern PTR(void) g_SpawnPassHook;
+extern FrameHookFn g_SpawnPassHook;
 #else
-#define g_SpawnPassHook XM_G(PTR(void), 0xFFF634)
+#define g_SpawnPassHook XM_G(FrameHookFn, 0xFFF634)
 #endif
 /* $FFF638 word: H-interrupt counter (Irq_HBlank) */
 #ifdef XMEN2_MPW

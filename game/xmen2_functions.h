@@ -675,7 +675,7 @@ static const uint32_t xmen2_game_functions[] = {
     0x064C66u,  /* PlayerSelect_FirstFreeChar */
     0x064CA2u,  /* Cerebro_AnimatePalettes */
     0x064E9Cu,  /* Cerebro_FrameHook */
-    0x064EDEu,  /* Cerebro_SetupPalCycles */
+    0x064EDEu,  /* Cerebro_LoadFonts */
     0x064F70u,  /* Cerebro_PrintText */
     0x06539Cu,  /* PlayerSelect_CheckDone */
     0x065400u,  /* Cerebro_ClearTextWindow */
@@ -1037,9 +1037,9 @@ static const uint32_t xmen2_game_functions[] = {
     0x097D60u,  /* XClone_ActMainScript */
     0x097DB4u,  /* EvilBeast_GetSize */
     0x097DC2u,  /* EvilBeast_Init */
-    0x097E32u,  /* EvilBeast_UpdateThrows */
-    0x097EE0u,  /* EvilBeast_ActThrow */
-    0x097F60u,  /* EvilBeast_StateThrow */
+    0x097E32u,  /* EvilBeast_UpdateShockwaves */
+    0x097EE0u,  /* EvilBeast_ActStomp */
+    0x097F60u,  /* EvilBeast_StateStompRelease */
     0x097FD0u,  /* EvilBeam_GetSize */
     0x097FDAu,  /* EvilBeam_Construct */
     0x09806Cu,  /* EvilBeam_Update */
@@ -1235,7 +1235,7 @@ static const uint32_t xmen2_game_functions[] = {
     0x0B65A0u,  /* SavageA4_CamSetHooks */
     0x0B65C6u,  /* SavageA4_RunScene */
     0x0B6632u,  /* SavageA4_EmptyStub */
-    0x0B66DCu,  /* SavageA4_InitBossStages */
+    0x0B66DCu,  /* SavageA4_InitStats */
     0x0B6740u,  /* BrainBabyBio_GetSize */
     0x0B674Eu,  /* BrainBabyBio_Init */
     0x0B6824u,  /* BrainBabyBio_OnDeath */

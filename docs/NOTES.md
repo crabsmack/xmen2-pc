@@ -175,6 +175,15 @@ Criteria: `xmen2disasm/docs/phases/P4-decomp.md`; check `uv run tools/phase.py 4
   First result: TAS, 2,500 sync points, stepped (160 functions in C) == stepped-gen.
 - The replay mode (`GENESIS_REPLAY_IN`) stays for diagnostics, with `GENESIS_REPLAY_TRACE`
   (events on both sides), `tools/replaydump.py`, `XMEN2_SYNC_DUMP` + `tools/syncdiff.py`.
+- **A wait for the V-int with no sync point** (2026-10-15): with two players the game runs at
+  half rate, and Level_FrameLoop ($1FA6C0) and PlayerSelect_Run ($065BD8) spin on
+  `g_FrameTick`, which only the V-int handler sets, before reaching VDP_WaitVBlank. The
+  frame-synchronous runner takes the V-int only at sync points, so it hung there
+  (scenario-options-menu at sync 2,880, the 2h phase run killed). Engine `x68k_wait_vint(pc)`:
+  takes the V-int in frame-synchronous mode, does nothing otherwise. Generated code calls it from
+  the spins (game.toml `game_hook` sites -> `xmen2_instruction_hook`, while g_FrameTick is 0),
+  hand C from `while (!g_FrameTick) IRQ_WAIT();` (`IRQ_WAIT()` is empty under MPW). The
+  options-menu run now completes its 6,070 sync points (stepped-gen, 2,200 fps).
 
 ### Hand-written C in the runners
 

@@ -17,6 +17,7 @@
 #define PIECE8(p)	((SprPiece8 *)(p))
 #define PIECE(p)	((SprPiecePre *)(p))
 #define FRAME(p)	((SprFrame *)(p))
+#define HEADER		0x24	/* bytes of a sprite definition before its frame records (SprDef.frame) */
 
 short Spr_PreloadTiles(SprInst *spr, short tile)
 {
@@ -43,7 +44,7 @@ short Spr_PreloadTiles(SprInst *spr, short tile)
 	next = tile;
 	src = (u8 *)def;
 	dst = p;
-	for (i = 0; i < 0x24; i++)
+	for (i = 0; i < HEADER; i++)
 		*dst++ = *src++;
 	*copy = 0x20;
 	if (def->type == 0x19)
@@ -74,8 +75,8 @@ short Spr_PreloadTiles(SprInst *spr, short tile)
 		dst += sizeof(SprFrame);
 	}
 	end = out;
-	src = (u8 *)def + 0x24;
-	dst = copy + 0x24;
+	src = (u8 *)def + HEADER;
+	dst = copy + HEADER;
 	for (n = 0; n < (s8)def->frameCount; n++) {
 		if (i = FRAME(src)->hitPoints) {
 			rd = (u8 *)def + i;

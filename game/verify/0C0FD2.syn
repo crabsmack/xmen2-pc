@@ -1,0 +1,30 @@
+# Water_DrawHook: the corpus never has player 2 in a water stage (SavageC1/B1), so its splash and
+# its damage never run. Both cases mutate the first corpus call (SavageC1, TAS frame 27885): the
+# surface moved to y $100, player 2 (g_Player2 $FFE9B8) made alive ($8000 at +4) with player 1's
+# class (+0), 512 px down (+$C = $20000, below the surface), health 10 (+$68), no hit flash
+# (+$6A), water hurting, no player-2 splash running.
+
+# moving down (vy +$18 = 5): the first test starts a splash; it is drawn at once
+# (Water_DrawSplash); then player 2 takes the water's hit (TakeDamage) and flashes 5 frames
+case p2_falling_in
+w $FFC5F0 = $0100
+b $FFC5EC = 1
+w $FFC5F6 = 0
+l $FFE9B8 = [$FFEAA8]
+w $FFE9BC = $8000
+l $FFE9C4 = $20000
+w $FFE9D0 = 5
+w $FFEA20 = 10
+w $FFEA22 = 0
+
+# moving up (vy = -5): the first test fails, the second starts the splash
+case p2_rising
+w $FFC5F0 = $0100
+b $FFC5EC = 1
+w $FFC5F6 = 0
+l $FFE9B8 = [$FFEAA8]
+w $FFE9BC = $8000
+l $FFE9C4 = $20000
+w $FFE9D0 = -5
+w $FFEA20 = 10
+w $FFEA22 = 0

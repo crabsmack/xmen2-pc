@@ -2,7 +2,7 @@
  * placement, flapping, that starts its flight from the next update (SwampFly_StateStart).
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry.
- * flags6 |= $4080, stats Tbl_MaintRobotStats (health from them), sprite Lvl_SwampFlySegs (a
+ * flags6 |= $4080, stats Tbl_MaintRobotStats (health from them), sprite Art_SwampFlySpr (a
  * sprite definition despite its name), priority bit, palette 1; home and position the
  * placement's. Placement: the low byte of param 0 (+7) its path kind, of param 1 (+9) its step
  * time, params 2 and 3 + 8 its path scale shifts (all read only when pl is not 0, though pl was
@@ -17,7 +17,7 @@ void SwampFly_Init(register SwampFly *self, long x, long y, register Placement *
 	self->flags6 |= 0x4080;
 	self->health = (self->stats = (NpcStats *)CODEPTR(Tbl_MaintRobotStats))->health;
 	do {
-		self->spr.def = CODEPTR(Lvl_SwampFlySegs);
+		self->spr.def = CODEPTR(Art_SwampFlySpr);
 		self->spr.flags |= 4;
 		self->spr.flags = self->spr.flags & ~3 | 1;
 	} while (0);

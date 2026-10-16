@@ -799,7 +799,7 @@ extra = [
   0x064E14,  # Cerebro_AnimatePalettes_CasesB
   0x064E82,  # Cerebro_AnimatePalettes_EndB
   0x064E9C,  # Cerebro_FrameHook
-  0x064EDE,  # Cerebro_SetupPalCycles
+  0x064EDE,  # Cerebro_LoadFonts
   0x064F70,  # Cerebro_PrintText
   0x065326,  # Cerebro_PrintText_part1
   0x065374,  # Cerebro_PrintText_part2
@@ -1207,9 +1207,9 @@ extra = [
   0x097D60,  # XClone_ActMainScript
   0x097DB4,  # EvilBeast_GetSize
   0x097DC2,  # EvilBeast_Init
-  0x097E32,  # EvilBeast_UpdateThrows
-  0x097EE0,  # EvilBeast_ActThrow
-  0x097F60,  # EvilBeast_StateThrow
+  0x097E32,  # EvilBeast_UpdateShockwaves
+  0x097EE0,  # EvilBeast_ActStomp
+  0x097F60,  # EvilBeast_StateStompRelease
   0x097FD0,  # EvilBeam_GetSize
   0x097FDA,  # EvilBeam_Construct
   0x09806C,  # EvilBeam_Update
@@ -1440,7 +1440,7 @@ extra = [
   0x0B65A0,  # SavageA4_CamSetHooks
   0x0B65C6,  # SavageA4_RunScene
   0x0B6632,  # SavageA4_EmptyStub
-  0x0B66DC,  # SavageA4_InitBossStages
+  0x0B66DC,  # SavageA4_InitStats
   0x0B6740,  # BrainBabyBio_GetSize
   0x0B674E,  # BrainBabyBio_Init
   0x0B6824,  # BrainBabyBio_OnDeath

@@ -1,4 +1,4 @@
-/* Blast_StateLaunch - BLAST state: launch: the flight animation (Tbl_Anim_15B1E4), sound $D4
+/* Blast_StateLaunch - BLAST state: launch: the flight animation (Tbl_BlastFlightAnim), sound $D4
  * (restarted), x speed = speed; Blast_StateFly next frame.
  *
  * self: the blast. Returns self->flags & 8. */
@@ -6,7 +6,7 @@
 
 short Blast_StateLaunch(register Blast *self)
 {
-	Obj_ChangeAnim(self, CODEPTR(Tbl_Anim_15B1E4));
+	Obj_ChangeAnim(self, CODEPTR(Tbl_BlastFlightAnim));
 	Snd_Stop(0xD4);
 	Snd_Play(0xD4);
 	self->vx = self->speed;

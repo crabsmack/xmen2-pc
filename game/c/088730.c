@@ -1,5 +1,5 @@
-/* CloneA5_RunScene - the scene 'CloneA5 BroodBoss': the boss arena. Level_Load (FG map Map_CloneA5Eni,
- * FG tiles Art_CloneA2Nem, BG map and tiles Art_CloneA5Nem, FG floor segments Lvl_CloneA5Segs, BG
+/* CloneA5_RunScene - the scene 'CloneA5 BroodBoss': the boss arena. Level_Load (FG map Lvl_CloneA5FgMap,
+ * FG tiles Lvl_CloneA2Fg, BG map and tiles Lvl_CloneA5Bg, FG floor segments Lvl_CloneA5FgSegs, BG
  * segments Lvl_CloneA5BgSegs, flags 0 1 1 0, class-init argument $F, no music, grid shifts 8 and 8,
  * class list Tbl_CloneA5ClassList); every sound stops, sound parameter $13 = 0; an ICANDY pool of 10
  * objects of $48 bytes in this function's frame (the boss's wall); the HUD on; plane A scrolls in
@@ -34,8 +34,8 @@ void CloneA5_RunScene(void)
 #ifndef XMEN2_MPW
 	xm::sp_reserve(16);
 #endif
-	Level_Load(CODEPTR(Map_CloneA5Eni), CODEPTR(Art_CloneA2Nem), CODEPTR(Art_CloneA5Nem),
-		CODEPTR(Art_CloneA5Nem), CODEPTR(Lvl_CloneA5Segs), CODEPTR(Lvl_CloneA5BgSegs), 0, 1, 1, 0,
+	Level_Load(CODEPTR(Lvl_CloneA5FgMap), CODEPTR(Lvl_CloneA2Fg), CODEPTR(Lvl_CloneA5Bg),
+		CODEPTR(Lvl_CloneA5Bg), CODEPTR(Lvl_CloneA5FgSegs), CODEPTR(Lvl_CloneA5BgSegs), 0, 1, 1, 0,
 		0xF, -1, 8, 8, 0, CODEPTR(Tbl_CloneA5ClassList));
 	Snd_StopAll();
 	Snd_SetParam(0x13, 0);

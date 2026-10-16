@@ -1,7 +1,7 @@
 /* SiberiaB1_InitWind - set up the Blizzard: the wind offset on, the wind at angle $1E strength
  * $600 and no change, its keyframes from the start of Tbl_SiberiaB1Wind (next step now); the
  * camera (Cam_New with SiberiaB1_InitCamera); the camera's maximum from the map size
- * (Art_SiberiaB1Nem's header, cells of 8 px, less the 320x224 view); colours $29-$2C. */
+ * (Lvl_SiberiaB1Bg's header, cells of 8 px, less the 320x224 view); colours $29-$2C. */
 #include "xmen2.h"
 
 #define g_WindAngle	(*(s16 *)g_SceneVar3B04)	/* scene variable: wind angle, degrees */
@@ -27,7 +27,7 @@ void SiberiaB1_InitWind(void)
 	g_SiberiaB1Count = 0;
 	g_Camera = (Camera *)(*CLASS(Tbl_Camera_vtable)->method[1])(CLASS(Tbl_Camera_vtable),
 		SiberiaB1_InitCamera);	/* Cam_New */
-	map = CODEPTR(Art_SiberiaB1Nem);
+	map = CODEPTR(Lvl_SiberiaB1Bg);
 	hdr = ADDR68(map);
 	g_CamMaxX = g_CamMaxXTarget = (AT68(s16, hdr)[1] << 3) - 0x140;
 	g_CamMaxY = g_CamMaxYTarget = (AT68(s16, hdr)[2] << 3) - 0xE0;
