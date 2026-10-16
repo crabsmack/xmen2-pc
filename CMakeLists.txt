@@ -4,6 +4,12 @@ project(XMen2Recomp VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+# The Visual Studio generator's --parallel only runs projects side by side; /MP compiles a
+# project's own files in parallel (XMen2Stepped and XMen2Verify have ~3,200 hand-C files each).
+if(MSVC)
+    add_compile_options(/MP)
+endif()
+
 # ---------------------------------------------------------------------------
 # X-Men 2: Clone Wars, statically recompiled with segagenesisrecomp.
 #

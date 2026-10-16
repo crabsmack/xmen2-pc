@@ -342,18 +342,24 @@ def cmd_verify(a) -> dict:
         inputs = [p for p in inputs if p.stem in keep]
     if not inputs:
         sys.exit(f"no <run>.input files in {a.inputs}")
+    import concurrent.futures
+    import queue
     out = BUILD / "verify"
     out.mkdir(parents=True, exist_ok=True)
-    run_dir = out / "runner"
-    if run_dir.exists():
-        shutil.rmtree(run_dir)
-    run_dir.mkdir()
-    for f in src.parent.iterdir():
-        if f.is_file() and f.suffix.lower() in (".exe", ".dll", ".pdb", ""):
-            shutil.copy2(f, run_dir / f.name)
-    (run_dir / "settings.ini").write_text(SETTINGS)
-    merged: dict[str, dict] = {}
-    for inp in inputs:
+    jobs = max(1, min(a.jobs, len(inputs)))
+    free: "queue.Queue[Path]" = queue.Queue()
+    for k in range(jobs):   # one runner copy per worker: settings.ini and evidence files stay apart
+        run_dir = out / f"runner{k}"
+        if run_dir.exists():
+            shutil.rmtree(run_dir)
+        run_dir.mkdir()
+        for f in src.parent.iterdir():
+            if f.is_file() and f.suffix.lower() in (".exe", ".dll", ".pdb", ""):
+                shutil.copy2(f, run_dir / f.name)
+        (run_dir / "settings.ini").write_text(SETTINGS)
+        free.put(run_dir)
+
+    def one(inp: Path):
         run = inp.stem
         script = out / f"{run}.input"
         script.write_text("".join(l for l in inp.read_text().splitlines(True)
@@ -367,14 +373,26 @@ def cmd_verify(a) -> dict:
         if a.functions:
             env["XMEN2_VERIFY_ONLY"] = a.functions
         frames = a.frames or script_frames(inp)
-        cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames),
+        cmd = [src.name, str(common.ROM), "--benchmark", str(frames),
                "--input-script", str(script), "--fresh-evidence"]
-        log(f"verify {run}: {frames} frames")
-        with open(out / f"{run}.log", "w", encoding="utf-8", errors="replace") as lf:
-            r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.DEVNULL, stderr=lf, timeout=a.timeout)
+        run_dir = free.get()
+        try:
+            cmd[0] = str(run_dir / src.name)
+            log(f"verify {run}: {frames} frames")
+            with open(out / f"{run}.log", "w", encoding="utf-8", errors="replace") as lf:
+                r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.DEVNULL, stderr=lf, timeout=a.timeout)
+        finally:
+            free.put(run_dir)
         if r.returncode != 0 or not res.exists():
-            sys.exit(f"verification runner failed on {run} ({r.returncode}); see {out / (run + '.log')}")
-        data = json.loads(res.read_text())
+            return run, None, f"verification runner failed on {run} ({r.returncode}); see {out / (run + '.log')}"
+        return run, json.loads(res.read_text()), None
+
+    merged: dict[str, dict] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
+        results = list(ex.map(one, inputs))
+    for run, data, err in results:   # in run order: the same merge as a serial run
+        if err:
+            sys.exit(err)
         for addr, v in data["functions"].items():
             m = merged.setdefault(addr, {"calls_checked": 0, "mismatches": 0, "irq_skipped": 0,
                                          "first_mismatch": None, "covered": set()})
@@ -527,6 +545,7 @@ def main() -> int:
     p.add_argument("--functions", default="", help="only these (comma-separated addresses)")
     p.add_argument("--runs", default="", help="dev: only these runs (comma-separated)")
     p.add_argument("--frames", type=int, default=0, help="dev: only the first N frames of each run")
+    p.add_argument("--jobs", type=int, default=12, help="runs played at once (each on its own runner copy)")
     p.add_argument("--timeout", type=int, default=7200)
     for name in ("gen", "build", "trace"):
         p = sub.add_parser(name)
