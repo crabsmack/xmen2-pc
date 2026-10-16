@@ -4,8 +4,8 @@
  *
  * n: the zone.  x, y: camera position (pixels).  speedX, speedY: pan speeds.
  * The switch cases are the fragments AvalonA4_SetCameraZone_case0 (zones 0-2), _case3, _case4
- * (zones 4, 5); _apply is the rest. A zone outside 0-5 or's in whatever bit held (d7, the zone
- * itself then). */
+ * (zones 4, 5); _apply is the rest. A zone outside 0-5 or's in whatever bit held: on the 68000
+ * the zone itself (n and bit share d7; the PC line says so). */
 #include "xmen2.h"
 
 #define g_A4CamZones	(*(s16 *)g_SceneVar3B02)	/* scene variable: bit n = camera zone n held */
@@ -18,6 +18,9 @@ void AvalonA4_SetCameraZone(register short n, short x, short y, short speedX, sh
 	lockX = n == 3 ? 0 : 1;
 	lockY = 0;
 	(*g_Camera->cls->method[12])(g_Camera, x, y, speedX, speedY, lockX, lockY);	/* +$36 Cam_PanTo */
+#ifndef XMEN2_MPW
+	bit = n;	/* (the 68000 keeps n and bit in one register) */
+#endif
 	switch (n) {
 	case 0: bit = 1; break;
 	case 1: bit = 2; break;

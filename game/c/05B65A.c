@@ -62,7 +62,7 @@ short Boulder_StateBounce(register Boulder *self)
 				short tx = self->x >> 8;
 				short ty = (self->y >> 8) + 4;
 
-				Tile_TestAt((long)self, tx, ty, !g_SolidMapIsBg, 0x3800, 1);
+				Tile_TestAt(self, tx, ty, !g_SolidMapIsBg, 0x3800, 1);
 			}
 			self->vy = -(self->vy >> 2);
 			if (ABS(self->vy) < 0x100)

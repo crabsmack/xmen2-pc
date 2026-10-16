@@ -15,8 +15,8 @@ void SiberiaB1_CamApply(register Camera *cam)
 	register short oldX;
 	register short oldY;
 
-	x = cam->offsetX + cam->x;
-	y = cam->look + (cam->y + cam->offsetY);
+	x = cam->x + cam->offsetX;
+	y = (cam->y + cam->offsetY) + cam->look;
 	oldX = g_BgScrollX;
 	oldY = g_BgScrollY;
 	g_CameraX = x;
@@ -31,8 +31,8 @@ void SiberiaB1_CamApply(register Camera *cam)
 		g_CameraY = g_CamMinY;
 	g_FgScrollX += g_BgOffsetX;
 	g_FgScrollY += g_BgOffsetY;
-	g_BgScrollX = (g_BgScrollFactorX * g_CameraX >> 8) + g_BgScrollBaseX;
-	g_BgScrollY = (g_BgScrollFactorY * g_CameraY >> 8) + g_BgScrollBaseY;
+	g_BgScrollX = g_BgScrollBaseX + (g_CameraX * g_BgScrollFactorX >> 8);
+	g_BgScrollY = g_BgScrollBaseY + (g_CameraY * g_BgScrollFactorY >> 8);
 	g_FgScrollX += g_BgScrollX - oldX;
 	g_FgScrollY += g_BgScrollY - oldY;
 	if (g_ScrollResync)

@@ -10,6 +10,7 @@
  * whatever the stack held). Writing now is done with interrupts off per piece. */
 #include "xmen2.h"
 
+
 /* The VDP control word for a VRAM write at byte address a, as the original summed it. */
 #define VRAM_WRITE(a)	((((a) & 0x3FFF) << 16) + 0x40000000 + ((unsigned long)((a) & 0xC000) >> 14))
 #define PIECE8(p)	((SprPiece8 *)(p))
@@ -20,8 +21,8 @@ void Spr_UploadFrame(SprInst *spr, char now)
 	SprDef *def;
 	SprFrame *f;
 	NemCodeTable tab;
-	register short tile;
-	register short i;
+	short tile;
+	short i;
 	register long off;
 	register short n;
 	register u8 *p;
@@ -66,9 +67,9 @@ void Spr_UploadFrame(SprInst *spr, char now)
 					Irq_Disable();
 					if ((s8)def->type == 0x14) {
 						VDP_CTRL32 = VRAM_WRITE(tile << 5);
-						VDP_WriteWords(&src->ref, n << 4);
+						VDP_WriteWords((s16 *)src + 1, n << 4);
 					} else
-						Nem_Decode(&src->ref, &tab, n << 3, 1, tile << 5);
+						Nem_Decode((s16 *)src + 1, &tab, n << 3, 1, tile << 5);
 					Irq_Enable();
 					tile += n;
 				}
@@ -93,10 +94,11 @@ void Spr_UploadFrame(SprInst *spr, char now)
 					if ((src->size & 0x9CC0) != 0)
 						src = (SprTiles *)((u8 *)def + src->ref);
 					n = *((s8 *)CODEPTR(Tbl_SprSizeTiles) + src->size);
-					VDP_QueueDma(&src->ref, tile << 5, n << 5);
+					VDP_QueueDma((s16 *)src + 1, tile << 5, n << 5);
 					tile += n;
 				}
 			}
 		}
 	}
 }
+

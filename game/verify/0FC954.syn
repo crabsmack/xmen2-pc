@@ -1,0 +1,12 @@
+# SiberiaB1_StepWind: with this ROM's Tbl_SiberiaB1Wind no keyframe change ever needs an angle
+# step over 5, so MIN(step, 5)'s constant branch never runs. The case starts a keyframe change at
+# the last keyframe ($0FD764: angle 0, strength 3072) with the next one ($0FD76C, angle 40)
+# patched to strength 2944: one $80 step, angle step 40, clamped to 5.
+case clamp_angle_step
+l $FFC6EC = $0FD764
+w $FFC6F8 = 0
+w $FFC6FC = 0
+w $FFC6FA = 3072
+w $FFC6C0 = 0
+w $FFC6B8 = 0
+w $0FD770 = 2944

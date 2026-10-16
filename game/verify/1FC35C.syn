@@ -1,0 +1,61 @@
+# Spr_RenderToBitmap: the corpus only renders unflipped pieces. Each case points the definition
+# argument (arg0) at a one-frame, one-piece definition built 768 bytes below the stack pointer
+# (only read; the function's frame is far above it) and renders frame 0 into the caller's own
+# buffer (arg2): an 8x8 box (left/top 0, right/bottom 8), one 1-tile piece at (0, 0) with
+# h-flip ($800), v-flip ($1000) or both, whose 8 tile rows include all-0 rows and 0 pixels.
+# Definition: +$24 frame record (left, top, right, bottom bytes), +$34 piece count, +$36 piece
+# list offset; piece at +$40 {x, y, attr, tiles offset $48}; tiles at +$48 (8 longs, 4bpp).
+
+case hflip
+l a7+4 = a7-$300
+w a7+$A = 0
+l a7-$300+$24 = $00000808
+b a7-$300+$34 = 1
+w a7-$300+$36 = $40
+l a7-$300+$40 = 0
+w a7-$300+$44 = $0800
+w a7-$300+$46 = $48
+l a7-$300+$48 = $12340000
+l a7-$300+$4C = 0
+l a7-$300+$50 = $05060708
+l a7-$300+$54 = $10000001
+l a7-$300+$58 = $FFFFFFFF
+l a7-$300+$5C = $00110022
+l a7-$300+$60 = 0
+l a7-$300+$64 = $AB00CD00
+
+case vflip
+l a7+4 = a7-$300
+w a7+$A = 0
+l a7-$300+$24 = $00000808
+b a7-$300+$34 = 1
+w a7-$300+$36 = $40
+l a7-$300+$40 = 0
+w a7-$300+$44 = $1000
+w a7-$300+$46 = $48
+l a7-$300+$48 = $12340000
+l a7-$300+$4C = 0
+l a7-$300+$50 = $05060708
+l a7-$300+$54 = $10000001
+l a7-$300+$58 = $FFFFFFFF
+l a7-$300+$5C = $00110022
+l a7-$300+$60 = 0
+l a7-$300+$64 = $AB00CD00
+
+case both_flips
+l a7+4 = a7-$300
+w a7+$A = 0
+l a7-$300+$24 = $00000808
+b a7-$300+$34 = 1
+w a7-$300+$36 = $40
+l a7-$300+$40 = 0
+w a7-$300+$44 = $1800
+w a7-$300+$46 = $48
+l a7-$300+$48 = $12340000
+l a7-$300+$4C = 0
+l a7-$300+$50 = $05060708
+l a7-$300+$54 = $10000001
+l a7-$300+$58 = $FFFFFFFF
+l a7-$300+$5C = $00110022
+l a7-$300+$60 = 0
+l a7-$300+$64 = $AB00CD00

@@ -72,8 +72,6 @@ void SiberiaB1_StepWind(void)
 	sy = g_WindStrength * Math_SinDeg(g_WindAngle);
 	ox = cx >> 24;
 	oy = sy >> 24;
-	if (oy) {
-	}
 	g_BgOffsetX = ox;
 	g_BgOffsetY = -oy;
 }

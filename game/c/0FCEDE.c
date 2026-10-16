@@ -13,6 +13,9 @@
 #define g_IceShardCount	(*(s16 *)g_SceneVar3B10)	/* scene variable: ice shards in use */
 #define g_IceShards	(*(PTR(IceShard) *)g_SceneVar3B24)	/* scene variable: the ice shard pool (48) */
 
+#define SHARD_DX	0	/* a shard is drawn this far right of its position */
+#define SHARD_DY	(-9)	/* and this far below */
+
 void SiberiaB1_DebrisUpdate(void)
 {
 	register IceShard *p = g_IceShards;
@@ -53,12 +56,12 @@ void SiberiaB1_DebrisUpdate(void)
 			p->frameDelay = ((unsigned short)Rand_Next() & 3) + 4;
 		}
 		++p->age;
-		sx -= g_CameraX;
-		sy -= g_CameraY - -9;
+		sx -= g_CameraX - SHARD_DX;
+		sy -= g_CameraY - SHARD_DY;
 		if (sx > -20 && sx < 0x154 && sy > -10 && sy < 0xFE) {
 			def = &g_SpriteDefs[g_IceShardSprDef];
 			attr = (p->frameSet + p->frame) << 2;
-			attr = (0x8000 | ((p->age & 8) << 8 | (0 | attr))) + def->tileBase;
+			attr = def->tileBase + (attr | 0 | (p->age & 8) << 8 | 0x8000);
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 5;

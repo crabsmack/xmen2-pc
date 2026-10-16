@@ -1,0 +1,30 @@
+# Spr_EmitPreLinked: the corpus never draws a vertically flipped preloaded carrier, never meets
+# an anchor piece (tile 0) or a piece with attr bit 15, and never finds the sprite list full.
+# vflip: flags bit 3 (the word at arg0 is flags << 8 | frame; bit 3 is clear at every corpus call).
+case vflip
+w arg0 = [arg0-2]+$800
+
+# full: the slot the write pointer (g_SprWritePtr, $FFE21A) links to is 80, the sentinel.
+case full
+b [$FFE21A]+3 = $50
+
+# anchors: the carrier (arg0, a real one with attached objects) shows frame 0 of a preloaded
+# definition built 768 bytes below the stack pointer (only read): 3 six-byte pieces from +$40:
+# an anchor (tile 0: Spr_PlaceAttached), a piece with attr bit 15 (left out while the instance's
+# byte +$10 is set: set here), and an ordinary 16x16 piece at (8, 8). Frame record at +$24:
+# piece count +$34, piece list offset +$36.
+case anchors
+l arg0+2 = a7-$300
+b arg0+$A = 0
+b arg0+$10 = 1
+b a7-$300+$34 = 3
+w a7-$300+$36 = $40
+w a7-$300+$40 = 0
+w a7-$300+$42 = $0005
+w a7-$300+$44 = 0
+w a7-$300+$46 = 0
+w a7-$300+$48 = $8005
+w a7-$300+$4A = $0010
+w a7-$300+$4C = $0808
+w a7-$300+$4E = $0005
+w a7-$300+$50 = $0020

@@ -1,0 +1,17 @@
+/* ExplodeFx_TrailPuffInit - a live Trail puff at (x, y), still, at frame 0 (6 frames left); the
+ * same as ExplodeFx_BurstPuffInit.
+ *
+ * p: the puff.  x, y: position (8 fraction bits). */
+#include "xmen2.h"
+
+void ExplodeFx_TrailPuffInit(register FxPuff *p, long x, long y)
+{
+	p->x = x;
+	p->y = y;
+	p->vx = 0;
+	p->vy = 0;
+	p->ax = 0;
+	p->ay = 0;
+	p->anim = 6;
+	p->type = 1;
+}

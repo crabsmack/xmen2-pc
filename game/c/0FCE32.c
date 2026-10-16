@@ -20,9 +20,6 @@ void SiberiaB1_DebrisInit(register IceShard *pool)
 		pool->vy = 0;
 		pool->ax = 0;
 		pool->ay = 0;
-		pool->frame = 0;
-		pool->frameSet = 0;
-		pool->frameDelay = 0;
-		pool->age = 0;
+		*(s32 *)&pool->frame = 0;	/* frame, frameSet, frameDelay, age: one long store */
 	}
 }

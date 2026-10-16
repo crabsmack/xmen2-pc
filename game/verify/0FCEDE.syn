@@ -1,0 +1,35 @@
+# SiberiaB1_DebrisUpdate: the corpus never has ice shards in two-player step mode, and never
+# bounces one that is moving up. Both cases put one shard (the first of the pool at
+# [g_SceneVar3B24]) in use (g_SceneVar3B10 = 1); g_SceneVar3B0C is the floor line.
+
+# two-player step: the shard moves twice (no bounce: floor far below)
+case two_player
+b $FFC922 = 1
+w $FFC6F0 = 1
+w $FFC6F4 = 1000
+l [$FFC6DC]+0 = $10000
+l [$FFC6DC]+4 = $8000
+w [$FFC6DC]+8 = $100
+w [$FFC6DC]+$A = $100
+w [$FFC6DC]+$C = 2
+w [$FFC6DC]+$E = $20
+b [$FFC6DC]+$10 = 0
+b [$FFC6DC]+$11 = 0
+b [$FFC6DC]+$12 = 3
+b [$FFC6DC]+$13 = 0
+
+# below the floor (y 210, floor 200) moving up: the bounce leaves vy positive (ABS's first branch)
+case bounce_moving_up
+b $FFC922 = 0
+w $FFC6F0 = 1
+w $FFC6F4 = 200
+l [$FFC6DC]+0 = $10000
+l [$FFC6DC]+4 = $D200
+w [$FFC6DC]+8 = $40
+w [$FFC6DC]+$A = -$100
+w [$FFC6DC]+$C = 2
+w [$FFC6DC]+$E = $20
+b [$FFC6DC]+$10 = 1
+b [$FFC6DC]+$11 = 0
+b [$FFC6DC]+$12 = 3
+b [$FFC6DC]+$13 = 0

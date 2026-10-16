@@ -21,7 +21,7 @@ void Boulder_ClassInit(Boulder *self)
 	g_BoulderSprDef2 = SprDef_Add(CODEPTR(Art_BoulderSpr2), 2);
 	g_BoulderDebrisSprDef = SprDef_Add(CODEPTR(Art_BoulderSpr3), 2);
 	size = 30 * sizeof(BoulderDebris);
-	Boulder_InitDebrisPool(Mem_StackAlloc(size, STR(Str_Empty_05BB84, "")));
+	Boulder_InitDebrisPool((BoulderDebris *)Mem_StackAlloc(size, STR(Str_Empty_05BB84, "")));
 	do {
 		g_BoulderDelay = 0;
 		g_BoulderSeqIndex = 0;

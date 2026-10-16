@@ -19,5 +19,6 @@ void SiberiaB1_InstallTileHooks(void)
 	g_TileHooksOn = 1;
 	g_SolidMapIsBg = 1;
 	SiberiaB1_DebrisInit((IceShard *)Mem_StackAlloc(0x3C0, STR(Str_Empty_0FD574, "")));
-	Timer_Start(g_IceShardTimer = Timer_Create(SiberiaB1_DebrisUpdate, 0, 0, 1));
+	g_IceShardTimer = Timer_Create(SiberiaB1_DebrisUpdate, 0, 0, 1);
+	Timer_Start(g_IceShardTimer);
 }

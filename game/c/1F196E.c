@@ -15,8 +15,8 @@ void Spr_UploadFrame18(SprInst *spr)
 	register short i;
 	register long off;
 	register SprFrame *f;
-	register u8 *p;
-	register u8 *src;
+	u8 *p;
+	u8 *src;
 
 	tile = spr->uploaded;
 	spr->uploaded = spr->frame;

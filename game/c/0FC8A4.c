@@ -15,7 +15,7 @@
 void SiberiaB1_InitWind(void)
 {
 	register void *map;
-	register unsigned long hdr;
+	register long hdr;
 
 	g_BgOffsetOn = 1;
 	g_WindStrengthStep = 0;

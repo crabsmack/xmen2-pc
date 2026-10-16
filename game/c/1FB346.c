@@ -9,12 +9,12 @@
  * Spr_EmitPreLinked (at +$80) / Spr_EmitStreamLinked (at x, y: it adds the $80 itself). */
 #include "xmen2.h"
 
-void Spr_Draw(register SprInst *spr, register short x, register short y)
+void Spr_Draw(SprInst *spr, short x, short y)
 {
 	short frame;
-	register short tile = spr->tileBase;
+	short tile = spr->tileBase;
 	register short type;
-	register SprFrame *f;
+	SprFrame *f;
 
 	if ((spr->flags & 0x20) == 0)
 		Spr_UploadFrame(spr, 0);

@@ -1,0 +1,5 @@
+# Spr_EmitPreClip: the corpus never draws a vertically flipped preloaded sprite. The case sets the
+# instance's flags bit 3 (v-flip): the word at arg0 is flags << 8 | frame, and bit 3 is clear at
+# every corpus call, so + $800 sets it.
+case vflip
+w arg0 = [arg0-2]+$800

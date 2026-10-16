@@ -17,7 +17,7 @@ void Spr_PlaceAttached(SprInst *spr, short x, short y)
 	register short cy;
 
 	o = spr->firstChild == 0xFF ? 0 : g_ObjTable[spr->firstChild];
-	do {
+	for (;;) {
 		if ((o->flags & 0x1800) == 0x1800) {
 			fr = o->spr.frame;
 			if (fr == 0xFF)
@@ -36,5 +36,7 @@ void Spr_PlaceAttached(SprInst *spr, short x, short y)
 		(*o->cls->method[6])(o);		/* +$1E DrawIfActive */
 		ay = o->spr.nextSibling;
 		o = ay == 0xFF ? 0 : g_ObjTable[ay];
-	} while (ay != 0xFF);
+		if (ay == 0xFF)
+			break;
+	}
 }

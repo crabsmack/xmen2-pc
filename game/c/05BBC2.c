@@ -8,6 +8,8 @@
  * The script is read as bytes: step i's frame at +7 + 2i (AnimScript header, steps from +6). */
 #include "xmen2.h"
 
+#define SCRIPT2(o)	((AnimScript *)(u8 *)(o)->anim2)	/* the dust animation's header */
+
 void Boulder_Update(register Boulder *self)
 {
 	register long dy;
@@ -15,11 +17,11 @@ void Boulder_Update(register Boulder *self)
 	(*CLASS(Tbl_Boulder_vtable)->parent->method[17])(self);	/* ACTOR Update */
 	if (self->anim2) {
 		self->minVx += g_TwoPlayerStep ? 2 : 1;
-		if (self->minVx >= ((AnimScript *)self->anim2)->delay) {
+		if (self->minVx >= SCRIPT2(self)->delay) {
 			self->minVy++;
-			if (((AnimScript *)self->anim2)->count <= self->minVy) {
+			if (SCRIPT2(self)->count <= self->minVy) {
 				self->minVy = 0;
-				if (((AnimScript *)self->anim2)->flags & 2)
+				if (SCRIPT2(self)->flags & 2)
 					self->anim2 = 0;
 			}
 			if (self->anim2) {

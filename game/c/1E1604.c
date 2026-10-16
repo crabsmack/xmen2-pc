@@ -94,7 +94,7 @@ void Cyclops_DrawBeam(Cyclops *self, CyclopsBeam *beam)
 		length = level->length;
 		dist = 0;
 		for (;;) {
-			if ((char)Tile_TestAt(ADDR68(self), x, y, fg, 0x7800, 1)) {
+			if ((char)Tile_TestAt(self, x, y, fg, 0x7800, 1)) {
 				self->playerFlags |= 0x20;
 				switch (level->dir) {	/* Tbl_BeamCutCases */
 				default:

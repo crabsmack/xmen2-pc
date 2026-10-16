@@ -1,0 +1,10 @@
+# Spr_EmitStreamLinked: the corpus never draws a vertically flipped carrier, nor finds the
+# hardware sprite list full.
+# vflip: flags bit 3 (the word at arg0 is flags << 8 | frame; bit 3 is clear at every corpus call).
+case vflip
+w arg0 = [arg0-2]+$800
+
+# full: the slot the write pointer (g_SprWritePtr, $FFE21A) links to is 80, the sentinel: the
+# first piece that is on screen ends it all with -1.
+case full
+b [$FFE21A]+3 = $50

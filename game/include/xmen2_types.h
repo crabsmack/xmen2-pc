@@ -134,7 +134,8 @@ typedef struct NemCodeTable {
 typedef struct SprDef {
 	u8 type;			/* +$00 how its tiles reach VRAM: $20 preloaded (whole definition in VRAM: Actor_Activate lets it in past g_VramTileLimit), $18/$19 streamed per frame */
 	u8 frameCount;			/* +$01 frames (BioBalls_Draw) */
-	u8 unk_02[3];			/* +$02 */
+	s16 codes;			/* +$02 type $19: offset from the definition of its Nemesis code list (Spr_PreloadTiles) */
+	u8 unk_04;			/* +$04 */
 	u8 maxTiles;			/* +$05 VRAM tiles of its largest frame (0: Spr_Init finds them) */
 	u8 unk_06[0x1E];		/* +$06 */
 	SprFrame frame[1];		/* +$24 */
@@ -684,10 +685,15 @@ CHECK_SIZE(XClimber, 0xC2);
 typedef struct Beast { BEAST_FIELDS } Beast;
 CHECK_SIZE(Beast, 0xDC);
 
-/* BIGACBULLET: descriptor $0118BE, parent ACTOR, $9A bytes (GetSize $00FFAE) */
+/* BIGACBULLET: descriptor $0118BE, parent ACTOR, $9A bytes (GetSize $00FFAE). BIGACOLYTE's shot:
+   held at its hand for the first frame (BigAcBullet_Attach), then flies straight left or right
+   until it hits the map or a target. */
 #define BIGACBULLET_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0xE];		/* +$8C */
+	s16 dir;			/* +$8C direction in degrees: 0 right, $B4 left */ \
+	PTR(Actor) owner;		/* +$8E object it is held at (0 once flying: BigAcBullet_StateFly) */ \
+	s32 offsetX;			/* +$92 offset from the owner's position (8 fraction bits) */ \
+	s32 offsetY;			/* +$96 */
 typedef struct BigAcBullet { BIGACBULLET_FIELDS } BigAcBullet;
 CHECK_SIZE(BigAcBullet, 0x9A);
 
@@ -930,10 +936,22 @@ CHECK_SIZE(BioBullet, 0x8C);
 typedef struct BioFlame { BIOFLAME_FIELDS } BioFlame;
 CHECK_SIZE(BioFlame, 0x9A);
 
-/* BIOSENTINEL: descriptor $1235F6, parent BASICBIOSENTINEL, $A8 bytes (GetSize $120936) */
+/* BIOSENTINEL: descriptor $1235F6, parent BASICBIOSENTINEL, $A8 bytes (GetSize $120936). A
+   bio-sentinel that walks its floor segment, swipes at a player close by and fires volleys of
+   BIOBULLETs (aimed up, level or down); variant 1 hangs on the ceiling until a player passes
+   below, then drops. */
 #define BIOSENTINEL_FIELDS \
 	BASICBIOSENTINEL_FIELDS \
-	u8 unk_96[0x12];		/* +$96 */
+	s8 variant;			/* +$96 placement param 1 (low byte): 1 starts on the ceiling (and never respawns) */ \
+	u8 unk_97;			/* +$97 */ \
+	s16 floorY;			/* +$98 y it falls to from the ceiling, pixels (the segment below, its higher end) */ \
+	PTR(Seg) floorSeg;		/* +$9A that segment: it stands on it on landing */ \
+	s16 pause;			/* +$9E frames between volleys (placement param 2, 90); -1: think again at once after a swipe */ \
+	s16 volley;			/* +$A0 shots per volley (placement param 3, 2) */ \
+	s16 shotsLeft;			/* +$A2 shots left in this volley */ \
+	s16 walkSpeed;			/* +$A4 by placement param 4: 0 $120, 1 $80, 2 $200 (also its maximum speed once down) */ \
+	u8 vulnerable;			/* +$A6 hits count (on the floor; not on the ceiling or falling) */ \
+	u8 unk_A7;			/* +$A7 */
 typedef struct BioSentinel { BIOSENTINEL_FIELDS } BioSentinel;
 CHECK_SIZE(BioSentinel, 0xA8);
 
@@ -1207,6 +1225,8 @@ typedef struct MapHeader {
 	u16 unk_00;			/* +$00 */
 	u16 width;			/* +$02 in 8-px cells (CloneA2_SetCameraLimitsToMap) */
 	u16 height;			/* +$04 in 8-px cells (SwampPlatform_Move) */
+	u8 unk_06[0xA];			/* +$06 */
+	u16 palette;			/* +$10 offset from the header of its 16 colours (Level_Load copies them to palette line 0, a BG map's to line 2; AvalonB1_InitIntroPalette) */
 } MapHeader;
 
 /* A keyframe of the SiberiaB1 blizzard (ROM, Tbl_SiberiaB1Wind, 8 bytes; SiberiaB1_StepWind):
@@ -1611,6 +1631,89 @@ CHECK_SIZE(Exodus, 0xAE);
 	u8 unk_94[0x6];		/* +$94 */
 typedef struct ExodusBlast { EXODUSBLAST_FIELDS } ExodusBlast;
 CHECK_SIZE(ExodusBlast, 0x9A);
+
+/* EXPLODEFX: a death effect (ExplodeFx_*; xmen2disasm NOTES "Death effects"), not a class: an
+   ExplodeFx_*Start turns a killed object's memory into one (Mem_Set(+4, 0, $BE): the class
+   pointer stays; the object's index, Actor.index +$15, is kept at +$C and put back by
+   ExplodeFx_Free). This header is followed by the kind's data: Burst and Trail 10 FxPuff, Bounce
+   5 FxGroup (at fx + 1); a Chain has a longer header (ExplodeFxChain), then 27 FxBlast. */
+#define EXPLODEFX_FIELDS \
+	PTR(Class) cls;			/* +$00 the object's (kept) */ \
+	s16 flags;			/* +$04 $8010 | 1 (high priority) */ \
+	s16 drawNode;			/* +$06 its draw-list entry (-1: none, ExplodeFx_Free) */ \
+	PTR(Timer) timer;		/* +$08 its update timer (period 1) */ \
+	u8 index;			/* +$0C the object's index, put back at +$15 by ExplodeFx_Free */ \
+	s8 soundDelay;			/* +$0D frames before the explosion sound ($38) may play again (6) */
+typedef struct ExplodeFx { EXPLODEFX_FIELDS } ExplodeFx;
+CHECK_SIZE(ExplodeFx, 0x0E);
+
+/* A puff of a Burst or a Trail ($12 bytes; 10 after the ExplodeFx header). */
+typedef struct FxPuff {
+	s32 x;				/* +$00 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 ax;				/* +$0C */
+	s16 ay;				/* +$0E */
+	u8 anim;			/* +$10 frame << 4 | frames left (6 per frame, frames 0-6); a Trail's head: steps moved */
+	u8 type;			/* +$11 0 done, 1 live, 2/3 dropping a SegmentPlusPowerUp (0 / $F0) when done; a Trail's head: puffs dropped */
+} FxPuff;
+CHECK_SIZE(FxPuff, 0x12);
+
+/* A group of three puffs of a Bounce ($22 bytes; 5 after the ExplodeFx header): one puff at
+   first, the others released as it animates. */
+typedef struct FxGroup {
+	s32 x[3];			/* +$00 1/8 pixels */
+	s32 y[3];			/* +$0C */
+	s8 vx[3];			/* +$18 1/8 pixels per frame (both 0: gone) */
+	s8 vy[3];			/* +$1B */
+	u8 anim[3];			/* +$1E frame << 4 | frames left (15 per frame, frames 0-6) */
+	u8 count;			/* +$21 puffs released (0: none) */
+} FxGroup;
+CHECK_SIZE(FxGroup, 0x22);
+
+/* A step of a chain explosion's path (ROM, 8 bytes; Tbl_ExplodeFxSpiralPath, Tbl_*Chain). */
+typedef struct FxChainStep {
+	s16 dx;				/* +$00 pixels from the origin (negated when h-flipped) */
+	s16 dy;				/* +$02 pixels up from the origin */
+	s32 delay;			/* +$04 frames to the next step; negative: the path's end */
+} FxChainStep;
+CHECK_SIZE(FxChainStep, 8);
+
+/* A puff's offset in a Burst/Bounce table (ROM, 8 bytes; Tbl_ExplodeFxSmall/Medium/Large), the
+   table ended by dx >= 1000. */
+typedef struct FxOffset {
+	s16 dx;				/* +$00 pixels from the object */
+	s16 dy;				/* +$02 pixels below it (above when it is v-flipped) */
+	s16 unk_04;			/* +$04 ($FF in every entry) */
+	s16 unk_06;			/* +$06 (0) */
+} FxOffset;
+CHECK_SIZE(FxOffset, 8);
+
+/* An explosion of a chain (6 bytes; 27 after the ExplodeFxChain header). */
+typedef struct FxBlast {
+	s16 x;				/* +$00 pixels */
+	s16 y;				/* +$02 */
+	u8 anim;			/* +$04 frame << 4 | frames left (6 per frame, frames 0-6) */
+	u8 live;			/* +$05 */
+} FxBlast;
+CHECK_SIZE(FxBlast, 6);
+
+/* A chain explosion (ExplodeFx_ChainStart): explosions placed along a path script from an
+   origin, the path optionally repeated; damaging ones hurt both sides (ExplodeFx_ChainHit). */
+typedef struct ExplodeFxChain {
+	EXPLODEFX_FIELDS
+	s16 x;				/* +$0E origin (pixels) */
+	s16 y;				/* +$10 */
+	s16 delay;			/* +$12 frames to the next path step */
+	s8 repeats;			/* +$14 runs of the path left after this one (negative: forever) */
+	u8 repeatDelay;			/* +$15 frames before a repeat */
+	u8 chainFlags;			/* +$16 1 damaging, 2 h-flip (dx negated), 4 v-flip */
+	u8 unk_17;			/* +$17 */
+	PTR(FxChainStep) step;		/* +$18 the next path step (0: the path is over) */
+	PTR(FxChainStep) path;		/* +$1C the path's first step (repeats) */
+} ExplodeFxChain;
+CHECK_SIZE(ExplodeFxChain, 0x20);
 
 /* A FARACOLYTE's orb or bolt (two of these in the object). */
 typedef struct FarAcolyteShot {
@@ -2154,10 +2257,24 @@ CHECK_SIZE(SentinelDoor, 0x98);
 typedef struct SentinelElevator { SENTINELELEVATOR_FIELDS } SentinelElevator;
 CHECK_SIZE(SentinelElevator, 0x9E);
 
-/* SHOOTACOLYTE: descriptor $018644, parent BIONPC, $B2 bytes (GetSize $017FD6) */
+/* SHOOTACOLYTE: descriptor $018644, parent BIONPC, $B2 bytes (GetSize $017FD6). An acolyte that
+   walks towards the nearest player inside its x range and fires bursts of gauss bullets (AI script
+   ShootAcolyte_Script: ActWalk, ActFacePlayer, ActShootBurst, ActWait30). */
 #define SHOOTACOLYTE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x1C];		/* +$96 */
+	AiCursor ai;			/* +$96 AI script (Tbl_ShootAcolyteScriptLen) */ \
+	s32 unk_9C;			/* +$9C (0, Init; never read) */ \
+	s16 unk_A0;			/* +$A0 (0, Init; never read) */ \
+	s16 shotsLeft;			/* +$A2 shots left of the burst */ \
+	s16 burstShots;			/* +$A4 shots per burst (placement param 3, 0: 2) */ \
+	s16 shotDelay;			/* +$A6 frames between shots (param 4, 0: 60; -1: at once) */ \
+	u8 leftPositive;		/* +$A8 1: param 0 was positive or 0 (never read) */ \
+	u8 unk_A9;			/* +$A9 */ \
+	s16 rangeLeft;			/* +$AA x range in pixels it walks in: placement x - |param 0| (0: $60) */ \
+	u8 rightPositive;		/* +$AC 1: param 1 was positive or 0 (never read) */ \
+	u8 unk_AD;			/* +$AD */ \
+	s16 rangeRight;			/* +$AE placement x + |param 1| (0: $60) */ \
+	s16 walkTime;			/* +$B0 frames it walks at most (param 2, 0: 60) */
 typedef struct ShootAcolyte { SHOOTACOLYTE_FIELDS } ShootAcolyte;
 CHECK_SIZE(ShootAcolyte, 0xB2);
 

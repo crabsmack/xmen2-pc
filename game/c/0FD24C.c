@@ -19,7 +19,6 @@ long SiberiaB1_IceTileHit(register short col, short row)
 	register short r;
 	register Seg *seg;
 	register Actor *o;
-	register long n;
 
 	if (block == 0x6E)
 		next = 0x6F;
@@ -52,7 +51,9 @@ long SiberiaB1_IceTileHit(register short col, short row)
 	}
 	if (!crack) {
 		if ((seg = Seg_FindInBlock(0x14, col, row)) != 0) {
-			for (n = 0, o = g_ObjTable[0]; n < g_ObjCount; n++, o = g_ObjTable[n])
+			register long n;
+
+			for (n = 0, o = g_ObjTable[0]; n < g_ObjCount; ++n, o = g_ObjTable[n])
 				if (IS_ALIVE(o) && o->seg == seg)
 					Obj_Detach(o);
 			Seg_Free(seg);

@@ -32,7 +32,7 @@ void Boulder_UpdateDebris(void)
 		sx = (d->x >> 8) - g_CameraX;
 		sy = (d->y >> 8) - g_CameraY;
 		if (sy > d->floorY) {
-			d->y = (d->floorY + g_CameraY << 8) - d->vy;
+			d->y = ((d->floorY + g_CameraY) << 8) - d->vy;
 			if (d->big)
 				d->vy = -(d->vy - (((unsigned short)Rand_Next() & 0xFF) + 0x190));
 			else
