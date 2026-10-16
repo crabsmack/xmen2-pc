@@ -4,8 +4,8 @@
  *
  * self: the player.
  * Pushed in x (flags $100) by the segment g_Segs[unk_7B]: facing right (no h-flip), x not past
- * its right end, or facing left, x not before its left end: flags $100 again and hang now. The
- * step animation over: the hanging pose (Tbl_Anim_1A5FEC) and hang.
+ * its right end, or facing left, x not before its left end: flags $100 again and hang from the next
+ * update. The step animation over: the hanging pose (Tbl_Anim_1A5FEC) and hang.
  * Returns self->flags & 8, as every state. */
 #include "xmen2.h"
 

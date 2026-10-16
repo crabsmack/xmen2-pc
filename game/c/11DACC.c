@@ -1,6 +1,7 @@
 /* FloatBio_Init - FLOATBIO Init (class slot +$12): the parent's (BABYBIO) Init, then stats
  * Tbl_FloatBioStats (and their health), speed $100, waits of 60 frames, and by its mode (variant
- * & 3, placement param 4) the AI script, from the first step now (no script: the default state):
+ * & 3, placement param 4) the AI script, from the first step on its first update (no script: the
+ * default state):
  *   0 Tbl_FloatBio_Script0 (FloatBio_Script0: face the player, frames, fire);
  *   1 Tbl_FloatBio_Script1 (FloatBio_Script1 / _Part2: fire, then float up or down), its y range
  *     placement y - |param 0| to y + |param 1| (0: 48 each);

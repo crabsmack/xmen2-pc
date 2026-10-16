@@ -1,6 +1,6 @@
 /* BabyMoleMan_Init - BABYMOLEMAN Init (class slot +$12): the parent's (BABYBIO) Init, then
  * palette 1, stats Tbl_BabyMoleManStats (and their health), and the AI script its variant picks
- * (placement param 4), from the first step now (no script: the default state):
+ * (placement param 4), from the first step on its first update (no script: the default state):
  *   1 Tbl_BabyMoleManAiScript, 2 Tbl_BabyMoleMan_Script1 (BabyMoleMan_Script1: frames 5/6,
  *   walk, fire, wait 30), 3 Tbl_BabyMoleManAiScript2, 4 Tbl_BabyMoleManAiScript3, other
  *   Tbl_BabyMoleMan_ScriptDefault (BabyMoleMan_ScriptDefault: frames 5/6, wait for a player

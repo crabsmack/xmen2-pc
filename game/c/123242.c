@@ -1,5 +1,5 @@
 /* BigBio_ResumeAfterHit - BIGBIO after the hit blink (BigBio_TakeDamage): stop blinking and go
- * back to the state the hit interrupted (saved in hurtState), if any, at once.
+ * back to the state the hit interrupted (saved in hurtState), if any, on the next update.
  *
  * self: the boss. Returns 0. */
 #include "xmen2.h"

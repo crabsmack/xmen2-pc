@@ -1,5 +1,5 @@
 /* XClone_ActSound8F - XCLONE script action: stop every sound and play sound $8F, go on with the
- * script now.
+ * script on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

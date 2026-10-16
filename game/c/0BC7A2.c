@@ -1,5 +1,6 @@
 /* SavageBioBalls_StateWait - BIOBALLS state (the SAVAGEBIGBIO's balls form): wait until the
- * countdown has run out (SavageBioBalls_ActMotion), then go on with the AI script now.
+ * countdown has run out (SavageBioBalls_ActMotion), then go on with the AI script on the next
+ * update.
  *
  * self: the balls. Returns self->flags & 8 while it waits, nothing in particular after. */
 #include "xmen2.h"

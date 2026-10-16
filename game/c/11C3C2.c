@@ -66,7 +66,7 @@ show:
 	self->y = self->homeY;
 	if (self->spr.frame == 5 || self->spr.frame == 6 || self->spr.frame == 8
 	    || self->spr.frame == 9) {
-		if (self->bob->dx >= 0x6400)
+		if (self->bob->dx >= 0x6400)	/* end marker (100 px): from the start */
 			self->bob = (HoverStep *)CODEPTR(Tbl_BabyBioBobOffsets);
 		if (!self->vx)
 			self->x += self->bob->dx;

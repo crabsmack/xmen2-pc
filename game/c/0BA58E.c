@@ -5,8 +5,8 @@
  * No tentacle hits or hit points yet; the arena 48 px narrower on each side; the Chamber's
  * shared stats record (g_A4Stats) gets the boss's health (the low byte of g_A4BossHealth) and
  * is its stats (its health from it); its AI script (Tbl_SavageBio_Script2) from the first
- * step now (no script: the default state); sprite Art_SavageBioSpr with palette 3; no tentacle;
- * top x speed $580 (g_A4BossMaxSpeed); no frame shown ($FF, slot +$56) and its boxes
+ * step on its first update (no script: the default state); sprite Art_SavageBioSpr with palette 3;
+ * no tentacle; top x speed $580 (g_A4BossMaxSpeed); no frame shown ($FF, slot +$56) and its boxes
  * (Obj_UpdateBoxes). Then its companion: a BIOBALLS at its position (balls), palette 3, no frame
  * shown. */
 #include "xmen2.h"

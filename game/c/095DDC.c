@@ -1,6 +1,7 @@
 /* XClone_StateDropPod - XCLONE entrance: hide the clone, take it off the enemy body hit list and
  * drop a pod (a BIOBALLS object, reused or new) from the arena ceiling above it (vy $100,
- * gravity $80); then XClone_StatePodFall. Without a pod it emerges at once (XClone_StateEmerge).
+ * gravity $80); then XClone_StatePodFall. Without a pod it emerges without the fall
+ * (XClone_StateEmerge from the next update).
  *
  * self: the clone (state set by XClone_StateWaitPlayers).
  * Returns flags & 8. */

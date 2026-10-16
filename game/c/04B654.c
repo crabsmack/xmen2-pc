@@ -1,6 +1,6 @@
 /* Apocalypse_StateFlyOffWait - APOCALYPSE state: once above the screen (y < 0), park hidden at
  * (-10, -20) px with no motion, no animation, angle 180 and frame $FF, then go on with the AI
- * script now.
+ * script on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

@@ -1,7 +1,7 @@
 /* WallCrawlBio_Init - WALLCRAWLBIO Init (class slot +$12): the parent's (BABYBIO) Init, then
  * stats Tbl_BabyMoleManStats (and their health), flags6 |= 2, its mode (variant & 3, placement
- * param 4) and by it the crawl range (xMin / xMax) and AI script, from the first step now (no
- * script: the default state):
+ * param 4) and by it the crawl range (xMin / xMax) and AI script, from the first step on its first
+ * update (no script: the default state):
  *   0, 1 on a wall: the range in y, placement y - |param 0| to y + |param 1| (0: 48 each; a
  *     negative param: that end is open, it falls off there); Tbl_WallCrawlBio_Script1
  *     (WallCrawlBio_Script1: stop on frame 11, crawl). Mode 1 is h-flipped.

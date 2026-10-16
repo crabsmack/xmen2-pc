@@ -1,6 +1,6 @@
 /* XClone_ActBallsRoll - XCLONE script action: roll the balls form the way the clone faces
  * (BioBalls_MotionRoll from angle $5A, step 10, BioBalls_WaitMotionDone), then roll it back
- * (XClone_StateBallsReturn). With no BIOBALLS object go on with the script now.
+ * (XClone_StateBallsReturn). With no BIOBALLS object go on with the script on the next update.
  *
  * self: the clone (a step of its AI script).
  * Returns flags & 8 when rolling; nothing in particular otherwise. */

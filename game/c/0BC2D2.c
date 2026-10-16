@@ -1,5 +1,5 @@
 /* SavageBio_ActFrame40 - SAVAGEBIGBIO script action: stop animating, show frame $40 and go on
- * with the script now.
+ * with the script on the next update.
  *
  * self: the boss (a step of its AI script; never runs in the corpus). */
 #include "xmen2.h"

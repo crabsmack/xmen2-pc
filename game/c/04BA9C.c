@@ -1,5 +1,5 @@
 /* Apocalypse_StateWaitArrive - APOCALYPSE state: once its damped move has arrived (moveFlags
- * bit 4 clear), go on with the AI script now.
+ * bit 4 clear), go on with the AI script on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

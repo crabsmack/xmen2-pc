@@ -1,6 +1,6 @@
 /* SavageBio_ActChargeGo - SAVAGEBIGBIO script action: start a charge (speed $220, acceleration
- * $56, sound $EA) and go on with the script now (nothing stops it but the arena's ends in
- * SavageBioBase_Move).
+ * $56, sound $EA) and go on with the script on the next update (nothing stops it but the arena's
+ * ends in SavageBioBase_Move).
  *
  * self: the boss (a step of its AI script; never runs in the corpus).
  * At an end of the arena it first steps 1 px inside and turns to face the other end. With no

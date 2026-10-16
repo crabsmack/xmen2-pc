@@ -1,6 +1,7 @@
 /* Hologram_StartAttackScript - HOLOGRAM intro script action (its only step,
  * Tbl_HologramAiScript_0EAEFC: Hologram_ScriptIntro): sound $D0, then the attack script
- * (Tbl_Hologram_ScriptAttack: Hologram_ScriptAttack, 26 steps) from its first step at once.
+ * (Tbl_Hologram_ScriptAttack: Hologram_ScriptAttack, 26 steps) from its first step on the next
+ * update.
  *
  * self: the hologram. */
 #include "xmen2.h"

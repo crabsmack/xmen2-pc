@@ -1,5 +1,5 @@
 /* BabyBio_ActPlayAnimD - BABYBIO AI-script action: loop frames 8, 9 (Tbl_BabyBioAnim4), next
- * step now.
+ * step on the next update.
  *
  * self: the object. */
 #include "xmen2.h"

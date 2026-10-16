@@ -45,7 +45,7 @@ step:
 	}
 	self->y = self->homeY;
 	if (self->bob) {
-		if (self->bob->dx >= 0x6400)
+		if (self->bob->dx >= 0x6400)	/* end marker (100 px): from the start */
 			self->bob = (HoverStep *)CODEPTR(Tbl_BabyBioBobOffsets);
 		self->y += self->bob->dy;
 		self->bob++;

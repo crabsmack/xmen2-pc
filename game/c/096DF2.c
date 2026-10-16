@@ -1,5 +1,6 @@
 /* XClone_StateChildShoot - XCLONE state: the balls form fires a BIOBULLET at the nearest player
- * (sound $F4) every 5 frames until shotsLeft runs out, then the script goes on now.
+ * (sound $F4) every 5 frames until shotsLeft runs out, then the next script step on the next
+ * update.
  *
  * self: the clone (state set by XClone_ActChildShoot3; never runs in the corpus).
  * The bullet's speed is the distance to the player's body-box centre (8 fraction bits) shifted

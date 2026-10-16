@@ -1,6 +1,6 @@
 /* XClone_ActLeaveBalls - XCLONE script action: come back out of the balls form: remove the
  * BIOBALLS object (sound $F2), stand, become the object the arena camera follows, hittable again,
- * and switch to the clone record's main script; then go on with the script now.
+ * and switch to the clone record's main script; then go on with the script on the next update.
  *
  * self: the clone (a step of its AI script).
  * The "go on" steps the new main script to its second step (AiScript_Set starts it at 0).

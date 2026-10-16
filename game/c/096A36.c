@@ -1,5 +1,5 @@
 /* XClone_ActStopSoundFE - XCLONE script action: stop sound $FE and the BIOBALLS motion; go on
- * with the script now.
+ * with the script on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* BabyBio_WaitReachHLimit - BABYBIO state after BabyBio_ActMoveHorizontal: once the home x is on
- * an end of its patrol range, the next step now.
+ * an end of its patrol range, the next step on the next update.
  *
  * self: the object. (It stays the state until then.) Never runs in the corpus. */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* EvilPsylocke_StateDashEnd - EVILPSYLOCKE state at the end of EvilPsylocke_ActDash's animation:
- * stop and go on with the AI script now.
+ * stop and go on with the AI script on the next update.
  *
  * self: the clone. */
 #include "xmen2.h"

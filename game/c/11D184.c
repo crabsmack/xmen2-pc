@@ -1,5 +1,5 @@
 /* BabyBio_WaitStopOrLimit - BABYBIO state: once it has no x speed or the home x is on an end of
- * its range, stop and take the next step now.
+ * its range, stop and take the next step on the next update.
  *
  * self: the object. Returns flags & 8 while it waits (nothing in particular after).
  * Never runs in the corpus. */

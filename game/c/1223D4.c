@@ -1,4 +1,5 @@
-/* BigBio_ActFaceSide - BIGBIO script action: face the way +$B6 says, go on with the script now.
+/* BigBio_ActFaceSide - BIGBIO script action: face the way +$B6 says, go on with the script on the
+ * next update.
  *
  * self: the boss. Never runs in the corpus. */
 #include "xmen2.h"

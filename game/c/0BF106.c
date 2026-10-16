@@ -1,5 +1,5 @@
 /* SporeMine_AddSpore - put a new spore in the pool at a placement's position: cleared, idle
- * first (SporeMine_RecIdle at once), no target.
+ * first (SporeMine_RecIdle, delay 0: on the pool's next run), no target.
  *
  * pl: the placement entry (x, y in pixels).
  * Returns the spore, or 0 when the pool's 20 are in use. */

@@ -1,7 +1,7 @@
 /* Hornet_MoveBounce - HORNET motion (+$94) of a DEATHBIRD hornet's bounce pattern, also the
  * flight part of the dive patterns: fly by its velocity and hover on the circle path, bouncing
  * off the arena box; when its lifetime is over (moveFlags bit 2), hover and leave
- * (Hornet_MoveWaitThenFlyOff, at once: countdown 0).
+ * (Hornet_MoveWaitThenFlyOff with countdown 0: it sets off on its first call, the next frame).
  *
  * self: the hornet.
  * One step per frame, two in two-player step mode. moveFlags bit 0: x bounces between $3C and

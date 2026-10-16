@@ -1,5 +1,6 @@
 /* XClone_ActChildShoot3 - XCLONE script action: make the balls form fire 3 shots at the nearest
- * player (XClone_StateChildShoot); with no BIOBALLS object go on with the script now.
+ * player (XClone_StateChildShoot); with no BIOBALLS object go on with the script on the next
+ * update.
  *
  * self: the clone (a step of its AI script; never runs in the corpus).
  * Returns flags & 8 when shooting; nothing in particular otherwise. */

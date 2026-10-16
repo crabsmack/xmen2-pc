@@ -1,5 +1,5 @@
 /* SavageBio_ActAnimA - SAVAGEBIGBIO script action: switch to the animation Tbl_SavageBioAnim11
- * and go on with the script now.
+ * and go on with the script on the next update.
  *
  * self: the boss (a step of its AI script; never runs in the corpus). */
 #include "xmen2.h"

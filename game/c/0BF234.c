@@ -1,6 +1,6 @@
-/* SporeMine_RecWatch - spore handler: arm (SporeMine_RecArm1 at once) when the spore is within
- * 80 px (x) / 40 px (y) of its target's body box; else, once the watch time has run out, pick
- * a target again (SporeMine_RecFindTarget).
+/* SporeMine_RecWatch - spore handler: arm (SporeMine_RecArm1 from the next frame) when the spore is
+ * within 80 px (x) / 40 px (y) of its target's body box; else, once the watch time has run out,
+ * pick a target again (SporeMine_RecFindTarget).
  *
  * s: the spore (target set by SporeMine_RecFindTarget). */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* WallCrawlBio_WaitReachHLimit - WALLCRAWLBIO state after WallCrawlBio_ActCrawlHorizontal: once
- * the home x is on an end of its crawl range (xMin / xMax), the next step now.
+ * the home x is on an end of its crawl range (xMin / xMax), the next step on the next update.
  *
  * self: the object. (It stays the state until then.) */
 #include "xmen2.h"

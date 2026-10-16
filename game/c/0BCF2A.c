@@ -1,5 +1,5 @@
 /* SavageMediumBio_StateWalk - SAVAGEMEDIUMBIO state: walk until the countdown (SavageMediumBio_ActWalk)
- * has run out, then go on with the script now.
+ * has run out, then go on with the script on the next update.
  *
  * self: the object. Returns self->flags & 8 while it walks, nothing in particular after.
  * Never runs in the corpus. */

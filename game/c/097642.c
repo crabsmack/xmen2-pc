@@ -1,5 +1,5 @@
 /* XClone_ActTurn - XCLONE script action: turn around (toggle the h-flip), go on with the script
- * now.
+ * on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

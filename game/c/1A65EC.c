@@ -39,7 +39,7 @@ short Nightcrawler_StateWallCling(register Nightcrawler *self)
 		return self->flags & 8;
 	} else if (self->flags & 0x80) {
 		register short px = self->x >> 8;
-		register Seg *seg = self->climbSeg;
+		register Seg *seg = self->climbSeg;	/* dead: overwritten below (the original's, kept) */
 		register short kind;
 
 		seg = &g_Segs[self->unk_7B];

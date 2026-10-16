@@ -1,5 +1,5 @@
 /* BabyBio_ActWalkForward - BABYBIO AI-script action: walk at |speed| the way it faces (stop if it
- * has no range, xMin = xMax), next step now.
+ * has no range, xMin = xMax), next step on the next update.
  *
  * self: the object.
  * The home x in pixels is computed first and never used (kept). Never runs in the corpus. */

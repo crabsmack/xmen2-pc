@@ -1,6 +1,6 @@
 /* BioBalls_ActCollapse - BIOBALLS script action (its first state, BioBalls_Init): collapse the
  * balls to one on the object's pixel position (ball 0 there, the list ended after it), then
- * restart the AI script from its first step at once.
+ * restart the AI script from its first step on the next update.
  *
  * self: the object. */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* XClone_ActCheckLowHealth - XCLONE script action: below 14 health switch to the clone record's
- * low-health script from its first step, else go on with the script; now.
+ * low-health script from its first step, else go on with the script; either on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

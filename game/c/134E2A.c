@@ -1,5 +1,5 @@
 /* FlyBrood_ActRestartScript - FLYBROOD's first state (set by FlyBrood_Init): its AI script from
- * the first step now (no script: the default state).
+ * the first step on the next update (no script: the default state).
  *
  * self: the object. */
 #include "xmen2.h"

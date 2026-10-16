@@ -1,5 +1,5 @@
 /* BioBalls_WaitMotionDone - BIOBALLS state: wait until the motion function is over (it clears
- * itself: BioBalls_MotionGather, _Roll), then the next step of the AI script at once.
+ * itself: BioBalls_MotionGather, _Roll), then the next step of the AI script on the next update.
  *
  * self: the object.
  * Returns flags bit 3 while waiting; nothing in particular after. */

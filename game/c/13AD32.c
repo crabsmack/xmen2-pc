@@ -7,7 +7,7 @@
 void Mine_StateArm3(register MineRec *m)
 {
 	m->anim = (u8 *)CODEPTR(Tbl_MineAnimArm3);
-	m->frame = *(m->anim + 7);
+	m->frame = *(m->anim + 7);	/* step 0's frame byte (step[0].value) */
 	m->animStep = 0;
 	m->animTime = 0;
 	m->handler = Mine_StateArm4;

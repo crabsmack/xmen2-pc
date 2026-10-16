@@ -1,6 +1,6 @@
 /* XClone_ActChildAimPlayer - XCLONE script action: give the balls form a target, the nearest
  * player (its x, the centre of its body box; kept in the balls' px/py), and home in on it
- * (XClone_StateChildAim). With no BIOBALLS object go on with the script now.
+ * (XClone_StateChildAim). With no BIOBALLS object go on with the script on the next update.
  *
  * self: the clone (a step of its AI script; never runs in the corpus).
  * Returns flags & 8 when aiming; nothing in particular otherwise. */

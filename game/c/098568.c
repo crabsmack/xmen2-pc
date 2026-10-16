@@ -3,7 +3,7 @@
  * (Magneto_ShotAnim); EvilMagneto_StateBlast fires at its end.
  *
  * self: the clone (never runs in the corpus).
- * Without an animation for the direction it goes on with the script at once instead.
+ * Without an animation for the direction it goes on with the script on the next update instead.
  * Returns self->flags & 8 when the wind-up starts; nothing in particular otherwise. */
 #include "xmen2.h"
 

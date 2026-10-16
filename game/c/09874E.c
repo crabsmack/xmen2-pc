@@ -1,7 +1,7 @@
 /* EvilNightcrawler_StateAppear - EVILNIGHTCRAWLER state after the arrival animation of a teleport:
  * above the arena floor it falls (gravity $C0, no animation: EvilNightcrawler_StateFall from the
  * next update); on it, it takes the standing animation of its clone record and the AI script
- * goes on now.
+ * takes its next step on the next update.
  *
  * self: the clone (never runs in the corpus).
  * Returns self->flags & 8 when it falls; nothing in particular otherwise. */

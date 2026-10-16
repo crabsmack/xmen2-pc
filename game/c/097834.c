@@ -1,6 +1,7 @@
 /* XClone_ActAttack - XCLONE script action: attack with the character's combo: the first combo
  * animation when the attack cooldown is out (which reloads it from the character's combo window),
- * else the second; to its end ($FF). A character without combo animations goes on now.
+ * else the second; to its end ($FF). A character without combo animations takes the next step on
+ * the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

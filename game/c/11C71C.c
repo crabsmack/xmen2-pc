@@ -1,4 +1,5 @@
-/* BabyBio_ActNext - BABYBIO AI-script action: no animation, no frame shown, next step now.
+/* BabyBio_ActNext - BABYBIO AI-script action: no animation, no frame shown, next step on the next
+ * update.
  *
  * self: the object. */
 #include "xmen2.h"

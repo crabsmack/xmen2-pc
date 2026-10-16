@@ -1,5 +1,6 @@
 /* Apocalypse_ActSetMoveRates - APOCALYPSE script action (Tbl_ApocalypseChoiceScript2): slower
- * damped moves from now on (lunge shift 3, approach shift 4), then the next step now.
+ * damped moves from now on (lunge shift 3, approach shift 4), then the next step on the next
+ * update.
  *
  * self: the boss (never runs in the corpus). */
 #include "xmen2.h"

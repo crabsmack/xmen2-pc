@@ -1,5 +1,6 @@
-/* BroodBoss_StateDeathSink - BROODBOSS state: lower the boss offset x by $A0 a frame ($140 in
- * two-player step mode) until it is $1A8 or less; then BroodBoss_StateExplode.
+/* BroodBoss_StateDeathSink - BROODBOSS state: lower the boss offset x by $A0 a frame (1/256 px:
+ * 0.625 px; $140 in two-player step mode) until it is $1A8 px or less (compared >> 8); then
+ * BroodBoss_StateExplode.
  *
  * self: the boss. Returns flags & 8. */
 #include "xmen2.h"

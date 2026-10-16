@@ -5,7 +5,7 @@
  * self: the player (py counts the flash steps).
  * Unless a palette fade runs (then the flash counts as over): Nightcrawler_FlashPalette(py), py
  * +1 (+2 in two-player mode). Over: the base palette back (g_PalBaseDirty), then
- * Nightcrawler_TeleportDone when the animation ends (at once with none).
+ * Nightcrawler_TeleportDone when the animation ends (on the next update with none).
  * Returns self->flags & 8 then; nothing while it flashes. */
 #include "xmen2.h"
 

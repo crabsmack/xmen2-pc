@@ -1,5 +1,5 @@
 /* BroodBoss_ActClaw - BROODBOSS AI-script action: roar (Tbl_BroodBossAnim) and swing the claw out
- * (speed -$200, mode 1: the swing scrolls the arena), next step at once.
+ * (speed -$200, mode 1: the swing scrolls the arena), next step on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

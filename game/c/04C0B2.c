@@ -1,5 +1,5 @@
 /* Apocalypse_StateLungeEnd - APOCALYPSE state: end the lunge (the move and all motion stop) and
- * go on with the AI script now.
+ * go on with the AI script on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

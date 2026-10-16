@@ -1,8 +1,9 @@
 /* Apocalypse_StateApproach - APOCALYPSE state: approach the target player. While the damped move
  * runs, drop onto the target (Apocalypse_StateDropStart) when its second box overlaps the column
- * 35 px either side of APOCALYPSE, 256 px down from the target's top; once arrived, lunge
- * (Apocalypse_StateLunge) when the target is within 170 px, else move next to it again
- * (Apocalypse_ActGoNearPlayer).
+ * 35 px either side of APOCALYPSE, 256 px down from the target's top: in effect x only, since
+ * that range starts at the target's own box2Top, so the vertical half always passes (kept as
+ * the original has it); once arrived, lunge (Apocalypse_StateLunge) when the target is within
+ * 170 px, else move next to it again (Apocalypse_ActGoNearPlayer).
  *
  * self: the boss. Returns self->flags & 8. */
 #include "xmen2.h"

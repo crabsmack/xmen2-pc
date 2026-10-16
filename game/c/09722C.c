@@ -1,5 +1,6 @@
 /* XClone_ActBallsMotionA - XCLONE script action: the balls form $60 px above the arena floor, all
- * its balls on ball 0, orbiting (BioBalls_MotionOrbit from angle $40); go on with the script now.
+ * its balls on ball 0, orbiting (BioBalls_MotionOrbit from angle $40); go on with the script on the
+ * next update.
  *
  * self: the clone (a step of its AI script; never runs in the corpus). */
 #include "xmen2.h"

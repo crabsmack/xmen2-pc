@@ -1,7 +1,7 @@
 /* FlyBrood_StateSwoopPatrol - FLYBROOD swoop patrol: at an end of its x range with the nearest
- * player outside the range, the next step now; otherwise swoop at the player (FlyBrood_MoveHoming
- * on Tbl_FlyBroodSwoopPath, 130 px beyond the player the way it heads, 27 px above the player's
- * second box) and wait for the swoop to end (FlyBrood_WaitSwoopDone).
+ * player outside the range, the next step on the next update; otherwise swoop at the player
+ * (FlyBrood_MoveHoming on Tbl_FlyBroodSwoopPath, 130 px beyond the player the way it heads, 27 px
+ * above the player's second box) and wait for the swoop to end (FlyBrood_WaitSwoopDone).
  *
  * self: the object. Returns flags & 8 when it swoops (nothing in particular otherwise).
  * Swoop animation Tbl_Anim_134386 (Tbl_Anim_134390 in the raw-art scene). Never runs in the

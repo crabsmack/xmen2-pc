@@ -1,6 +1,6 @@
 /* BroodBoss_StateShockOff - BROODBOSS state: end the floor shock (flag bit 1, sound $F5), blank the
  * two shock sprites (scene sprites 0 and 1, frame 0), roar (Tbl_BroodBossAnim), next AI-script
- * step at once.
+ * step on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* FlyBrood_WaitPathDone - FLYBROOD state of the type-4 flyer (FlyBrood_Init): wait until its
- * homing path has ended, then its AI script from the first step now.
+ * homing path has ended, then its AI script from the first step on the next update.
  *
  * self: the object. Returns flags & 8 while it waits (nothing in particular after).
  * Never runs in the corpus. */

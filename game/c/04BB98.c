@@ -1,5 +1,5 @@
 /* Apocalypse_StateRotateTo180 - APOCALYPSE state (a script step): circle (moveFlags bit 0) until
- * the angle is 180, then stop circling and go on with the AI script now.
+ * the angle is 180, then stop circling and go on with the AI script on the next update.
  *
  * self: the boss.
  * Returns self->flags & 8 while circling, nothing when the script goes on. */

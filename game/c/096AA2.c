@@ -1,5 +1,6 @@
 /* XClone_ActSoundFE - XCLONE script action: play sound $FE and mark the BIOBALLS object busy
- * (ballFlags $200, XClone_ActWaitChildFlag waits for it to clear); go on with the script now.
+ * (ballFlags $200, XClone_ActWaitChildFlag waits for it to clear); go on with the script on the
+ * next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

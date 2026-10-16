@@ -1,5 +1,6 @@
 /* XClone_StateChildHome - XCLONE state: move the balls form 3/32 of the way to its target each
- * frame until it is within $200 (|dx| + |dy|, 8 fraction bits), then go on with the script now.
+ * frame until it is within $200 (|dx| + |dy|, 8 fraction bits), then go on with the script on the
+ * next update.
  *
  * self: the clone (state set by XClone_StateChildAim; never runs in the corpus).
  * Returns flags & 8 while homing; nothing in particular when the script goes on.

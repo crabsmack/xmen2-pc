@@ -1,6 +1,6 @@
 /* BabyBio_ActWaitPlayerNear128 - BABYBIO AI-script action (and the state it waits in): stop and
  * keep facing the nearest player until it is within 128 px in x of the home position, then the
- * next step now.
+ * next step on the next update.
  *
  * self: the object. Returns flags & 8 while it waits (nothing in particular after).
  * The home x in pixels is computed first and never used (kept). */

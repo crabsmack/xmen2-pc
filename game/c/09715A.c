@@ -1,6 +1,6 @@
 /* XClone_StateChildReturn - XCLONE state: move the balls form 1/16 of the way back to its start
  * point (px/py) each frame (twice in two-player step mode); within $200 (|dx| + |dy|, 8 fraction
- * bits) put it there and go on with the script now.
+ * bits) put it there and go on with the script on the next update.
  *
  * self: the clone (state set by XClone_StateChildLeap; never runs in the corpus).
  * Returns nothing: the state stays until the script goes on. */

@@ -1,5 +1,5 @@
 /* XClone_Explode - XCLONE's death (class slot +$7E): become unhittable, drop the hurt flags and
- * run the death script (XClone_Script2) from its first step, now.
+ * run the death script (XClone_Script2) from its first step, on the next update.
  *
  * self: the clone. */
 #include "xmen2.h"

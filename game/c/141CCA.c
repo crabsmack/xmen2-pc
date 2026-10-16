@@ -1,6 +1,6 @@
 /* TankLeft_Init - TANKLEFT constructor (class slot +$12): the parent's (TANK) Init, then a tank
  * facing left with 4 health, starting its script Tbl_Tank_ScriptWaitDrive (wait off screen, drive
- * in, drive away) at once.
+ * in, drive away) from its first update.
  *
  * self: the new object.  x, y: position (8 fraction bits).  pl: its placement entry. */
 #include "xmen2.h"

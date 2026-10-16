@@ -17,7 +17,7 @@ void FluxBomb_StepBurst(FluxBomb *self)
 		self->phase = 4;
 		return;
 	}
-	if (self->strong)
+	if (self->strong)	/* jt entry 2290; weak: 2289; both are Tbl_FluxBombBurstDirs */
 		d = (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirs);
 	else
 		d = (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirs);

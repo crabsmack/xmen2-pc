@@ -1,5 +1,5 @@
 /* BabyBio_StateStart - BABYBIO's first state (set by BabyBio_Init): no frame shown, then the AI
- * script from its first step now (no script: the default state).
+ * script from its first step on the next update (no script: the default state).
  *
  * self: the object. */
 #include "xmen2.h"

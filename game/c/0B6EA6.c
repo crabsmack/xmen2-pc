@@ -1,5 +1,5 @@
 /* BrainChild_ActFacePlayer - BRAINCHILD script action: stop and face the nearest player (sprite
- * flag $10: facing left), then the next step now.
+ * flag $10: facing left), then the next step on the next update.
  *
  * self: the object (a step of its AI script; never runs in the corpus). */
 #include "xmen2.h"

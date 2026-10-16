@@ -1,5 +1,6 @@
 /* XClone_ActUnhittableScript - XCLONE: become unhittable (off the enemy body hit list, flags6
- * bits 2 and $1000) and run the entrance script XClone_Script1 from its first step, now.
+ * bits 2 and $1000) and run the entrance script XClone_Script1 from its first step, on the next
+ * update.
  *
  * self: the clone (a script action; BroodClaw_StateDropClone also calls it on a new clone). */
 #include "xmen2.h"

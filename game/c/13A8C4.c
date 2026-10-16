@@ -50,6 +50,7 @@ void Mine_PoolUpdate(void)
 					if (SCRIPT(m)->flags & 2)
 						m->anim = 0;
 				}
+				/* + 7: the step's frame byte, step[animStep].value (6-byte header, 2-byte steps) */
 				if (m->anim)
 					m->frame = *(m->anim + (m->animStep << 1) + 7);
 			} else

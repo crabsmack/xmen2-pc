@@ -20,7 +20,7 @@ step:
 	steps--;
 	if (steps > 0) {
 		self->hover++;
-		if (self->hover->dx >= 0x6400)
+		if (self->hover->dx >= 0x6400)	/* end marker (100 px): from the start */
 			self->hover = (HoverStep *)CODEPTR(Tbl_CapedAcolyteHoverOffsets);
 		goto step;
 	}
@@ -49,6 +49,6 @@ step:
 	self->x += self->hover->dx;
 	self->y += self->hover->dy;
 	self->hover++;
-	if (self->hover->dx >= 0x6400)
+	if (self->hover->dx >= 0x6400)	/* end marker (100 px): from the start */
 		self->hover = (HoverStep *)CODEPTR(Tbl_CapedAcolyteHoverOffsets);
 }

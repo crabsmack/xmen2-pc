@@ -1,5 +1,5 @@
 /* CoreElevator_SendUp - send the lift up (HOLOGRAM): CoreElevator_StartUp becomes its state and
- * default state, at once.
+ * default state, from its next update (delay 0).
  *
  * self: the lift. */
 #include "xmen2.h"

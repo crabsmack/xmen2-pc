@@ -1,5 +1,5 @@
 /* Apocalypse_ActPickScript - APOCALYPSE script action: switch to script choice 0-3
- * (Tbl_ApocalypseChoiceScript0-3; 0 for any other value) and start it now.
+ * (Tbl_ApocalypseChoiceScript0-3; 0 for any other value) and start it on the next update.
  *
  * self: the boss (never runs in the corpus).
  * The cases are Apocalypse_ActPickScript_part1 (0 and default), _part2 (1-3) and _part3 (the

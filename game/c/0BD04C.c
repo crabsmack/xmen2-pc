@@ -1,5 +1,5 @@
 /* SavageMediumBio_StateFire - SAVAGEMEDIUMBIO state: fire a gauss bullet (GaussBullet_Fire) with
- * sound $EE (restarted), then go on with the script now.
+ * sound $EE (restarted), then go on with the script on the next update.
  *
  * self: the object (after SavageMediumBio_ActShoot's animation).
  * The muzzle offset is $36 px ahead and $34 above (below when v-flipped; mirrored and flag $800

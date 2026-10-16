@@ -1,6 +1,6 @@
 /* EvilPsylocke_ActBallsPath - EVILPSYLOCKE AI-script action: the balls form follows its ball path
  * (BioBalls_MotionPath along Tbl_EvilPsylockeBallsMotionPath, from its start); go on with the
- * script now.
+ * script on the next update.
  *
  * self: the clone (a step of its AI script).
  * Nothing happens to the balls when the clone has no BIOBALLS object. */

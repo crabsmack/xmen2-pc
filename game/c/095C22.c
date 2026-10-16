@@ -1,5 +1,5 @@
 /* XClone_ActCloseBioBalls - XCLONE script action: remove its BIOBALLS object (sound $F2) and go
- * back to the standing animation; go on with the script now.
+ * back to the standing animation; go on with the script on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

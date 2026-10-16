@@ -1,5 +1,5 @@
 /* FlyBrood_StateHoverFacePlayer - FLYBROOD state after FlyBrood_ActHover90: face the nearest
- * player; once the countdown has run out, the next step now.
+ * player; once the countdown has run out, the next step on the next update.
  *
  * self: the object. Never runs in the corpus. */
 #include "xmen2.h"

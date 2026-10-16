@@ -1,5 +1,5 @@
 /* SavageBio_ActFacePlayer - SAVAGEBIGBIO script action: stop, turn to face the nearest player,
- * go on with the script now.
+ * go on with the script on the next update.
  *
  * self: the boss (a step of its AI script; also a state, after SavageBio_ActDashTo).
  * Returns nothing in particular. */

@@ -1,5 +1,5 @@
 /* Mine_PoolAdd - put a new mine in the pool at a placement's position: cleared, idle first
- * (Mine_StateStart at once), no target.
+ * (Mine_StateStart, delay 0: on the pool's next run), no target.
  *
  * pl: the placement entry (x, y in pixels).
  * Returns the mine, or 0 when the pool's 20 are in use. */

@@ -11,7 +11,7 @@
 short MagnetoBoss_StateAimShoot(register MagnetoBoss *self)
 {
 	register Actor *t = self->target;
-	register unsigned char dir;
+	register unsigned char dir;	/* never read: the original's copy of shotDir in d7 (kept) */
 
 	dir = self->shotDir = MagnetoBoss_DirFromTo(self, t);
 	self->state = MagnetoBoss_StateShoot;

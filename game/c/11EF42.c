@@ -1,5 +1,5 @@
 /* BioBalls_ActClearDone - BIOBALLS script action: not done (BioBalls_IsDone), then the next step
- * at once.
+ * on the next update.
  *
  * self: the object. */
 #include "xmen2.h"

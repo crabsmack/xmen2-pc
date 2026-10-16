@@ -1,4 +1,5 @@
-/* BabyBio_ActPlayAnimB - BABYBIO AI-script action: show frame 0 (Tbl_BabyBioAnim), next step now.
+/* BabyBio_ActPlayAnimB - BABYBIO AI-script action: show frame 0 (Tbl_BabyBioAnim), next step on the
+ * next update.
  *
  * self: the object. */
 #include "xmen2.h"

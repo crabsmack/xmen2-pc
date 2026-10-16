@@ -2,7 +2,7 @@
  * failure text (Str_FailureText, no intro, no player select); then the screen and the whole
  * plane are cleared, every colour black, the "Game Over" art (Art_GameOver, Nemesis) loaded
  * at the free VRAM tiles with palette line 2 = Pal_SceneDefaultLine1, and its 14x2 tilemap
- * (Art_FailureNem, tiles offset by the art's first tile, palette line 2) written at VRAM $059A;
+ * (Map_GameOver, tiles offset by the art's first tile, palette line 2) written at VRAM $059A;
  * the palette fades in (Tbl_FadeBlack), stays $4B0 frames (20 s) or until a button (A, B, C,
  * Start on either pad), fades out; then a new game (Game_ResetPlayers, progress flags 0).
  * PC: the tilemap buffer is game memory (generated code reads it): placed on the 68000 stack
@@ -55,7 +55,7 @@ void Failure_RunScene(void)
 		*dst++ = *src++;
 	tile = g_VramTileCursor | 0x4000;
 	n = 0x1C;
-	Mem_Copy(map, CODEPTR(Art_FailureNem), n << 1);
+	Mem_Copy(map, CODEPTR(Map_GameOver), n << 1);
 	for (i = 0, p = &map[0]; i < n; i++, p++)
 		*p += tile;
 	VDP_WriteTileRect(0x59A, map, 0xE, 2, 0x40);

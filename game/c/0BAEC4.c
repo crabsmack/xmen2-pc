@@ -1,5 +1,5 @@
 /* SavageBio_ActScript2052 - SAVAGEBIGBIO script action: switch to the AI script at $0B7E54
- * (SavageBio_Script3) and start it at its first step now.
+ * (SavageBio_Script3) and start it at its first step on the next update.
  *
  * self: the boss (a step of its AI script). */
 #include "xmen2.h"

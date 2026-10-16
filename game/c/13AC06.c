@@ -1,5 +1,5 @@
 /* Mine_StatePickTarget - mine handler: watch the nearest live player (Player_NearestLive) for 60
- * frames (Mine_StateWatch at once); with none, try again next frame.
+ * frames (Mine_StateWatch from the next frame); with none, try again next frame.
  *
  * m: the mine. It is passed to Player_NearestLive as if it were an object. */
 #include "xmen2.h"

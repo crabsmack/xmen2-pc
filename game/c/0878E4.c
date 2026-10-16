@@ -1,6 +1,6 @@
 /* BroodBoss_StateScream - BROODBOSS state after the scream: frame 0; the body rises back 1 px a
  * frame (2 in two-player step mode) on its y offset, clearing g_BroodBossFlags bit 6, until the
- * offset is 0; then the next AI-script step at once.
+ * offset is 0; then the next AI-script step on the next update.
  *
  * self: the boss. Returns flags & 8 while it rises, nothing after. */
 #include "xmen2.h"

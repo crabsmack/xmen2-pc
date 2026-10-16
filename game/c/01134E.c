@@ -1,7 +1,7 @@
 /* BigAcolyte_ActStartFight - BIGACOLYTE script action (last step of the intro, and of the fight
  * script, which so restarts): stop sound $34, switch to the fight script
  * (Tbl_BigAcolyteFightScript: BigAcolyte_FightScript, 20 steps of the Rise/Go/Wait actions,
- * the last one this action again) and start it at its first step now.
+ * the last one this action again) and start it at its first step on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

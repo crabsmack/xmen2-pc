@@ -1,4 +1,4 @@
-/* BabyBio_ActDropFlame - BABYBIO AI-script action: kill its flame, next step now.
+/* BabyBio_ActDropFlame - BABYBIO AI-script action: kill its flame, next step on the next update.
  *
  * self: the object. */
 #include "xmen2.h"

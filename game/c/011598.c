@@ -1,5 +1,6 @@
 /* BigAcolyte_ActRise2 - BIGACOLYTE fight script action: go to the middle height (level 2, y $3B2)
- * and shoot there (BigAcolyte_StateWaitYShoot); already at level 2: shoot now.
+ * and shoot there (BigAcolyte_StateWaitYShoot); already at level 2: shoot from the next update
+ * (BigAcolyte_StateShootAnim).
  *
  * self: the boss (never runs in the corpus). Returns self->flags & 8. */
 #include "xmen2.h"

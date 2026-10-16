@@ -1,5 +1,5 @@
 /* XClone_ActStandAnim - XCLONE script action: switch to the clone record's standing animation and
- * go on with the script now.
+ * go on with the script on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

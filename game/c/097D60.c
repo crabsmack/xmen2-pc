@@ -1,5 +1,5 @@
 /* XClone_ActMainScript - XCLONE script action: restart the clone record's main script from its
- * first step, now.
+ * first step, on the next update.
  *
  * self: the clone (a step of its AI script).
  * The scripts of the EVIL* clone records (ROM data: a step count, then jmp thunks to the

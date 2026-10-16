@@ -1,5 +1,5 @@
 /* SavageBio_StateDying - SAVAGEBIGBIO state: dying - switch to the death script at $0B7E2C
- * (SavageBio_Script1) and start it now.
+ * (SavageBio_Script1) and start it on the next update.
  *
  * self: the boss (set by SavageBigBio_TakeDamage when its health runs out).
  * Returns nothing in particular. */

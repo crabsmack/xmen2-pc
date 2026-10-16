@@ -1,7 +1,8 @@
 /* BanimazaDoor_TakeDamage - BANIMAZADOOR TakeDamage (class slot +$26; the parent's isn't called):
- * state update now, 20 frames of hit cooldown, remember the attacker and the hit point (x + 16,
- * halfway up the column), health -= damage. Still standing: look 2 (hit). Else: health 4 for
- * the next time, look 3 (shards), 200 frames of cooldown, state BanimazaDoor_Shatter.
+ * the state runs on the next update (delay 0), 20 frames of hit cooldown, remember the attacker and
+ * the hit point (x + 16, halfway up the column), health -= damage. Still standing: look 2 (hit).
+ * Else: health 4 for the next time, look 3 (shards), 200 frames of cooldown, state
+ * BanimazaDoor_Shatter.
  *
  * self: the door.  attacker: who hit it.  damage: health lost.  type, hx, hy: unused. */
 #include "xmen2.h"

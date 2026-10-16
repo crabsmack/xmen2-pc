@@ -14,7 +14,7 @@ void Psylocke_SetFrame(register Psylocke *self, register short frame)
 	void *oldDef;
 
 	oldDef = spr->def;
-	if (frame == 0xFF)
+	if (frame == 0xFF)	/* keeps none ($FF, >= 200) out of the banks; the store is the original's no-op */
 		frame = 0xFF;
 	else if (frame >= 200) {
 		frame = frame - 200;

@@ -1,5 +1,5 @@
 /* BabyBio_ActFacePlayer - BABYBIO AI-script action: stop, turn to the nearest player (its flame
- * too), next step now.
+ * too), next step on the next update.
  *
  * self: the object. */
 #include "xmen2.h"

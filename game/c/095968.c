@@ -1,8 +1,8 @@
 /* XClone_StateWaitChild - XCLONE state: wait until its BIOBALLS object is done
- * (BioBalls_IsDone), then go on with the script now.
+ * (BioBalls_IsDone), then go on with the script on the next update.
  *
  * self: the clone (state set by the actions that start a balls effect).
- * With no BIOBALLS object it goes on at once.
+ * With no BIOBALLS object it goes on without waiting.
  * Returns flags & 8 while waiting; nothing in particular when the script goes on. */
 #include "xmen2.h"
 

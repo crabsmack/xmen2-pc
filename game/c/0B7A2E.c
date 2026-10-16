@@ -1,6 +1,6 @@
 /* ChildShip_ActOverPlayer - CHILDSHIP script action (and its own state until done): fly at $100
  * (cruise y $F0, facing the way it flies) until its middle (4 px behind x by its facing) is
- * within 10 px of the nearest player's x; then it stops and the next step runs now.
+ * within 10 px of the nearest player's x; then it stops and the next step runs on the next update.
  *
  * self: the object (a step of its AI script; never runs in the corpus).
  * Returns self->flags & 8 while flying, no value once there. */

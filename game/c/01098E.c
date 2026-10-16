@@ -1,5 +1,5 @@
 /* BigAcolyte_ActAppear - BIGACOLYTE intro script action (step 2): appear in the wall as a small
- * scaled picture, then the next step of the script now.
+ * scaled picture, then the next step of the script on the next update.
  *
  * self: the boss.
  * Creates the wall's debris pool (36 pieces, floor at y $400) with its sprite definition

@@ -4,7 +4,7 @@
  *
  * self: EVILMAKER.
  * Returns self->flags & 8 while waiting; no value once the script starts. Step 0 of its script
- * is EvilMaker_ActKill: the maker removes itself at once. */
+ * is EvilMaker_ActKill: the maker removes itself on the next update, before any drop. */
 #include "xmen2.h"
 
 short EvilMaker_StateWaitKills(EvilMaker *self)

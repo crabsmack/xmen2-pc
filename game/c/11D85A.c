@@ -2,7 +2,7 @@
  * palette 1, stats Tbl_BabySentinelCStats (and their health), no frame shown ($FF, slot +$56),
  * and the AI script its variant picks (placement param 4): 1 Tbl_BabySentinelCAiScript, else
  * Tbl_BabySentinelC_Script2 (BabySentinelC_Script2: crawl, face the player, attach and drop
- * a flame...), from the first step now (no script: the default state).
+ * a flame...), from the first step on its first update (no script: the default state).
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on). */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* BabyBio_WaitCrawlLimit - BABYBIO state after BabyBio_ActCrawl: once the home x is on an end of
- * its range, the next step now.
+ * its range, the next step on the next update.
  *
  * self: the object. Returns flags & 8 while it waits (nothing in particular after). */
 #include "xmen2.h"

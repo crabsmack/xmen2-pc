@@ -1,5 +1,5 @@
 /* SavageMediumBio_ActFacePlayer - SAVAGEMEDIUMBIO script action: turn to face the nearest player,
- * go on with the script now.
+ * go on with the script on the next update.
  *
  * self: the object (a step of its AI script). Returns nothing in particular. Never runs in the
  * corpus. */

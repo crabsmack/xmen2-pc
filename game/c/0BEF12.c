@@ -50,6 +50,7 @@ void SporeMine_UpdatePool(void)
 					if (SCRIPT(s)->flags & 2)
 						s->anim = 0;
 				}
+				/* + 7: the step's frame byte, step[animStep].value (6-byte header, 2-byte steps) */
 				if (s->anim)
 					s->frame = *(s->anim + (s->animStep << 1) + 7);
 			} else

@@ -1,5 +1,6 @@
 /* FlyBrood_WaitSwoopDone - FLYBROOD state after FlyBrood_StateSwoopPatrol: once the swoop path
- * has ended, turn around (headingRight flips, it faces that way) and take the next step now.
+ * has ended, turn around (headingRight flips, it faces that way) and take the next step on the next
+ * update.
  *
  * self: the object. Returns flags & 8 while it waits (nothing in particular after).
  * Never runs in the corpus. */

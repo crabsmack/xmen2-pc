@@ -1,5 +1,6 @@
 /* ShootAcolyte_StateNextShot - SHOOTACOLYTE state: after a shot, aim again (ShootAcolyte_StateAim)
- * in shotDelay frames while shots are left; after the last, the next script step at once.
+ * in shotDelay frames while shots are left; after the last, the next script step on the next
+ * update.
  *
  * self: the object.
  * shotDelay -1 aims again at once (a nested call, whose result it returns). Returns flags bit 3

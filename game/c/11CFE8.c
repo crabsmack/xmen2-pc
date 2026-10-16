@@ -1,7 +1,7 @@
 /* BabyBio_ActWalkUntilPlayerAhead - BABYBIO state after BabyBio_ActStartWalk: walk on until the
  * nearest player is ahead (the way it faces) and within 128 px in x of the home position: then
- * the next step now. At an end of its range it goes back to the current step (the script's
- * walk starts again the other way).
+ * the next step on the next update. At an end of its range it goes back to the current step (the
+ * script's walk starts again the other way).
  *
  * self: the object. Returns flags & 8 while it walks on (nothing in particular otherwise). */
 #include "xmen2.h"

@@ -1,5 +1,5 @@
 /* BroodBoss_ActStop - BROODBOSS AI-script action: stop the claw (no speed, mode 0, no motion) and
- * the little leg, next step at once.
+ * the little leg, next step on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

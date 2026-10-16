@@ -1,5 +1,5 @@
 /* BroodBoss_StateMakeUnhittable - BROODBOSS state: unhittable (flags6 bit 1, out of the enemy body
- * hit list), next AI-script step at once.
+ * hit list), next AI-script step on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

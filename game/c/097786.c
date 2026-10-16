@@ -1,5 +1,6 @@
 /* XClone_ActAnim3C - XCLONE script action: play the character's down-attack animation to its end
- * ($FF: the animation's end goes on with the script); a character without one goes on now.
+ * ($FF: the animation's end goes on with the script); a character without one takes the next step
+ * on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

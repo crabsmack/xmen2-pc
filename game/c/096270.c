@@ -1,5 +1,6 @@
 /* XClone_StateEmerge - XCLONE entrance: once the pod is done, remove it; the clone becomes
- * hittable (enemy body hit list), stands and starts its script from the first step, now.
+ * hittable (enemy body hit list), stands and starts its script from the first step, on the next
+ * update.
  *
  * self: the clone (after XClone_StatePodWaitOpen, or XClone_StateDropPod without a pod).
  * Returns flags & 8 while waiting; nothing in particular when the script starts. */

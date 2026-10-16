@@ -1,5 +1,5 @@
 /* Tank_Init - TANK constructor (class slot +$12): the parent's (XNPC) Init, then a tank standing
- * at its placement, starting its AI script Tbl_Tank_ScriptWaitDrive at once.
+ * at its placement, starting its AI script Tbl_Tank_ScriptWaitDrive from its first update.
  *
  * self: the new object.  x, y: position (8 fraction bits; the pixel position is the placement's).
  * pl: its placement entry (never null).

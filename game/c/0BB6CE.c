@@ -1,4 +1,4 @@
-/* SavageBio_StateNextStep - SAVAGEBIGBIO state: go on with the script now.
+/* SavageBio_StateNextStep - SAVAGEBIGBIO state: go on with the script on the next update.
  *
  * self: the boss (after SavageBio_StateRetract).
  * Returns nothing in particular. */

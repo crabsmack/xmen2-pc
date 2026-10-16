@@ -1,6 +1,6 @@
 /* EvilMaker_ActDropNightcrawler - EVILMAKER AI script step: drop a capsule holding clone type 5
  * (EVILNIGHTCRAWLER) at its position (EvilDrop_Spawn from a placement entry with param 0 = 5), then
- * the next step at once.
+ * the next step on the next update.
  *
  * self: EVILMAKER. Never runs in the corpus (the script's step 0 removes the maker first).
  * EvilDrop_Spawn is also given Tbl_EvilNightcrawlerBallPath, which it doesn't use. */

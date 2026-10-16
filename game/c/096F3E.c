@@ -1,7 +1,7 @@
 /* XClone_ActChildLeap - XCLONE script action: the balls form remembers where it is (px/py, for
  * XClone_StateChildReturn) and leaps at the nearest player and down to the arena floor: stopped,
  * then accelerated by 7/512 of the distance each frame (XClone_StateChildLeap). With no BIOBALLS
- * object go on with the script now.
+ * object go on with the script on the next update.
  *
  * self: the clone (a step of its AI script; never runs in the corpus).
  * Returns flags & 8 when leaping; nothing in particular otherwise. */

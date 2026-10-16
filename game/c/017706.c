@@ -47,7 +47,7 @@ void FarAcolyte_Move(register FarAcolyte *self, short steps)
 	else if (((long)self->px << 8) < self->homeX)
 		self->spr.flags |= 0x10;
 	do {
-		if (self->hover->dx >= 0x6400)
+		if (self->hover->dx >= 0x6400)	/* end marker (100 px): from the start */
 			self->hover = (HoverStep *)CODEPTR(Tbl_CapedAcolyteHoverOffsets);
 		self->x += self->hover->dx;
 		self->y += self->hover->dy;

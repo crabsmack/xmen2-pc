@@ -1,4 +1,5 @@
-/* XClone_ActSoundEF - XCLONE script action: play sound $EF, go on with the script now.
+/* XClone_ActSoundEF - XCLONE script action: play sound $EF, go on with the script on the next
+ * update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

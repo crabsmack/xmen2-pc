@@ -1,5 +1,6 @@
 /* Apocalypse_StateWaitEntrance - APOCALYPSE state: once its entrance move has arrived, stop
- * sound $79 and all motion, set the circling angle to 180 and go on with the AI script now.
+ * sound $79 and all motion, set the circling angle to 180 and go on with the AI script on the next
+ * update.
  *
  * self: the boss. */
 #include "xmen2.h"

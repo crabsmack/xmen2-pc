@@ -1,5 +1,6 @@
 /* Wolverine_LeapSlashEnd - after a leaping slash (Wolverine_GroundSpecial, Wolverine_StateLunge):
- * unlatch A; XPlayer_AttackRecover follows when the animation ends (at once when it has).
+ * unlatch A; XPlayer_AttackRecover follows when the animation ends (on the next update when it
+ * has).
  *
  * self: the player.
  * The delay is $FF while the animation plays (its end clears it), else 0. */

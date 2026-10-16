@@ -1,7 +1,7 @@
 /* EvilMagneto_StateBlast - EVILMAGNETO state after EvilMagneto_ActBlast's wind-up: fire a magnetic
  * globe in direction shotDir (Magneto_SpawnShot as an enemy: not crouching, not in the air, the
  * clone's sprite priority; sound $83 when none could be made), then play the shot's end animation
- * (Magneto_ShotEndAnim) and go on with the AI script at its end, or at once without one.
+ * (Magneto_ShotEndAnim) and go on with the AI script at its end, or on the next update without one.
  *
  * self: the clone (never runs in the corpus).
  * A bug: the call passes 7 arguments to Magneto_SpawnShot's 8; its last, tiles, is whatever the

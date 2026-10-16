@@ -1,5 +1,5 @@
 /* CoreElevator_SendDown - send the lift down to stay (HOLOGRAM): CoreElevator_StartDown becomes
- * its state and default state, trips 0 (it stays at the bottom), at once.
+ * its state and default state, trips 0 (it stays at the bottom), from its next update (delay 0).
  *
  * self: the lift. */
 #include "xmen2.h"

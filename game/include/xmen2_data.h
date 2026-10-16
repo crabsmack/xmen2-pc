@@ -272,7 +272,7 @@ extern void Tbl_CheatCodeSceneSkip();
 extern void Tbl_CheatCodeFriendlyFire();
 extern void Tbl_CheatCodeStageSkip();
 extern void Tbl_CheatCodeInvincible();
-extern void Art_FailureNem();
+extern void Map_GameOver();
 extern void Art_GameOver();
 extern void Art_CerebroFont();
 extern void Art_CerebroNem5();
@@ -1463,7 +1463,7 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_CheatCodeFriendlyFire (xm::rom(0x063C06))
 #define Tbl_CheatCodeStageSkip (xm::rom(0x063C10))
 #define Tbl_CheatCodeInvincible (xm::rom(0x063C18))
-#define Art_FailureNem (xm::rom(0x063C22))
+#define Map_GameOver (xm::rom(0x063C22))
 #define Art_GameOver (xm::rom(0x063C5A))
 #define Art_CerebroFont (xm::rom(0x063D7C))
 #define Art_CerebroNem5 (xm::rom(0x064076))

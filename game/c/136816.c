@@ -15,7 +15,7 @@ void Hornet_MoveWaitThenFlyOff(Hornet *self)
 			Hornet_StepCirclePath(self);
 	} while (--n);
 	if (!self->countdown) {
-		short px = self->x >> 8;
+		short px = self->x >> 8;	/* never read: the original's dead load (kept) */
 		short vx = 0x500;
 		short vy = -0x500;
 

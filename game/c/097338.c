@@ -1,5 +1,5 @@
 /* XClone_ActBallsMotionC - XCLONE script action: all the balls on ball 0, in a turning double helix
- * (BioBalls_MotionHelix, spacing $900, speed 10); go on with the script now.
+ * (BioBalls_MotionHelix, spacing $900, speed 10); go on with the script on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

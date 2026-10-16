@@ -1,6 +1,6 @@
-/* Mine_StateWatch - mine handler: arm (Mine_StateArm1 at once) when the mine is within 80 px (x) /
- * 40 px (y) of its target's body box; else, once the watch time has run out, pick a target again
- * (Mine_StatePickTarget).
+/* Mine_StateWatch - mine handler: arm (Mine_StateArm1 from the next frame) when the mine is within
+ * 80 px (x) / 40 px (y) of its target's body box; else, once the watch time has run out, pick a
+ * target again (Mine_StatePickTarget).
  *
  * m: the mine (target set by Mine_StatePickTarget). */
 #include "xmen2.h"

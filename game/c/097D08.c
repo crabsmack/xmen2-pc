@@ -1,5 +1,5 @@
 /* XClone_ActWalkStep - XCLONE script action: walk one frame (XClone_WalkStep), go on with the
- * script now.
+ * script on the next update.
  *
  * self: the clone (a step of its AI script). */
 #include "xmen2.h"

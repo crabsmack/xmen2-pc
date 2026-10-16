@@ -1,5 +1,5 @@
 /* BroodBoss_StateAfterBomb - BROODBOSS state after either bomb drop: hold frame 5, next AI-script
- * step at once.
+ * step on the next update.
  *
  * self: the boss. */
 #include "xmen2.h"

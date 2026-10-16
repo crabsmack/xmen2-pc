@@ -1,5 +1,6 @@
 /* BabyBio_ActAttachFlame - BABYBIO AI-script action: replace its flame by a new BIOFLAME that
- * follows it 15 px ahead and 28 px up, facing its way with its sprite priority; next step now.
+ * follows it 15 px ahead and 28 px up, facing its way with its sprite priority; next step on the
+ * next update.
  *
  * self: the object. */
 #include "xmen2.h"
