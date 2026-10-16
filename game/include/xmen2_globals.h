@@ -45,7 +45,7 @@ extern s16 g_FarAcolyteSprDef2;
 #else
 #define g_FarAcolyteSprDef2 XM_G(s16, 0xFFC52C)
 #endif
-/* $FFC52E word: sprite-definition slot of the data at jt[149] (labelled Lvl_YoyoAcolyteSegs) (YoyoAcolyte_ClassInit via SprDef_Add; YoyoAcolyte_Draw) */
+/* $FFC52E word: sprite-definition slot of Art_YoyoAcolyteSpr2 (the yoyo, jt[149]) (YoyoAcolyte_ClassInit via SprDef_Add; YoyoAcolyte_Draw) */
 #ifdef XMEN2_MPW
 extern s16 g_YoyoAcolyteSprDef2;
 #else
@@ -137,9 +137,9 @@ extern s16 g_BmA1SwitchTimer;
 #endif
 /* $FFC56E word: animation frame of BaniMazaA1 block group 2 (BaniMazaA1_AnimateBlocks) */
 #ifdef XMEN2_MPW
-extern s16 g_BmA1BlockFrame2;
+extern u16 g_BmA1BlockFrame2;
 #else
-#define g_BmA1BlockFrame2 XM_G(s16, 0xFFC56E)
+#define g_BmA1BlockFrame2 XM_G(u16, 0xFFC56E)
 #endif
 /* $FFC570 word: step timer of BaniMazaA1 block group 2 (BaniMazaA1_AnimateBlocks; InitSprites starts it at 4) */
 #ifdef XMEN2_MPW
@@ -149,9 +149,9 @@ extern s16 g_BmA1BlockTimer2;
 #endif
 /* $FFC572 word: animation frame of BaniMazaA1 block group 1 (BaniMazaA1_AnimateBlocks) */
 #ifdef XMEN2_MPW
-extern s16 g_BmA1BlockFrame1;
+extern u16 g_BmA1BlockFrame1;
 #else
-#define g_BmA1BlockFrame1 XM_G(s16, 0xFFC572)
+#define g_BmA1BlockFrame1 XM_G(u16, 0xFFC572)
 #endif
 /* $FFC574 word: step timer of BaniMazaA1 block group 1 (BaniMazaA1_AnimateBlocks; InitSprites starts it at 2) */
 #ifdef XMEN2_MPW
@@ -161,9 +161,9 @@ extern s16 g_BmA1BlockTimer1;
 #endif
 /* $FFC576 word: animation frame of BaniMazaA1 block group 0 (8 frames; BaniMazaA1_AnimateBlocks) */
 #ifdef XMEN2_MPW
-extern s16 g_BmA1BlockFrame0;
+extern u16 g_BmA1BlockFrame0;
 #else
-#define g_BmA1BlockFrame0 XM_G(s16, 0xFFC576)
+#define g_BmA1BlockFrame0 XM_G(u16, 0xFFC576)
 #endif
 /* $FFC578 word: frames until BaniMazaA1 animated block group 0 steps (6; BaniMazaA1_AnimateBlocks, BaniMazaA1_InitSprites) */
 #ifdef XMEN2_MPW
@@ -191,9 +191,9 @@ extern s16 g_DiscHurtCooldown;
 #endif
 /* $FFC582 ptr: rolling-disc band records, $14 bytes each (RollingDiscs_ClassInit; UpdateScroll, ReverseAtY; RollingDiscs_Init keeps it in +$8C) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_DiscBands;
+extern PTR(DiscBand) g_DiscBands;
 #else
-#define g_DiscBands XM_G(PTR(void), 0xFFC582)
+#define g_DiscBands XM_G(PTR(DiscBand), 0xFFC582)
 #endif
 /* $FFC586 word: number of rolling-disc bands (RollingDiscs_ClassInit from the level list; RollingDiscs_UpdateScroll, RollingDiscs_ReverseAtY) */
 #ifdef XMEN2_MPW
@@ -609,17 +609,17 @@ extern s16 g_HornetWaveTimer;
 #else
 #define g_HornetWaveTimer XM_G(s16, 0xFFC642)
 #endif
-/* $FFC644 byte: P1 character 0 Beast 1 Cyclops 2 Gambit 3 Nightcrawler 4 Psylocke 5 Wolverine 6 Magneto, $FF = not playing (Player_CharIndexOf; TAS RAM vs screenshots) */
+/* $FFC644 byte: P1 character 0 Beast 1 Cyclops 2 Gambit 3 Nightcrawler 4 Psylocke 5 Wolverine 6 Magneto, -1 = not playing (Player_CharIndexOf; TAS RAM vs screenshots); signed: Game_Init stores -1 as move.b #$FFFF */
 #ifdef XMEN2_MPW
-extern u8 g_P1CharIndex;
+extern s8 g_P1CharIndex;
 #else
-#define g_P1CharIndex XM_G(u8, 0xFFC644)
+#define g_P1CharIndex XM_G(s8, 0xFFC644)
 #endif
-/* $FFC645 byte: P2 character index (same encoding as g_P1CharIndex), $FF = not playing */
+/* $FFC645 byte: P2 character index (same encoding as g_P1CharIndex), -1 = not playing */
 #ifdef XMEN2_MPW
-extern u8 g_P2CharIndex;
+extern s8 g_P2CharIndex;
 #else
-#define g_P2CharIndex XM_G(u8, 0xFFC645)
+#define g_P2CharIndex XM_G(s8, 0xFFC645)
 #endif
 /* $FFC646 byte: SiberiaB1 opening phase of a new game: set by SiberiaB1_PreLoad, cleared when P1 passes x $360 or the stage music starts (SiberiaB1_FrameHook; Level_Load clears); Player1/2_StartLife and Level_FrameLoop handle a joining player differently while set */
 #ifdef XMEN2_MPW
@@ -1143,6 +1143,12 @@ extern u8 g_SceneVar3B02[];
 #else
 #define g_SceneVar3B02 XM_GA(u8, 0xFFC6FE)
 #endif
+/* $FFC700 word: 0 at Game_SceneLoop's start; nothing else reaches it A5-relative. Not yet named in the disassembly (-$3B00) */
+#ifdef XMEN2_MPW
+extern s16 g_Unk3B00;
+#else
+#define g_Unk3B00 XM_G(s16, 0xFFC700)
+#endif
 /* $FFC702 ptr: object plane B is locked to when g_BgLockToObj is set; MagnetoBoss_Init stores itself (ThronePhone_StateInit reads it as the boss) */
 #ifdef XMEN2_MPW
 extern PTR(void) g_BgLockObj;
@@ -1515,6 +1521,12 @@ extern PTR(ParallaxDesc) g_ParallaxDesc;
 #else
 #define g_ParallaxDesc XM_G(PTR(ParallaxDesc), 0xFFC7BC)
 #endif
+/* $FFC7C0 7 bytes: the button mask of actions 0-6 in the control layout (Game_Main fills them from Pad_ConfigButtonMask). Not yet named in the disassembly (-$3A40) */
+#ifdef XMEN2_MPW
+extern s8 g_ActionButtonMasks[7];
+#else
+#define g_ActionButtonMasks XM_GA(s8, 0xFFC7C0)
+#endif
 /* $FFC7C8 word: P2 buttons held this frame (Pad_Update) */
 #ifdef XMEN2_MPW
 extern s16 g_Pad2Held;
@@ -1713,6 +1725,12 @@ extern u8 g_LevelFreeze;
 #else
 #define g_LevelFreeze XM_G(u8, 0xFFC91C)
 #endif
+/* $FFC91E byte: the g_PlayersAlive the HUD was drawn for: HUD_UpdateHealthBars redraws both panels (HUD_Redraw) when it changes. Not yet named in the disassembly (-$38E2) */
+#ifdef XMEN2_MPW
+extern u8 g_HudPlayersAlive;
+#else
+#define g_HudPlayersAlive XM_G(u8, 0xFFC91E)
+#endif
 /* $FFC920 byte: number of present+alive players, recounted every frame by Level_FrameLoop (camera switches 1P/2P tracking on it) */
 #ifdef XMEN2_MPW
 extern u8 g_PlayersAlive;
@@ -1820,6 +1838,18 @@ extern u8 g_HudOn;
 extern u8 g_HudDirty;
 #else
 #define g_HudDirty XM_G(u8, 0xFFC94E)
+#endif
+/* $FFC950 long: 0 at Game_SceneLoop's start; nothing else reaches it A5-relative. Not yet named in the disassembly (-$38B0) */
+#ifdef XMEN2_MPW
+extern s32 g_Unk38B0;
+#else
+#define g_Unk38B0 XM_G(s32, 0xFFC950)
+#endif
+/* $FFC954 word: 3 at Game_SceneLoop's start (next to the lives words); nothing else reaches it A5-relative. Not yet named in the disassembly (-$38AC) */
+#ifdef XMEN2_MPW
+extern s16 g_Unk38AC;
+#else
+#define g_Unk38AC XM_G(s16, 0xFFC954)
 #endif
 /* $FFC956 word: player 2 lives (9 at new game; decremented on each new life) */
 #ifdef XMEN2_MPW
@@ -2448,9 +2478,9 @@ extern PTR(WallGunBullet) g_TechWallGunRecs;
 #endif
 /* $FFE798 sprite instance (object +$2E layout) shared by FLUXBOMB: Spr_Init by Scene_AllocCommonVram, frame set by FluxBomb_SetFrame, drawn by FluxBomb_Draw; +6/+8 give the particle tiles */
 #ifdef XMEN2_MPW
-extern u8 g_FluxBombSpr[];
+extern SprInst g_FluxBombSpr;
 #else
-#define g_FluxBombSpr XM_GA(u8, 0xFFE798)
+#define g_FluxBombSpr XM_G(SprInst, 0xFFE798)
 #endif
 /* $FFE954 byte: non-zero = Snd_Play/Stop/etc. send nothing (set while demos play, Game_PlayAttractDemo, and around some init calls) */
 #ifdef XMEN2_MPW
@@ -2712,9 +2742,9 @@ extern u8 g_SceneCount;
 #endif
 /* $FFF3AE 8-byte entries {+0 name string, +4 scene function}, filled by Scene_Register (scene register) */
 #ifdef XMEN2_MPW
-extern u8 g_SceneTable[];
+extern SceneEntry g_SceneTable[52];
 #else
-#define g_SceneTable XM_GA(u8, 0xFFF3AE)
+#define g_SceneTable XM_GA(SceneEntry, 0xFFF3AE)
 #endif
 /* $FFF54E ptr: BG map blob passed to Level_Load (3rd argument); RollingDiscs_ClassInit and SavageJungle_InitPalPhases read a per-level list at the offset in its word +$12 */
 #ifdef XMEN2_MPW

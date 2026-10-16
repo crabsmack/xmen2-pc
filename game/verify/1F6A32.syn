@@ -1,0 +1,27 @@
+# Player_NearestLive: the corpus only calls it with player 2 out of play. These cases take the
+# other paths: player 1 out and player 2 in play (returns player 2); both in play with player 1
+# right of and below the object and player 2 left of and above it (each |dx|, |dy| both signs),
+# player 1 nearer; the same with the players swapped, player 2 nearer. The `return 0` after the
+# second test of player 1 ($1F6AB6-$1F6AB8) can't run: player 1 was found alive just before.
+# Player flags: g_Player1 +4 = $FFEAAC, g_Player2 +4 = $FFE9BC; positions +8/+$C (8 fraction bits).
+case p2_only
+w $FFEAAC = $0000
+w $FFE9BC = $8000
+case both_p1_nearer
+w $FFEAAC = $8000
+w $FFE9BC = $8000
+l arg0+8 = $10000
+l arg0+$C = $10000
+l $FFEAB0 = $14000
+l $FFEAB4 = $12000
+l $FFE9C0 = $8000
+l $FFE9C4 = $8000
+case both_p2_nearer
+w $FFEAAC = $8000
+w $FFE9BC = $8000
+l arg0+8 = $10000
+l arg0+$C = $10000
+l $FFEAB0 = $8000
+l $FFEAB4 = $8000
+l $FFE9C0 = $14000
+l $FFE9C4 = $12000

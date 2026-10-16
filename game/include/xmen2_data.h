@@ -115,7 +115,7 @@ extern void Tbl_YoyoAcolyteScriptMixALen();
 extern void Tbl_YoyoAcolyte_ScriptMixBLen();
 extern void Tbl_YoyoAcolyteStats();
 extern void Art_YoyoAcolyteSpr();
-extern void Lvl_YoyoAcolyteSegs();
+extern void Art_YoyoAcolyteSpr2();
 extern void Lvl_AvalonB2Segs();
 extern void Map_AvalonB2Eni();
 extern void Map_AvalonB2Eni2();
@@ -133,7 +133,7 @@ extern void Art_ZapperSpr();
 extern void Tbl_Zapper_vtable();
 extern void Tbl_ZapperAnim();
 extern void Tbl_ZapperAnim2();
-extern void Lvl_ZapperSegs();
+extern void Tbl_ZapperAnim3();
 extern void Lvl_AvalonA3Segs2();
 extern void Lvl_AvalonA3Map();
 extern void Lvl_AvalonA3Map2();
@@ -1306,7 +1306,7 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_YoyoAcolyte_ScriptMixBLen (xm::rom(0x01CA86))
 #define Tbl_YoyoAcolyteStats (xm::rom(0x01CAA0))
 #define Art_YoyoAcolyteSpr (xm::rom(0x01CAA8))
-#define Lvl_YoyoAcolyteSegs (xm::rom(0x01F21C))
+#define Art_YoyoAcolyteSpr2 (xm::rom(0x01F21C))
 #define Lvl_AvalonB2Segs (xm::rom(0x01F59E))
 #define Map_AvalonB2Eni (xm::rom(0x01F83E))
 #define Map_AvalonB2Eni2 (xm::rom(0x021A8C))
@@ -1324,7 +1324,7 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_Zapper_vtable (xm::rom(0x0273F4))
 #define Tbl_ZapperAnim (xm::rom(0x02746A))
 #define Tbl_ZapperAnim2 (xm::rom(0x027474))
-#define Lvl_ZapperSegs (xm::rom(0x02747E))
+#define Tbl_ZapperAnim3 (xm::rom(0x02747E))
 #define Lvl_AvalonA3Segs2 (xm::rom(0x027488))
 #define Lvl_AvalonA3Map (xm::rom(0x027524))
 #define Lvl_AvalonA3Map2 (xm::rom(0x027720))

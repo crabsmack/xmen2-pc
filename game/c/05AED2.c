@@ -44,7 +44,7 @@ void Boulder_SpawnerTick(long yLimit)
 		}
 		pl.param[0] = 0;
 		(*CLASS(Tbl_Boulder_vtable)->method[2])(0, CLASS(Tbl_Boulder_vtable), x, top << 8, &pl);	/* New */
-		Seq_NextWrap(CODEPTR(Tbl_BoulderSpawnDelays), &g_BoulderSeqIndex, &g_BoulderDelay);
+		Seq_NextWrap((s16 *)CODEPTR(Tbl_BoulderSpawnDelays), &g_BoulderSeqIndex, &g_BoulderDelay);
 	} else {
 		g_BoulderDelay--;
 		if (g_TwoPlayerStep)

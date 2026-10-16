@@ -266,6 +266,13 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
   it, so its `uncovered` stays 1 and D4 can't count it verified as defined. Options: count
   statically unreachable instructions (shown so, listed in the phase doc) as covered, or leave
   the function short of done. Collected here until the end of D4 with any others like it.
+- **A callee's own argument slots (for the user, D4 `verify`):** Spr_EmitPre, Spr_EmitPreClip and
+  Spr_EmitPreLinked (hand-written 68000 in MPW frames) store a computed value into their own
+  argument slot (`move.w d7,$16(a6)`), MPW's storage for a by-value parameter the caller pops
+  unread. verify compares RAM from the returned A7 up, which includes those slots, so their C
+  (which updates its parameter on the host) can never pass. Options: treat the callee's
+  argument slots as dead stack like the area below A7 (a change to the comparison P4-decomp.md
+  defines), or hand-written `conv` adapters that write the slots back.
 - (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
   and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
 - MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe

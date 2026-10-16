@@ -280,6 +280,14 @@ FNTYPE(SegObjFn, void);
 FNTYPE(ObjChildFn, void);
 /* The per-frame callback the intro sequences run while they wait (Intro_WaitFrame). */
 FNTYPE(IntroFrameFn, void);
+/* A scene: a Cerebro screen or a stage part, run until it ends (Scene_RegisterAll registers 49;
+   g_SceneTable, Game_SceneLoop). */
+FNTYPE(SceneFn, void);
+typedef struct SceneEntry {
+	PTR(char) name;			/* +$00 C string ("AvalonB1 Exterior") */
+	SceneFn run;			/* +$04 its function (AvalonB1_RunScene) */
+} SceneEntry;
+CHECK_SIZE(SceneEntry, 8);
 
 /* ACTOR: descriptor $1F49A6, root, $8C bytes (GetSize $15D92C). Every game object.
    Fields: xmen2disasm NOTES "Game object layout", "ACTOR object fields". */
@@ -737,6 +745,52 @@ typedef struct ScaleParams {
 } ScaleParams;
 CHECK_SIZE(ScaleParams, 0x26);
 
+/* A big sprite ($42 bytes, a stack local of its owner): a picture the scaler draws at any size
+   into a run of VRAM tiles, shown as hardware sprites (Cerebro_BigSpriteInit/_Decode/_Draw;
+   Cerebro_PlayIntro has one). The player select keeps one per player on PlayerSelect_Run's
+   stack (g_SceneVar3B28 player 1, g_SceneVar3B2C player 2): the character's portrait flying
+   between the player's spot and the portrait frames (SCALINGACTOR, PortraitActor_* states),
+   the cursor (BOXINPUTACTOR, CursorInput_*) and the choice, from +$32. */
+typedef struct BigSprite {
+	PTR(ScaleParams) params;	/* +$00 the scaler's parameters (g_ScaleParamsPtr) */
+	PTR(ScalePicture) pic;		/* +$04 the picture (a bitmap from Spr_RenderToBitmap) */
+	s16 tiles;			/* +$08 VRAM tiles of its buffer */
+	s16 tileBase;			/* +$0A its first VRAM tile */
+	s16 unk_0C;			/* +$0C Scaler_EmitSprites's third argument (1) */
+	s32 x;				/* +$0E screen position, 16 fraction bits (Scaler_EmitSprites) */
+	s32 y;				/* +$12 */
+	s32 w;				/* +$16 scaled size, 16 fraction bits (its params' outW/outH) */
+	s32 h;				/* +$1A */
+	s32 vx;				/* +$1E per-frame steps of x, y, w, h (a flight) */
+	s32 vy;				/* +$22 */
+	s32 vw;				/* +$26 */
+	s32 vh;				/* +$2A */
+	s16 timer;			/* +$2E frames before the portrait flies back in (30 after a change) */
+	u8 sprFlags;			/* +$30 Scaler_EmitSprites's flags */
+	u8 uploaded;			/* +$31 its tiles are in VRAM (Cerebro_BigSpriteDraw uploads them when clear) */
+	u8 big;				/* +$32 shown as the big sprite (ScalingActor_Draw), else as the character's own sprite */
+	u8 changing;			/* +$33 another character was asked for (savedChar) */
+	u8 busy;			/* +$34 an input or a fly-in is being carried out: no slot takes input meanwhile */
+	u8 hidden;			/* +$35 no portrait shown (between the flights) */
+	s16 cursorX;			/* +$36 screen position of the portrait frame of its character (PlayerSelect_PlaceCursor; -200 none) */
+	s16 cursorY;			/* +$38 */
+	s16 moveDelay;			/* +$3A frames before the cursor may move again while hidden (10) */
+	s8 charIndex;			/* +$3C its character (0 Beast ... 6 Magneto; -1 none) */
+	s8 savedChar;			/* +$3D the character asked for / to go back to (PlayerSelect_RevertCursor) */
+	u8 frameSpr;			/* +$3E its cursor box (PlayerSelect_DrawFrame index: 7 player 1, 8 player 2) */
+	u8 player;			/* +$3F 1 or 2 */
+	u8 confirmed;			/* +$40 the choice is made (Start; CursorInput_Confirm) */
+	u8 unk_41;			/* +$41 */
+} BigSprite;
+CHECK_SIZE(BigSprite, 0x42);
+
+/* The screen position of a character's portrait frame on the player select (ROM tables
+   Tbl_PlayerSelectSlots6/7: a count byte and a pad byte, then one per character). */
+typedef struct SelectPos {
+	u8 x;				/* +$00 pixels */
+	u8 y;				/* +$01 */
+} SelectPos;
+
 /* The scaler's row loop registers (Scaler_RowBlocks; Scaler_BeginPass, Scaler_Resume): the
    hand-written 68000 runs the loop in all of d0-d7/a0-a4, and a yielded pass keeps them in
    g_ScalerRegSave in this order (movem). Bits the loop never uses (pix and pix2 above their low
@@ -1008,7 +1062,7 @@ CHECK_SIZE(BoulderDebris, 0x14);
 /* BOXINPUTACTOR: descriptor $06A0D8, parent ACTOR, $90 bytes (GetSize $067D6C) */
 #define BOXINPUTACTOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x4];		/* +$8C */
+	PTR(BigSprite) slot;		/* +$8C its player's select slot (Init's 4th argument; the CursorInput_* states) */
 typedef struct BoxInputActor { BOXINPUTACTOR_FIELDS } BoxInputActor;
 CHECK_SIZE(BoxInputActor, 0x90);
 
@@ -1625,10 +1679,14 @@ CHECK_SIZE(EvilWolverine, 0xBA);
 typedef struct Exodus { EXODUS_FIELDS } Exodus;
 CHECK_SIZE(Exodus, 0xAE);
 
-/* EXODUSBLAST: descriptor $02E566, parent XNPC, $9A bytes (GetSize $02DF96) */
+/* EXODUSBLAST: descriptor $02E566, parent XNPC, $9A bytes (GetSize $02DF96). EXODUS's
+   projectile (ExodusBlast_Spawn): flies by kind, with up to 4 trail copies behind it. */
 #define EXODUSBLAST_FIELDS \
 	XNPC_FIELDS \
-	u8 unk_94[0x6];		/* +$94 */
+	s16 trailDx;			/* +$94 trail step, pixels: each trail copy is drawn this far from the last (against the flight; ExodusBlast_Draw) */ \
+	s16 trailDy;			/* +$96 */ \
+	u8 kind;			/* +$98 1 right, 2 down-left, 3 down-right, 4 down, 5/6 swoop drops, 7 left; 0 none (dead: not drawn) */ \
+	u8 unk_99;			/* +$99 (0, Init) */
 typedef struct ExodusBlast { EXODUSBLAST_FIELDS } ExodusBlast;
 CHECK_SIZE(ExodusBlast, 0x9A);
 
@@ -1986,12 +2044,34 @@ CHECK_SIZE(LightBeam, 0xA0);
 typedef struct LineSegKiller { LINESEGKILLER_FIELDS } LineSegKiller;
 CHECK_SIZE(LineSegKiller, 0x92);
 
-/* LITTLELEG: descriptor $088C1C, root, $68 bytes (GetSize $085BDE) */
+/* One of LITTLELEG's three sprites with its own animation ($1C bytes; LittleLeg_SetWalking starts
+   it, LittleLeg_Update steps it as ICandy_Update does). */
+typedef struct LegSprite {
+	PTR(u8) anim;			/* +$00 animation script, an AnimScript read as bytes (step i's frame at +7 + 2i); 0 = none (a one-shot ended) */
+	s16 time;			/* +$04 frames into the step (+1 per frame, 2 in two-player stepping) */
+	s16 step;			/* +$06 animation step */
+	SprInst spr;			/* +$08 */
+} LegSprite;
+CHECK_SIZE(LegSprite, 0x1C);
+
+/* LITTLELEG: descriptor $088C1C, root, $68 bytes (GetSize $085BDE). BROODBOSS's little leg: three
+   animated sprites at a fixed place under the body, moved with the boss offsets; not an ACTOR
+   (its own timer and draw-list entry: LittleLeg_New). */
 #define LITTLELEG_FIELDS \
 	PTR(Class) cls;			/* +$00 class descriptor */ \
-	u8 unk_04[0x64];		/* +$04 */
+	s16 px;				/* +$04 position drawn, pixels: x/y minus the boss offsets (LittleLeg_Update) */ \
+	s16 py;				/* +$06 */ \
+	s16 x;				/* +$08 home position, pixels (LittleLeg_New) */ \
+	s16 y;				/* +$0A */ \
+	u8 walking;			/* +$0C non-zero: walking (BroodBoss passes 1 forward, 2 back: the same animations), 0 still */ \
+	u8 unk_0D;			/* +$0D */ \
+	LegSprite part[3];		/* +$0E the three sprites, drawn at (0, 0), ($1C, -4), ($3A, -4) from px/py */ \
+	PTR(Timer) timer;		/* +$62 its Timer, running Update (class slot +$0E) every frame */ \
+	s16 drawNode;			/* +$66 its draw-list node (Draw, class slot +$12) */
 typedef struct LittleLeg { LITTLELEG_FIELDS } LittleLeg;
 CHECK_SIZE(LittleLeg, 0x68);
+CHECK_OFFSET(LittleLeg, part, 0x0E);
+CHECK_OFFSET(LittleLeg, timer, 0x62);
 
 /* MAGNETICGLOB: descriptor $159B2C, parent RTHETAOBJECT, $A6 bytes (GetSize $157BB4) */
 #define MAGNETICGLOB_FIELDS \
@@ -2160,17 +2240,53 @@ CHECK_SIZE(Pop, 0x8E);
 typedef struct Psylocke { PSYLOCKE_FIELDS } Psylocke;
 CHECK_SIZE(Psylocke, 0xDA);
 
-/* RETRACTFLOOR: descriptor $026F4A, parent ACTOR, $94 bytes (GetSize $0268FE) */
+/* RETRACTFLOOR: descriptor $026F4A, parent ACTOR, $94 bytes (GetSize $0268FE). A piece of the
+   Falling Room's floor (AvalonA2): a trigger block (AvalonA2_ToggleTileHook) starts the nearest
+   one; it drops its floor segment and its two halves slide apart. */
 #define RETRACTFLOOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x8];		/* +$8C */
+	s16 triggered;			/* +$8C bit 0: started (RetractFloor_StartRetract; RetractFloor_TriggerNearest skips those) */ \
+	s16 offset;			/* +$8E how far each half has slid from the centre, pixels (RetractFloor_StateSlide; Draw shows nothing past $80) */ \
+	PTR(Seg) floorSeg;		/* +$90 its floor segment (type $13 in its 32-px block: Seg_FindInBlock); freed when it drops */
 typedef struct RetractFloor { RETRACTFLOOR_FIELDS } RetractFloor;
 CHECK_SIZE(RetractFloor, 0x94);
 
-/* ROLLINGDISCS: descriptor $03AE32, parent ACTOR, $90 bytes (GetSize $03A86C) */
+/* A band of rolling discs ($14 bytes; g_DiscBands, g_DiscBandCount: RollingDiscs_ClassInit builds
+   them from the level's list): 128 lines of the BG plane scrolled sideways (RollingDiscs_UpdateScroll),
+   hurting the players they touch. */
+typedef struct DiscBand {
+	s16 x;				/* +$00 x of its hit box's left edge on the plane, pixels (+ scroll) */
+	s16 y;				/* +$02 top line, pixels on the map */
+	s32 scroll;			/* +$04 its scroll, 8 fraction bits (starts at x << 8) */
+	s32 yFix;			/* +$08 y << 8 (nothing reads it) */
+	s16 speed;			/* +$0C scroll per frame, 8 fraction bits (RollingDiscs_ReverseAtY negates it) */
+	s16 maxSpeed;			/* +$0E |speed| at the start: speed stays within +-this */
+	s16 accel;			/* +$10 added to the speed each frame (ReverseAtY negates it instead when set) */
+	u8 index;			/* +$12 its flag in g_DiscBandReverse (1 while it rolls to the right) */
+	u8 scrolls;			/* +$13 1: its lines get its scroll (a band of the list with +$E 0) */
+} DiscBand;
+CHECK_SIZE(DiscBand, 0x14);
+/* An entry of a level's rolling-disc list (ROM, 16 bytes; after a word count at the offset in word
+   +$12 of the BG map blob, g_LevelBgMap). */
+typedef struct DiscEntry {
+	s16 unk_00;			/* +$00 */
+	s16 x;				/* +$02 DiscBand.x and its scroll */
+	s16 y;				/* +$04 */
+	s16 speed;			/* +$06 */
+	s16 accel;			/* +$08 */
+	u8 unk_0A;			/* +$0A */
+	u8 index;			/* +$0B DiscBand.index */
+	s16 unk_0C;			/* +$0C */
+	s16 still;			/* +$0E non-zero: the band's lines don't scroll (DiscBand.scrolls 0) */
+} DiscEntry;
+CHECK_SIZE(DiscEntry, 0x10);
+
+/* ROLLINGDISCS: descriptor $03AE32, parent ACTOR, $90 bytes (GetSize $03A86C). The object of the
+   Moving Blocks stage's rolling discs: its class sets up the bands (RollingDiscs_ClassInit), the
+   scene's scroll hook moves them (RollingDiscs_UpdateScroll); the object itself draws nothing. */
 #define ROLLINGDISCS_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x4];		/* +$8C */
+	PTR(DiscBand) bands;		/* +$8C g_DiscBands */
 typedef struct RollingDiscs { ROLLINGDISCS_FIELDS } RollingDiscs;
 CHECK_SIZE(RollingDiscs, 0x90);
 
@@ -2227,7 +2343,18 @@ CHECK_SIZE(SavageMediumBio, 0xB2);
 /* SCALINGACTOR: descriptor $06A05C, parent ACTOR, $A6 bytes (GetSize $06717E) */
 #define SCALINGACTOR_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x1A];		/* +$8C */
+	PTR(BigSprite) slot;		/* +$8C its player's select slot (Init's 4th argument; the PortraitActor_* states) */ \
+	s16 toX;			/* +$90 where a flight ends (screen pixels) */ \
+	s16 toY;			/* +$92 */ \
+	s16 fromX;			/* +$94 where it starts */ \
+	s16 fromY;			/* +$96 */ \
+	s16 steps;			/* +$98 frames of flight left (8) */ \
+	s16 offX;			/* +$9A the frame's left edge from the position (its right, negated, facing left) */ \
+	s16 offY;			/* +$9C the frame's top */ \
+	s16 picW;			/* +$9E the picture's size in pixels (its params' srcW/srcH; 0 with no character) */ \
+	s16 picH;			/* +$A0 */ \
+	s16 homeX;			/* +$A2 its place on screen: $48 player 1, $F8 player 2 (facing left) */ \
+	s16 frame;			/* +$A4 the character's select-screen frame ($FF none; spr.frame gets its low byte) */
 typedef struct ScalingActor { SCALINGACTOR_FIELDS } ScalingActor;
 CHECK_SIZE(ScalingActor, 0xA6);
 
@@ -2392,10 +2519,26 @@ CHECK_SIZE(TeleportReceiver, 0x8C);
 typedef struct Teleporter { TELEPORTER_FIELDS } Teleporter;
 CHECK_SIZE(Teleporter, 0x92);
 
-/* THRONEPHONE: descriptor $037A18, parent ACTOR, $A8 bytes (GetSize $037A96) */
+/* THRONEPHONE: descriptor $037A18, parent ACTOR, $A8 bytes (GetSize $037A96). The Throne Room's
+   beam that ends the Magneto fight: once MAGNETOBOSS comes within its box it catches him and pulls
+   him in. Drawn as rows of paired 8x8 sprites, mirrored about its x by a sine offset with a
+   cosine y wobble (ThronePhone_Draw); ThronePhone_SetMode gives the shape. */
 #define THRONEPHONE_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x1C];		/* +$8C */
+	PTR(struct MagnetoBoss) boss;	/* +$8C the boss (g_BgLockObj at the first state) */ \
+	s16 unk_90;			/* +$90 (0, Init) */ \
+	u8 mode;			/* +$92 counts catches: shape = mode & 1 (ThronePhone_SetMode) */ \
+	u8 rows;			/* +$93 sprite rows drawn (10) */ \
+	s16 height;			/* +$94 the rows start this far above y (pixels); top of the catch box */ \
+	s16 rowStep;			/* +$96 pixels between rows */ \
+	s16 angleX;			/* +$98 phase of the x offset (sine), degrees (wrapped above 360, below 0) */ \
+	s16 angleXStep;			/* +$9A its change per frame */ \
+	s16 shiftX;			/* +$9C x offset = sine >> this */ \
+	s16 angleXRowStep;		/* +$9E its change per row */ \
+	s16 angleY;			/* +$A0 phase of the y wobble (cosine) */ \
+	s16 angleYStep;			/* +$A2 */ \
+	s16 shiftY;			/* +$A4 */ \
+	s16 angleYRowStep;		/* +$A6 */
 typedef struct ThronePhone { THRONEPHONE_FIELDS } ThronePhone;
 CHECK_SIZE(ThronePhone, 0xA8);
 
@@ -2489,17 +2632,40 @@ CHECK_SIZE(XPowerMinusPowerUp, 0x8E);
 typedef struct XPowerPlusPowerUp { XPOWERPLUSPOWERUP_FIELDS } XPowerPlusPowerUp;
 CHECK_SIZE(XPowerPlusPowerUp, 0x8E);
 
-/* YOYOACOLYTE: descriptor $01C9A2, parent BIONPC, $BA bytes (GetSize $01BFF8) */
+/* The yoyo of a YOYOACOLYTE (+$A0; YoyoAcolyte_ThrowYoyo starts it, YoyoAcolyte_Draw moves,
+   draws and hits with it, YoyoAcolyte_Update catches it). */
+typedef struct YoyoAcolyteYoyo {
+	s32 x;				/* +$00 offset from the acolyte's position, 8 fraction bits */
+	s32 y;				/* +$04 */
+	s16 vx;				/* +$08 */
+	s16 vy;				/* +$0A */
+	s16 ax;				/* +$0C */
+	s16 ay;				/* +$0E */
+	s16 frame;			/* +$10 spin frame 0-3 */
+	s16 frameTimer;			/* +$12 frames until the next spin frame (2) */
+} YoyoAcolyteYoyo;
+CHECK_SIZE(YoyoAcolyteYoyo, 0x14);
+
+/* YOYOACOLYTE: descriptor $01C9A2, parent BIONPC, $BA bytes (GetSize $01BFF8). An acolyte that
+   stands facing the nearest live player and throws a yoyo at it (level, in a high or a low arc)
+   by one of five AI scripts. */
 #define YOYOACOLYTE_FIELDS \
 	BIONPC_FIELDS \
-	u8 unk_96[0x24];		/* +$96 */
+	PTR(Actor) target;		/* +$96 the nearest live player (Player_NearestLive; 0 in Init) */ \
+	AiCursor ai;			/* +$9A AI script (placement param 2: YoyoAcolyte_Init) */ \
+	YoyoAcolyteYoyo yoyo;		/* +$A0 */ \
+	s16 yoyoFlags;			/* +$B4 bit 0 yoyo out (ThrowYoyo), bit 1 back at the hand (Update) */ \
+	s16 idleTime;			/* +$B6 frames of YoyoAcolyte_ActIdle (placement param 3, 0: 80) */ \
+	s16 scriptNo;			/* +$B8 placement param 2, the script chosen (never read) */
 typedef struct YoyoAcolyte { YOYOACOLYTE_FIELDS } YoyoAcolyte;
 CHECK_SIZE(YoyoAcolyte, 0xBA);
+CHECK_OFFSET(YoyoAcolyte, yoyo, 0xA0);
 
-/* ZAPPER: descriptor $0273F4, parent ACTOR, $8E bytes (GetSize $027230) */
+/* ZAPPER: descriptor $0273F4, parent ACTOR, $8E bytes (GetSize $027230). A scenery object that
+   only loops one of three animations (placement param 0). */
 #define ZAPPER_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x2];		/* +$8C */
+	s16 kind;			/* +$8C its animation 0-2 (placement param 0; other values 0; never read) */
 typedef struct Zapper { ZAPPER_FIELDS } Zapper;
 CHECK_SIZE(Zapper, 0x8E);
 
