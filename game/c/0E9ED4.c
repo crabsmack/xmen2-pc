@@ -1,4 +1,4 @@
-/* Hologram_StartDyingScript - HOLOGRAM: start the dying script (Tbl_Hologram_ScriptDyingLen:
+/* Hologram_StartDyingScript - HOLOGRAM: start the dying script (Tbl_Hologram_ScriptDying:
  * Hologram_ScriptDying, 3 steps SeqA_Pose1, SeqB_Pose3, ExplodeWhenReady) from its first step
  * at once.
  *
@@ -8,6 +8,6 @@
 
 void Hologram_StartDyingScript(register Hologram *self)
 {
-	AiScript_Set(&self->ai, CODEPTR(Tbl_Hologram_ScriptDyingLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_Hologram_ScriptDying));
 	AI_FIRST_STEP(self, self->ai, 0);
 }

@@ -86,7 +86,7 @@ addr,name,end,purpose
 010EE6,BigAcolyte_StateBurstWall,011238,"BIGACOLYTE burst: last growth step, debris at the wall cells, rewrite map columns $D7-$D9 rows $1B-$1E, sounds, then become a normal sprite"
 011238,BigAcolyte_StateBecomeSprite,0112E8,"BIGACOLYTE: switch from the rendered picture to its normal sprite, draw layer 1, face left, start moving to x $1B49"
 0112E8,BigAcolyte_StateJoinList,01134E,"BIGACOLYTE: make itself solid/targetable (link into list $FFEBAE, node +$84), then the next script step"
-01134E,BigAcolyte_ActStartFight,0113A6,"BIGACOLYTE intro last step: stop sound $34, switch to the fight script (Tbl_BigAcolyteFightScriptLen) and start it"
+01134E,BigAcolyte_ActStartFight,0113A6,"BIGACOLYTE intro last step: stop sound $34, switch to the fight script (Tbl_BigAcolyteFightScript) and start it"
 0113A6,BigAcolyte_StateWaitYShoot,0113E6,"BIGACOLYTE state: poll every 4 frames until the vertical target is reached, then shoot"
 0113E6,BigAcolyte_StateWaitYNext,011452,"BIGACOLYTE state: poll every 4 frames until the vertical target is reached, then the next script step"
 011452,BigAcolyte_StateShootAnim,011488,"BIGACOLYTE: play the shooting animation (jt $3DA), then BigAcolyte_StateShoot"
@@ -432,8 +432,8 @@ addr,name,end,purpose
 037924,MagnetoBoss_StateAimShoot,03795E,MAGNETOBOSS: aim at the target player (+$8C) and shoot
 03795E,MagnetoBoss_StateShootRecover,03799C,"MAGNETOBOSS: recover pose for the shot direction, then return to the resume state +$90"
 03799C,MagnetoBoss_StateSpin,0379CA,MAGNETOBOSS: each time the spin animation ends flip horizontally and replay it
-0379CA,MagnetoBoss_StateOutro,037A00,"MAGNETOBOSS outro: play animation jt $494A, then loop jt $4952"
-037A00,MagnetoBoss_StateOutroLoop,037A18,MAGNETOBOSS outro: keep setting animation jt $4952
+0379CA,MagnetoBoss_StateOutro,037A00,"MAGNETOBOSS outro: play animation Tbl_MagnetoBossAnim16 (jt $474A), then loop jt $4952"
+037A00,MagnetoBoss_StateOutroLoop,037A18,MAGNETOBOSS outro: keep setting animation Tbl_MagnetoBossAnim17 (jt $4752)
 037A96,ThronePhone_GetSize,037AA4,vtable +$06: return sizeof(THRONEPHONE) = $A8 bytes
 037AA4,ThronePhone_Nop66,037ABA,vtable +$66: empty (loads `this` and returns)
 037ABA,ThronePhone_Nop6A,037AC2,vtable +$6A: empty hook for THRONEPHONE
@@ -898,7 +898,7 @@ addr,name,end,purpose
 06DCB2,Brood_StateLimitWait,06DCDC,BROOD: when the timer ends charge again
 06DCDC,Brood_StateRetreatStart,06DD32,BROOD: walk away (+/-$1A0) for 50 frames
 06DD32,Brood_StateRetreat,06DDA0,BROOD: when the retreat time ends stop and run the next step
-06DDA0,Brood_StateCornered,06DDE0,"BROOD cornered: rage animation (jt $11EA), start flashing, 20 frames"
+06DDA0,Brood_StateCornered,06DDE0,"BROOD cornered: rage animation (Tbl_Anim_06D0E2, jt $FEA), start flashing, 20 frames"
 06DDE0,Brood_StateCorneredFlash,06DE3A,BROOD: toggle palette bit 1 every 4 frames until the timer ends
 06DE3A,Brood_StateBreakOut,06DE90,BROOD: run forward (+/-$1A0) out of the corner for 50 frames
 06DE90,Brood_StateBreakOutRun,06DF42,"BROOD: keep flashing while running; then palette 1, stop, reload the cooldown and run the next step"
@@ -908,7 +908,7 @@ addr,name,end,purpose
 077462,CloneA1_NopStatic,07746A,empty helper called by CloneA1_InitSprites
 07746A,CloneA1_InitSprites,07754A,set up the three CloneA1 sprite slots (jt $7658A frames 0-2) with their map rows
 07754A,CloneA1_FrameHook,07757C,CloneA1 per-frame hook: frame counter and palette cycles (twice at half rate)
-07757C,CloneA1_LoadResources,0775AC,"add two CloneA1 sprite definitions (jt $3B82 count 1, jt $133E98 count 3), storing their ids in $FFE782/$FFE778"
+07757C,CloneA1_LoadResources,0775AC,"add two CloneA1 sprite definitions (Art_MaintRobotSpr (jt $3982) count 1, jt $133E98 count 3), storing their ids in $FFE782/$FFE778"
 0775AC,CloneA1_LoadLevel,077624,load the CloneA1 (Factory Floor 1) level
 077624,CloneA1_InstallHooks,0776DA,"install CloneA1's frame hook, resources, sprites and palette cycle, then place the players in draw layer 1"
 0776DA,CloneA1_EmptyStub,0776E2,"empty stub, first call of CloneA1_RunScene"
@@ -967,7 +967,7 @@ addr,name,end,purpose
 0841BC,SmallBrood_ClassInit,0841C4,empty: returns at once (this class's override of: per-level class setup for SMALLBROOD)
 0841C4,SmallBrood_Init,0843AE,"parent (BIONPC) Init, then no vertical speed, state SmallBrood_StateStart (+$5C/+$64), flags |= $80, sprite def jt $11DA (palette 3), face like the live player, stats jt $121A (health); patrol x range +$A2..+$A4 = x -/+ |placement +6/+8| ($60) with direction flags +$A0/+$A1, speed +$A6 = |+$A| << 8 ($100), +$AE/+$B0 = +$C (90); variant 0-3 from |+$E| (Sw_0841C4; sign = flag) (SMALLBROOD override of slot +$12 Init)"
 0843B8,SmallBrood_Init_CaseDefault,0843CC,SmallBrood_Init switch case 0/default: AI script jt[576] ($0840C2)
-0843CC,SmallBrood_Init_Case1,084420,"SmallBrood_Init switch case 1: kamikaze script jt[$142A], wait for a player first (SmallBrood_StateWaitForPlayer)"
+0843CC,SmallBrood_Init_Case1,084420,"SmallBrood_Init switch case 1: kamikaze script Tbl_SmallBrood_ScrStepKamikazeLen (jt $122A), wait for a player first (SmallBrood_StateWaitForPlayer)"
 084420,SmallBrood_Init_SetYLimits,084500,"tail of SmallBrood_Init: floor (+$A8) and ceiling (+$AA) y limits, +$AC = $50, frame $FF"
 084500,SmallBrood_Update,084544,"parent (BIONPC) Update, then count down the timer +$B0 to 0 (unless +4 bit $10) (SMALLBROOD override of slot +$4A Update)"
 084544,SmallBrood_Move,0845EE,"parent (BIONPC) Move, then clamp x to +$A2..+$A4 and y to +$AA..+$A8, stopping that axis at a limit (SMALLBROOD override of slot +$4E Move)"
@@ -1047,7 +1047,7 @@ addr,name,end,purpose
 086F28,BroodBoss_ActDropBomb2,086F70,"BROODBOSS script action: bomb-drop animation with rumble $91 (second variant, bomb further right)"
 086F70,BroodBoss_StateDropBomb2,086FCA,BROODBOSS state: frame 5 and drop a DROPBOMB at g_CameraX+$7D
 086FCA,BroodBoss_StateAfterBomb,08702A,"BROODBOSS state: hold frame 5, then the next AI-script step"
-08702A,BroodBoss_ActStomp,087072,BROODBOSS script action: stomp - animation jt[$168A] with rumble $91
+08702A,BroodBoss_ActStomp,087072,BROODBOSS script action: stomp - animation Tbl_BroodBossAnim4 (jt $148A) with rumble $91
 087072,BroodBoss_StateStompLand,0870AC,BROODBOSS state: stomp landed - frame 7
 0870AC,BroodBoss_StateShockOn,0870EA,BROODBOSS state: start the floor shockwave for $F frames (sound $F5)
 0870EA,BroodBoss_StateShockOff,08718A,"BROODBOSS state: end the shockwave, reset two effect sprites, roar, next step"
@@ -1073,7 +1073,7 @@ addr,name,end,purpose
 087B22,BroodBoss_StateHurtEnd,087BAC,BROODBOSS state: restore palette line 2 after the hurt flash; resume the script or start dying
 087BAC,BroodBoss_StateDeathStart,087BFE,"BROODBOSS state: death - animation, claw speed -$100"
 087BFE,BroodBoss_StateDeathSlide,087CB4,"BROODBOSS state: slide until the boss offset reaches $1B2, then stop and spawn a death effect actor"
-087CB4,BroodBoss_StateDeathAnim,087CEA,BROODBOSS death: play the death animation jt[$16AA] for $3C frames
+087CB4,BroodBoss_StateDeathAnim,087CEA,BROODBOSS death: play the death animation Tbl_BroodBossAnim8 (jt $14AA) for $3C frames
 087CEA,BroodBoss_StateDeathFx,087DB0,"BROODBOSS death: (once the boss offset is >= $8C) spawn the death effect actor, sound $73"
 087DB0,BroodBoss_StateDeathSink,087E0C,BROODBOSS death: lower the boss offset by $A0 (x2 with g_TwoPlayerStep) per frame to below $1A9
 087E0C,BroodBoss_StateExplode,087EBE,"BROODBOSS death: three debris explosions around the boss, sounds $34 and $CF"
@@ -1125,7 +1125,7 @@ addr,name,end,purpose
 094F50,EvilDrop_StateFall,094FB2,"EVILDROP state: fall to the floor (+$C2), bounce at half speed"
 094FB2,EvilDrop_StateBounce1,095014,"EVILDROP state: second fall, bounce at a quarter speed"
 095014,EvilDrop_StateBounce2,095094,EVILDROP state: third landing - stop moving and start the capsule's AI script
-095094,EvilDrop_ActOpen,0950D6,"EVILDROP script action: play the opening animation (+$AC, default jt[$183A]) and hand over to the BIOBALLS state BioBalls_WaitPathDone"
+095094,EvilDrop_ActOpen,0950D6,"EVILDROP script action: play the opening animation (+$AC, default Tbl_EvilDropDefaultBallPath (jt $163A)) and hand over to the BIOBALLS state BioBalls_WaitPathDone"
 0950D6,EvilDrop_ActRelease,09511E,EVILDROP script action: release the clone (XClone_SpawnByType from the stored record) and remove the capsule
 09511E,EvilDrop_NopStatic,095126,empty non-virtual helper (called from EVILDROP's ClassInit/Nop6A)
 095208,XClone_GetSize,095216,vtable +$06: return sizeof(XCLONE) = $BA bytes
@@ -1138,12 +1138,12 @@ addr,name,end,purpose
 095586,XClone_Nop82,09558E,XCLONE slot +$82: empty per-frame hook (XClone_Update calls it every frame; EVILBEAST overrides it)
 09558E,XClone_Update,095618,"vtable +$4A: parent update, count down the flash (+$B6), +$B7 and +$B8 timers, then slot +$82"
 095618,XClone_Move,0956D2,"vtable +$4E: integrate velocity n times and clamp x to [+$A0, +$A2] and y to [+$A4, +$A6] (the arena)"
-0956D2,XClone_Explode,095758,"XCLONE slot +$7E Explode: leave the hit list, clear the hurt flags and run the death script jt[$1B8A]"
+0956D2,XClone_Explode,095758,"XCLONE slot +$7E Explode: leave the hit list, clear the hurt flags and run the death script Tbl_XClone_Script2Len (jt $198A)"
 095758,XClone_TakeDamage,095876,"vtable +$26: +$B8 += 60, parent TakeDamage; if the hit kills it and the attacker is the same character, set bit (8+type) in g_SceneVar3B08; spark effect and sound $D8 at the hit point; hurt frame from the clone record"
 095876,XClone_StateLand,0958F6,"XCLONE state: fall (gravity $C0) until standing on the arena floor +$A6, then clear the hurt flag and start the current script"
 0958F6,XClone_OnHurt,095968,XCLONE slot +$6E OnHurt: start flashing (+$B6 = $1E) and switch to the clone record's hurt script (+$A8 record +$A)
 095968,XClone_StateWaitChild,0959E0,"XCLONE state: wait until the child object (+$9C) reports done (BioBalls_IsDone), then the next script step"
-0959E0,XClone_ActUnhittableScript,095A5A,XCLONE script action: become unhittable (+6 bits 2 and $1000) and switch to script jt[$1B6A]
+0959E0,XClone_ActUnhittableScript,095A5A,XCLONE script action: become unhittable (+6 bits 2 and $1000) and switch to script Tbl_XClone_Script1Len (jt $196A)
 095A5A,XClone_ActSoundEF,095ABC,"XCLONE script action: play sound $EF, next step"
 095ABC,XClone_ActSoundFA,095B1E,"XCLONE script action: play sound $FA, next step"
 095B1E,XClone_ActOpenBioBalls,095C22,"XCLONE script action: hide the clone and open a BIOBALLS effect object on it (sound $F2), then wait for it"
@@ -1181,7 +1181,7 @@ addr,name,end,purpose
 096D82,XClone_ActChildShoot3,096DF2,XCLONE script action: make the child fire 3 shots (XClone_StateChildShoot)
 096DF2,XClone_StateChildShoot,096F3E,XCLONE state: fire one BIOBULLET from the child at the nearest player (sound $F4) every 5 frames until +$B9 runs out
 096F3E,XClone_ActChildLeap,097016,"XCLONE script action: launch the child at the nearest player and down to the floor (accelerations (dx/64 - dx/512, dy/64 - dy/512))"
-097016,XClone_Impact,09708A,"XCLONE: ground impact at (x, y) - screen shake jt[$1C22] and an impact effect actor"
+097016,XClone_Impact,09708A,"XCLONE: ground impact at (x, y) - screen shake Tbl_XCloneImpactQuake (jt $1A22) and an impact effect actor"
 09708A,XClone_StateChildLeap,09715A,"XCLONE state: move the child until it reaches the floor, then stop it and make the impact"
 09715A,XClone_StateChildReturn,09722C,"XCLONE state: move the child back to its start point (1/16 of the distance per frame), then the next step"
 09722C,XClone_ActBallsMotionA,0972B2,"XCLONE script action: BIOBALLS motion A - child $60 above the floor, BioBalls_FillFromFirst, motion BioBalls_MotionOrbit with +$A6 = $40"
@@ -1191,7 +1191,7 @@ addr,name,end,purpose
 097426,XClone_StateWaitChild2,09749E,"XCLONE state: wait until the child reports done (BioBalls_IsDone), then the next step"
 09749E,XClone_StateBallsReturn,097514,"XCLONE state: when the rolling child stops, shake the screen and roll it back the other way"
 097514,XClone_ActBallsRoll,0975B8,"XCLONE script action: roll the BIOBALLS child in the facing direction (speed 10, $5A frames)"
-0975B8,XClone_ActBallsCollapse,097642,"XCLONE script action: collapse the BIOBALLS child onto the floor (animation jt[$1C12]), then wait for it"
+0975B8,XClone_ActBallsCollapse,097642,"XCLONE script action: collapse the BIOBALLS child onto the floor (animation Tbl_XCloneBallsCollapsePath (jt $1A12)), then wait for it"
 097642,XClone_ActTurn,097698,"XCLONE script action: turn around (toggle the h-flip), next step"
 097698,XClone_ActFacePlayer,097712,"XCLONE script action: face the nearest player, next step after 10 frames"
 097712,XClone_ActStopAnim46,097786,"XCLONE script action: stop and play move-set animation +$46, next step after 10 frames"
@@ -1234,7 +1234,7 @@ addr,name,end,purpose
 09899E,EvilPsylocke_Init,098A0A,"parent (XCLONE) Init, then the Psylocke look: sprite def jt $464A, clone record jt $19FA (+$A8), move set jt $45CA (+$AC), AI script from the record, XClone_SetBgPalette(1) (EVILPSYLOCKE override of slot +$12 Init)"
 098A0A,EvilPsylocke_StateDashEnd,098A66,"EVILPSYLOCKE state: dash finished - stop, next step"
 098A66,EvilPsylocke_ActDash,098AD2,"EVILPSYLOCKE script action: dash (speed $760 with deceleration, sound $C0, Psylocke dash animation)"
-098AD2,EvilPsylocke_ActBallsPath,098B44,EVILPSYLOCKE script action: send the BIOBALLS child along path jt[$1BF2] (motion BioBalls_MotionPath)
+098AD2,EvilPsylocke_ActBallsPath,098B44,EVILPSYLOCKE script action: send the BIOBALLS child along path Tbl_EvilPsylockeBallsMotionPath (jt $19F2) (motion BioBalls_MotionPath)
 098B44,EvilWolverine_GetSize,098B52,vtable +$06: return sizeof(EVILWOLVERINE) = $BA bytes
 098B52,EvilWolverine_Init,098BBE,"parent (XCLONE) Init, then the Wolverine look: sprite def jt $4442, clone record jt $1A0A (+$A8), move set jt $43D2 (+$AC), AI script from the record, XClone_SetBgPalette(1) (EVILWOLVERINE override of slot +$12 Init)"
 098BBE,EvilWolverine_StateLeap,098C4E,"EVILWOLVERINE state: in the leap until the animation ends on the floor, then stop and run the next step"
@@ -1431,7 +1431,7 @@ addr,name,end,purpose
 0B60BE,SavageA4_AnimEffectSprite,0B611E,"SavageA4: animate the effect sprite (frames 0-5, 4 frames each)"
 0B611E,SavageA4_FrameHook,0B6252,"SavageA4 per-frame scene hook: effect sprite, palette cycles, and palette line 3 stepping as the boss value g_SceneVar3B02 drops past 8/16/24/32/40"
 0B6252,SavageA4_LoadResources,0B626E,SavageA4: load its resource set into g_SavageBioSprDef
-0B626E,SavageA4_LoadLevel,0B62F2,SavageA4: load the Chamber level (Level_Load with the class list jt[$1E8A]) and set the parallax factors
+0B626E,SavageA4_LoadLevel,0B62F2,SavageA4: load the Chamber level (Level_Load with the class list Tbl_SavageA4ClassList (jt $1C8A)) and set the parallax factors
 0B62F2,SavageA4_InstallHooks,0B6322,"SavageA4: install the frame hook, load resources, effect sprite, palette reset, place the players at ($140, $180)"
 0B6322,SavageA4_CallEmptyStub,0B632E,SavageA4: call the empty stub SavageA4_EmptyStub
 0B632E,SavageA4_CamUpdate,0B65A0,"SavageA4 camera tracking function (+8): follow the players (and the object g_SceneVar3B20 when set), using the dead zones"
@@ -1458,7 +1458,7 @@ addr,name,end,purpose
 0B6D7E,BrainChild_StateFallHome,0B6DD4,BRAINCHILD leap: fall until reaching its home y (+$12)
 0B6DD4,BrainChild_StateLand,0B6EA6,"BRAINCHILD state: landed - frame 2, stop, join the hit and collision lists, palette line 3 from $119F5E, start the script"
 0B6EA6,BrainChild_ActFacePlayer,0B6F28,"BRAINCHILD script action: stop, face the nearest player, next step"
-0B6F28,BrainChild_ActShoot,0B6F5E,"BRAINCHILD script action: shooting animation jt[$1F9A], then fire"
+0B6F28,BrainChild_ActShoot,0B6F5E,"BRAINCHILD script action: shooting animation Tbl_BrainChildAnim2 (jt $1D9A), then fire"
 0B6F5E,BrainChild_StateFire,0B703E,"BRAINCHILD state: fire a shot forward (offset +-$23, -$1E; GaussBullet_Fire), sound $EC, next step after 10 frames"
 0B703E,BrainChild_ActIdle30,0B70A2,"BRAINCHILD script action: frame 0, next step after $1E frames"
 0B70A2,ChildShip_GetSize,0B70B0,vtable +$06: return sizeof(CHILDSHIP) = $AE bytes
@@ -1474,8 +1474,8 @@ addr,name,end,purpose
 0B74CC,ChildShip_StateKnockback,0B74F6,CHILDSHIP state: start the knockback timer (+$90 = $1E)
 0B74F6,ChildShip_StateKnockbackSlow,0B757C,CHILDSHIP state: decelerate until the knockback stops or the timer runs out
 0B757C,ChildShip_StateReturnY,0B7622,"CHILDSHIP state: return to the cruising height (+$12) at $100, then resume the current script step"
-0B7622,ChildShip_StateCrash,0B765C,"CHILDSHIP state: shot down - wreck trail jt[$1FC2], fall (vy $100, gravity $100)"
-0B765C,ChildShip_StateCrash1,0B76BC,"CHILDSHIP crash: on reaching y $140 shake the screen (jt[$1FBA]) and bounce (vy -$458, gravity $60)"
+0B7622,ChildShip_StateCrash,0B765C,"CHILDSHIP state: shot down - wreck trail Tbl_ChildShipWreckTrail (jt $1DC2), fall (vy $100, gravity $100)"
+0B765C,ChildShip_StateCrash1,0B76BC,"CHILDSHIP crash: on reaching y $140 shake the screen (Tbl_ChildShipQuake, jt $1DBA) and bounce (vy -$458, gravity $60)"
 0B76BC,ChildShip_StateCrash2,0B771C,"CHILDSHIP crash: second impact - shake, bounce (vy -$592, gravity $100)"
 0B771C,ChildShip_StateCrash3,0B777C,CHILDSHIP crash: final impact - shake and stop
 0B777C,ChildShip_StateReleaseChild,0B77E8,"CHILDSHIP crash: release a BRAINCHILD from the wreck (same facing, 20-frame invulnerability), wait $3C frames"
@@ -1501,13 +1501,13 @@ addr,name,end,purpose
 0BA4A2,SavageBioBase_SetFrame,0BA562,"vtable +$56: frame number selects one of four sprite sets (<$40 $128F30, $40-$5F $12FCA6, $60-$7F $12DE36, >=$80 $12370E)"
 0BA562,SavageBigBio_GetSize,0BA570,vtable +$06: return sizeof(SAVAGEBIGBIO) = $B8 bytes
 0BA570,SavageBigBio_ClassInit,0BA58E,vtable +$5E: run the parent's (SAVAGEBIOBASE) class setup
-0BA58E,SavageBigBio_Init,0BA6CE,"vtable +$12 constructor: narrower arena, stats g_SceneVar3B14 (health from byte -$3B01), script jt[$204A], sprite set $12FCA6, g_SceneVar3B24 := $580, and a BIOBALLS companion (+$B4)"
+0BA58E,SavageBigBio_Init,0BA6CE,"vtable +$12 constructor: narrower arena, stats g_SceneVar3B14 (health from byte -$3B01), script Tbl_SavageBio_Script2Len (jt $1E4A), sprite set $12FCA6, g_SceneVar3B24 := $580, and a BIOBALLS companion (+$B4)"
 0BA6CE,SavageBigBio_TakeDamage,0BA77C,"vtable +$26: unless shielded (+$9C bit 0): health -= damage, 20-frame flash; at 0 stop, leave both lists and die (SavageBio_StateDying), else sound $D8; publish health in g_SceneVar3B02"
 0BA77C,SavageBigBio_Move,0BA7D8,"vtable +$4E: clamp horizontal speed to +-(g_SceneVar3B24) (setting +-(g_SceneVar3B22)), then the parent move"
 0BA7D8,SavageBigBio_TentacleHit,0BA864,"SAVAGEBIGBIO: if a live, non-flashing player's box touches a 16x16 tentacle segment at (x, y), flag that player and remember the hit point"
 0BA864,SavageBigBio_Update,0BA8FA,"vtable +$4A: parent update, then damage the players the tentacle touched this frame (TakeDamage(0, 8, 1, hit point))"
 0BA8FA,SavageBigBio_Draw,0BAEC4,"vtable +$1A: draw the body, then each tentacle segment (+$B0 list, +$AE long) with a wave from jt[$2072] straight into the sprite table, hit-testing each against the players"
-0BAEC4,SavageBio_ActScript2052,0BAF14,SAVAGE bio script action: switch to script jt[$2052] from step 0
+0BAEC4,SavageBio_ActScript2052,0BAF14,SAVAGE bio script action: switch to script Tbl_SavageBio_Script3Len (jt $1E52) from step 0
 0BAF14,SavageBio_ActFacePlayer,0BAF96,"SAVAGE bio script action: stop and face the nearest player, next step"
 0BAF96,SavageBio_ActFireRocket,0BAFF4,"SAVAGE bio script action: fire a BRAINROCKET - from the mouth when the tentacle is in (after animation $0B7DD8), else from the tentacle tip after $10 frames"
 0BAFF4,SavageBio_StateFireMouth,0BB0D6,"SAVAGE bio state: fire a BRAINROCKET from the mouth (offset +-$30, -+$50) in the facing direction, next step after 10 frames"
@@ -1516,19 +1516,19 @@ addr,name,end,purpose
 0BB2AA,SavageBio_StateFireVertical,0BB38C,"SAVAGE bio state: fire a BRAINROCKET from (+-8, -+$72) at angle $5A (or $10E when v-flipped), next step after 10 frames"
 0BB38C,SavageBio_ActReloadArt14,0BB3CC,"SAVAGE bio script action: drop the tentacle and play animation $0B7DEC, then reload the sprite tiles (set $12FCA6, frame $14)"
 0BB3CC,SavageBio_StateReloadArt14,0BB45C,"SAVAGE bio state: reload sprite tiles $12FCA6 frame $14 into the class VRAM slot, next step"
-0BB45C,SavageBio_ActReloadArt10,0BB49C,"SAVAGE bio script action: drop the tentacle and play animation jt[$202A], then reload the sprite tiles (frame $10)"
+0BB45C,SavageBio_ActReloadArt10,0BB49C,"SAVAGE bio script action: drop the tentacle and play animation Tbl_SavageBioAnim15 (jt $1E2A), then reload the sprite tiles (frame $10)"
 0BB49C,SavageBio_StateReloadArt10,0BB52E,"SAVAGE bio state: reload sprite tiles $12FCA6 frame $10, next step"
-0BB52E,SavageBio_ActExtendTentacle,0BB590,"SAVAGE bio script action: extend the tentacle along path jt[$2062] (frame $42, sound $F0)"
+0BB52E,SavageBio_ActExtendTentacle,0BB590,"SAVAGE bio script action: extend the tentacle along path Tbl_SavageBioTentaclePath (jt $1E62) (frame $42, sound $F0)"
 0BB590,SavageBio_ActExtendTentacle2,0BB5E0,SAVAGE bio script action: extend the tentacle along path $0B8066 (frame $42)
 0BB5E0,SavageBio_StateExtend,0BB634,"SAVAGE bio state: grow the tentacle one segment per frame to the end of its path, then hold $14 frames and retract"
 0BB634,SavageBio_StateRetract,0BB698,SAVAGE bio state: shrink the tentacle one segment per frame; when gone frame $40 and the next step
 0BB698,SavageBio_StateRetractStart,0BB6CE,SAVAGE bio state: start retracting the tentacle (sound $F1)
 0BB6CE,SavageBio_StateNextStep,0BB71E,SAVAGE bio state: run the next script step
-0BB71E,SavageBio_ActExtendShort,0BB780,"SAVAGE bio script action: extend a short tentacle (path jt[$205A], 10 segments; frame $42, sound $F0)"
+0BB71E,SavageBio_ActExtendShort,0BB780,"SAVAGE bio script action: extend a short tentacle (path Tbl_SavageBioShortTentaclePath (jt $1E5A), 10 segments; frame $42, sound $F0)"
 0BB780,SavageBio_StateExtend10,0BB7F0,"SAVAGE bio state: grow the tentacle to 10 segments, then the next step"
 0BB7F0,SavageBio_ActAnimA,0BB850,"SAVAGE bio script action: animation $0B7DBA, next step"
-0BB850,SavageBio_ActAnimB,0BB8B0,"SAVAGE bio script action: animation jt[$2002], next step"
-0BB8B0,SavageBio_ActAnimC,0BB910,"SAVAGE bio script action: animation jt[$200A], next step"
+0BB850,SavageBio_ActAnimB,0BB8B0,"SAVAGE bio script action: animation Tbl_SavageBioAnim (jt $1E02), next step"
+0BB8B0,SavageBio_ActAnimC,0BB910,"SAVAGE bio script action: animation Tbl_SavageBioAnim12 (jt $1E0A), next step"
 0BB910,SavageBio_ActCharge,0BBA0E,"SAVAGE bio script action: charge to the far side of its range (speed $220, accel $56, sound $EA), then the next step"
 0BBA0E,SavageBio_StateChargeToEdge,0BBA94,"SAVAGE bio state: charge until reaching either end of its range, then stop and the next step"
 0BBA94,SavageBio_ActChargeGo,0BBBBE,"SAVAGE bio script action: start a charge (speed $220, sound $EA) and go straight to the next step"
@@ -1546,16 +1546,16 @@ addr,name,end,purpose
 0BC4A0,SavageBio_ActFrame4F,0BC516,"SAVAGE bio script action: frame $4F with sound $F2, next step after 10 frames"
 0BC516,SavageBio_ActFrame4FB,0BC58C,"SAVAGE bio script action: frame $4F with sound $F2, next step after 10 frames (second copy)"
 0BC58C,SavageBio_StateWaitCrossing,0BC64A,"SAVAGE bio state: when the BIOBALLS companion (+$B4) is done, hide it and reappear on the opposite surface (floor <-> ceiling, v-flip toggled)"
-0BC64A,SavageBio_StateCrossSurface,0BC71A,"SAVAGE bio state: hide and send the BIOBALLS companion across (same flips, animation jt[$2092], script $0B815C)"
-0BC71A,SavageBioBalls_ActLeap,0BC7A2,"BIOBALLS companion action: leap $E0 px towards the other surface (animation jt[$2092], sound $EF)"
+0BC64A,SavageBio_StateCrossSurface,0BC71A,"SAVAGE bio state: hide and send the BIOBALLS companion across (same flips, animation Tbl_SavageBioBallsFormation (jt $1E92), script $0B815C)"
+0BC71A,SavageBioBalls_ActLeap,0BC7A2,"BIOBALLS companion action: leap $E0 px towards the other surface (animation Tbl_SavageBioBallsFormation (jt $1E92), sound $EF)"
 0BC7A2,SavageBioBalls_StateWait,0BC80C,"BIOBALLS companion state: wait for the timer +$6E, then its next script step (+$8E/+$8C)"
 0BC80C,SavageBioBalls_ActMotion,0BC85C,BIOBALLS companion action: motion BioBalls_MotionRing ($600) for $96 frames
-0BC85C,SavageBio_StateDying,0BC8AC,SAVAGE bio state: dying - switch to the death script jt[$2042]
+0BC85C,SavageBio_StateDying,0BC8AC,SAVAGE bio state: dying - switch to the death script Tbl_SavageBio_Script1Len (jt $1E42)
 0BC8AC,SavageBio_ActCrossIfUp,0BC920,"SAVAGE bio script action: if above the floor (y < +$A2) cross to the other surface, else the next step"
-0BC920,SavageBio_ActToCentre,0BC954,"SAVAGE bio script action: animation jt[$2002], then walk to the middle of the view"
+0BC920,SavageBio_ActToCentre,0BC954,"SAVAGE bio script action: animation Tbl_SavageBioAnim (jt $1E02), then walk to the middle of the view"
 0BC954,SavageBio_StateToCentre,0BCA2C,"SAVAGE bio state: walk (speed $220) to within 15 px of the view centre, then stop and the next step"
 0BCA2C,SavageBio_StateDeathWait,0BCA7E,"SAVAGE bio death: wait until the companion is done, then explode it piece by piece for $F0 frames"
-0BCA7E,SavageBio_ActDie,0BCB92,"SAVAGE bio script action: die - hide; with a companion, move it here and run its death script jt[$208A]; without, end the scene in $F0 frames"
+0BCA7E,SavageBio_ActDie,0BCB92,"SAVAGE bio script action: die - hide; with a companion, move it here and run its death script Tbl_SavageBio_Script5Len (jt $1E8A); without, end the scene in $F0 frames"
 0BCB92,SavageBio_StateDeathExplode,0BCC6A,"SAVAGE bio death: every 16 frames blow up one companion segment; when the timer ends, end the scene in $F0 frames and remove itself"
 0BCC6A,SavageMediumBio_GetSize,0BCC78,vtable +$06: return sizeof(SAVAGEMEDIUMBIO) = $B2 bytes
 0BCC78,SavageMediumBio_ClassInit,0BCC96,"per-level class setup that does nothing: only the parent's (SavageBioBase_ClassInit, which calls the empty SavageBio_NopStatic) (SAVAGEMEDIUMBIO override of slot +$5E ClassInit)"
@@ -1563,15 +1563,15 @@ addr,name,end,purpose
 0BCD4E,SavageMediumBio_TakeDamage,0BCD90,"only calls BIONPC's TakeDamage (BioNpc_TakeDamage, through Tbl_BioNpc_vtable), which SAVAGEBIOBASE inherits anyway (SAVAGEMEDIUMBIO override of slot +$26 TakeDamage; adds nothing)"
 0BCD90,SavageMediumBio_OnDeath,0BCDF0,"SAVAGEMEDIUMBIO slot +$72 OnDeath: stop, leave both lists, burst into a BIOBALLS (SavageMediumBio_StateBurst)"
 0BCDF0,SavageMediumBio_SetHome,0BCE0E,SAVAGEMEDIUMBIO: set its home position (+$AE/+$B0)
-0BCE0E,SavageMediumBio_StateAppear,0BCE56,"SAVAGEMEDIUMBIO first state: appear (sound $F2, animation jt[$2032])"
+0BCE0E,SavageMediumBio_StateAppear,0BCE56,"SAVAGEMEDIUMBIO first state: appear (sound $F2, animation Tbl_SavageMediumBioAnim (jt $1E32))"
 0BCE56,SavageMediumBio_StateReady,0BCED6,"SAVAGEMEDIUMBIO state: join the hit and collision lists, frame 6, start the script after $3C frames"
 0BCED6,SavageMediumBio_ActWalk,0BCF2A,"SAVAGEMEDIUMBIO script action: walk forward ($100, animation $12061C) for $3C frames"
 0BCF2A,SavageMediumBio_StateWalk,0BCF94,"SAVAGEMEDIUMBIO state: walk until the timer +$6E runs out, then the next step"
 0BCF94,SavageMediumBio_ActFacePlayer,0BD00A,"SAVAGEMEDIUMBIO script action: face the nearest player, next step"
-0BD00A,SavageMediumBio_ActShoot,0BD04C,SAVAGEMEDIUMBIO script action: stop and play the shooting animation jt[$3612]
+0BD00A,SavageMediumBio_ActShoot,0BD04C,SAVAGEMEDIUMBIO script action: stop and play the shooting animation Tbl_Anim_120640 (jt $3412)
 0BD04C,SavageMediumBio_StateFire,0BD128,"SAVAGEMEDIUMBIO state: fire a shot from (+-$36, -+$34) (GaussBullet_Fire), sound $EE, next step"
-0BD128,SavageMediumBio_StateBurst,0BD1D8,"SAVAGEMEDIUMBIO state: burst into a BIOBALLS (animation $0B8210, script jt[$207A], sound $F2) and remove itself"
-0BD1D8,SavageBioBalls_ActOpen,0BD216,"BIOBALLS companion action: opening animation jt[$2092], state BioBalls_WaitPathDone"
+0BD128,SavageMediumBio_StateBurst,0BD1D8,"SAVAGEMEDIUMBIO state: burst into a BIOBALLS (animation $0B8210, script Tbl_SavageMediumBio_Script4Len (jt $1E7A), sound $F2) and remove itself"
+0BD1D8,SavageBioBalls_ActOpen,0BD216,"BIOBALLS companion action: opening animation Tbl_SavageBioBallsFormation (jt $1E92), state BioBalls_WaitPathDone"
 0BD216,SavageBioBalls_ActBecomeBigBio,0BD274,"BIOBALLS companion action: turn into a SAVAGEBIGBIO here (same facing, 20-frame invulnerability) and remove itself"
 0BD274,SavageBio_NopStatic,0BD27C,empty non-virtual helper (called from SavageBioBase_ClassInit and SavageMediumBio_Init)
 0BD51E,Barbarian_GetSize,0BD52C,vtable +$06: return sizeof(BARBARIAN) = $C2 bytes
@@ -1594,7 +1594,7 @@ addr,name,end,purpose
 0BDC7E,Barbarian_StateTaunt_Wait,0BDC9A,"tail of Barbarian_StateTaunt: wait for the animation, then idle"
 0BDC9A,Barbarian_StateEngage,0BDCFE,"BARBARIAN state: face the target; approach on the same segment, else leap across"
 0BDCFE,Barbarian_StateApproach,0BDD52,"BARBARIAN state: attack when within $32 px of the target, else walk towards it"
-0BDD52,Barbarian_StateWalkStart,0BDDC2,"BARBARIAN state: start walking (animation jt[$228A], speed +$98) in the facing direction"
+0BDD52,Barbarian_StateWalkStart,0BDDC2,"BARBARIAN state: start walking (animation Tbl_BarbarianAnim3 (jt $208A), speed +$98) in the facing direction"
 0BDDC2,Barbarian_StateWalkRight,0BDE22,BARBARIAN state: walk right until the segment end or past the target
 0BDE22,Barbarian_StateWalkLeft,0BDE82,BARBARIAN state: walk left until the segment end or past the target
 0BDE82,Barbarian_StateSegmentEnd,0BDEF4,"BARBARIAN state: reached the end of its segment - idle pose, then idle or leap (mode +$BC)"
@@ -1618,12 +1618,12 @@ addr,name,end,purpose
 0BE328,Barbarian_StateAttack_Case1,0BE364,Barbarian_StateAttack case 1
 0BE364,Barbarian_StateAttack_Case4,0BE374,Barbarian_StateAttack case 4
 0BE376,Barbarian_StateAttack_Done,0BE37E,tail of Barbarian_StateAttack
-0BE37E,Barbarian_StateAttack0,0BE3B4,BARBARIAN attack 0: animation jt[$22A2] to its end
+0BE37E,Barbarian_StateAttack0,0BE3B4,BARBARIAN attack 0: animation Tbl_BarbarianAnim6 (jt $20A2) to its end
 0BE3B4,Barbarian_StateAttack1,0BE3EA,BARBARIAN attack 1: animation $0BD4D2 to its end
 0BE3EA,Barbarian_StateAttack2,0BE420,BARBARIAN attack 2: animation $0BD4E2 to its end
 0BE420,Barbarian_StateAttack3,0BE456,BARBARIAN attack 3: animation $0BD4F6 to its end
 0BE456,Barbarian_StateAttack4,0BE48C,BARBARIAN attack 4: animation $0BD50A to its end
-0BE48C,Barbarian_StateAttackEnd,0BE4C0,"BARBARIAN state: attack over - pose jt[$2292], idle"
+0BE48C,Barbarian_StateAttackEnd,0BE4C0,"BARBARIAN state: attack over - pose Tbl_BarbarianAnim4 (jt $2092), idle"
 0BE4C0,Barbarian_StateScrollTiles,0BE55C,BARBARIAN state: every $3C frames shift 8 map rows at the camera one tile left (redrawing them)
 0BE55C,Barbarian_Nop6A,0BE564,vtable +$6A: empty hook for BARBARIAN
 0BE564,Barbarian_ClassInit,0BE57E,"per-level class setup: Barbarian_Nop6A, then install Barbarian_SegHook1A in -$3402 (BARBARIAN override of slot +$5E ClassInit; loads no resources)"
@@ -1660,10 +1660,10 @@ addr,name,end,purpose
 0BF1C2,SporeMine_RecIdle,0BF1FA,"spore handler: idle animation $0BF54E, then look for a player"
 0BF1FA,SporeMine_RecFindTarget,0BF234,"spore handler: pick a player to watch (Player_NearestLive), then watch it for $3C frames"
 0BF234,SporeMine_RecWatch,0BF2B2,spore handler: arm when the watched player comes within +-$50 x / +-$28 y; otherwise re-pick after the timer
-0BF2B2,SporeMine_RecArm1,0BF2FC,"spore handler: arming step 1 (animation jt[$2392], sound $B9, $14 frames)"
-0BF2FC,SporeMine_RecArm2,0BF346,"spore handler: arming step 2 (animation jt[$239A], sound $B9, $14 frames)"
-0BF346,SporeMine_RecArm3,0BF390,"spore handler: arming step 3 (animation jt[$23A2], sound $B9, $D frames)"
-0BF390,SporeMine_RecArm4,0BF3DA,"spore handler: arming step 4 (animation jt[$23AA], sound $B9, $D frames)"
+0BF2B2,SporeMine_RecArm1,0BF2FC,"spore handler: arming step 1 (animation Tbl_SporeMineArmAnim1 (jt $2192), sound $B9, $14 frames)"
+0BF2FC,SporeMine_RecArm2,0BF346,"spore handler: arming step 2 (animation Tbl_SporeMineArmAnim2 (jt $219A), sound $B9, $14 frames)"
+0BF346,SporeMine_RecArm3,0BF390,"spore handler: arming step 3 (animation Tbl_SporeMineArmAnim3 (jt $21A2), sound $B9, $D frames)"
+0BF390,SporeMine_RecArm4,0BF3DA,"spore handler: arming step 4 (animation Tbl_SporeMineArmAnim4 (jt $21AA), sound $B9, $D frames)"
 0BF3DA,SporeMine_RecExplode,0BF54E,"spore handler: explode - debris, hurt players within +-$3C x / +-$28 y, explosion actor, record ends"
 0BF5F8,SpikeBall_GetSize,0BF606,vtable +$06: return sizeof(SPIKEBALL) = $90 bytes
 0BF606,SpikeBall_StateCycle,0BF654,SPIKEBALL state: spikes out (frame 1) for part of each cycle - ((counter - phase) & mask) < on-time
@@ -1701,7 +1701,7 @@ addr,name,end,purpose
 0C099C,SwampFly_StatePickPath,0C09C8,SWAMPFLY state: target the nearest player and start the flight path for its type +$B2 (6 tables)
 0C09D6,SwampFly_StatePickPath_Default,0C09E2,SwampFly_StatePickPath default case: path $0C00D6
 0C09E2,SwampFly_StatePickPath_Case1,0C0A12,SwampFly_StatePickPath case 1: path $0C0312
-0C0A12,SwampFly_StatePickPath_Case5,0C0A18,SwampFly_StatePickPath case 5: path jt[$24B2]
+0C0A12,SwampFly_StatePickPath_Case5,0C0A18,SwampFly_StatePickPath case 5: path Tbl_SwampFlyPath5 (jt $22B2)
 0C0A1C,SwampFly_StatePickPath_Start,0C0A52,tail of SwampFly_StatePickPath: start in the middle of the path
 0C0A52,SwampFly_StateFly,0C0B7C,"SWAMPFLY state: follow the path - position = home + (dx << +$B0, dy << +$B1), facing the target player, one step every +$AF frames; at the end pick a new path"
 0C0B7C,SwampFly_Nop6A,0C0B84,vtable +$6A: empty hook for SWAMPFLY
@@ -1721,9 +1721,9 @@ addr,name,end,purpose
 0C11B6,SavageC1_InstallHooks,0C11CE,SavageC1: install the water draw hook (g_SceneDrawHook) and its frame hook
 0C11CE,SavageC1_RunScene,0C122A,scene function for 'SavageC1 Jungle_1'
 0C122A,SavageB1_FrameHook,0C1258,SavageB1 per-frame scene hook: music player parameters and the jungle palette phases
-0C1258,SavageB1_LoadLevel,0C12DE,SavageB1: load the Jungle_2 level (Level_Load with the class list jt[$1CA2]) and parallax factors
+0C1258,SavageB1_LoadLevel,0C12DE,SavageB1: load the Jungle_2 level (Level_Load with the class list Tbl_SavageB1ClassList (jt $1AA2)) and parallax factors
 0C12DE,SavageB1_InstallHooks,0C12F6,SavageB1: install the water draw hook (g_SceneDrawHook) and its frame hook
-0C12F6,SavageB1_SetParallax,0C130A,SavageB1: install its parallax descriptor jt[$24FA] (Scroll_SetParallax)
+0C12F6,SavageB1_SetParallax,0C130A,SavageB1: install its parallax descriptor Tbl_SavageB1Parallax (jt $22FA) (Scroll_SetParallax)
 0C130A,SavageB1_RunScene,0C1372,scene function for 'SavageB1 Jungle_2'
 0C1372,Player_MusicVoice,0C1412,"music voice id of a player's character: 1 Beast, 2 Nightcrawler, 3 Magneto, 4 Gambit, 5 Wolverine, 6 Cyclops, 7 Psylocke, 0 = not playing"
 0C1412,Music_SetPlayerParams,0C1478,"tell the sound driver how many players there are and which characters (parameters $A, $B, $C)"
@@ -1736,7 +1736,7 @@ addr,name,end,purpose
 0DC350,SentinelsD1_FrameHook,0DC38C,"SentinelsD1 per-frame scene hook: camera bound +$42 = 200, counter, light animation (twice with g_TwoPlayerStep)"
 0DC38C,SentinelsB2_EmptyStub2,0DC394,empty function (jt 1148; called from SentinelsB2_CallStubs)
 0DC394,SentinelsD1_LoadResources,0DC3DE,"SentinelsD1: load its resource sets (g_ControlPanelSprDef2, g_MaintRobotSprDef, g_ControlPanelSprDef) and reset g_NinjaSprDef2"
-0DC3DE,SentinelsD1_LoadLevel,0DC47C,SentinelsD1: load the Exterior_1 level (Level_Load with its class list jt[$25B2]) and palette line 2
+0DC3DE,SentinelsD1_LoadLevel,0DC47C,SentinelsD1: load the Exterior_1 level (Level_Load with its class list Tbl_SentinelsD1ClassList (jt $23B2)) and palette line 2
 0DC47C,SentinelsD1_InstallHooks,0DC4AA,"SentinelsD1: install the frame hook, load resources, light, flag bits, place the players"
 0DC4AA,SentinelsD1_RunScene,0DC4BE,"scene function for 'SentinelsD1 Exterior_1': load the level, set it up, run it"
 0DC4DE,ClosedBarrier_GetSize,0DC4EC,vtable +$06: return sizeof(CLOSEDBARRIER) = $8C bytes
@@ -1764,7 +1764,7 @@ addr,name,end,purpose
 0DCE4E,Blast_SetFlags,0DCE6A,BLAST slot +$6E: set bits in the flag word it points at (+$8C)
 0DCE6A,Blast_ClearFlags,0DCE88,BLAST slot +$72: clear bits in the flag word it points at (+$8C)
 0DCE88,Blast_StateStart,0DCEBE,BLAST first state: charge-up animation $15B1D6 to its end
-0DCEBE,Blast_StateLaunch,0DCF0A,"BLAST state: launch (animation jt[$4152], sound $D4, speed +$98)"
+0DCEBE,Blast_StateLaunch,0DCF0A,"BLAST state: launch (animation Tbl_BlastFlightAnim (jt $3F52), sound $D4, speed +$98)"
 0DCF0A,Blast_StateFly,0DCF58,"BLAST state: fly until it hits something (Seg_AtOpenEndAhead(this, 10)); then stick (if +$9C) or vanish"
 0DCF58,Blast_StateStick,0DCFBC,"BLAST state: stuck in a wall - stop, impact animation, leave the attacker list, set flag bit 2 for $3C frames"
 0DCFBC,Blast_StateUnstick,0DCFF0,"BLAST state: clear flag bit 2, then remove itself"
@@ -2148,17 +2148,17 @@ addr,name,end,purpose
 117608,PowerUp_Update,1177AA,"power-up per-frame update, a full replacement of ACTOR Update: count down the lifetime +$8C (Kill at 0), Deactivate when outside the camera bounds, give it to a live player whose box contains it and whose health is below $900 (Collect +$6E, Kill, sound $39), else step the animation script +$44 (class slot 17, +$4A; does not call the parent)"
 1177AA,PowerUp_Collect,1177B8,POWERUP slot 26 (+$6E) base: flag the HUD for redraw ($FFC94E = 1)
 1177B8,SegmentPlusPowerUp_GetSize,1177C6,"return sizeof(SEGMENTPLUSPOWERUP object) = $8E bytes (class slot 0, +$06)"
-1177C6,SegmentPlusPowerUp_Init,117802,"POWERUP Init, then animation +$44 = jt $2E92 (segment animation) (class slot 3, +$12)"
+1177C6,SegmentPlusPowerUp_Init,117802,"POWERUP Init, then animation +$44 = Tbl_SegmentPowerUpAnim (jt $2C92) (segment animation) (class slot 3, +$12)"
 117802,SegmentPlusPowerUp_Spawn,117860,"drop a SEGMENTPLUSPOWERUP at (x, y), building its spawn record on the stack"
 117860,SegmentPlusPowerUp_Collect,11789C,SEGMENTPLUSPOWERUP collected: player gains 1 health segment
 11789C,SegmentMinusPowerUp_GetSize,1178AA,"return sizeof(SEGMENTMINUSPOWERUP object) = $8E bytes (class slot 0, +$06)"
-1178AA,SegmentMinusPowerUp_Init,1178FC,"POWERUP Init, then palette 3, animation +$44 = jt $2E92 (segment animation) and its first frame (class slot 3, +$12)"
+1178AA,SegmentMinusPowerUp_Init,1178FC,"POWERUP Init, then palette 3, animation +$44 = Tbl_SegmentPowerUpAnim (jt $2C92) (segment animation) and its first frame (class slot 3, +$12)"
 1178FC,SegmentMinusPowerUp_Collect,117938,SEGMENTMINUSPOWERUP collected: player loses 1 health segment
 117938,XPowerPlusPowerUp_GetSize,117946,"return sizeof(XPOWERPLUSPOWERUP object) = $8E bytes (class slot 0, +$06)"
-117946,XPowerPlusPowerUp_Init,11798A,"POWERUP Init, then animation +$44 = jt $2E9A (X-power animation) and its first frame (class slot 3, +$12)"
+117946,XPowerPlusPowerUp_Init,11798A,"POWERUP Init, then animation +$44 = Tbl_XPowerPowerUpAnim (jt $2C9A) (X-power animation) and its first frame (class slot 3, +$12)"
 11798A,XPowerPlusPowerUp_Collect,1179C6,XPOWERPLUSPOWERUP collected: player gains 3 health segments
 1179C6,XPowerMinusPowerUp_GetSize,1179D4,"return sizeof(XPOWERMINUSPOWERUP object) = $8E bytes (class slot 0, +$06)"
-1179D4,XPowerMinusPowerUp_Init,117A26,"POWERUP Init, then palette 3, animation +$44 = jt $2E9A (X-power animation) and its first frame (class slot 3, +$12)"
+1179D4,XPowerMinusPowerUp_Init,117A26,"POWERUP Init, then palette 3, animation +$44 = Tbl_XPowerPowerUpAnim (jt $2C9A) (X-power animation) and its first frame (class slot 3, +$12)"
 117A26,XPowerMinusPowerUp_Collect,117A62,XPOWERMINUSPOWERUP collected: player loses 3 health segments
 117A62,MondoPlusPowerUp_GetSize,117A70,"return sizeof(MONDOPLUSPOWERUP object) = $8E bytes (class slot 0, +$06)"
 117A70,MondoPlusPowerUp_Init,117AB4,"POWERUP Init, then animation +$44 = Tbl_MondoPowerUpAnim (the Mondo animation record) and its first frame (class slot 3, +$12)"
@@ -2167,7 +2167,7 @@ addr,name,end,purpose
 117AF2,MondoMinusPowerUp_Init,117B44,"POWERUP Init, then palette 3, animation +$44 = Tbl_MondoPowerUpAnim (the Mondo animation record) and its first frame (class slot 3, +$12)"
 117B44,MondoMinusPowerUp_Collect,117B82,MONDOMINUSPOWERUP collected: player health cut to at most $300
 117B82,MysteryPowerUp_GetSize,117B90,"return sizeof(MYSTERYPOWERUP object) = $8E bytes (class slot 0, +$06)"
-117B90,MysteryPowerUp_Init,117BD4,"POWERUP Init, then animation +$44 = jt $2EAA (mystery animation) and its first frame (class slot 3, +$12)"
+117B90,MysteryPowerUp_Init,117BD4,"POWERUP Init, then animation +$44 = Tbl_MysteryPowerUpAnim (jt $2CAA) (mystery animation) and its first frame (class slot 3, +$12)"
 117BD4,MysteryPowerUp_Collect,117C28,MYSTERYPOWERUP collected: +3 or -3 health segments depending on the frame counter
 118042,Explosion_ResetAll,118074,clear the 10 explosion slots at $FFE4C0 (14 bytes each)
 118074,Explosion_SpawnEx,118136,"start an explosion at (x, y): free slot, 5 animation steps of 4 frames, optional damage, sound $38"
@@ -2299,13 +2299,13 @@ addr,name,end,purpose
 11D646,BabyBio_WaitCrawlLimit,11D6C0,"BABYBIO: wait until the crawl reaches a horizontal limit, then next entry"
 11D6C0,BabySentinelA_GetSize,11D6CE,"return sizeof(BABYSENTINELA object) = $BC bytes (class slot 0, +$06)"
 11D6CE,BabySentinelA_Nop66,11D6E4,BabySentinelA: no-op override of virtual slot 24 (+$66)
-11D6E4,BabySentinelA_Init,11D74A,"BABYBIO Init, then palette 1, stats record Tbl_BabyMoleManStats (health = its byte 2) and AI script jt $31E2 (class slot 3, +$12)"
+11D6E4,BabySentinelA_Init,11D74A,"BABYBIO Init, then palette 1, stats record Tbl_BabyMoleManStats (health = its byte 2) and AI script Tbl_BabySentinelA_ScriptLen (jt $2FE2) (class slot 3, +$12)"
 11D74A,BabySentinelB_GetSize,11D758,"return sizeof(BABYSENTINELB object) = $BC bytes (class slot 0, +$06)"
 11D758,BabySentinelB_Nop66,11D76E,BabySentinelB: no-op override of virtual slot 24 (+$66)
-11D76E,BabySentinelB_Init,11D836,"BABYBIO Init, then palette 1, stats jt $326A (health = byte 2), frame $FF, AI script by variant +$BB (1: jt $31F2, else jt $31EA), start at the script's first step (class slot 3, +$12)"
+11D76E,BabySentinelB_Init,11D836,"BABYBIO Init, then palette 1, stats Tbl_BabySentinelBStats (jt $306A) (health = byte 2), frame $FF, AI script by variant +$BB (1: Tbl_BabySentinelB_Script1Len (jt $2FF2), else Tbl_BabySentinelB_Script2Len (jt $2FEA)), start at the script's first step (class slot 3, +$12)"
 11D836,BabySentinelC_GetSize,11D844,"return sizeof(BABYSENTINELC object) = $BC bytes (class slot 0, +$06)"
 11D844,BabySentinelC_Nop66,11D85A,BabySentinelC: no-op override of virtual slot 24 (+$66)
-11D85A,BabySentinelC_Init,11D922,"BABYBIO Init, then palette 1, stats jt $327A (health = byte 2), frame $FF, AI script by variant +$BB (1: jt $3202, else jt $31FA), start at the script's first step (class slot 3, +$12)"
+11D85A,BabySentinelC_Init,11D922,"BABYBIO Init, then palette 1, stats Tbl_BabySentinelCStats (jt $307A) (health = byte 2), frame $FF, AI script by variant +$BB (1: Tbl_BabySentinelCAiScript (jt $3002), else Tbl_BabySentinelC_Script2Len (jt $2FFA)), start at the script's first step (class slot 3, +$12)"
 11D922,BabyMoleMan_GetSize,11D930,"return sizeof(BABYMOLEMAN object) = $BC bytes (class slot 0, +$06)"
 11D930,BabyMoleMan_Nop66,11D946,BabyMoleMan: no-op override of virtual slot 24 (+$66)
 11D946,BabyMoleMan_Init,11D9B2,"BABYBIO Init, then palette 1, stats Tbl_BabyMoleManStats (health = byte 2), AI script by variant +$BB (0-4: jt $320A/$3212/$321A, Tbl_BabyMoleManAiScript2/3), start at the script's first step (class slot 3, +$12)"
@@ -2316,7 +2316,7 @@ addr,name,end,purpose
 11DA54,FloatBio_GetSize,11DA62,"return sizeof(FLOATBIO object) = $C0 bytes (class slot 0, +$06)"
 11DA62,FloatBio_ActWaitParam,11DAB6,FLOATBIO script action: next entry after the delay +$BC
 11DAB6,FloatBio_Nop66,11DACC,FloatBio: no-op override of virtual slot 24 (+$66)
-11DACC,FloatBio_Init,11DB44,"BABYBIO Init, then stats jt $3272 (health = byte 2), +$B4 = $100, mode +$BE = variant & 3 with its AI script (0 jt $3232; 1 jt $3242 with vertical limits +$B2/+$B0 = y -/+ |p6|/|p8| (default 48); 2 jt $324A; 3 jt $323A with period +$BC = p6, default 60), start at the script's first step (class slot 3, +$12)"
+11DACC,FloatBio_Init,11DB44,"BABYBIO Init, then stats Tbl_FloatBioStats (jt $3072) (health = byte 2), +$B4 = $100, mode +$BE = variant & 3 with its AI script (0 jt $3232; 1 jt $3242 with vertical limits +$B2/+$B0 = y -/+ |p6|/|p8| (default 48); 2 jt $324A; 3 jt $323A with period +$BC = p6, default 60), start at the script's first step (class slot 3, +$12)"
 11DB4E,FloatBio_Init_Case0,11DB62,FloatBio_Init case 0: AI script FloatBio_Script0 ($11B630)
 11DB64,FloatBio_Init_Case1,11DBFA,"FloatBio_Init cases 1-3: vertical range from the spawn record (default +-48) with script FloatBio_Script1, or scripts 2/3"
 11DBFA,FloatBio_Init_Tail,11DC32,FloatBio_Init common tail: start the chosen script at entry 0
@@ -2328,7 +2328,7 @@ addr,name,end,purpose
 11DE38,WallCrawlBio_WaitReachHLimit,11DE9E,"WALLCRAWLBIO: wait until x reaches a horizontal limit, then next entry"
 11DE9E,WallCrawlBio_ActCrawlHorizontal,11DF44,WALLCRAWLBIO script action: crawl left/right at speed $80 (animation by placement type)
 11DF44,WallCrawlBio_Nop66,11DF5A,WallCrawlBio: no-op override of virtual slot 24 (+$66)
-11DF5A,WallCrawlBio_Init,11E176,"BABYBIO Init, then stats Tbl_BabyMoleManStats, flags |= 2, crawl mode +$BC = variant & 3: 0/1 crawl on a wall (y limits +$AC/+$AE = y -/+ 48 or the placement params; 1 = h-flipped), 2 crawl on a ceiling (x limits, v-flip), each with its AI script (jt $3252 / $325A); +$BE = param +$C (default 30); start at the script's first step (class slot 3, +$12)"
+11DF5A,WallCrawlBio_Init,11E176,"BABYBIO Init, then stats Tbl_BabyMoleManStats, flags |= 2, crawl mode +$BC = variant & 3: 0/1 crawl on a wall (y limits +$AC/+$AE = y -/+ 48 or the placement params; 1 = h-flipped), 2 crawl on a ceiling (x limits, v-flip), each with its AI script (Tbl_WallCrawlBio_Script1Len (jt $3052) / $325A); +$BE = param +$C (default 30); start at the script's first step (class slot 3, +$12)"
 11E176,WallCrawlBio_Move,11E2FA,"WallCrawlBio Move override (class slot 18, +$4E): on the last frame of the crawl animation step the crawl position 7 px along the wall in the velocity's direction (+$9C when +$BC == 2, else +$A0), keep it inside [+$AC, +$AE] (stop there if +$B7/+$B8 is set, else BabyBio_StateFallOff), then copy +$9C/+$A0 to x/y"
 11E360,BioBullet_GetSize,11E36E,"return sizeof(BIOBULLET object) = $8C bytes (class slot 0, +$06)"
 11E36E,BioBullet_Init,11E3E6,"BIOBULLET constructor: parent Init, no motion (the shooter sets it), sprite Art_BioBulletSpr (palette 1), flags |= 3, +$42 = $60, sound $7E (class slot 3, +$12)"
@@ -2340,7 +2340,7 @@ addr,name,end,purpose
 11E77E,BioBalls_ScriptIdle,11E780,BIOBALLS AI script (1 entry): BioBalls_StateIdle
 11E7AA,BioBalls_GetSize,11E7B8,"return sizeof(BIOBALLS object) = $AC bytes (class slot 0, +$06)"
 11E7B8,BioBalls_Reset,11E7C4,"does nothing: only calls the empty BioBalls_EmptyStub (this class's override of: per-class reset hook (class slot 25, +$6A); some Inits call it on this, some LevelInit hooks share its body)"
-11E7C4,BioBalls_Init,11E8F2,"BIOBALLS constructor: parent Init, no motion, AI script jt $34FA at +$8C, state BioBalls_ActCollapse, flags |= $1083, sprite Art_BioBallsSpr, sprite priority (+$2E bit 2) from the live player, ball list +$92 = the shared buffer at $FFE768, motion function +$A2 and counters cleared, box = the spawn point (class slot 3, +$12)"
+11E7C4,BioBalls_Init,11E8F2,"BIOBALLS constructor: parent Init, no motion, AI script Tbl_BioBalls_ScriptIdleLen (jt $32FA) at +$8C, state BioBalls_ActCollapse, flags |= $1083, sprite Art_BioBallsSpr, sprite priority (+$2E bit 2) from the live player, ball list +$92 = the shared buffer at $FFE768, motion function +$A2 and counters cleared, box = the spawn point (class slot 3, +$12)"
 11E8F2,BioBalls_Update,11E9CC,"BIOBALLS per-frame update, a slimmed replacement of ACTOR Update: Move (unless flag $4000), advance the animation by distance (unless hurt), count down +$6E, run the state at +$5C when the +$6C delay is out, then refresh the box with BioBalls_UpdateBox when +$98 bit $400 is set (class slot 17, +$4A; does not call the parent)"
 11E9CC,BioBalls_Draw,11ED04,"draw every ball of the list +$92 ({x, y, flags} records) as a hardware sprite when on screen (uploading the frame when it changed); in layered mode (+$98 bit 0) the flagged balls first, then the rest (class slot 5, +$1A; does not call the parent)"
 11ED04,BioBalls_Move,11EEA8,"move the balls, not the object: run the motion function +$A2 (BioBalls_Motion*) first; unless it returns nonzero, ease each ball toward its slot in the formation table +$9A (anchor = position + +$9E/+$A0, mirrored by +$98 bits 1/2) by at most 5 px per axis per step, clearing +$9A once all have arrived (BIOBALLS override of slot 18 Move)"
@@ -2374,7 +2374,7 @@ addr,name,end,purpose
 120876,BasicBioSentinel_SetFrame,120936,"set a frame from one of four sprite banks: 0-$3F Art_BasicBioSentinelSpr2, $40-$5F Art_SavageBioSpr, $60-$7F Art_BasicBioSentinelSpr3, $80+ Art_BasicBioSentinelSpr ($FF = none), flagging a re-upload when the bank or frame changes (class slot 20, +$56; does not call the parent)"
 120936,BioSentinel_GetSize,120944,"return sizeof(BIOSENTINEL object) = $A8 bytes (class slot 0, +$06)"
 120944,BioSentinel_Deactivate,1209D8,"parent Deactivate; a one-shot sentinel (variant +$96 = 1) is then removed for good: flags cleared, timer freed, and its spawn record released without re-arming, so it never respawns (BIOSENTINEL override of slot 16, +$46)"
-1209D8,BioSentinel_Init,120B4A,"BIOSENTINEL constructor: parent Init, stats jt $365A but health 4, no motion, position from the placement entry, states BioSentinel_StateStart / hurt BioSentinel_StateHurt, flags |= $80, sprite Art_BasicBioSentinelSpr2, sprite priority (+$2E bit 2) from the live player; variant +$96 = entry byte 9, +$9E = p$A (default 90), +$A0 = p$C (default 2), +$A4 by p$E (0: $120, 1: $80, 2: $200), vulnerable flag +$A6 = 0 (class slot 3, +$12)"
+1209D8,BioSentinel_Init,120B4A,"BIOSENTINEL constructor: parent Init, stats Tbl_BioSentinelStats (jt $345A) but health 4, no motion, position from the placement entry, states BioSentinel_StateStart / hurt BioSentinel_StateHurt, flags |= $80, sprite Art_BasicBioSentinelSpr2, sprite priority (+$2E bit 2) from the live player; variant +$96 = entry byte 9, +$9E = p$A (default 90), +$A0 = p$C (default 2), +$A4 by p$E (0: $120, 1: $80, 2: $200), vulnerable flag +$A6 = 0 (class slot 3, +$12)"
 120B4A,BioSentinel_StateStart,120C02,BIOSENTINEL first state: variant 1 hangs on the ceiling (segment type $22) and crawls; others stand on the floor and think
 120C02,BioSentinel_StateCeilingCrawl,120D32,"BIOSENTINEL on the ceiling: crawl, turning at segment ends; when a player passes below (|dx| < 40, 0 < dy < 210) drop toward the floor"
 120D32,BioSentinel_StateDropFlip,120DA2,"BIOSENTINEL drop: turn right side up (keep the box centre), falling animation"
@@ -2383,7 +2383,7 @@ addr,name,end,purpose
 120F00,BioSentinel_StateFireUp,120F64,"BIOSENTINEL: shoot up-diagonal (frame 9); out of shots -> think with the cooldown, else aim again"
 120F64,BioSentinel_StateFireDown,120FC8,"BIOSENTINEL: shoot down-diagonal (frame $17); out of shots -> think, else aim again"
 120FC8,BioSentinel_StateFireLevel,12102C,"BIOSENTINEL: shoot straight (frame 7); out of shots -> think, else aim again"
-12102C,BioSentinel_StateAimLevel,121062,"BIOSENTINEL: straight aiming animation (jt $3612), then fire"
+12102C,BioSentinel_StateAimLevel,121062,"BIOSENTINEL: straight aiming animation (Tbl_Anim_120640, jt $3412), then fire"
 121062,BioSentinel_StateAimUp,121098,"BIOSENTINEL: upward aiming animation ($12064A), then fire"
 121098,BioSentinel_StateAimDown,1210CE,"BIOSENTINEL: downward aiming animation ($120654), then fire"
 1210CE,BioSentinel_StateAfterSwipe,12110E,BIOSENTINEL: after a close attack wait the cooldown (+$9E) and think again
@@ -2407,12 +2407,12 @@ addr,name,end,purpose
 121DB6,BigBio_UpdateOrbRing,122024,"BIGBIO: hurt players inside the orb radius, spin the 16 orbs around the body (angles +$9C/+$9E, speed +$A0 ramping up)"
 122024,BigBio_ActIdleAnim90,122088,"BIGBIO script action: idle animation $1206E6, next entry after 90 frames"
 122088,BigBio_StateMorphToShape,1221D0,"BIGBIO: slide the orbs horizontally onto the shape; when done turn around, sound $F8, idle"
-1221D0,BigBio_StateStartMorph,122244,"BIGBIO: set shape jt $3692, jump to the arena side and morph"
-122244,BigBio_ActRoarThenMorph,1222A0,"BIGBIO script action: face the arena side, roar animation (jt $366A, sound $F9), then morph"
+1221D0,BigBio_StateStartMorph,122244,"BIGBIO: set shape Tbl_BigBioOrbShape (jt $3492), jump to the arena side and morph"
+122244,BigBio_ActRoarThenMorph,1222A0,"BIGBIO script action: face the arena side, roar animation (Tbl_BigBioAnim (jt $346A), sound $F9), then morph"
 1222A0,BigBio_StateSpitFire,12232C,"BIGBIO: spit frame, launch a projectile; after the shot count (+$B4) next entry, else frame B"
 12232C,BigBio_StateSpitBetween,122362,BIGBIO: mouth frame $85 for one frame between spits
 122362,BigBio_StateSpitStart,122398,"BIGBIO: spit sound ($FD), start spitting"
-122398,BigBio_ActSpit3,1223D4,"BIGBIO script action: spit animation (jt $368A), 3 shots"
+122398,BigBio_ActSpit3,1223D4,"BIGBIO script action: spit animation (Tbl_Anim_1206F4, jt $348A), 3 shots"
 1223D4,BigBio_ActFaceSide,122438,"BIGBIO script action: face toward the arena centre (by +$B6), next entry"
 122438,BigBio_ActFaceIdle90,1224B0,"BIGBIO script action: face, idle animation, next entry after 90 frames"
 1224B0,BigBio_StateGatherOrbs,122660,"BIGBIO: pull the orbs onto the shape (8 px per step); when done land animation, sounds, next entry"
@@ -2427,14 +2427,14 @@ addr,name,end,purpose
 122B96,BigBio_StateFormRing,122DBE,BIGBIO: move the orbs into the ring formation; when done sound $FB and spin up
 122DBE,BigBio_Launch,122E18,"BIGBIO: set a shape and launch up and forward (vx $5BE, vy -$420, drag), timer 200"
 122E18,BigBio_StateLaunch,122E92,BIGBIO: leap into the air (sound $FA) and form the orb ring
-122E92,BigBio_ActRoarThenLaunch,122EDA,"BIGBIO script action: roar (jt $366A, sound $F9), then leap"
+122E92,BigBio_ActRoarThenLaunch,122EDA,"BIGBIO script action: roar (Tbl_BigBioAnim (jt $346A), sound $F9), then leap"
 122EDA,BigBio_StateStart,122F64,"BIGBIO first state: stand on the ground segment (type $21), wait for the players"
 122F64,BigBio_StateWaitPlayers,12314C,"BIGBIO: when all players are inside the arena, wall it in (two segments), lock the camera, load the boss palette and walk in"
 12314C,BigBio_StateWalkIn,1231E0,"BIGBIO: walk in 80 px, then stop, roar (sound $F2), leave the ground and start the script"
 1231E0,BigBio_StartScript,123242,BIGBIO: idle animation and start BigBio_Script after 60 frames
 123242,BigBio_ResumeAfterHit,123272,BIGBIO: clear the hit flag and resume the state saved in +$60
 123272,BigBio_StateDying,1232F0,BIGBIO dying: let the orbs fall; when the timer ends Kill
-1232F0,BigBio_StateDeathOrbs,123346,"BIGBIO death: orb shape jt $3692, 120-frame timer, then the orbs fall"
+1232F0,BigBio_StateDeathOrbs,123346,"BIGBIO death: orb shape Tbl_BigBioOrbShape (jt $3492), 120-frame timer, then the orbs fall"
 123346,BigBio_StateDefeated,12340E,"BIGBIO defeated: open the arena wall, end the scene in 200 frames, death explosion, death animation and sound"
 12340E,BigBio_TakeDamage,1234F4,"ignored in modes +$A2 bits 0/3; else health -= damage, cooldown 20, body palette by health (above 50 / 31-50); at 0 stop, blink and BigBio_StateDefeated after 20 frames, else save the state, blink and BigBio_ResumeAfterHit after 20 frames (BIGBIO override of slot 8, +$26; does not call the parent)"
 1234F4,BigBio_EmptyStub,1234FC,BIGBIO: empty function (ClassInit helper)
@@ -2558,8 +2558,8 @@ addr,name,end,purpose
 138158,LaserCannon_Nop66,13816E,LaserCannon: no-op override of virtual slot 24 (+$66)
 13816E,LaserCannon_Nop6A,138176,LaserCannon: no-op override of virtual slot 25 (+$6A)
 138176,LaserCannon_ClassInit,13817E,"empty: returns at once (this class's override of: per-class hook run at level start before the spawn pass (static, class slot 22, +$5E; ClassList_InitAll))"
-13817E,LaserCannon_Init,138284,"LASERCANNON constructor: parent (XNPC) Init, no vertical motion, stats jt $3AD2 (health = byte 2), state LaserCannon_StateStart, flags |= $4081, sprite Art_LaserCannonSpr (palette 3), h-flip unless placement p6, +$9E = p8 (default 90), +$9C/+$9A = p$A (default 3), +$A0 = p$C (default 40), +$A2 = (p$E != 0) (class slot 3, +$12)"
-138284,LaserCannon_OnDeath,1382BA,"health ran out: start a chain explosion along path jt $3D42 at the box top (ExplodeFx_Chain) (LASERCANNON override of slot 27, +$72; replaces XNpc_DeathReact)"
+13817E,LaserCannon_Init,138284,"LASERCANNON constructor: parent (XNPC) Init, no vertical motion, stats Tbl_LaserCannonStats (jt $38D2) (health = byte 2), state LaserCannon_StateStart, flags |= $4081, sprite Art_LaserCannonSpr (palette 3), h-flip unless placement p6, +$9E = p8 (default 90), +$9C/+$9A = p$A (default 3), +$A0 = p$C (default 40), +$A2 = (p$E != 0) (class slot 3, +$12)"
+138284,LaserCannon_OnDeath,1382BA,"health ran out: start a chain explosion along path Tbl_ExplodeFxSpiralPath (jt $3B42) at the box top (ExplodeFx_Chain) (LASERCANNON override of slot 27, +$72; replaces XNpc_DeathReact)"
 1382BA,LaserCannon_StateStart,1382E4,LaserCannon first state (Init's +$5C and +$64): set flags bit 3 and go idle
 1382E4,LaserCannon_StateIdle,138318,LaserCannon state: show the rest frame and look for a target
 138318,LaserCannon_StatePickTarget,138358,LaserCannon state: pick the nearest live player as target (+$94) and watch it for 60 frames
@@ -2582,11 +2582,11 @@ addr,name,end,purpose
 138968,LineSegKiller_KillAll,1389C2,Kill every live LINESEGKILLER object (each removes its segments as it dies)
 1389C2,LineSegKiller_NopStatic,1389CA,empty non-virtual helper called from LINESEGKILLER's ClassInit
 138A46,MaintRobotFire_GetSize,138A54,"return sizeof(MAINTROBOTFIRE object) = $8C bytes (class slot 0, +$06)"
-138A54,MaintRobotFire_Init,138AD4,"MAINTROBOTFIRE constructor: parent Init, no y acceleration, sprite Art_MaintRobotFireSpr2 (palette 1), damage byte +$70 = 1, flags |= $500A, +$42 = $10, animation jt $3B7A (class slot 3, +$12)"
+138A54,MaintRobotFire_Init,138AD4,"MAINTROBOTFIRE constructor: parent Init, no y acceleration, sprite Art_MaintRobotFireSpr2 (palette 1), damage byte +$70 = 1, flags |= $500A, +$42 = $10, animation Tbl_MaintRobotFireAnim (jt $397A) (class slot 3, +$12)"
 138AD4,MaintRobotFire_Update,138B42,"flame per-frame update, a full replacement of ACTOR Update: advance the animation (no movement), Kill when the animation has ended (+$44 = 0), else refresh the boxes (class slot 17, +$4A; does not call the parent)"
 138B42,MaintRobot_GetSize,138B50,"return sizeof(MAINTROBOT object) = $A8 bytes (class slot 0, +$06)"
 138B50,MaintRobot_ClassInit,138B5C,"does nothing: only calls the empty MaintRobot_NopStatic (this class's override of: per-class hook run at level start before the spawn pass (static, class slot 22, +$5E; ClassList_InitAll))"
-138B5C,MaintRobot_Init,138CD6,"MAINTROBOT constructor: parent (XNPC) Init, position from the placement entry, no y acceleration, state MaintRobot_StateResume, sprite (raw jt $3B82 when g_MaintRobotSprDef is -1), flags |= $80, stats Tbl_MaintRobotStats, +$42 = $10, speed +$9C/+$9A and x velocity = p6 << 8 (default $200), +$9E = p8 (60), +$A0 = p$A (2), +$A2 = p$C (20), +$A7 = p$E, sprite priority from the live player, then Obj_StandOnSegHere (class slot 3, +$12)"
+138B5C,MaintRobot_Init,138CD6,"MAINTROBOT constructor: parent (XNPC) Init, position from the placement entry, no y acceleration, state MaintRobot_StateResume, sprite (raw Art_MaintRobotSpr (jt $3982) when g_MaintRobotSprDef is -1), flags |= $80, stats Tbl_MaintRobotStats, +$42 = $10, speed +$9C/+$9A and x velocity = p6 << 8 (default $200), +$9E = p8 (60), +$A0 = p$A (2), +$A2 = p$C (20), +$A7 = p$E, sprite priority from the live player, then Obj_StandOnSegHere (class slot 3, +$12)"
 138CD6,MaintRobot_StateFire,138DA8,"MaintRobot state: spawn one MAINTROBOTFIRE burst toward the nearest player per call until the volley count +$A4 runs out, then resume moving"
 138DA8,MaintRobot_TargetInRange,138EA2,test whether a player box is within the maintenance robot's attack range (robot must be in the screen band y-camera $40-$E0)
 138EA2,MaintRobot_StateStartVolley,138EDC,"MaintRobot state: back to the move animation and load the volley count, then fire"
@@ -2623,10 +2623,10 @@ addr,name,end,purpose
 13CC22,Ninja_Reset,13CC2E,"does nothing: only calls the empty Ninja_NopStatic (this class's override of: per-class reset hook (class slot 25, +$6A); some Inits call it on this, some LevelInit hooks share its body)"
 13CC2E,Ninja_ClassInit,13CC3A,"does nothing: only calls the empty Ninja_NopStatic (this class's override of: per-class hook run at level start before the spawn pass (static, class slot 22, +$5E; ClassList_InitAll))"
 13CC3A,Ninja_CalcPatrolBounds,13CC90,compute a NINJA's patrol limits: home x (+$10) minus and plus a half-width
-13CC90,Ninja_Init,13CE68,"NINJA constructor: parent (BIONPC) Init, position from the placement entry, stats jt $3CBA but health 1, sprite (raw jt $3BFA when g_NinjaSprDef2 is -1), AI script jt $3CA2, state Ninja_StateNextStep, flags |= $80, sprite priority from the live player, stand on the nearest type-$3E9 floor segment (Seg_FindNearestOfType, Obj_StandOnSeg), detach, no motion, animation jt $3C7A, patrol bounds +$9C/+$9E from Ninja_CalcPatrolBounds(p6, default 160), +$A0 = p$C (90), +$A2 = p$E (-1) (class slot 3, +$12)"
+13CC90,Ninja_Init,13CE68,"NINJA constructor: parent (BIONPC) Init, position from the placement entry, stats Tbl_NinjaStats (jt $3ABA) but health 1, sprite (raw Art_NinjaSpr2 (jt $39FA) when g_NinjaSprDef2 is -1), AI script Tbl_NinjaIntroScript (jt $3AA2), state Ninja_StateNextStep, flags |= $80, sprite priority from the live player, stand on the nearest type-$3E9 floor segment (Seg_FindNearestOfType, Obj_StandOnSeg), detach, no motion, animation Tbl_NinjaAnimIdle (jt $3A7A), patrol bounds +$9C/+$9E from Ninja_CalcPatrolBounds(p6, default 160), +$A0 = p$C (90), +$A2 = p$E (-1) (class slot 3, +$12)"
 13CE68,Ninja_FindSegInBox,13CF6A,find the first live collision segment in a point's grid cell whose bounding box overlaps a given box
 13CF6A,Ninja_ClipToSegs,13D1CE,keep an airborne NINJA out of segments: push its box out of the overlapping segment and stop the blocked velocity (landing clears vy and gravity)
-13D1CE,Ninja_Move,13D260,"position += velocity, velocity += acceleration (twice at half rate, no speed limits); during the jump animation (jt $3C92) clip to the floor segments with Ninja_ClipToSegs (NINJA override of slot 18, +$4E; does not call the parent)"
+13D1CE,Ninja_Move,13D260,"position += velocity, velocity += acceleration (twice at half rate, no speed limits); during the jump animation (Tbl_NinjaAnimAirborne, jt $3A92) clip to the floor segments with Ninja_ClipToSegs (NINJA override of slot 18, +$4E; does not call the parent)"
 13D260,Ninja_Deactivate,13D2A0,"a ninja running its leave script (Tbl_NinjaLeaveScript) is removed for good (Actor_DeactivateFree); otherwise the parent Deactivate (NINJA override of slot 16, +$46)"
 13D2A0,Ninja_StateNextStep,13D2F4,NINJA default state (+$5C/+$64 from Init): advance its AI script to the next step after 60 frames
 13D2F4,Ninja_ActStartCombat,13D344,NINJA script action: switch to the combat script and start it at step 0
@@ -2698,7 +2698,7 @@ addr,name,end,purpose
 13FAA2,Spark_Init,13FBA4,"SPARK constructor: parent Init, no y acceleration, states Spark_StateStart / hurt Spark_StateHit, sprite g_SparkSprDef (palette 1), position from the placement entry, origin +$92/+$96 = the x/y arguments, damage 1, flags |= $88, +$42 = $10, max speed $128, rail id +$8B = placement byte 7, priority when p8 is set, +$8C = p$A (default $100), wobble step +$9A = 0 (class slot 3, +$12)"
 13FBA4,Spark_Update,13FCC2,"spark per-frame update, a replacement of ACTOR Update: off camera -> Deactivate (and Kill if its health is gone); else Move while health > 0, advance the animation by distance, run the state at +$5C after the +$6C delay and refresh the boxes (class slot 17, +$4A; does not call the parent)"
 13FCC2,Spark_Draw,13FDA2,"a type-$20 sprite def is drawn as one raw hardware sprite (4 tiles per frame, priority from +$2E bit 2); any other uses the parent Draw (SPARK override of slot 5, +$1A)"
-13FDA2,Spark_Move,13FE36,"free spark (rail id +$8B = 0): drift the origin +$92/+$96 by the velocity and add the wobble offset table jt $3DC2 (next entry every other frame); on a rail: Obj_RideRail (SPARK override of slot 18, +$4E; does not call the parent)"
+13FDA2,Spark_Move,13FE36,"free spark (rail id +$8B = 0): drift the origin +$92/+$96 by the velocity and add the wobble offset table Tbl_SparkWobble (jt $3BC2) (next entry every other frame); on a rail: Obj_RideRail (SPARK override of slot 18, +$4E; does not call the parent)"
 13FE36,Spark_Attack,13FEB6,"hit the target (its TakeDamage), explode at the box centre and Kill the spark (SPARK override of slot 7, +$22; no hit cooldown)"
 13FEB6,Spark_StateStart,13FF2C,"SPARK first state (Init's +$5C/+$64): start the animation, then either fly straight (type 1) or chase player 1"
 13FF2C,Spark_StateStop,13FF5E,"SPARK state: stop for 10 frames, then dart again"
@@ -2719,10 +2719,10 @@ addr,name,end,purpose
 141CBC,TankLeft_GetSize,141CCA,TANKLEFT slot +$06: return sizeof = $A8
 141CCA,TankLeft_Init,141D46,"TANKLEFT slot +$12: TANK Init, face left, 4 health, its own AI script"
 141D46,TankLeft_Move,141DA8,TANKLEFT slot +$4E: integrate velocity (twice at step 2) without track limits
-141DA8,TankLeft_Deactivate,141DE8,"TANKLEFT slot +$46: once driving away (script jt $3E82) remove it for good, else the parent Deactivate"
-141DE8,TankLeft_StateWaitDrive,141EEE,"after the pause: if the tank is off screen continue the script, else start driving (script jt $3E7A)"
+141DA8,TankLeft_Deactivate,141DE8,"TANKLEFT slot +$46: once driving away (script Tbl_Tank_ScriptDrive (jt $3C82)) remove it for good, else the parent Deactivate"
+141DE8,TankLeft_StateWaitDrive,141EEE,"after the pause: if the tank is off screen continue the script, else start driving (script Tbl_Tank_ScriptDriveIn (jt $3C7A))"
 141EEE,TankLeft_ActWaitDrive,141F18,"tank script action: wait the pause time, then drive (Tank_StateWaitDrive)"
-141F18,TankLeft_StateDriveIn,142008,"drive in until the tank reaches mid-screen, then switch to its leaving script (jt $3E82)"
+141F18,TankLeft_StateDriveIn,142008,"drive in until the tank reaches mid-screen, then switch to its leaving script (Tbl_Tank_ScriptDrive, jt $3C82)"
 142008,TankLeft_ActDriveIn,14205E,tank script action: start driving and watch for the middle of the screen
 14205E,TankLeft_ActDrive,1420DE,"tank script action: drive for the pause time, then the next script step"
 14221E,Tank_ScriptWaitDrive,142228,"tank AI script thunks (the jt exports the count word before them): pause, fire a rocket, wait then drive"

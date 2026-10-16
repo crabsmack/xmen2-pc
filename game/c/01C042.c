@@ -9,7 +9,7 @@
  * $4082; sprite Art_YoyoAcolyteSpr, palette 1; no target, the yoyo cleared and not out.
  * Placement params: +$A the AI script (switch cases YoyoAcolyte_Init_Script0 /
  * _Script1to4, then YoyoAcolyte_Init_SetScript): 0 (and anything outside 0-4)
- * Tbl_YoyoAcolyte_ScriptLevelLen, 1 ..ScriptHighLen, 2 ..ScriptLowLen, 3 ..ScriptMixALen,
+ * Tbl_YoyoAcolyte_ScriptLevel, 1 ..ScriptHighLen, 2 ..ScriptLowLen, 3 ..ScriptMixALen,
  * 4 ..ScriptMixBLen (thunks YoyoAcolyte_ScriptLevel, _ScriptHigh, _ScriptLow, _ScriptMixA,
  * _ScriptMixB: throws, each followed by ActIdle); +$C idleTime (0: 80). */
 #include "xmen2.h"
@@ -72,19 +72,19 @@ void YoyoAcolyte_Init(register YoyoAcolyte *self, register long x, register long
 		switch (v = pl->param[2]) {
 		default:
 		case 0:		/* YoyoAcolyte_Init_Script0 */
-			script = CODEPTR(Tbl_YoyoAcolyte_ScriptLevelLen);
+			script = CODEPTR(Tbl_YoyoAcolyte_ScriptLevel);
 			break;
 		case 1:		/* YoyoAcolyte_Init_Script1to4 */
-			script = CODEPTR(Tbl_YoyoAcolyteScriptHighLen);
+			script = CODEPTR(Tbl_YoyoAcolyteScriptHigh);
 			break;
 		case 2:
-			script = CODEPTR(Tbl_YoyoAcolyteScriptLowLen);
+			script = CODEPTR(Tbl_YoyoAcolyteScriptLow);
 			break;
 		case 3:
-			script = CODEPTR(Tbl_YoyoAcolyteScriptMixALen);
+			script = CODEPTR(Tbl_YoyoAcolyteScriptMixA);
 			break;
 		case 4:
-			script = CODEPTR(Tbl_YoyoAcolyte_ScriptMixBLen);
+			script = CODEPTR(Tbl_YoyoAcolyte_ScriptMixB);
 		}
 		AiScript_Set(&self->ai, script);	/* YoyoAcolyte_Init_SetScript */
 	}

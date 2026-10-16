@@ -12,7 +12,7 @@ void Map_SetBlockFG(register short col, register short row, short block, char ke
 	register short v;
 
 	cell = &g_FgBlockMap[g_FgRowTable[row] + col];
-	v = block | (*cell & 0xFE00);
+	v = (*cell & ~0x1FF) | block;
 	if (!keepHooks)
 		v &= ~0x3800;
 	*cell = v;

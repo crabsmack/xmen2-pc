@@ -8,7 +8,7 @@
  * from g_VramTileCursor (Spr_Init). At (-10, -20) px, no target, bombs at speed $160 (accel 1,
  * timer period 3) from pattern 0, script choice 0, move shifts 5 (approach) and 4 (lunge), the
  * wobble wave (Tbl_ApocalypseWave, shift 7, y 8 steps ahead), hidden (frame $FF), and the
- * entrance script (Tbl_Apocalypse_ScriptALen: Apocalypse_ScriptA) from its first step. */
+ * entrance script (Tbl_Apocalypse_ScriptA: Apocalypse_ScriptA) from its first step. */
 #include "xmen2.h"
 
 #define g_ApocalypseSpr2	(*(PTR(SprInst) *)g_SceneVar3B1C)	/* scene variable: APOCALYPSE's second sprite */
@@ -60,7 +60,7 @@ void Apocalypse_Init(register Apocalypse *self, long x, long y, Placement *pl)
 	self->waveShift = 7;
 	self->waveYPhase = 8;
 	(*self->cls->method[20])(self, 0xFF);		/* +$56 SetFrame: hide */
-	AiScript_Set(&self->ai, CODEPTR(Tbl_Apocalypse_ScriptALen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_Apocalypse_ScriptA));
 start:	/* (here MPW C pops all the arguments, as the ROM does) */
 	AI_FIRST_STEP(self, self->ai, 0);
 }

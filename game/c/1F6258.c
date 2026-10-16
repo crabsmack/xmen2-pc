@@ -7,5 +7,9 @@
 
 unsigned long Math_MulFix8(unsigned short a, unsigned short b)
 {
+#ifdef XMEN2_MPW
+	return a * b >> 8;	/* MPW: unsigned short promotes to unsigned: one mulu.w */
+#else
 	return (unsigned long)a * b >> 8;
+#endif
 }

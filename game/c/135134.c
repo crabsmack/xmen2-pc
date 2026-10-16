@@ -1,4 +1,4 @@
-/* FlyBrood_ActHoverForever - FLYBROOD AI-script action (its only step in Tbl_FlyBrood_ScriptALen,
+/* FlyBrood_ActHoverForever - FLYBROOD AI-script action (its only step in Tbl_FlyBrood_ScriptA,
  * FlyBrood_ScrStepHoverForever): stop and hover where it is (FlyBrood_MovePath on
  * Tbl_FlyBroodHoverPath), facing the player from now on (FlyBrood_StateFacePlayer).
  *

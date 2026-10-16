@@ -1,0 +1,10 @@
+# Cyclops_ResetBeamFlicker: the corpus never runs it (Cyclops_ResetBeams calls it at the end of a
+# scene with CYCLOPS's beam). One case at the first top-level call of any function, with the flicker
+# state as it is while a beam's sprite group flickers: an update pending, the splice on, and a
+# splice {first slot - 1, first slot, record byte, enable} both new and current. Both versions must
+# leave $FFE98E-$FFE997 zero and touch nothing else.
+at any
+case beam_flickering
+w $FFE98E = $0101
+l $FFE990 = $0F100301
+l $FFE994 = $0F100301

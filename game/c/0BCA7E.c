@@ -26,7 +26,7 @@ short SavageBio_ActDie(SavageBigBio *self)
 		else
 			balls->spr.flags |= 0x10;
 		BioBalls_SetFormation(balls, CODEPTR(Tbl_SavageBioBallsFormation));
-		AiScript_Set(&balls->ai, CODEPTR(Tbl_SavageBio_Script5Len));
+		AiScript_Set(&balls->ai, CODEPTR(Tbl_SavageBio_Script5));
 		AI_FIRST_STEP(balls, balls->ai, 0);
 		SET_STATE(self, SavageBio_StateDeathWait);
 		return self->flags & 8;

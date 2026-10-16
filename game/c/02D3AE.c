@@ -18,7 +18,7 @@ short Exodus_StateSwoopStart(register Exodus *self)
 	dy = (self->targetY << 8) - self->y;
 	steps = ABS(dy) / ABS(self->vy);
 	self->vx = (short)(dx / steps);
-	self->vx += self->vx;	/* the ROM sign-extends the stored vx before the add.w: not matched */
+	self->vx += self->vx << 0;	/* MPW: the zero shift written out gives the ROM's ext.l */
 	self->moveFlags = 0;
 	self->moveFlags |= 2;
 	self->moveFlags |= 1;

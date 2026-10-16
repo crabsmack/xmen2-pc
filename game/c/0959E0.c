@@ -12,6 +12,6 @@ void XClone_ActUnhittableScript(XClone *self)
 		self->bodyNode = 0;
 	}
 	self->flags6 |= 0x1000;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_XClone_Script1Len));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_XClone_Script1));
 	AI_FIRST_STEP(self, self->ai, 0);
 }

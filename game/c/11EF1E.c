@@ -1,5 +1,5 @@
 /* BioBalls_StateIdle - BIOBALLS state: do nothing, every frame (its AI script's one step,
- * Tbl_BioBalls_ScriptIdleLen).
+ * Tbl_BioBalls_ScriptIdle).
  *
  * self: the object.
  * Returns flags bit 3. */

@@ -4,7 +4,7 @@
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on).
  * No tentacle hits or hit points yet; the arena 48 px narrower on each side; the Chamber's
  * shared stats record (g_A4Stats) gets the boss's health (the low byte of g_A4BossHealth) and
- * is its stats (its health from it); its AI script (Tbl_SavageBio_Script2Len) from the first
+ * is its stats (its health from it); its AI script (Tbl_SavageBio_Script2) from the first
  * step now (no script: the default state); sprite Art_SavageBioSpr with palette 3; no tentacle;
  * top x speed $580 (g_A4BossMaxSpeed); no frame shown ($FF, slot +$56) and its boxes
  * (Obj_UpdateBoxes). Then its companion: a BIOBALLS at its position (balls), palette 3, no frame
@@ -29,7 +29,7 @@ void SavageBigBio_Init(register SavageBigBio *self, long x, long y, Placement *p
 	g_A4Stats->health = g_A4BossHealth;
 	self->stats = g_A4Stats;
 	self->health = g_A4Stats->health;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_SavageBio_Script2Len));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_SavageBio_Script2));
 	AI_FIRST_STEP(self, self->ai, 0);
 	self->spr.def = CODEPTR(Art_SavageBioSpr);
 	self->spr.flags = self->spr.flags & ~3 | 3;

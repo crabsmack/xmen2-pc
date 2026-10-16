@@ -71,10 +71,16 @@ typedef struct AiScript {
 /* The header of an animation script (ROM; ACTOR anim, Obj_SetAnim / Obj_ChangeAnim,
    Anim_ApplyStep, Anim_Advance; xmen2disasm NOTES "Animation scripts"): 2-byte steps {flags,
    value} follow from +6 (flag $20: play sound value, else show frame value). */
+typedef struct AnimStep {
+	u8 flags;			/* +$00 $20 sound step (Anim_ApplyStep plays value and goes on), $80 / $40 toggle h / v flip (flags bit 2) */
+	u8 value;			/* +$01 the frame to show, or the sound */
+} AnimStep;
 typedef struct AnimScript {
-	u8 flags;			/* +$00 bits 0-1 one-shot, 2 per-step flips, 3 face velocity, $30 distance-driven */
+	u8 flags;			/* +$00 bits 0-1 one-shot (bit 1 also ends the state's wait), 2 per-step flips, 3 face velocity, $30 distance-driven, $80 by the x or y distance (bit 4: y; Anim_AdvanceByDistance) */
 	u8 count;			/* +$01 steps */
-	s16 delay;			/* +$02 frames per step (BabyBio_Move: the step's last frame is animDist = delay - 1) */
+	s16 delay;			/* +$02 frames per step (BabyBio_Move: the step's last frame is animDist = delay - 1); distance per step of a distance-driven one */
+	u8 unk_04[2];			/* +$04 */
+	AnimStep step[1];		/* +$06 count steps */
 } AnimScript;
 
 /* A frame record of a sprite definition ($14 bytes; SprDef.frame). Box offsets are signed
@@ -135,6 +141,11 @@ CHECK_SIZE(SprPiecePre, 6);
 typedef struct NemCodeTable {
 	s16 code[256];			/* +$00 (code length << 8 | value) per 8-bit peek */
 } NemCodeTable;
+/* Nem_Decode's tile mask in mode 2: Level_LoadUsedTiles' used-tile bitmap (Bitmap_Set), a bit per
+   tile for up to 2,048 tiles, a local of its caller. */
+typedef struct NemTileMask {
+	u8 bits[0x100];			/* +$00 */
+} NemTileMask;
 
 /* A sprite definition (ROM): a header, then its frame records from +$24. */
 typedef struct SprDef {
@@ -1257,7 +1268,7 @@ CHECK_SIZE(BroodBossParts, 0x90);
    boss: a body that moves with g_BroodBossOffsetX/Y, with a claw, an arm and a little leg. */
 #define BROODBOSS_FIELDS \
 	BROODBOSSPARTS_FIELDS \
-	AiCursor ai;			/* +$90 AI script (Tbl_BroodBossScriptLen, 44 steps) */ \
+	AiCursor ai;			/* +$90 AI script (Tbl_BroodBossScript, 44 steps) */ \
 	PTR(struct BroodClaw) claw;	/* +$96 its claw (BroodClaw_Spawn in BroodBoss_StateSetup) */ \
 	PTR(struct BroodBossArm) arm;	/* +$9A its arm (BROODBOSSARM New) */ \
 	PTR(struct LittleLeg) leg;	/* +$9E its little leg (LITTLELEG New) */ \
@@ -1390,8 +1401,8 @@ typedef struct DrawNode {
 	PTR(struct DrawNode) prev;	/* +$04 */
 	DrawFn draw;			/* +$08 func(object), 0 none: the object's class Draw, or a stand-in (BioNpc_DrawStunned) */
 	PTR(void) object;		/* +$0C */
-	s16 key;			/* +$10 sort key ($5FF: free, DrawList_Init) */
-	s16 flags;			/* +$12 */
+	u16 key;			/* +$10 sort key, drawn lowest first: $400 unless behind, layer << 2, low bits 1 player 1, 2 player 2, 0 / 3 others (DrawList_Add); $5FF in a fresh node (DrawList_Init) */
+	u16 flags;			/* +$12 $8000 in use (0: free, DrawList_AllocNode), $400 behind, $10 / 4 the caller's flags, 8 a player (keeps its key's low bits: DrawList_SetPriority) */
 } DrawNode;
 CHECK_SIZE(DrawNode, 0x14);
 
@@ -1466,14 +1477,39 @@ typedef struct CamZone {
 } CamZone;
 CHECK_SIZE(CamZone, 0x0C);
 
-/* The header of a level map blob (g_LevelFgMap, passed to Level_Load). */
+/* The header of a level map blob (g_LevelFgMap, passed to Level_Load); a tileset blob (often the
+   same blob) has its own fields in it (xmen2disasm NOTES "Level map / tileset blobs"). */
 typedef struct MapHeader {
-	u16 unk_00;			/* +$00 */
+	s8 flags;			/* +$00 bit 5: load all of the tileset's tiles, not only those the map uses (Level_LoadMaps; read signed) */
+	s8 packing;			/* +$01 high nibble non-zero: layout and block definitions Enigma-packed, tiles Nemesis-packed (read signed) */
 	u16 width;			/* +$02 in 8-px cells (CloneA2_SetCameraLimitsToMap) */
 	u16 height;			/* +$04 in 8-px cells (SwampPlatform_Move) */
-	u8 unk_06[0xA];			/* +$06 */
+	u16 tileCount;			/* +$06 tileset: tiles */
+	u16 blockCount;			/* +$08 tileset: 4x4-tile blocks */
+	u16 layout;			/* +$0A offset from the header of the block layout (a block word per 32-px cell) */
+	u16 blockDefs;			/* +$0C tileset: offset of the block definitions (MapBlock) */
+	u16 tiles;			/* +$0E tileset: offset of the tiles (packed: {word rows; Nemesis code list; data}) */
 	u16 palette;			/* +$10 offset from the header of its 16 colours (Level_Load copies them to palette line 0, a BG map's to line 2; AvalonB1_InitIntroPalette) */
+	u16 spawns;			/* +$12 offset of the spawn list {word count; Placement entries} (Level_Load) */
+	u8 unk_14[2];			/* +$14 */
+	u16 specials;			/* +$16 offset of the special-block list {word count; MapSpecial entries} (Level_AssignBlockSlots) */
 } MapHeader;
+CHECK_SIZE(MapHeader, 0x18);
+
+/* A block definition: 4x4 tile words (Level_LoadMaps, Level_FillBlockSlot). */
+typedef struct MapBlock {
+	s16 tile[16];			/* +$00 row by row */
+} MapBlock;
+CHECK_SIZE(MapBlock, 0x20);
+
+/* An entry of a map's special-block list (Level_AssignBlockSlots): the layout cell (x, y, in
+   blocks) gets its own 16 VRAM tiles, slot 1-12 (0: none). */
+typedef struct MapSpecial {
+	s16 slot;			/* +$00 */
+	s16 x;				/* +$02 */
+	s16 y;				/* +$04 */
+} MapSpecial;
+CHECK_SIZE(MapSpecial, 6);
 
 /* A keyframe of the SiberiaB1 blizzard (ROM, Tbl_SiberiaB1Wind, 8 bytes; SiberiaB1_StepWind):
    the wind moves to this angle and strength, then holds. */
@@ -1504,7 +1540,7 @@ CHECK_SIZE(IceShard, 0x14);
 /* CAPEDACOLYTE: descriptor $013E10, parent BIONPC, $B8 bytes (GetSize $013342). A caped acolyte
    that hovers inside a box around its placement with a wobble (Tbl_CapedAcolyteHoverOffsets),
    flies to a point beside the nearest player and shoots bursts of gauss bullets (AI scripts
-   Tbl_CapedAcolyteIntroScriptLen, then Tbl_CapedAcolyteMainScriptLen). */
+   Tbl_CapedAcolyteIntroScript, then Tbl_CapedAcolyteMainScript). */
 #define CAPEDACOLYTE_FIELDS \
 	BIONPC_FIELDS \
 	AiCursor ai;			/* +$96 AI script */ \
@@ -1530,7 +1566,7 @@ CHECK_OFFSET(CapedAcolyte, hover, 0xB4);
 #define CHILDSHIP_FIELDS \
 	XNPC_FIELDS \
 	PTR(struct PathPt) trail;	/* +$94 next offset of its explosion trail (Tbl_ChildShipWreckTrail: one every 3 frames, ChildShip_Update; 0 none) */ \
-	AiCursor ai;			/* +$98 AI script (Tbl_ChildShip_ScriptLen) */ \
+	AiCursor ai;			/* +$98 AI script (Tbl_ChildShip_Script) */ \
 	s16 xMin;			/* +$9E arena x range in pixels ($60-$220): ChildShip_Move stops it at the ends */ \
 	s16 xMax;			/* +$A0 */ \
 	s16 floorY;			/* +$A2 lowest cruise y in pixels ($140) */ \
@@ -2158,15 +2194,43 @@ CHECK_SIZE(FloatBubbleExplode, 0x90);
 typedef struct RThetaObject { RTHETAOBJECT_FIELDS } RThetaObject;
 CHECK_SIZE(RThetaObject, 0x9E);
 
-/* FLUXBOMB: descriptor $159AB4, parent RTHETAOBJECT, $102 bytes (GetSize $157BA6) */
+/* A particle of a FLUXBOMB's implosion / burst (6 bytes; FluxBomb_StartImplode, _StartBurst move
+   them, _DrawImplode, _DrawBurst draw each as an 8x8 sprite). */
+typedef struct FluxParticle {
+	s16 flags;			/* +$00 bit 0: shown */
+	s16 x;				/* +$02 pixels from the bomb */
+	s16 y;				/* +$04 */
+} FluxParticle;
+CHECK_SIZE(FluxParticle, 6);
+/* A FLUXBOMB implosion particle (ROM, Tbl_FluxBombImplodeParticles: 16 x 4 bytes): its step
+   toward the centre; it starts at -(dx, dy) << shift. A zero step: no particle. */
+typedef struct FluxImplode {
+	s8 dx;				/* +$00 pixels per step */
+	s8 dy;				/* +$01 */
+	s16 shift;			/* +$02 */
+} FluxImplode;
+CHECK_SIZE(FluxImplode, 4);
+/* A FLUXBOMB burst direction (ROM, Tbl_FluxBombBurstDirs: (dx, dy) pairs, (0, 0) none). */
+typedef struct FluxDir {
+	s8 dx;				/* +$00 pixels per step */
+	s8 dy;				/* +$01 */
+} FluxDir;
+
+/* FLUXBOMB: descriptor $159AB4, parent RTHETAOBJECT, $102 bytes (GetSize $157BA6). Magneto's
+   flux bomb (one object, g_FluxBombObj): held while A is (FluxBomb_StateHeld) or thrown by the
+   clone (FluxBomb_StateThrown), it implodes (particles in), flashes and bursts (particles out),
+   hurting the other side's bodies and running tile hooks around it (FluxBomb_DamageArea). Its
+   sprite is the shared g_FluxBombSpr. */
 #define FLUXBOMB_FIELDS \
 	RTHETAOBJECT_FIELDS \
-	u8 unk_9E[0x60];		/* +$9E */ \
+	FluxParticle part[16];		/* +$9E (Init sets part[0] to (0, 200, 200)) */ \
 	u8 held;			/* +$FE 1 while Magneto holds it (Magneto_SpawnBomb; cleared on release or a hit: FluxBomb_StateHeld then implodes it) */ \
 	u8 strong;			/* +$FF thrown with Magneto's health above $700 (Magneto_SpawnFluxBomb; the implode, burst and damage code test it) */ \
-	u8 unk_100[2];			/* +$100 */
+	u8 phase;			/* +$100 particles: 0 none, 1 imploding, 2 imploded, 3 bursting, 4 burst over */ \
+	u8 burstCount;			/* +$101 burst particles out (+100 per step, at most 16 used: all at once) */
 typedef struct FluxBomb { FLUXBOMB_FIELDS } FluxBomb;
 CHECK_SIZE(FluxBomb, 0x102);
+CHECK_OFFSET(FluxBomb, phase, 0x100);
 
 /* A step of a FLYBROOD path (ROM: Tbl_FlyBroodHoverPath, _HomingPath, _SwoopPath). MovePath: an
    offset from the anchor, dx $7F ends (back to the hover path's start); MoveHoming: a velocity
@@ -2447,7 +2511,10 @@ CHECK_OFFSET(LittleLeg, timer, 0x62);
 /* MAGNETICGLOB: descriptor $159B2C, parent RTHETAOBJECT, $A6 bytes (GetSize $157BB4) */
 #define MAGNETICGLOB_FIELDS \
 	RTHETAOBJECT_FIELDS \
-	u8 unk_9E[0x8];		/* +$9E */
+	PTR(void) flyAnim;		/* +$9E animation for its heading (MagneticGlob_SetAnimForAngle; Obj_ChangeAnim each Update) */ \
+	u8 hflip;			/* +$A2 1: drawn h-flipped (the heading's sector, MagneticGlob_SetAnimForAngle) */ \
+	u8 unk_A3;			/* +$A3 */ \
+	s16 tiles;			/* +$A4 VRAM tile base (placement param 2; Spr_Init at Activate) */
 typedef struct MagneticGlob { MAGNETICGLOB_FIELDS } MagneticGlob;
 CHECK_SIZE(MagneticGlob, 0xA6);
 
@@ -2836,7 +2903,7 @@ CHECK_SIZE(SentinelElevator, 0x9E);
    ShootAcolyte_Script: ActWalk, ActFacePlayer, ActShootBurst, ActWait30). */
 #define SHOOTACOLYTE_FIELDS \
 	BIONPC_FIELDS \
-	AiCursor ai;			/* +$96 AI script (Tbl_ShootAcolyteScriptLen) */ \
+	AiCursor ai;			/* +$96 AI script (Tbl_ShootAcolyteScript) */ \
 	s32 unk_9C;			/* +$9C (0, Init; never read) */ \
 	s16 unk_A0;			/* +$A0 (0, Init; never read) */ \
 	s16 shotsLeft;			/* +$A2 shots left of the burst */ \
@@ -3022,7 +3089,7 @@ CHECK_OFFSET(Synchronizer, inUse, 0x38);
    destroyed, it explodes into a wreck (Tank_OnDeath, Tank_StateWreck). */
 #define TANK_FIELDS \
 	XNPC_FIELDS \
-	AiCursor ai;			/* +$94 AI script (Tbl_Tank_ScriptWaitDriveLen at Init) */ \
+	AiCursor ai;			/* +$94 AI script (Tbl_Tank_ScriptWaitDrive at Init) */ \
 	s16 trackLeft;			/* +$9A x range in pixels it drives in (Tank_SetTrackLimits; placement param 0, 0: 96) */ \
 	s16 trackRight;			/* +$9C (built from the placement y: a bug kept) */ \
 	s16 speed;			/* +$9E drive speed (param 1 << 8, 0: $100) */ \
@@ -3121,12 +3188,26 @@ CHECK_SIZE(ThronePhone, 0xA8);
 typedef struct Tower { TOWER_FIELDS } Tower;
 CHECK_SIZE(Tower, 0x8E);
 
-/* TOXICCAN: descriptor $144D90, parent ACTOR, $92 bytes (GetSize $1449CC) */
+/* TOXICCAN: descriptor $144D90, parent ACTOR, $92 bytes (GetSize $1449CC). A barrel of toxin
+   that can be stood on and shot: below 3 health it leaks (ToxicCan_DrawLeak), at 0 it blows up
+   in a chain of explosions; a damaged one comes back as TOXICCANDAMAGED (ToxicCan_Despawn).
+   Its leak's first puff animation counts in countdown (+$6E). */
 #define TOXICCAN_FIELDS \
 	ACTOR_FIELDS \
-	u8 unk_8C[0x6];		/* +$8C */
+	PTR(ListNode) playerBodyNode;	/* +$8C its node in the player-side body hit list (ToxicCan_Activate): enemy attacks hit it too */ \
+	s16 leakStep;			/* +$90 step of the leak's second puff animation (ToxicCan_DrawLeak) */
 typedef struct ToxicCan { TOXICCAN_FIELDS } ToxicCan;
 CHECK_SIZE(ToxicCan, 0x92);
+CHECK_OFFSET(ToxicCan, leakStep, 0x90);
+
+/* A step of a TOXICCAN leak puff animation (ROM, 4 bytes; Tbl_ToxicCanLeakPuffs1/2, ended by a
+   tile >= $FF): a sprite tile and its offset (ToxicCan_DrawLeak). */
+typedef struct LeakPuff {
+	s16 tile;			/* +$00 added to the leak sprite's tile attribute */
+	s8 dx;				/* +$02 pixels */
+	s8 dy;				/* +$03 */
+} LeakPuff;
+CHECK_SIZE(LeakPuff, 4);
 
 /* TOXICCANDAMAGED: descriptor $144E08, parent TOXICCAN, $92 bytes (GetSize $144CE2) */
 #define TOXICCANDAMAGED_FIELDS \

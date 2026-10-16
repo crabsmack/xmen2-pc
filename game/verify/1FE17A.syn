@@ -1,0 +1,8 @@
+# VDP_QueueDma: the corpus only queues with the display on, so the jump to VDP_DmaToVram for a
+# display that is off ($1FE182) never runs. The case takes the first corpus call (TAS frame 148,
+# its own source/VRAM/length arguments) with the VDP mode-register-1 shadow g_VdpReg1 ($FFE4B8)
+# at $8124: display off, as the TAS has it at frame 120 while a scene is set up. The DMA runs at
+# once (VDP register writes captured); the DMA-busy status read is supplied as 0 (done).
+case display_off
+b $FFE4B9 = $24
+hw $0000

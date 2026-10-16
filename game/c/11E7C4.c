@@ -2,7 +2,7 @@
  * balls drawn from the shared ball list, collapsed on the object (BioBalls_ActCollapse) and idle.
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on).
- * Not moving, AI script Tbl_BioBalls_ScriptIdleLen (one step, the thunk BioBalls_ScriptIdle:
+ * Not moving, AI script Tbl_BioBalls_ScriptIdle (one step, the thunk BioBalls_ScriptIdle:
  * BioBalls_StateIdle), state and default state BioBalls_ActCollapse, flags6 |= $1083, sprite
  * Art_BioBallsSpr with palette 1, priority bit (2)
  * from the live player (player 1 when neither is), ball list g_BioBallsList, no flags, not done,
@@ -16,7 +16,7 @@ void BioBalls_Init(BioBalls *self, long x, long y, Placement *pl)
 
 	(*CLASS(Tbl_BioBalls_vtable)->parent->method[3])(self, x, y, pl);	/* ACTOR Init */
 	STOP_MOVING(self);
-	AiScript_Set(&self->ai, CODEPTR(Tbl_BioBalls_ScriptIdleLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_BioBalls_ScriptIdle));
 	self->state = (StateFn)BioBalls_ActCollapse;
 	self->defaultState = (StateFn)BioBalls_ActCollapse;
 	self->flags6 |= 0x1083;

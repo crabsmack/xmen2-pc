@@ -10,19 +10,18 @@
 void Spawn_InitRecords(void)
 {
 	register long i;
-	register SpawnRec *rec;
-	register Placement *pl;
 
-	g_SpawnRecs = (SpawnRec *)Mem_StackAlloc(g_SpawnRecCount * 14, STR(Str_Empty_15FA2A, ""));
+	g_SpawnRecs = (SpawnRec *)Mem_StackAlloc(14 * g_SpawnRecCount, STR(Str_Empty_15FA2A, ""));
 	for (i = 0; i < g_SpawnRecCount; i++) {
-		rec = &g_SpawnRecs[i];
-		pl = &g_PlacementList[i];
+		register SpawnRec *rec = &g_SpawnRecs[i];
+		register Placement *pl = &g_PlacementList[i];
+
 		rec->cls = ((ClassList *)g_ClassList)->cls[pl->classIndex];
 		(*rec->cls->method[1])(rec, pl);		/* InitSpawnRec */
 	}
 	g_SpawnScanLeft = 0;
 	g_SpawnScanPtr = g_SpawnRecs;
-	g_SpawnRecEnd = g_SpawnRecs + g_SpawnRecCount;
+	g_SpawnRecEnd = &g_SpawnRecs[g_SpawnRecCount];
 	g_SpawnScanPerFrame = 10;
 	g_SpawnScanPerFrame = 5;
 	if (g_SpawnRecCount > 0)

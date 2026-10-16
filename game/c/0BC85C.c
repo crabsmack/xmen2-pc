@@ -7,7 +7,7 @@
 
 short SavageBio_StateDying(SavageBigBio *self)
 {
-	AiScript_Set(&self->ai, CODEPTR(Tbl_SavageBio_Script1Len));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_SavageBio_Script1));
 	AI_FIRST_STEP(self, self->ai, 0);
 	NO_RETURN_VALUE
 }

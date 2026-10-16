@@ -25,7 +25,7 @@ short XClone_ActOpenBioBalls(XClone *self)
 		else
 			balls->spr.flags |= 0x10;
 		BioBalls_SetFormation(balls, CODEPTR(Tbl_XCloneOpenFormation));
-		AiScript_Set(&balls->ai, CODEPTR(Tbl_XClone_PodScriptLen));
+		AiScript_Set(&balls->ai, CODEPTR(Tbl_XClone_PodScript));
 		balls->x = self->x;
 		balls->y = self->y;
 		balls->pathDx = 0;

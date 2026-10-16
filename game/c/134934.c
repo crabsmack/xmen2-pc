@@ -70,7 +70,7 @@ void FlyBrood_Init(FlyBrood *self, long x, long y, Placement *pl)
 	switch (pl->param[1]) {
 	default:
 	case 0:				/* FlyBrood_Init_Case0 */
-		AiScript_Set(&self->ai, CODEPTR(Tbl_FlyBrood_ScriptALen));	/* FlyBrood_ScrStepHoverForever */
+		AiScript_Set(&self->ai, CODEPTR(Tbl_FlyBrood_ScriptA));	/* FlyBrood_ScrStepHoverForever */
 		break;
 	case 1:				/* FlyBrood_Init_Case1 */
 		AiScript_Set(&self->ai, CODEPTR(Tbl_FlyBrood_ScrStepsWaitPassedLen));	/* FlyBrood_ScrStepsWaitPassed */

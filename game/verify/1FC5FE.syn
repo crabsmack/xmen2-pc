@@ -1,0 +1,14 @@
+# Scaler_Start: the corpus's jobs give only source B (unpacked pixels). These give source A
+# (packed 4bpp): alone (read at half width), and with B (expanded into B first, then dropped).
+case srcA_only
+# source A = the job's picture, no source B: g_ScalerHalfWidth $FF
+l a7+$8 = arg2
+l a7+$C = $0
+case srcA_and_B
+# no parameter record (g_ScalerParams kept: a 16x8 source), A = the job's picture (ROM),
+# B = a RAM buffer: Scaler_ExpandSource unpacks A into B, A becomes 0
+l a7+$4 = $0
+w $FFF56A = $10
+w $FFF56C = $8
+l a7+$8 = arg2
+l a7+$C = $FF8100

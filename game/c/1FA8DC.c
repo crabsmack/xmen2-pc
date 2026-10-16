@@ -11,11 +11,15 @@ void *Mem_StackAlloc(register long size, char *tag)
 	register short hdrSize;
 	register char *block;
 
+#ifdef XMEN2_MPW
 	hdr = (MemBlock *)Sys_GetStackPtr();
+#else
+	(void)Sys_GetStackPtr();
+#endif
 	hdr = g_HeapTop;
-	hdrSize = 8;
-	block = (char *)hdr + (hdrSize + (hdrSize & 1));
-	hdr->next = g_HeapTop = block + (size + (size & 1));
+	hdrSize = sizeof(MemBlock);
+	block = (char *)hdr + ((hdrSize & 1) + hdrSize);
+	hdr->next = g_HeapTop = block + ((size & 1) + size);
 	hdr->tag = tag;
 	return block;
 }

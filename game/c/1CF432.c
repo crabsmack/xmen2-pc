@@ -105,6 +105,11 @@ void Gambit_UpdateCard(register Gambit *self, register GambitCard *card)
 				g_SprWritePtr->x = tx - 4 + 0x80;
 			}
 			/* Gambit_UpdateCard_TrailNext */
+			if (0) {	/* MPW: weights n, tx and ty over flip to give them the ROM's d7/d5/d6; no code */
+				n = n + n + n + n;
+				tx = (short)(tx + tx + tx);
+				ty = (short)(ty + ty + ty);
+			}
 		}
 	}
 }

@@ -6,7 +6,7 @@
  * cooldown); +$E is read and not used (left over from SmallBrood_Init's variant switch). The
  * floor is the segment below the spawn point (none: spawn y), the ceiling 32 above it. Keeps
  * 120 pixels from the player. AiScript_Set runs twice: Tbl_BroodAiScript, then
- * Tbl_Brood_ScriptLen (charge, shoot) which is the one kept. */
+ * Tbl_Brood_Script (charge, shoot) which is the one kept. */
 #include "xmen2.h"
 
 void Brood_Init(Brood *self, long x, long y, Placement *pl)
@@ -65,6 +65,6 @@ void Brood_Init(Brood *self, long x, long y, Placement *pl)
 	(*self->cls->method[20])(self, 0xFF);	/* +$56 SetFrame */
 	self->health = (self->stats = (NpcStats *)CODEPTR(Tbl_BroodStats))->health;
 	AiScript_Set(&self->ai, CODEPTR(Tbl_BroodAiScript));
-	AiScript_Set(&self->ai, CODEPTR(Tbl_Brood_ScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_Brood_Script));
 	self->flashTimer = 0;
 }

@@ -1,0 +1,8 @@
+# Scaler_EmitSprites: the corpus's pictures are never high priority and never fill the sprite table.
+case prio
+# prio set (the fourth argument's byte): every piece's attribute gets $8000
+b a7+$13 = $1
+case table_full
+# the slot after the current write pointer is $50 (80: the table is full): returns -1 at the first
+# piece on screen, writing nothing
+b [$FFE21A]+3 = $50

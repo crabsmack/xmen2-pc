@@ -1,7 +1,7 @@
 /* SavageMediumBio_StateBurst - SAVAGEMEDIUMBIO state (after its death, SavageMediumBio_OnDeath):
  * burst into a BIOBALLS at its position, which gathers into the burst formation
  * (Tbl_SavageMediumBioBurstFormation) with sound $F2 and runs the script that makes it the
- * SAVAGEBIGBIO (Tbl_SavageMediumBio_Script4Len: SavageBioBalls_* steps) from its first step now;
+ * SAVAGEBIGBIO (Tbl_SavageMediumBio_Script4: SavageBioBalls_* steps) from its first step now;
  * then it removes itself (slot +$52).
  *
  * self: the object. Returns nothing in particular.
@@ -18,7 +18,7 @@ short SavageMediumBio_StateBurst(SavageMediumBio *self)
 		BioBalls_SetFormation(balls, CODEPTR(Tbl_SavageMediumBioBurstFormation));
 		Snd_Stop(0xF2);
 		Snd_Play(0xF2);
-		AiScript_Set(&balls->ai, CODEPTR(Tbl_SavageMediumBio_Script4Len));
+		AiScript_Set(&balls->ai, CODEPTR(Tbl_SavageMediumBio_Script4));
 		AI_FIRST_STEP(balls, balls->ai, 0);
 	}
 	do {

@@ -1,0 +1,75 @@
+# Actor_Move: the corpus never sets g_HalfSpeed ($FFC946) or g_SegFlag38C4 ($FFC93C). This ROM has
+# no code that sets either (Level_Load and Game_SceneLoop only clear them): a slow-motion mode and
+# an alternate segment rule the shipped game never switches on. The cases set them to run the code
+# the C must still reproduce: the halved steps ($1F4CFC, $1F4D2E, $1F4E70, $1F4E9C, $1F4EC6,
+# $1F4EF2) and the clamp to the segment ($1F4D50-$1F4D76).
+# arg0 = the object of the first corpus call (any Actor): flags +$04, vx/vy +$16/+$18, ax/ay
+# +$1E/+$20, maxVx/maxVy +$22/+$24, minVx/minVy +$26/+$28, segPos +$72 (8 fraction bits), seg +$76.
+# One step per call: g_TwoPlayerStep ($FFC922) = 0.
+# The segment cases put a flat floor in g_Segs[0] ($FFCE2E, $14 bytes): in use, type $13, slope 0,
+# length 64, (100,200)-(164,200), no previous/next segment; g_SegTypeHooks[$13] ($FFCD96 + $4C) = 0
+# (no hook for the type, as in most scenes).
+
+# free-moving (flags $9000: present, bit $1000), moving right and down at half speed:
+# x and y move half of vx/vy ($1F4E70, $1F4EC6)
+case half_speed_free_right_down
+b $FFC946 = 1
+b $FFC922 = 0
+w arg0+4 = $9000
+w arg0+$16 = $0200
+w arg0+$18 = $0100
+l arg0+$1E = 0
+l arg0+$22 = $08000800
+l arg0+$26 = 0
+
+# the same moving left and up ($1F4E9C, $1F4EF2)
+case half_speed_free_left_up
+b $FFC946 = 1
+b $FFC922 = 0
+w arg0+4 = $9000
+w arg0+$16 = -$200
+w arg0+$18 = -$100
+l arg0+$1E = 0
+l arg0+$22 = $08000800
+l arg0+$26 = 0
+
+# on the floor segment 0.5 px before its end, walking right (vx 4 px) at half speed: segPos passes
+# the end ($1F4CFC); with g_SegFlag38C4 it is put back $70 before the end and flags bit $100 set
+# ($1F4D50-$1F4D54, $1F4D5C-$1F4D76); then Seg_ApplyObjPos
+case half_speed_seg_past_end
+b $FFC946 = 1
+b $FFC93C = 1
+b $FFC922 = 0
+l $FFCE2E = $80130000
+l $FFCE32 = $00000040
+l $FFCE36 = $006400C8
+l $FFCE3A = $00A400C8
+l $FFCE3E = $FFFFFFFF
+l $FFCDE2 = 0
+w arg0+4 = $8000
+l arg0+$76 = $FFFFCE2E
+l arg0+$72 = $3F80
+w arg0+$16 = $0400
+l arg0+$1E = 0
+l arg0+$22 = $08000800
+l arg0+$26 = 0
+
+# the same 0.5 px after the segment's start, walking left: segPos goes below 0 ($1F4D2E) and
+# g_SegFlag38C4 puts it at 0 ($1F4D56-$1F4D58)
+case half_speed_seg_before_start
+b $FFC946 = 1
+b $FFC93C = 1
+b $FFC922 = 0
+l $FFCE2E = $80130000
+l $FFCE32 = $00000040
+l $FFCE36 = $006400C8
+l $FFCE3A = $00A400C8
+l $FFCE3E = $FFFFFFFF
+l $FFCDE2 = 0
+w arg0+4 = $8000
+l arg0+$76 = $FFFFCE2E
+l arg0+$72 = $0080
+w arg0+$16 = -$400
+l arg0+$1E = 0
+l arg0+$22 = $08000800
+l arg0+$26 = 0

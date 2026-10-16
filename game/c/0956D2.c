@@ -14,6 +14,6 @@ void XClone_Explode(XClone *self)
 	self->flags &= ~0x200;
 	self->flags &= ~4;
 	self->flags6 &= ~0x4000;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_XClone_Script2Len));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_XClone_Script2));
 	AI_FIRST_STEP(self, self->ai, 0);
 }

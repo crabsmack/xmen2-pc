@@ -3,7 +3,7 @@
  *
  * self: the new object.  x, y: position (8 fraction bits).  pl: its placement entry, or null
  * (then every param counts as 0).
- * No vertical speed or gravity; AI script Tbl_ShootAcolyteScriptLen (thunks
+ * No vertical speed or gravity; AI script Tbl_ShootAcolyteScript (thunks
  * ShootAcolyte_Script: ActWalk, ActFacePlayer, ActShootBurst, ActWait30), started by
  * ShootAcolyte_ActRestartScript (the state and the default state); stats
  * Tbl_ShootAcolyteStats (health from them); flags6 |= $80; sprite Art_ShootAcolyteSpr,
@@ -20,7 +20,7 @@ void ShootAcolyte_Init(register ShootAcolyte *self, long x, long y, register Pla
 	(*CLASS(Tbl_ShootAcolyte_vtable)->parent->method[3])(self, x, y, pl);	/* BIONPC Init */
 	self->vy = 0;
 	self->ay = 0;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_ShootAcolyteScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_ShootAcolyteScript));
 	self->state = (StateFn)ShootAcolyte_ActRestartScript;
 	self->defaultState = (StateFn)ShootAcolyte_ActRestartScript;
 	self->health = (self->stats = (NpcStats *)CODEPTR(Tbl_ShootAcolyteStats))->health;

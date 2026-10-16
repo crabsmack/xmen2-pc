@@ -2733,14 +2733,14 @@ void Tank_ActPause(Tank *self);	/* $141ADC */
 short Tank_StateWreck(Tank *self);	/* $141B3C */
 void Tank_OnDeath(Tank *self);	/* $141B72 */
 long TankLeft_GetSize(void);	/* $141CBC */
-void TankLeft_Init(void *, long, long, long);	/* $141CCA */
-void TankLeft_Move(void *, short);	/* $141D46 */
-void TankLeft_Deactivate(void *);	/* $141DA8 */
-long TankLeft_StateWaitDrive(void *);	/* $141DE8 */
-long TankLeft_ActWaitDrive(void *);	/* $141EEE */
-long TankLeft_StateDriveIn(void *);	/* $141F18 */
-long TankLeft_ActDriveIn(void *);	/* $142008 */
-void TankLeft_ActDrive(void *);	/* $14205E */
+void TankLeft_Init(TankLeft *self, long x, long y, Placement *pl);	/* $141CCA */
+void TankLeft_Move(TankLeft *self, short steps);	/* $141D46 */
+void TankLeft_Deactivate(TankLeft *self);	/* $141DA8 */
+short TankLeft_StateWaitDrive(TankLeft *self);	/* $141DE8 */
+short TankLeft_ActWaitDrive(TankLeft *self);	/* $141EEE */
+short TankLeft_StateDriveIn(TankLeft *self);	/* $141F18 */
+short TankLeft_ActDriveIn(TankLeft *self);	/* $142008 */
+void TankLeft_ActDrive(TankLeft *self);	/* $14205E */
 void Tank_ScriptWaitDrive(void);	/* $14221E fragment */
 void Tank_ScriptDriveIn(void);	/* $14222C fragment */
 void Tank_ScriptDrive(void);	/* $14223A fragment */
@@ -2788,51 +2788,51 @@ void TechWallGun_Fire_Case9(void);	/* $1431B6 fragment */
 void TechWallGun_Fire_Default(void);	/* $1431D0 fragment */
 void TechWallGun_Fire_Spawn(void);	/* $1431D6 fragment */
 void TechWallGun_Fire_Ret(void);	/* $14321A fragment */
-void ToxicCan_DrawLeak(short, short, void *, void *);	/* $144774 */
+void ToxicCan_DrawLeak(short x, short y, s16 *step1, s16 *step2);	/* $144774 */
 long ToxicCan_GetSize(void);	/* $1449CC */
 void ToxicCan_ClassInit(void);	/* $1449DA */
-void ToxicCan_Init(void *, long, long, void *);	/* $1449E6 */
-void ToxicCan_Update(void *);	/* $144AE2 */
-void ToxicCan_Activate(void *);	/* $144C76 */
-void ToxicCan_Deactivate(void *);	/* $144CAA */
+void ToxicCan_Init(ToxicCan *self, long x, long y, Placement *pl);	/* $1449E6 */
+void ToxicCan_Update(ToxicCan *self);	/* $144AE2 */
+void ToxicCan_Activate(ToxicCan *self);	/* $144C76 */
+void ToxicCan_Deactivate(ToxicCan *self);	/* $144CAA */
 long ToxicCanDamaged_GetSize(void);	/* $144CE2 */
-void ToxicCan_Despawn(void *, void *);	/* $144CF0 */
-void ToxicCanDamaged_Init(void *, long, long, long);	/* $144D50 */
+void ToxicCan_Despawn(ToxicCan *self, SpawnRec *rec);	/* $144CF0 */
+void ToxicCanDamaged_Init(ToxicCanDamaged *self, long x, long y, Placement *pl);	/* $144D50 */
 void ToxicCan_NopStatic(void);	/* $144D88 */
 long FluxBomb_GetSize(void);	/* $157BA6 */
 long MagneticGlob_GetSize(void);	/* $157BB4 */
 void MagnetoShots_Reset(void);	/* $157BC2 */
-void MagneticGlob_SetFrame(void *, short);	/* $157BD2 */
-void MagneticGlob_Draw(void *);	/* $157C22 */
-long MagneticGlob_New(long, long, long, long, long);	/* $157C5C */
-long MagneticGlob_HitCb(void *, short, short, void *);	/* $157CB2 */
-long MagneticGlob_OutsideActiveWindow(void *);	/* $157CFE */
-void MagneticGlob_Activate(void *);	/* $157D5E */
-void MagneticGlob_Deactivate(void *);	/* $157E64 */
-void MagneticGlob_Update(void *);	/* $157ED6 */
-void MagneticGlob_SetAnimForAngle(void *);	/* $1580B2 */
-void MagneticGlob_Init(void *, long, long, void *);	/* $1581CA */
-long FluxBomb_New(long, long, long, long, long);	/* $158260 */
-void FluxBomb_Init(void *, long, long, void *);	/* $1582B6 */
-void FluxBomb_StepBurst(void *);	/* $1583D6 */
-long FluxBomb_StepImplode(void *);	/* $158474 */
-long FluxBomb_StartImplode(void *);	/* $158536 */
-void FluxBomb_HitTilesInArea(void *, short, short, short, short);	/* $158610 */
-void FluxBomb_DamageArea(void *);	/* $158876 */
-long FluxBomb_StartBurst(void *);	/* $158992 */
-void FluxBomb_Update(void *);	/* $158A60 */
-void FluxBomb_SetFrame(long, short);	/* $158AC0 */
-long FluxBomb_DrawImplode(void *);	/* $158AF8 */
-long FluxBomb_DrawBurst(void *);	/* $158C0E */
-void FluxBomb_Draw(void *);	/* $158DD4 */
-long FluxBomb_StartThrown(void *);	/* $158E32 */
-long FluxBomb_StateThrown(void *);	/* $158E78 */
-long FluxBomb_StateImplode(void *);	/* $158EEE */
-long FluxBomb_Detonate(void *);	/* $158F32 */
-void FluxBomb_StateBurst(void *);	/* $158F68 */
-long FluxBomb_Explode(void *);	/* $158F92 */
-long FluxBomb_StartHeld(void *);	/* $158FE4 */
-long FluxBomb_StateHeld(void *);	/* $159030 */
+void MagneticGlob_SetFrame(MagneticGlob *self, short frame);	/* $157BD2 */
+void MagneticGlob_Draw(MagneticGlob *self);	/* $157C22 */
+MagneticGlob *MagneticGlob_New(void *unused, Class *cls, long x, long y, Placement *pl);	/* $157C5C */
+char MagneticGlob_HitCb(Actor *target, short x, short y, MagneticGlob *self);	/* $157CB2 */
+char MagneticGlob_OutsideActiveWindow(MagneticGlob *self);	/* $157CFE */
+void MagneticGlob_Activate(MagneticGlob *self);	/* $157D5E */
+void MagneticGlob_Deactivate(MagneticGlob *self);	/* $157E64 */
+void MagneticGlob_Update(MagneticGlob *self);	/* $157ED6 */
+void MagneticGlob_SetAnimForAngle(MagneticGlob *self);	/* $1580B2 */
+void MagneticGlob_Init(MagneticGlob *self, long x, long y, Placement *pl);	/* $1581CA */
+FluxBomb *FluxBomb_New(void *unused, Class *cls, long x, long y, Placement *pl);	/* $158260 */
+void FluxBomb_Init(FluxBomb *self, long x, long y, Placement *pl);	/* $1582B6 */
+void FluxBomb_StepBurst(FluxBomb *self);	/* $1583D6 */
+void FluxBomb_StepImplode(FluxBomb *self);	/* $158474 */
+void FluxBomb_StartImplode(FluxBomb *self);	/* $158536 */
+void FluxBomb_HitTilesInArea(FluxBomb *self, short left, short top, short right, short bottom);	/* $158610 */
+void FluxBomb_DamageArea(FluxBomb *self);	/* $158876 */
+void FluxBomb_StartBurst(FluxBomb *self);	/* $158992 */
+void FluxBomb_Update(FluxBomb *self);	/* $158A60 */
+void FluxBomb_SetFrame(FluxBomb *self, short frame);	/* $158AC0 */
+void FluxBomb_DrawImplode(FluxBomb *self);	/* $158AF8 */
+void FluxBomb_DrawBurst(FluxBomb *self);	/* $158C0E */
+void FluxBomb_Draw(FluxBomb *self);	/* $158DD4 */
+short FluxBomb_StartThrown(FluxBomb *self);	/* $158E32 */
+short FluxBomb_StateThrown(FluxBomb *self);	/* $158E78 */
+short FluxBomb_StateImplode(FluxBomb *self);	/* $158EEE */
+short FluxBomb_Detonate(FluxBomb *self);	/* $158F32 */
+void FluxBomb_StateBurst(FluxBomb *self);	/* $158F68 */
+short FluxBomb_Explode(FluxBomb *self);	/* $158F92 */
+short FluxBomb_StartHeld(FluxBomb *self);	/* $158FE4 */
+short FluxBomb_StateHeld(FluxBomb *self);	/* $159030 */
 void *Magneto_AirShotAnim(short dir);	/* $159092 */
 void Magneto_AirShotAnim_Case0(void);	/* $1590C6 fragment */
 void Magneto_AirShotAnim_Case2(void);	/* $1590DA fragment */
@@ -2929,11 +2929,11 @@ void Pause_LoadSprite(void);	/* $15C306 */
 void Pause_ShowText(void);	/* $15C32E */
 void Pause_LinkSprites(void);	/* $15C39A */
 void Pause_RestoreLink(void);	/* $15C41C */
-long Pause_HandleInput(void);	/* $15C42A */
+void Pause_HandleInput(void);	/* $15C42A */
 void Pause_CheatUnlock(void);	/* $15C49E fragment */
 void Pause_HandleInput_EndCode(void);	/* $15C5D6 fragment */
 void Pause_Loop(void);	/* $15CA6C */
-long Pause_Check(void);	/* $15CAA4 */
+void Pause_Check(void);	/* $15CAA4 */
 char Tile_RunHooksAtPoints(void *obj, char *points, short x, short y);	/* $15CB34 */
 char Tile_TestAt(void *obj, short x, short y, char fgMap, short mask, char runHook);	/* $15CECC */
 void Map_RedrawBlock(short col, short row, char bg);	/* $15D00E */
@@ -2988,7 +2988,13 @@ void Map_PutColBlockB(u16 *defs, unsigned short cell, short c, short from, short
 void Map_DrawColumnA(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F0DC asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_DrawColumnB(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F16A asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_StreamColumns(void);	/* $15F1F8 asm */
-void Nem_Decode(void *src, NemCodeTable *table, long rows, char mode, long dest);	/* $15F37C */
+/* Nem_Decode: its mode-1 callers pass five arguments, Level_LoadUsedTiles (mode 2) a sixth, the
+   tile mask (the original called it without a prototype). MPW: five; PC: the mask defaults to 0. */
+#ifdef XMEN2_MPW
+void Nem_Decode(void *src, NemCodeTable *table, long rows, char mode, long dest);
+#else
+void Nem_Decode(void *src, NemCodeTable *table, long rows, char mode, long dest, NemTileMask *mask = 0);	/* $15F37C */
+#endif
 void Nem_DecodeLoop(u8 *src, u16 *codes, short rows, char mode, u32 *dest, u8 *mask, unsigned short bits, short nbits, short nibbles, unsigned long row, unsigned long *fill);	/* $15F3F0 asm conv clobbers(d0,d1,d3,d4,d5,d6,a0,a3,a4) */
 void Nem_DecodeLoop_Row(void);	/* $15F4BA fragment */
 void Nem_DecodeLoop_Inline(void);	/* $15F540 fragment */
@@ -2996,16 +3002,16 @@ char Nem_PutRowVdp(unsigned long row, short *rowsLeft);	/* $15F566 asm conv */
 char Nem_PutRowRam(unsigned long row, short *rowsLeft, u32 **dest);	/* $15F572 asm conv */
 char Nem_PutRowMasked(unsigned long row, short *rowsLeft, char *skip, u8 *mask);	/* $15F57E asm conv */
 u8 *Nem_BuildCodeTable(void *list, void *table);	/* $15F5CA asm */
-void Eni_Decode(void *, void *, void *);	/* $15F5FC */
+void Eni_Decode(u8 *src, u16 *dest, long base);	/* $15F5FC */
 void Eni_Ops(short op, short count, u8 *src, unsigned long bits, short nbits, u16 *dest, short inc, short common, short flags, short base, short width);	/* $15F65C asm conv clobbers(d0,d1,d2,a0,a1) */
 unsigned short Eni_ReadInline(u8 **src, unsigned long *bits, short *nbits, short width, short flags, short base, short *shift);	/* $15F6F0 asm regs(&a0,&d5,&d6,d4,d3,a3,&d7)->d1 */
-void Anim_Advance(void *);	/* $15F740 */
-char Anim_ApplyStep(void *, char);	/* $15F78E */
-long Anim_AdvanceByDistance(void *, short, long, long);	/* $15F8B6 */
+void Anim_Advance(void *obj);	/* $15F740 */
+char Anim_ApplyStep(void *obj, char flip);	/* $15F78E */
+char Anim_AdvanceByDistance(void *obj, short dist, long dx, long dy);	/* $15F8B6 */
 void Spawn_Nop(void);	/* $15F954 */
 void Spawn_InitRecords(void);	/* $15F95C */
 void VDP_WriteTileRect(long vram, s16 *src, long w, long h, long stride);	/* $15FA2C */
-void Intro_SegaLogoFlash(long, short);	/* $15FA7A */
+void Intro_SegaLogoFlash(void *cb, short line);	/* $15FA7A */
 void Intro_WaitFrame(IntroFrameFn cb);	/* $15FBAE asm regs(@8(a6)) */
 void Bitmap_Set(void *, short);	/* $15FC70 asm */
 char Bitmap_Test(void *, short);	/* $15FC84 asm */
@@ -3412,13 +3418,13 @@ void VDP_UpdateScroll(void);	/* $1F4EFC */
 void Scroll_RequestVsram(void);	/* $1F5228 */
 void Scroll_RequestColumnVs(void);	/* $1F523E */
 void Scroll_Init(void);	/* $1F5254 */
-long Level_FillBlockSlot(void *, short, short, short, char);	/* $1F5340 */
-short Level_AssignBlockSlots(void *, long, long, short);	/* $1F53CC */
-void Map_SetRowPriority(void *, short, short);	/* $1F5500 */
-void Map_SetRowPalette(void *, short, short, short);	/* $1F553C */
-long Level_CompactUsedItems(long, long, void *, char, long, short);	/* $1F5594 */
-short Level_LoadUsedTiles(void *, void *, short, long, long, char);	/* $1F5612 */
-void Level_LoadMaps(void *, void *, void *, void *, short, short, char, char, char, char);	/* $1F5788 */
+void Level_FillBlockSlot(void *defs, short base, short n, short first, char flip);	/* $1F5340 */
+short Level_AssignBlockSlots(void *map, void *layout, void *defs, short firstTile);	/* $1F53CC */
+void Map_SetRowPriority(void *defs, short count, short n);	/* $1F5500 */
+void Map_SetRowPalette(void *defs, short count, short n, short pal);	/* $1F553C */
+long Level_CompactUsedItems(void *bits, long count, s16 *remap, char move, s16 *data, short shift);	/* $1F5594 */
+short Level_LoadUsedTiles(void *map, void *tileset, short vram, s16 *layout, void *defs, unsigned char fromMap);	/* $1F5612 */
+void Level_LoadMaps(void *fgMap, void *fgTiles, void *bgMap, void *bgTiles, short x, short y, unsigned char fgPrio, unsigned char bgPrio, unsigned char bgPal2, unsigned char bgFixed);	/* $1F5788 */
 void Cam_SetMinXBlocks(short col);	/* $1F5F40 */
 void Cam_SetMaxXBlocks(short col);	/* $1F5F5A */
 void Cam_SetPos(short x, short y);	/* $1F5F78 */
@@ -3426,7 +3432,7 @@ void Cam_SetPosScaled(short x, short y);	/* $1F60E4 */
 unsigned long Math_MulFix8(unsigned short a, unsigned short b);	/* $1F6258 */
 void Obj_SetAnim(void *obj, void *anim);	/* $1F626A */
 void Obj_ChangeAnim(void *obj, void *anim);	/* $1F6296 */
-short SprDef_Add(void *def, short frame);	/* $1F62C0 */
+short SprDef_Add(void *def, short pal);	/* $1F62C0 */
 void Obj_SetSpriteDef(Actor *self, unsigned char n);	/* $1F6334 */
 char Seg_WouldLeaveEnd(void *obj, short dx);	/* $1F638A */
 char Seg_AtOpenEndAhead(void *obj, short margin);	/* $1F6420 */
@@ -3501,10 +3507,10 @@ void Seg_CollideObj_RetHit(void);	/* $1F8AD6 fragment */
 void Seg_CollideObj_Ret(void);	/* $1F8AEE fragment */
 void Obj_CollideSegs(void *obj);	/* $1F8B42 */
 long DrawList_Init(void);	/* $1F8EF6 */
-long DrawList_AllocNode(void);	/* $1F8F4C */
-short DrawList_Add(AnyFn draw, void *obj, short, char, short, char);	/* $1F8FA2 */
-char DrawList_Remove(short);	/* $1F9122 */
-char DrawList_SetPriority(short, short, char, short);	/* $1F91E8 */
+DrawNode *DrawList_AllocNode(void);	/* $1F8F4C */
+short DrawList_Add(AnyFn draw, void *obj, short prio, char layer, short front, char flag4);	/* $1F8FA2 */
+char DrawList_Remove(short index);	/* $1F9122 */
+char DrawList_SetPriority(short index, short prio, char layer, short front);	/* $1F91E8 */
 void DrawList_DrawAll(void);	/* $1F9422 */
 void Scene_EndAfter(short n);	/* $1F944E */
 void Sys_Nop1F945C(short x, short y);	/* $1F945C */
@@ -3517,7 +3523,7 @@ void Music_Play(short track);	/* $1F97A4 */
 long Pad_P1StartDown(void);	/* $1F97DE */
 void ClassList_CallSlot5A(void);	/* $1F9804 */
 void Sys_InitGameVideo(void);	/* $1F9850 */
-void Level_Load(void *fgMap, void *fgTiles, void *bgMap, void *bgTiles, void *fgSegs, void *bgSegs, char flag0, char flag1, char flag2, char flag3, short classArg, short music, short gridShiftX, short gridShiftY, char spawnFromBg, void *classList);	/* $1F98A8 */
+void Level_Load(void *fgMap, void *fgTiles, void *bgMap, void *bgTiles, void *fgSegs, void *bgSegs, unsigned char flag0, unsigned char flag1, unsigned char flag2, unsigned char flag3, short classArg, short music, short gridShiftX, short gridShiftY, char spawnFromBg, void *classList);	/* $1F98A8 */
 void Timer_InitAll(void);	/* $1F9C60 */
 Timer *Timer_Create(TimerFn func, short period, void *arg, char user);	/* $1F9C92 */
 void Timer_Start(Timer *t);	/* $1F9D04 */
@@ -3526,7 +3532,7 @@ void Timer_Free(Timer *t);	/* $1F9D38 */
 void Timer_RunAll(void);	/* $1F9D52 */
 void Demo_ReadInput(void);	/* $1F9DE8 */
 void Pal_RunCycleScript(void);	/* $1F9E46 */
-void Collide_ObjVsList(void *, void *);	/* $1F9F0E */
+void Collide_ObjVsList(Actor *att, ListNode *node);	/* $1F9F0E */
 void Collide_RunAll(void);	/* $1FA05A */
 char ObjList_ForEachAtPoint(short x, short y, ListNode *list, void *func, unsigned char all, long arg);	/* $1FA0AE */
 void Level_FrameLoop(void);	/* $1FA124 */
@@ -3562,7 +3568,7 @@ void Spr_EmitStreamClip(SprInst *spr, long x, long y, short tile);	/* $1FBB5E */
 void Spr_EmitStreamClip_Piece(void);	/* $1FBC76 fragment */
 char Spr_EmitStreamLinked(SprInst *spr, long x, long y, short tile);	/* $1FBCCE */
 void Spr_EmitStreamLinked_Piece(void);	/* $1FBE1A fragment */
-long Art_LoadToVramRecolor(void *, short, short, short, short);	/* $1FBE96 */
+void Art_LoadToVramRecolor(void *art, short tile, short c0, short cE, short cF);	/* $1FBE96 */
 void Scaler_ExpandSource(void);	/* $1FC1CC asm */
 void Scaler_BuildStepTables(long *pair, short *count);	/* $1FC1FA asm regs(&d1,&d7) clobbers(d3,a4) */
 void Scaler_ClearRows(short *rows, u8 **dst);	/* $1FC2A6 asm regs(&d7,&a1) clobbers(d5,d6,a3,a4) */
@@ -3576,11 +3582,11 @@ long Scaler_BeginPass(void);	/* $1FC708 asm regs()->d0 clobbers(d3,d4,d5,d6,a2,a
 long Scaler_RowBlocks(ScalerRegs *r, short at);	/* $1FC8FE asm conv clobbers(d1,d2,d3,d4,d5,d6,a0,a1,a2,a3,a4) */
 void Scaler_RowBlocksLast80(void);	/* $1FCE9E fragment */
 void Scaler_RowEnd(void);	/* $1FD43E fragment */
-long Scaler_EmitSprites(short, short, short, char);	/* $1FD520 */
+short Scaler_EmitSprites(short x, short y, short pal, char prio);	/* $1FD520 */
 void Scaler_EmitSprites_Loop(void);	/* $1FD5A0 fragment */
 long Pad_ReadPort(short port);	/* $1FD61E asm regs(d0)->d0 */
 void VDP_ResetDmaQueue(void);	/* $1FD720 */
-long Art_LoadNemToVram(void *, short);	/* $1FD72C */
+void Art_LoadNemToVram(void *art, short tile);	/* $1FD72C */
 void Pal_ApplyFade(long level, void *table);	/* $1FD77E */
 void Pal_Update(void);	/* $1FD8D2 */
 void Pal_StartFade(short level, short line, void *table);	/* $1FD998 */

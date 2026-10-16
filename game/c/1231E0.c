@@ -7,6 +7,6 @@
 void BigBio_StartScript(register BigBio *self)
 {
 	Obj_ChangeAnim(self, CODEPTR(Tbl_Anim_1206E6));
-	AiScript_Set(&self->ai, CODEPTR(Tbl_BigBio_ScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_BigBio_Script));
 	AI_FIRST_STEP(self, self->ai, 60);
 }

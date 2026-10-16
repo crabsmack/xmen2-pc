@@ -1724,9 +1724,9 @@ extern PTR(void) g_VBlankGameHook;
 #endif
 /* $FFC7EC ptr: function called from Irq_VBlank every V-int when non-zero (Sys_InitHardware clears; Intro_SegaLogoFlash saves/sets) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_VBlankHook;
+extern FrameHookFn g_VBlankHook;
 #else
-#define g_VBlankHook XM_G(PTR(void), 0xFFC7EC)
+#define g_VBlankHook XM_G(FrameHookFn, 0xFFC7EC)
 #endif
 /* $FFC7F0 long: V-interrupt counter (+1 in Irq_VBlank; zeroed in Sys_InitHardware) */
 #ifdef XMEN2_MPW
@@ -1902,6 +1902,12 @@ extern u8 g_SceneIndexSet;
 #else
 #define g_SceneIndexSet XM_G(u8, 0xFFC93E)
 #endif
+/* $FFC940 byte: Irq_VBlank skips g_VBlankGameHook while set; no other reference (never set). Provisional name (Irq worker): not yet in the disassembly */
+#ifdef XMEN2_MPW
+extern u8 g_Unk38C0;
+#else
+#define g_Unk38C0 XM_G(u8, 0xFFC940)
+#endif
 /* $FFC942 byte: set while a frame loop runs its classes (Level_Run and PlayerSelect_Run around ClassList_InitAll..ClassList_CallSlot62; Game_Main clears); Player_SetCharacter places a joining player differently when set */
 #ifdef XMEN2_MPW
 extern u8 g_InLevelLoop;
@@ -2021,6 +2027,41 @@ extern FrameHookFn g_SceneFrameHook;
 extern s16 g_LevelVramStart;
 #else
 #define g_LevelVramStart XM_G(s16, 0xFFC978)
+#endif
+/* Provisional names (Level worker), not yet in the disassembly: written by Level_Load only, no
+   other A5-relative reference.
+   $FFC976 word: 2 at Level_Load.  $FFC96A word: 0 at Level_Load.  $FFC960 long: 0 at Level_Load.
+   $FFC948 byte: 0 at Level_Load.  $FFEBA0 byte: 1 at Level_Load (next to g_PauseExit). */
+#ifdef XMEN2_MPW
+extern s16 g_Unk388A;
+extern s16 g_Unk3896;
+extern s32 g_Unk38A0;
+extern u8 g_Unk38B8;
+extern u8 g_Unk1660;
+#else
+#define g_Unk388A XM_G(s16, 0xFFC976)
+#define g_Unk3896 XM_G(s16, 0xFFC96A)
+#define g_Unk38A0 XM_G(s32, 0xFFC960)
+#define g_Unk38B8 XM_G(u8, 0xFFC948)
+#define g_Unk1660 XM_G(u8, 0xFFEBA0)
+#endif
+/* Provisional names (Level worker), not yet in the disassembly: Level_LoadMaps' only.
+   $FFC908 ptr: compared with Cam_SetPosScaled (then the scroll starts from the camera through
+   the plane factors); nothing writes it A5-relative.  $FFC780 ptr: the FG map (Level_LoadMaps).
+   $FFC79A word: the first VRAM tile of the map tiles ($80).  $FFC798 word: the first BG tile.
+   $FFC75E ptr: g_HeapTop after the maps. */
+#ifdef XMEN2_MPW
+extern PTR(void) g_Unk38F8;
+extern PTR(void) g_Unk3A80;
+extern s16 g_Unk3A66;
+extern s16 g_Unk3A68;
+extern PTR(void) g_Unk3AA2;
+#else
+#define g_Unk38F8 XM_G(PTR(void), 0xFFC908)
+#define g_Unk3A80 XM_G(PTR(void), 0xFFC780)
+#define g_Unk3A66 XM_G(s16, 0xFFC79A)
+#define g_Unk3A68 XM_G(s16, 0xFFC798)
+#define g_Unk3AA2 XM_G(PTR(void), 0xFFC75E)
 #endif
 /* $FFC97A array of $14-byte sprite-definition records {+0 flag bits, +2 def ptr, +6 word, +8 word} (Obj_SetSpriteDef) */
 #ifdef XMEN2_MPW
@@ -2148,6 +2189,12 @@ extern s16 g_SpawnWinTop;
 extern u32 g_FrameCounter;
 #else
 #define g_FrameCounter XM_G(u32, 0xFFCC5E)
+#endif
+/* $FFCC62 byte: Irq_VBlank skips g_VBlankGameHook while set; no other reference (never set). Provisional name (Irq worker): not yet in the disassembly */
+#ifdef XMEN2_MPW
+extern u8 g_Unk359E;
+#else
+#define g_Unk359E XM_G(u8, 0xFFCC62)
 #endif
 /* $FFCC64 word: current scene, index into g_SceneTable (Cerebro screens and stage parts; TAS steps 0,1,2,... per screen) */
 #ifdef XMEN2_MPW
@@ -2557,7 +2604,7 @@ extern s16 g_SparkSprDef;
 #else
 #define g_SparkSprDef XM_G(s16, 0xFFE78E)
 #endif
-/* $FFE790 word: sprite-definition slot of Art_Spr_14018E (TANK ClassInit Tank_ClassInit via SprDef_Add; TANK Init Tank_Init) */
+/* $FFE790 word: sprite-definition slot of Art_TankSpr (TANK ClassInit Tank_ClassInit via SprDef_Add; TANK Init Tank_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_TankSprDef;
 #else
@@ -2580,6 +2627,18 @@ extern PTR(WallGunBullet) g_TechWallGunRecs;
 extern SprInst g_FluxBombSpr;
 #else
 #define g_FluxBombSpr XM_G(SprInst, 0xFFE798)
+#endif
+/* $FFE7AC FLUXBOMB object ($102 bytes): Magneto's only flux bomb, reused by every FluxBomb_New (MagnetoShots_Reset frees it). */
+#ifdef XMEN2_MPW
+extern FluxBomb g_FluxBombObj;
+#else
+#define g_FluxBombObj XM_G(FluxBomb, 0xFFE7AC)
+#endif
+/* $FFE8AE MAGNETICGLOB object ($A6 bytes): Magneto's only magnetic globe shot, reused by every MagneticGlob_New (MagnetoShots_Reset frees it). */
+#ifdef XMEN2_MPW
+extern MagneticGlob g_MagneticGlobObj;
+#else
+#define g_MagneticGlobObj XM_G(MagneticGlob, 0xFFE8AE)
 #endif
 /* $FFE954 byte: non-zero = Snd_Play/Stop/etc. send nothing (set while demos play, Game_PlayAttractDemo, and around some init calls) */
 #ifdef XMEN2_MPW
@@ -2671,11 +2730,17 @@ extern XPlayer g_Player1;
 #else
 #define g_Player1 XM_G(XPlayer, 0xFFEAA8)
 #endif
+/* $FFEB98 byte: set to 1 when the game pauses (Pause_Check); nothing in the code reads or clears it. */
+#ifdef XMEN2_MPW
+extern u8 g_Paused;
+#else
+#define g_Paused XM_G(u8, 0xFFEB98)
+#endif
 /* $FFEB9A ptr: position in a pause-screen button sequence: each new press (& $7F) must equal the next byte (Pause_HandleInput); sequences from jt data $E0A-$E62 (Pause_HandleInput_EndCode); 0 = none (Pause_Check clears) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_PauseCheatPtr;
+extern PTR(u8) g_PauseCheatPtr;
 #else
-#define g_PauseCheatPtr XM_G(PTR(void), 0xFFEB9A)
+#define g_PauseCheatPtr XM_G(PTR(u8), 0xFFEB9A)
 #endif
 /* $FFEB9E byte: set to leave the pause loop (Pause_Loop waits on it): a pause cheat changed the scene, or a player pressed a button (Pause_HandleInput_EndCode); cleared by the pause handler Pause_Check and Level_Load */
 #ifdef XMEN2_MPW
@@ -2787,21 +2852,21 @@ extern u8 g_DrawListZero;
 #endif
 /* $FFEEA8 ptr: round-robin search start for DrawList_AllocNode */
 #ifdef XMEN2_MPW
-extern PTR(void) g_DrawNodeCursor;
+extern PTR(DrawNode) g_DrawNodeCursor;
 #else
-#define g_DrawNodeCursor XM_G(PTR(void), 0xFFEEA8)
+#define g_DrawNodeCursor XM_G(PTR(DrawNode), 0xFFEEA8)
 #endif
 /* $FFEEAC ptr: last draw-list node (DrawList_Add, DrawList_Remove) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_DrawListTail;
+extern PTR(DrawNode) g_DrawListTail;
 #else
-#define g_DrawListTail XM_G(PTR(void), 0xFFEEAC)
+#define g_DrawListTail XM_G(PTR(DrawNode), 0xFFEEAC)
 #endif
 /* $FFEEB0 ptr: first (lowest key) draw-list node (DrawList_Add, DrawList_DrawAll) */
 #ifdef XMEN2_MPW
-extern PTR(void) g_DrawListHead;
+extern PTR(DrawNode) g_DrawListHead;
 #else
-#define g_DrawListHead XM_G(PTR(void), 0xFFEEB0)
+#define g_DrawListHead XM_G(PTR(DrawNode), 0xFFEEB0)
 #endif
 /* $FFEEB4 30 x $14-byte draw-list nodes {next, prev, func, object, word key, word flags} (DrawList_Init) */
 #ifdef XMEN2_MPW

@@ -32,7 +32,7 @@ short XClone_ActBecomeBalls(XClone *self)
 		else
 			balls->spr.flags |= 0x10;
 		BioBalls_SetFormation(balls, CLONE_PART(self->record, ballPath));
-		AiScript_Set(&balls->ai, CODEPTR(Tbl_XClone_PodScriptLen));
+		AiScript_Set(&balls->ai, CODEPTR(Tbl_XClone_PodScript));
 		balls->x = self->x;
 		balls->y = self->y;
 		Obj_SetAnim(balls, CODEPTR(Tbl_XCloneAnim7));

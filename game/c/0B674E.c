@@ -1,7 +1,7 @@
 /* BrainBabyBio_Init - BRAINBABYBIO Init (class slot +$12): the parent's (BABYBIO) Init, then the
  * Chamber's settings: palette 3, the arena x $60-$220 / y $60-$140 as its patrol range, the
  * Chamber's shared stats record (g_A4Stats) with health 4 (its health from it), its AI script
- * (Tbl_BrainBabyBio_ScriptLen: the steps of BrainBabyBio_Script, BabyBio_ActPlayAnimC,
+ * (Tbl_BrainBabyBio_Script: the steps of BrainBabyBio_Script, BabyBio_ActPlayAnimC,
  * BabyBio_ActFacePlayer, BabyBio_ActStartFiring twice, BabyBio_ActStopWait30), state and
  * default state BrainBabyBio_StateStart, flags6 bit
  * $1000, its home at its position, frame 4 (slot +$56), its boxes (Obj_UpdateBoxes), sound $46
@@ -25,7 +25,7 @@ void BrainBabyBio_Init(BrainBabyBio *self, long x, long y, Placement *pl)
 	g_A4Stats->health = 4;
 	self->stats = g_A4Stats;
 	self->health = g_A4Stats->health;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_BrainBabyBio_ScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_BrainBabyBio_Script));
 	self->state = self->defaultState = (StateFn)BrainBabyBio_StateStart;
 	self->flags6 |= 0x1000;
 	self->homePx = self->x >> 8;

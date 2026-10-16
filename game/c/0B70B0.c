@@ -1,7 +1,7 @@
 /* ChildShip_Init - CHILDSHIP Init (class slot +$12): the parent's (XNPC) Init, then the
  * Chamber's shared stats record (g_A4Stats; its health from it, then 8), sprite
  * Art_ChildShipSpr (palette 3), the arena x $60-$220 / cruise y $60-$140, its AI script
- * (Tbl_ChildShip_ScriptLen: the steps of ChildShip_Script, drop a rocket, wait 20, drop, wait
+ * (Tbl_ChildShip_Script: the steps of ChildShip_Script, drop a rocket, wait 20, drop, wait
  * 60, fly over the nearest player, wait 20), state and default state ChildShip_StateEnter,
  * flags6 |= $1080, not moving, at the camera's left edge (x g_CameraX, px 100 left of it) and
  * cruise y $F0, frame 0 (slot +$56), its boxes (Obj_UpdateBoxes), palette line 3 from the 16
@@ -31,7 +31,7 @@ void ChildShip_Init(register ChildShip *self, long x, long y, Placement *pl)
 	self->xMax = 0x220;
 	self->floorY = 0x140;
 	self->ceilY = 0x60;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_ChildShip_ScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_ChildShip_Script));
 	self->state = self->defaultState = ChildShip_StateEnter;
 	self->flags6 |= 0x80;
 	self->flags6 |= 0x1000;

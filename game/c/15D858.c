@@ -14,7 +14,7 @@ void Map_SetBlockFGFlip(register short col, register short row, short block, cha
 	register short v;
 
 	cell = &g_FgBlockMap[g_FgRowTable[row] + col];
-	v = block | (*cell & 0xF800);
+	v = (*cell & ~0x7FF) | block;
 	if (!keepHooks)
 		v &= ~0x3800;
 	if (hflip)

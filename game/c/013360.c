@@ -3,7 +3,7 @@
  *
  * self: the new object.  x, y: position (8 fraction bits).  pl: its placement entry.
  * Home = position = the placement position; stats Tbl_CapedAcolyteStats (health from them);
- * sprite Art_CapedAcolyteSpr, palette 1; AI script Tbl_CapedAcolyteIntroScriptLen from its
+ * sprite Art_CapedAcolyteSpr, palette 1; AI script Tbl_CapedAcolyteIntroScript from its
  * first step (thunks CapedAcolyte_IntroScript: ActAnimHigh, ActFacePlayer,
  * ActStartMainScript); flags6 |= $80; sprite priority (bit 2) copied from the live player (player 1 when
  * neither is); not moving; animation Tbl_CapedAcolyteAnim; hover table
@@ -24,7 +24,7 @@ void CapedAcolyte_Init(register CapedAcolyte *self, long x, long y, register Pla
 	self->health = (self->stats = (NpcStats *)CODEPTR(Tbl_CapedAcolyteStats))->health;
 	self->spr.def = CODEPTR(Art_CapedAcolyteSpr);
 	self->spr.flags = self->spr.flags & ~3 | 1;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_CapedAcolyteIntroScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_CapedAcolyteIntroScript));
 	AI_FIRST_STEP(self, self->ai, 0);
 	self->flags6 |= 0x80;
 	if (IS_ALIVE(&g_Player1)) {

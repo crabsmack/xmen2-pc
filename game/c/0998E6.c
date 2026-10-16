@@ -12,8 +12,9 @@
  * With no focus and the range wider than $E0 the side is chosen by the larger player y instead
  * of the focus x: the original kept both in one register. The stores to focusX/focusY are never
  * read (the original's).
- * Not byte-identical (executed: verify): the original computes the focus x and y in d0 before
- * the chain of assignments (8 bytes); no C phrasing tried reproduced it. */
+ * MPW: the `+ 0` on the focus position (a zero offset written out, as a macro with an offset
+ * argument leaves it) computes it in d0 before the chain of assignments, as the ROM does;
+ * without it MPW computes straight into x1's register. */
 #include "xmen2.h"
 
 #define g_CloneArenaFocus	g_SceneVar3B30	/* scene variable: object the arena camera follows */
@@ -53,8 +54,8 @@ void XClone_CamArenaUpdate(Camera *cam)
 	} else {
 		if (!g_CloneArenaFocus)
 			return;
-		x1 = x2 = focusX = g_CloneArenaFocus->x >> 8;
-		y1 = y2 = focusY = g_CloneArenaFocus->y >> 8;
+		focusX = x2 = x1 = (g_CloneArenaFocus->x >> 8) + 0;
+		focusY = y2 = y1 = (g_CloneArenaFocus->y >> 8) + 0;
 	}
 	top = y1;
 	bottom = y2;

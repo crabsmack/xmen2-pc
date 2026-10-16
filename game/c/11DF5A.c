@@ -3,9 +3,9 @@
  * param 4) and by it the crawl range (xMin / xMax) and AI script, from the first step now (no
  * script: the default state):
  *   0, 1 on a wall: the range in y, placement y - |param 0| to y + |param 1| (0: 48 each; a
- *     negative param: that end is open, it falls off there); Tbl_WallCrawlBio_Script1Len
+ *     negative param: that end is open, it falls off there); Tbl_WallCrawlBio_Script1
  *     (WallCrawlBio_Script1: stop on frame 11, crawl). Mode 1 is h-flipped.
- *   2 on a ceiling: the same range in x, v-flipped; Tbl_WallCrawlBio_Script2Len
+ *   2 on a ceiling: the same range in x, v-flipped; Tbl_WallCrawlBio_Script2
  *     (WallCrawlBio_Script2: stop on frame 0, crawl).
  * It stops 30 frames at each end (param 3 when there is a placement and it isn't 0).
  *
@@ -54,7 +54,7 @@ void WallCrawlBio_Init(WallCrawlBio *self, long x, long y, Placement *pl)
 				self->xMax = pl->y + ABS(v);
 			}
 		}
-		AiScript_Set(&self->ai, CODEPTR(Tbl_WallCrawlBio_Script1Len));
+		AiScript_Set(&self->ai, CODEPTR(Tbl_WallCrawlBio_Script1));
 		break;
 	case 2:
 #ifdef XMEN2_MPW
@@ -88,7 +88,7 @@ void WallCrawlBio_Init(WallCrawlBio *self, long x, long y, Placement *pl)
 			}
 		}
 		self->spr.flags |= 8;
-		AiScript_Set(&self->ai, CODEPTR(Tbl_WallCrawlBio_Script2Len));
+		AiScript_Set(&self->ai, CODEPTR(Tbl_WallCrawlBio_Script2));
 		break;
 	}
 	if (self->mode == 1)

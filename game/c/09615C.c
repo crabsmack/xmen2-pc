@@ -13,7 +13,7 @@ short XClone_StatePodOpen(XClone *self)
 		pod->spr.flags &= ~0x10;
 	else
 		pod->spr.flags |= 0x10;
-	AiScript_Set(&pod->ai, CODEPTR(Tbl_XClone_PodScriptLen));
+	AiScript_Set(&pod->ai, CODEPTR(Tbl_XClone_PodScript));
 	pod->x = self->x;
 	pod->y = self->y;
 	pod->done = 0;

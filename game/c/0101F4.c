@@ -3,7 +3,7 @@
  *
  * self: the new object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on).
  * 24 health, attack 1, sprite Art_BigAcolyteSpr with palette 1, the intro AI script
- * (Tbl_BigAcolyteIntroScriptLen: BigAcolyte_IntroScript, 6 steps WaitPlayers, Appear,
+ * (Tbl_BigAcolyteIntroScript: BigAcolyte_IntroScript, 6 steps WaitPlayers, Appear,
  * MoveToWall, Grow, Wait60, StartFight) from its first step, flags6 |= $1082, sprite priority copied from
  * the live player (player 1 when neither is). No motion, speed limit +/-$280, both axes arrived,
  * not bobbing, not a picture, height level 0, countdown 1000. */
@@ -16,7 +16,7 @@ void BigAcolyte_Init(register BigAcolyte *self, long x, long y, Placement *pl)
 	self->attack = 1;
 	self->spr.def = CODEPTR(Art_BigAcolyteSpr);
 	self->spr.flags = self->spr.flags & ~3 | 1;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_BigAcolyteIntroScriptLen));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_BigAcolyteIntroScript));
 	AI_FIRST_STEP(self, self->ai, 0);
 	self->flags6 |= 0x1082;
 	if (IS_ALIVE(&g_Player1)) {

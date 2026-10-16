@@ -275,8 +275,12 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
   it, so its `uncovered` stays 1 and D4 can't count it verified as defined. Options: count
   statically unreachable instructions (shown so, listed in the phase doc) as covered, or leave
   the function short of done. Collected here until the end of D4 with any others like it.
-  Also: Player_NearestLive ($1F6A32, unmatched C) `$1F6AB6-$1F6AB8`, a `return 0` after re-testing
-  player 1, who was just found alive.
+  (Player_NearestLive's `$1F6AB6-$1F6AB8` and Exodus_StateSwoopStart's `$02D40A-$02D410` were
+  the same kind; both now byte-match, so D4 doesn't need their coverage.)
+  Related: instructions only a state the game never creates reaches. Actor_Move ($1F4C56, asm)
+  has paths for g_HalfSpeed ($FFC946) and g_SegFlag38C4 ($FFC93C), which no code in the ROM sets
+  (they are only cleared); `game/verify/1F4C56.syn` sets them to cover those paths. Whether such
+  cases count is the same question.
 - **A callee's own argument slots (for the user, D4 `verify`):** Spr_EmitPre, Spr_EmitPreClip and
   Spr_EmitPreLinked (hand-written 68000 in MPW frames) store a computed value into their own
   argument slot (`move.w d7,$16(a6)`), MPW's storage for a by-value parameter the caller pops

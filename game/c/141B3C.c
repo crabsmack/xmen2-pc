@@ -1,5 +1,5 @@
 /* Tank_StateWreck - TANK state after its death (Tank_OnDeath): the wreck animation
- * Tbl_Anim_14220A, run again whenever the animation ends (delay $FF), for good.
+ * Tbl_TankWreckAnim, run again whenever the animation ends (delay $FF), for good.
  *
  * self: the object.
  * Returns flags bit 3. */
@@ -7,7 +7,7 @@
 
 short Tank_StateWreck(register Tank *self)
 {
-	Obj_SetAnim(self, CODEPTR(Tbl_Anim_14220A));
+	Obj_SetAnim(self, CODEPTR(Tbl_TankWreckAnim));
 	SET_STATE_WAIT(self, Tank_StateWreck, 0xFF);
 	return self->flags & 8;
 }

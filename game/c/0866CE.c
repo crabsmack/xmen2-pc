@@ -41,7 +41,7 @@ void BroodBoss_Init(BroodBoss *self, long x, long y, Placement *pl)
 	g_BroodArmFrame = 0xFF;
 	self->leg = 0;
 	self->wall = 0;
-	AiScript_Set(&self->ai, CODEPTR(Tbl_BroodBossScriptLen));	/* 44 steps: BroodBoss_ScrStepClaw, BroodBoss_ScrStepScream */
+	AiScript_Set(&self->ai, CODEPTR(Tbl_BroodBossScript));	/* 44 steps: BroodBoss_ScrStepClaw, BroodBoss_ScrStepScream */
 	v = pl->x;
 	py = pl->y;
 	seg = Seg_FindBelow(v, py + 0x20, 1000);

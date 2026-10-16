@@ -73,6 +73,7 @@ def parse_protos() -> list[dict]:
         plist = [] if params in ("", "void") else split_params(params)
         types = []
         for i, p in enumerate(plist):
+            p = re.sub(r"\s*=[^=].*$", "", p)   # a C++ default argument (PC prototype only)
             if re.search(r"\(\s*\*\s*[A-Za-z_]\w*\s*\)\s*\(", p):
                 # "void (*load)(void)": a function pointer; drop its name
                 types.append(re.sub(r"\(\s*\*\s*[A-Za-z_]\w*\s*\)", "(*)", p))

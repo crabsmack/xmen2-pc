@@ -6,6 +6,6 @@
 
 void SavageBio_ActScript2052(SavageBigBio *self)
 {
-	AiScript_Set(&self->ai, CODEPTR(Tbl_SavageBio_Script3Len));
+	AiScript_Set(&self->ai, CODEPTR(Tbl_SavageBio_Script3));
 	AI_FIRST_STEP(self, self->ai, 0);
 }

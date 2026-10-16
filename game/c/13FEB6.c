@@ -1,5 +1,5 @@
 /* Spark_StateStart - SPARK state (Init's, and after a lap along its segments): its animation
- * (Tbl_Anim_140152), then, in mode 1 (ACTOR unk_8A[1]), onto the nearest floor segment
+ * (Tbl_SparkAnim), then, in mode 1 (ACTOR unk_8A[1]), onto the nearest floor segment
  * (Obj_SnapToNearestSeg(self, 1000, -1)) at speed both ways, flying along it
  * (Spark_StateFlyStraight); in any other mode it targets player 1 and hops at it
  * (Spark_StateStop). Either from the next update.
@@ -10,7 +10,7 @@
 
 short Spark_StateStart(register Spark *self)
 {
-	Obj_SetAnim(self, CODEPTR(Tbl_Anim_140152));
+	Obj_SetAnim(self, CODEPTR(Tbl_SparkAnim));
 	if ((char)self->unk_8A[1] == 1) {
 		Obj_SnapToNearestSeg(self, 0x3E8, -1);
 		self->vx = self->speed;

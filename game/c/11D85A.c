@@ -1,7 +1,7 @@
 /* BabySentinelC_Init - BABYSENTINELC Init (class slot +$12): the parent's (BABYBIO) Init, then
  * palette 1, stats Tbl_BabySentinelCStats (and their health), no frame shown ($FF, slot +$56),
  * and the AI script its variant picks (placement param 4): 1 Tbl_BabySentinelCAiScript, else
- * Tbl_BabySentinelC_Script2Len (BabySentinelC_Script2: crawl, face the player, attach and drop
+ * Tbl_BabySentinelC_Script2 (BabySentinelC_Script2: crawl, face the player, attach and drop
  * a flame...), from the first step now (no script: the default state).
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry (passed on). */
@@ -16,6 +16,6 @@ void BabySentinelC_Init(BabySentinelC *self, long x, long y, Placement *pl)
 	if (self->variant == 1)
 		AiScript_Set(&self->ai, CODEPTR(Tbl_BabySentinelCAiScript));
 	else
-		AiScript_Set(&self->ai, CODEPTR(Tbl_BabySentinelC_Script2Len));
+		AiScript_Set(&self->ai, CODEPTR(Tbl_BabySentinelC_Script2));
 	AI_FIRST_STEP(self, self->ai, 0);
 }
