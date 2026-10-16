@@ -1,8 +1,9 @@
 /* ChildShip_TakeDamage - CHILDSHIP TakeDamage (class slot +$26; the parent's isn't called): a hit
  * with damage while it has health takes the damage and makes it flash 20 frames (no hits); at 0
  * health it is shot down: flashing for good (-1), crashing from the next update
- * (ChildShip_StateCrash), out of the enemy body and attack hit lists (List_Unlink; flags6 bits
- * 1, 2), no bob; else it is knocked back (OnHurt, slot +$6E).
+ * (ChildShip_StateCrash), out of the enemy body and attack hit lists (List_Unlink; flags6 |= 1
+ * and 2, bits 0 and 1: no attack-list and no body-list entry, +$80/+$84), no bob; else it is
+ * knocked back (OnHurt, slot +$6E).
  *
  * self: the object.  attacker: the object that hit it (unused).  type: hit type (9-12: the way
  * it is knocked).  damage: the hit's damage. */

@@ -2007,7 +2007,7 @@ void Platform1_EmptyStub(void);	/* $106B60 */
 long Platform1_GetSize(void);	/* $106B68 */
 void Platform1_Nop66(Platform1 *self);	/* $106B76 */
 void Platform1_ClassInit(void);	/* $106B8C */
-void Platform1_LevelStart(void);	/* $106BCE */
+void Platform1_LevelEnd(void);	/* $106BCE */
 void Platform1_Init(Platform1 *self, long x, long y, Placement *pl);	/* $106BF0 */
 void Platform1_Init_SetFrame2(void);	/* $106CC8 fragment */
 void Platform1_Init_SetFrame1(void);	/* $106CEC fragment */
@@ -2274,7 +2274,7 @@ long BabyBio_GetSize(void);	/* $11C146 */
 void BabyBio_Nop66(BabyBio *);	/* $11C154 */
 void BabyBio_Nop6A(BabyBio *);	/* $11C16A */
 void BabyBio_ClassInit(BabyBio *);	/* $11C172 */
-void BabyBio_LevelStart(void);	/* $11C184 */
+void BabyBio_LevelEnd(void);	/* $11C184 */
 void BabyBio_Init(BabyBio *self, long x, long y, Placement *pl);	/* $11C190 */
 void BabyBio_Move(BabyBio *self, short steps);	/* $11C3C2 */
 void BabyBio_Deactivate(BabyBio *self);	/* $11C576 */
@@ -2706,7 +2706,7 @@ void Pop_NopStatic(void);	/* $13F282 */
 void Debris_SetFloorY(DebrisPool *pool, short y);	/* $13F474 */
 void Debris_SetSprDef(DebrisPool *pool, short def);	/* $13F486 */
 void Debris_SetBounceLimit(DebrisPool *pool, short n);	/* $13F498 */
-DebrisPool *Debris_CreatePool(short n, void *def, char frame);	/* $13F4D4 */
+DebrisPool *Debris_CreatePool(short n, void *def, char pal);	/* $13F4D4 */
 void Debris_Spawn(short x, short y, DebrisPool *pool, short n);	/* $13F58A */
 void Debris_Update(DebrisPool *pool);	/* $13F728 */
 long Spark_GetSize(void);	/* $13FA88 */
@@ -3343,7 +3343,7 @@ void XPlayer_FreezeStanding(XPlayer *self);	/* $1F20EA */
 void XPlayer_UpdateCharge(XPlayer *self);	/* $1F2126 */
 void XPlayer_InitSpawnRec(SpawnRec *rec, Placement *place);	/* $1F21C0 */
 void XPlayer_ClassInit(void);	/* $1F220E */
-void XPlayer_LevelStart(void);	/* $1F2216 */
+void XPlayer_LevelEnd(void);	/* $1F2216 */
 void XPlayer_Nop66(XPlayer *self);	/* $1F221E */
 void XPlayer_Init(XPlayer *self, long x, long y, Placement *place);	/* $1F2234 */
 void XPlayer_Jump(XPlayer *self);	/* $1F2306 */

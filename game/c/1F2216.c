@@ -1,6 +1,6 @@
-/* XPlayer_LevelStart - XPLAYER class slot +$62 (level start): nothing. */
+/* XPlayer_LevelEnd - XPLAYER class slot +$62 (level end): nothing. */
 #include "xmen2.h"
 
-void XPlayer_LevelStart(void)
+void XPlayer_LevelEnd(void)
 {
 }

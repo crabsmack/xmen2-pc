@@ -2,13 +2,14 @@
  * and its update timer started.
  *
  * n: pieces.  def: the pieces' sprite definition (0: none, the pool isn't drawn until
- * Debris_SetSprDef gives it a slot).  frame: SprDef_Add's second argument.
+ * Debris_SetSprDef gives it a slot).  pal: the pieces' palette line (SprDef_Add's second
+ * argument).
  * Floor line 400, the bounce limit for 4 bounces (Debris_SetBounceLimit), every piece cleared,
  * none flying. The timer (Debris_Update, every frame) gets the pool as its argument.
  * Returns the pool. */
 #include "xmen2.h"
 
-DebrisPool *Debris_CreatePool(register short n, void *def, char frame)
+DebrisPool *Debris_CreatePool(register short n, void *def, char pal)
 {
 	register short size = n * 0x14;		/* n pieces */
 	register DebrisPool *pool;
@@ -19,7 +20,7 @@ DebrisPool *Debris_CreatePool(register short n, void *def, char frame)
 	pool->max = n;
 	pool->floorY = 0x190;
 	if (def)
-		pool->sprDef = SprDef_Add(def, frame);
+		pool->sprDef = SprDef_Add(def, pal);
 	else
 		pool->sprDef = -1;
 	if (pool->timer = Timer_Create((TimerFn)Debris_Update, 0, pool, 1))

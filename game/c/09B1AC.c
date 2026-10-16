@@ -6,6 +6,8 @@
  * steps: Actor update steps (1, or 2 in two-player stepping); at least one round runs. */
 #include "xmen2.h"
 
+#define SWING_BACK(o)	((o)->unk_8A[1])	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (BroodClaw_Swing; other classes use the byte differently) */
+
 void BroodClaw_Move(register BroodClaw *self, short steps)
 {
 	register BroodClaw *pair;
@@ -17,7 +19,7 @@ void BroodClaw_Move(register BroodClaw *self, short steps)
 			pair->vx = self->vx;
 			pair->mode = self->mode;
 			pair->swingOffset = (pair->swingLen << 8) - self->swingOffset;
-			pair->unk_8A[1] = self->unk_8A[1] ? 0 : 1;	/* swinging back */
+			SWING_BACK(pair) = SWING_BACK(self) ? 0 : 1;	/* the other direction */
 		}
 		self->swingLen = 0x32;
 		if (self->motion)

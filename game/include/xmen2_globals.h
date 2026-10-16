@@ -654,7 +654,7 @@ extern s16 g_CoreElevatorSprDef;
 #else
 #define g_CoreElevatorSprDef XM_G(s16, 0xFFC62A)
 #endif
-/* $FFC62C word: sprite-definition slot of Art_Platform1Spr, loaded once per level (Platform1_ClassInit compares and sets; Platform1_LevelStart clears; Platform1_Init) */
+/* $FFC62C word: sprite-definition slot of Art_Platform1Spr, loaded once per level (Platform1_ClassInit compares and sets; Platform1_LevelEnd clears; Platform1_Init) */
 #ifdef XMEN2_MPW
 extern s16 g_Platform1SprDef;
 #else
@@ -2496,7 +2496,7 @@ extern PTR(void) g_SyncPool;
 #else
 #define g_SyncPool XM_G(PTR(void), 0xFFE55E)
 #endif
-/* $FFE562 byte: cleared by BabyBio_LevelStart; no other code reads or writes it */
+/* $FFE562 byte: cleared by BabyBio_LevelEnd; no other code reads or writes it */
 #ifdef XMEN2_MPW
 extern u8 g_BabyBioUnused;
 #else
@@ -3096,7 +3096,7 @@ extern PTR(void) g_ScalerColStep;
 #else
 #define g_ScalerColStep XM_G(PTR(void), 0xFFF60C)
 #endif
-/* $FFF610 ptr: g_ScalerWork + 0, first of six $280-byte scaler line/step tables (Scaler_Start sets; Scaler_BeginPass) */
+/* $FFF610 ptr: g_ScalerWork + 0, first of five $280-byte scaler line/step tables g_ScalerLine0-4; the work area's last $140 bytes are g_ScalerLine5 (Scaler_Start sets; Scaler_BeginPass) */
 #ifdef XMEN2_MPW
 extern PTR(void) g_ScalerLine0;
 #else
@@ -3126,7 +3126,7 @@ extern PTR(void) g_ScalerLine4;
 #else
 #define g_ScalerLine4 XM_G(PTR(void), 0xFFF620)
 #endif
-/* $FFF624 ptr: g_ScalerWork + $C80 (Scaler_Start; Scaler_BeginPass) */
+/* $FFF624 ptr: g_ScalerWork + $C80, the work area's last $140 bytes: a packed half-width source row expanded through Tbl_PixelPairExpand, 2 bytes per source byte (Scaler_Start; the row head, in Scaler_BeginPass's asm and Scaler_RowBlocks' C) */
 #ifdef XMEN2_MPW
 extern PTR(void) g_ScalerLine5;
 #else

@@ -1,5 +1,6 @@
 /* ApocBomb_Init - APOCBOMB Init (class slot +$12): the parent's (ACTOR) Init, then a harmless bomb
- * dropping in front (orbit angle 180) at the current bomb speed.
+ * dropping on the far side of its orbit (angle 180, highest on the floor: ApocBomb_Move) at the
+ * current bomb speed.
  *
  * self: the bomb.  x, y: position (8 fraction bits).  pl: its placement entry (passed on).
  * No motion, sprite g_ApocBombSprDef with palette 2, attack 1, flags6 |= $1082, type 0,

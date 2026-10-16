@@ -1757,7 +1757,7 @@ static const uint32_t xmen2_game_functions[] = {
     0x106B68u,  /* Platform1_GetSize */
     0x106B76u,  /* Platform1_Nop66 */
     0x106B8Cu,  /* Platform1_ClassInit */
-    0x106BCEu,  /* Platform1_LevelStart */
+    0x106BCEu,  /* Platform1_LevelEnd */
     0x106BF0u,  /* Platform1_Init */
     0x106DC0u,  /* Platform1_Move */
     0x106E14u,  /* Platform1_MemberInWindow */
@@ -1972,7 +1972,7 @@ static const uint32_t xmen2_game_functions[] = {
     0x11C154u,  /* BabyBio_Nop66 */
     0x11C16Au,  /* BabyBio_Nop6A */
     0x11C172u,  /* BabyBio_ClassInit */
-    0x11C184u,  /* BabyBio_LevelStart */
+    0x11C184u,  /* BabyBio_LevelEnd */
     0x11C190u,  /* BabyBio_Init */
     0x11C3C2u,  /* BabyBio_Move */
     0x11C576u,  /* BabyBio_Deactivate */
@@ -2876,7 +2876,7 @@ static const uint32_t xmen2_game_functions[] = {
     0x1F2126u,  /* XPlayer_UpdateCharge */
     0x1F21C0u,  /* XPlayer_InitSpawnRec */
     0x1F220Eu,  /* XPlayer_ClassInit */
-    0x1F2216u,  /* XPlayer_LevelStart */
+    0x1F2216u,  /* XPlayer_LevelEnd */
     0x1F221Eu,  /* XPlayer_Nop66 */
     0x1F2234u,  /* XPlayer_Init */
     0x1F2306u,  /* XPlayer_Jump */

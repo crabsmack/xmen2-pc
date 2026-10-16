@@ -1,17 +1,20 @@
 /* BroodClaw_Swing - BROODCLAW motion function (+$92, run by BroodClaw_Move): swing the claw out and
- * back along swingOffset by its speed vx (the whole pixels: vx & ~$FF), hanging lower on a sine
- * curve as it goes out; while it swings back it pushes the boss (g_BroodBossOffsetX, mode 0) or
+ * back along swingOffset by its speed vx (the whole pixels: vx & ~$FF), rising on a sine curve
+ * as it goes out; while it swings back it pushes the boss (g_BroodBossOffsetX, mode 0) or
  * the scroll (g_SceneVar3B02 += vx >> 8, mode 1).
  *
  * self: the claw.
- * Out: at 0 or at swingLen << 8 it stops there, turns back (unk_8A[1]: 1), the boss is lowered
+ * Out: at 0 or at swingLen << 8 it stops there, turns back (SWING_BACK 1), the boss is lowered
  * (g_BroodBossFlags $10) and the camera shakes (Tbl_BroodClawQuake). Back: at either end it turns
- * out again. A claw with a pair sets the boss arm frame by the offset (g_BroodArmFrame). The claw
- * is at its home plus the offset less the boss offset, raised 4 px at the ends, else by
- * sin(offset px / 2) / 8. Once its scroll is over (scrollEnded) and, in mode 1, the next step
- * would take the scroll past g_BroodArenaLeft: mode 0, and the camera follows normally again
- * (Cam_DefaultUpdate, BroodClaw_CamApplyShake, no shake or post hook, at the current scroll,
- * XClone_CamSetNormal), g_BroodBossFlags $80, every LINESEGKILLER removed.
+ * out again. A claw with a pair sets the boss arm frame by the offset (g_BroodArmFrame). Its x is
+ * its home px plus the offset less the boss offset; its y is its home py raised by dy, which is
+ * taken off the 8.8 y and so is in 1/256 px: going out, dy = sin(offset px / 2 degrees) x 32 px
+ * (Math_SinDeg is 16.16, >> 3; about 13 px at the $32 swing length) + 4, and 0 on reaching an
+ * end; going back, 0 (home height), and 4 (4/256 px up) on reaching an end. Once its scroll is
+ * over (scrollEnded) and, in mode 1, the next step would take the scroll past g_BroodArenaLeft:
+ * mode 0, and the camera follows normally again (Cam_DefaultUpdate, BroodClaw_CamApplyShake, no
+ * shake or post hook, at the current scroll, XClone_CamSetNormal), g_BroodBossFlags $80, every
+ * LINESEGKILLER removed.
  * The claw's y is read into a local never used, and the test for the ends going out also takes a
  * stop flag that is never set. */
 #include "xmen2.h"
@@ -20,6 +23,7 @@
 #define g_BroodBossFlags	(*(s16 *)g_SceneVar3B0C)	/* scene variable: 1 fight on, 2 floor shock, $10 lower the body, $40 wall smashed */
 #define g_BroodArmFrame		(*(s16 *)g_SceneVar3B10)	/* scene variable: frame of the boss arm */
 #define g_BroodArenaLeft	(*(s32 *)g_SceneVar3B20)	/* scene variable: scroll x the claw swings the arena to */
+#define SWING_BACK(o)		((o)->unk_8A[1])	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (other classes use the byte differently) */
 
 void BroodClaw_Swing(BroodClaw *self)
 {
@@ -31,7 +35,7 @@ void BroodClaw_Swing(BroodClaw *self)
 	shake = 0;
 	stop = 0;
 	dy = 0;
-	if (!self->unk_8A[1]) {		/* swinging out */
+	if (!SWING_BACK(self)) {		/* swinging out */
 		dy = 4;
 		self->swingOffset += self->vx & ~0xFF;
 		if (self->pair) {
@@ -50,7 +54,7 @@ void BroodClaw_Swing(BroodClaw *self)
 			dy += Math_SinDeg(angle) >> 3;
 		}
 		if (self->swingOffset <= 0 || self->swingLen << 8 <= self->swingOffset || stop) {
-			self->unk_8A[1] = 1;
+			SWING_BACK(self) = 1;
 			g_BroodBossFlags |= 0x10;
 			shake = 1;
 			dy = 0;
@@ -75,7 +79,7 @@ void BroodClaw_Swing(BroodClaw *self)
 				g_BroodArmFrame = 4;
 		}
 		if (self->swingOffset <= 0 || self->swingLen << 8 <= self->swingOffset) {
-			self->unk_8A[1] = 0;
+			SWING_BACK(self) = 0;
 			dy = 4;
 			if (self->swingOffset <= 0)
 				self->swingOffset = 0;

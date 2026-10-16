@@ -1991,7 +1991,7 @@ addr,name,end,purpose
 106B68,Platform1_GetSize,106B76,"return sizeof(PLATFORM1 object) = $96 bytes (class slot 0, +$06)"
 106B76,Platform1_Nop66,106B8C,Platform1: no-op override of virtual slot 24 (+$66)
 106B8C,Platform1_ClassInit,106BCE,"register the Platform1 sprite def from Art_Platform1Spr (unless g_Platform1SprDef is -1), then the parent (SYNCHRONIZEDACTOR) ClassInit (static, class slot 22, +$5E)"
-106BCE,Platform1_LevelStart,106BF0,"parent (SYNCHRONIZEDACTOR) LevelStart, then reset g_Platform1SprDef to 0 (static, class slot 23, +$62)"
+106BCE,Platform1_LevelEnd,106BF0,"parent (SYNCHRONIZEDACTOR) LevelEnd, then reset g_Platform1SprDef to 0 (static, class slot 23, +$62)"
 106BF0,Platform1_Init,106CBE,"Platform1 constructor: parent Init, no motion, state Platform1_StateStart, sprite (raw Art_Platform1Spr when g_Platform1SprDef is -1), sprite priority (+$2E bit 2) from the live player, frame from placement param +8 (0->2, 1->0, 2->1), flags |= $283, speed +$94 = param +$C << 8 (default $200), start mode from param +$E (0 run; 1/2 paused at an end, +$6E = 10) (class slot 3, +$12)"
 106CC8,Platform1_Init_SetFrame2,106CEC,case of the Platform1_Init switch on the spawn record type: animation frame 2
 106CEC,Platform1_Init_SetFrame1,106CFE,case of the Platform1_Init switch: animation frame 1
@@ -2258,7 +2258,7 @@ addr,name,end,purpose
 11C154,BabyBio_Nop66,11C16A,BabyBio: no-op override of virtual slot 24 (+$66)
 11C16A,BabyBio_Nop6A,11C172,BabyBio: no-op override of virtual slot 25 (+$6A)
 11C172,BabyBio_ClassInit,11C184,"does nothing: only calls the empty BabyBio_Nop6A (static, class slot 22, +$5E ClassInit)"
-11C184,BabyBio_LevelStart,11C190,"clear the byte $FFE562 (static, class slot 23, +$62; does not call the parent)"
+11C184,BabyBio_LevelEnd,11C190,"clear the byte $FFE562 (static, class slot 23, +$62; does not call the parent)"
 11C190,BabyBio_Init,11C3C2,"BABYBIO constructor: build a placement entry from x/y when there is none, parent (BIONPC) Init, no motion, home +$9C/+$A0, sprite Art_BabyBioSpr, sprite priority (+$2E bit 2) from the live player, empty AI script +$96, state BabyBio_StateStart, move table Tbl_BabyBioBobOffsets; patrol limits from the entry: left +$AC = x-|p6| and right +$AE = x+|p8| (default 48 px; the sign sets the wall flags +$B7/+$B8), y +$B0/+$B2 = y/y-64, +$B9/+$BA = p$A (default 1), +$B6 = p$C (default 120), +$BB = entry byte $F (class slot 3, +$12)"
 11C3C2,BabyBio_Move,11C576,"patrol movement on the home position +$9C/+$A0: during the hop animation (Tbl_BabyBioAnim5) jump 7 px in the velocity direction on its last step, else the parent Move; clamp to the patrol limits (+$AC/+$AE; an open edge switches to BabyBio_StateFallOff) and to y +$B2..+$B0; on bob frames 5/6/8/9 add the next offset of the bob table +$A4 (Tbl_BabyBioBobOffsets) to the shown position (BABYBIO override of slot 18 Move)"
 11C576,BabyBio_Deactivate,11C5BA,"Kill the attached child object +$A8 (if any), then the parent Deactivate (BABYBIO override of slot 16, +$46)"
@@ -3321,7 +3321,7 @@ addr,name,end,purpose
 1F2126,XPlayer_UpdateCharge,1F21C0,"XPLAYER slot +$76: fill the special meter (+$9E, the HUD's second bar) while the special button is held; empty it on release"
 1F21C0,XPlayer_InitSpawnRec,1F220E,"XPLAYER slot +$0A: register a player start record (parent InitSpawnRec, then remember it as P1's or P2's start)"
 1F220E,XPlayer_ClassInit,1F2216,XPLAYER slot +$5E: empty
-1F2216,XPlayer_LevelStart,1F221E,XPLAYER slot +$62: empty
+1F2216,XPlayer_LevelEnd,1F221E,XPLAYER slot +$62: empty
 1F221E,XPlayer_Nop66,1F2234,XPLAYER slot +$66: no-op
 1F2234,XPlayer_Init,1F2306,"XPLAYER slot +$12: clear and initialise a player object (full health, empty meter, pad, safe spot)"
 1F2306,XPlayer_Jump,1F2376,"XPLAYER slot +$82: jump: detach from the floor, play the jump sound, set gravity, jump velocity and max speed"

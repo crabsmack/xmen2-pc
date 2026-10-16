@@ -3,10 +3,11 @@
  * self: the bomb.  steps: frames to move.
  * It orbits the arena on an ellipse: x = 256 - 224 sin a, ground y = 194 + 32 cos a (kept in
  * groundY for the shadow), the angle advancing by g_ApocBombSpeed (twice that in two-player
- * step mode; 8 fraction bits, wrapping at 360). Passing angle 180 (in front) for the third time
- * expires it (bombFlags bit 2; ApocBomb_Update blows it up) and ends the move. Dropping (bit 0):
- * it falls with gravity $50 until it reaches the ground, then sound $E9 and, unless kind 0, it
- * bounces (bit 1). Otherwise its height above the ground changes by heightStep per step,
+ * step mode; 8 fraction bits, wrapping at 360). Passing angle 180 (the far side of the orbit,
+ * where ApocBomb_Init drops it: ground y 162, against 226 nearest the viewer at angle 0) for
+ * the third time expires it (bombFlags bit 2; ApocBomb_Update blows it up) and ends the move.
+ * Dropping (bit 0): it falls with gravity $50 until it reaches the ground, then sound $E9 and,
+ * unless kind 0, it bounces (bit 1). Otherwise its height above the ground changes by heightStep per step,
  * reversing at 0 and $2800 (kind 1 stops bouncing at the top), and y = ground - height.
  * (A drop moves once per call, whatever steps is.) */
 #include "xmen2.h"

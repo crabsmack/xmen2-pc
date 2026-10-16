@@ -1,11 +1,14 @@
 /* ApocBomb_Update - APOCBOMB Update (class slot +$4A; the parent's isn't called and no state
  * runs): move (2 steps in two-player step mode, else 1); expired, it bursts (one live bomb less,
- * ExplodeFx_BurstSmall). Otherwise its look follows the orbit angle (its depth): frame 0-4,
- * draw layer $10-$C0 and shadow frame 10-14, high priority from 85 to 300 degrees (in front);
- * the hittable bomb (type $10) uses frames 5-9 and is hittable (no hit cooldown) only at frame
- * 5, the back of the orbit; facing left on the right half. A new frame goes through SetFrame,
- * and any change of frame, layer or priority re-sorts it (DrawList_SetPriority); then its
- * boxes (Obj_UpdateBoxes).
+ * ExplodeFx_BurstSmall). Otherwise its look follows the orbit angle (its depth: 0 is nearest the
+ * viewer, 180 the far side; ApocBomb_Move): frame 0 (near) to 4 (far), draw layer $10-$C0 and
+ * shadow frame 10-14. The priority bit is cleared at 60-85 degrees and set at 275-300, and kept
+ * in between, so as the angle advances it is low over the far side and high over the near side
+ * (about 275 through 0 to 60). The hittable bomb (type $10) uses frames 5-9 and is hittable (no
+ * hit cooldown) only at frame 5, the near side of the orbit (under 60 or from 300 degrees). It
+ * is h-flipped (spr.flags $10) on the left half (angle < 180, where x < 256). A new frame goes
+ * through SetFrame, and any change of frame, layer or priority re-sorts it
+ * (DrawList_SetPriority); then its boxes (Obj_UpdateBoxes).
  *
  * self: the bomb. */
 #include "xmen2.h"

@@ -9,6 +9,8 @@
  * x = px; its boxes from the start. */
 #include "xmen2.h"
 
+#define SWING_BACK(o)	((o)->unk_8A[1])	/* ACTOR +$8B, for a claw: 0 swinging out, 1 swinging back (BroodClaw_Swing; other classes use the byte differently) */
+
 void BroodClaw_Init(register BroodClaw *self, long x, long y, register Placement *place)
 {
 	(*CLASS(Tbl_BroodClaw_vtable)->parent->method[3])(self, x, y, place);	/* ACTOR Init */
@@ -20,7 +22,7 @@ void BroodClaw_Init(register BroodClaw *self, long x, long y, register Placement
 	Obj_SetSpriteDef((Actor *)self, g_BroodClawSprDef);
 	self->flags6 |= 0x1082;
 	self->state = self->defaultState = (StateFn)BroodClaw_StateWaitMusic;
-	self->unk_8A[1] = 0;		/* swinging out (BroodClaw_Swing: 1 back) */
+	SWING_BACK(self) = 0;		/* swinging out */
 	self->scrollEnded = 0;
 	self->motion = BroodClaw_Swing;
 	self->pair = 0;

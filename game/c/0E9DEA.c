@@ -3,8 +3,10 @@
  * from 10 frames on).
  *
  * self: the hologram.
- * The pose is set to $1B first, so Hologram_SetPose(0) doesn't arm the flicker. Returns
- * self->flags & 8 once the lift goes, nothing while waiting. */
+ * The pose is stored as $1B and at once overwritten by Hologram_SetPose(0): a dead store kept
+ * from the original (nothing reads it in between, and SetPose arms the flicker only for pose
+ * $1B, so SetPose(0) never does). Returns self->flags & 8 once the lift goes, nothing while
+ * waiting. */
 #include "xmen2.h"
 
 #define g_HologramPose	(*(s32 *)g_SceneVar3B14)	/* scene variable: pose drawn (Hologram_SetPose) */

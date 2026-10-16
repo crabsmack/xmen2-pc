@@ -1,0 +1,105 @@
+# Review 002 (2026-10-16, reviewer: D7 reviewer agent 2, sample seed 41604, entries 96-190)
+reviewed: 95
+agree: 90
+open disputes: 0
+
+For each of the 95 functions I read the C (`game/c/<ADDR>.c`) next to the original 68000 (`xmen2disasm src/f/<ADDR>.asm`, plus the split-off fragments, `Sw_`/`Tbl_` switch and jump tables in `xmen2.asm`, and for raw tables the ROM words themselves), and the headers it uses (field offsets in `xmen2_types.h`, globals, prototypes, `xmen2_macros.h`). For the 84 MPW-matched functions the bytes are already proven equal, so I checked the PC-only branches (`#ifndef XMEN2_MPW`: null placement / null parent reading the vector table, CloneA5's game-memory stack frame), the types the bridge uses, method slot numbers (+$06 + 4n), argument order against the pushes, and whether the doc comment, names and magic numbers say what the code does. For the 11 shadow-tested ones (Seg_CollideObj, ChildShip_StateReleaseChild, Nightcrawler_FlashPalette, VDP_ClearVsram, FluxBomb_DrawBurst, Snd_SetParam and the asm-tagged ones) I traced every path of the asm against the C myself (Seg_CollideObj: all 37 entries of Tbl_SegCollideCases decoded from the ROM; FluxBomb_DrawBurst: the always-true priority `or`; Snd_SetParam: Z80_BusAcquire's borrowed frame and Snd_SendCmd2's argument reads). Where a comment made a claim about another function or a field (scene names, script step numbers, Level_Load's music argument, the escape countdown, Cam_SetPos's background formula, the BIOBALLS roll angle) I checked it in that function's C or the type definitions. I found no behavioural bug in any of the 95; the five disputes are doc comments or names that say something the code does not do.
+
+## Disputes
+## Resolved
+- 0FC78A SiberiaB1_CamApply: the comment now says only plane A's scroll wraps (512 x 256). Plane B is marked for the next V-blank, and plane A when a plane-B map is loaded (g_FgScrollDirty = g_BgMapPresent: the reverse of Cam_SetPos). This took two rounds: the first fix still called g_BgMapPresent plane A's map.
+- 0227E0 AvalonB2_RunScene: "no music" is now "music track 0 (only -1 is none)", and argument 15 is described ("spawns from the FG map"). Checked against Level_Load.
+- 1F80CA Seg_FindNearestOfType: the score is now described as the y distance to the middle of the ordered, widened ends (min - 3 .. min + 3) plus the x distance to x1 .. x2 as stored. The ordered/widened left/right are called the original's dead code.
+- 0F44E8 SentinelsB_ExitSeg: the comment gives both type numbers (26 in SentinelsB1, $1B in SentinelsB2). The alias is now `g_EscapeTime` ("escape countdown, tenths of a second", as in the other Sentinels files), and the comment says "while the escape countdown runs".
+- 088730 CloneA5_RunScene: the comment now says palette line 0 comes from Pal_CloneA2Line0 and calls the $200 store to colour 0 the original's dead store, which the copy overwrites. The `g_PalBase[0] = 0x200;` line now has a "dead" comment.
+## Agreed
+- 05CE3A Tusk_Update ("home y" is TUSK's py; it only moves in x, so fine)
+- 1F87B2 Seg_CollideObj (shadow-tested; every case of the 37-entry table checked, including $E players only / $F others only, $12 Scene_EndAfter + flags clear, the hook's low-byte early return)
+- 0DC4DE ClosedBarrier_GetSize
+- 136AA6 Hornet_MoveWaitThenRise
+- 11F4C0 BioBalls_FillFromFirst (the "gone" test is x < 0 && y < 0, written as "(-1, -1)": fine)
+- 0B757C ChildShip_StateReturnY (odd but faithful: homeY moves toward py)
+- 0113E6 BigAcolyte_StateWaitYNext
+- 1F67C8 Pal_StartFadeDelay (nit: `long delay` narrowed with `(short)`; a short parameter would read the same slot word)
+- 136816 Hornet_MoveWaitThenFlyOff (nit: `px` is the ROM's dead `x >> 8` load and is never read; unlike ChildShip_StateReturnY, the comment doesn't say so)
+- 0E9F84 Hologram_WaitLowerLiftBoarded2
+- 038838 BaniMazaA1_UploadBlockTiles
+- 081D08 CloneA2_FrameHook
+- 026A0A RetractFloor_Init
+- 08789C BroodBoss_ActScream
+- 017CEA FarAcolyte_StateCast
+- 11DA54 FloatBio_GetSize
+- 098CC8 Clone_CharTypeOf (jt entries checked against the vtable names)
+- 1F71F2 Seg_ObjPosUnclamped (Sw_1F71F2 checked: all 36 entries match the case lists)
+- 0ABA14 FloatBubble_StateWobble3
+- 087748 BroodBoss_ActAdvance
+- 119B66 Synchronizer_RunMembers
+- 01C81C YoyoAcolyte_StateThrowHigh
+- 0F4428 SentinelsB1_RunScene
+- 0BA1B8 SavageBioBase_Init (the temporary placement's classIndex is left unset, like the original's)
+- 1B9E78 Psylocke_SetFrame (nit: `if (frame == 0xFF) frame = 0xFF;` is the original's no-op and could do with a comment)
+- 067600 PortraitActor_StateInit
+- 119E48 SyncActor_MemberOutsideWindow (nit: the header-wide type name `Synchronizedactor` would read better as `SynchronizedActor`)
+- 0BCED6 SavageMediumBio_ActWalk
+- 0B777C ChildShip_StateReleaseChild (shadow-tested; New's arguments and the facing copy checked)
+- 0E80DE HoloBolt_StateAppear
+- 11E7B8 BioBalls_Reset
+- 0EA7F8 Hologram_ActWait30 ("steps 5 and 18" are 1-based, as in the whole Hologram module: ScriptAttack entries 4 and 17)
+- 1A60B6 Nightcrawler_FlashPalette (shadow-tested; the three brightness bands, the clamp and the 64-colour loop checked)
+- 02CE52 Exodus_NextPattern
+- 1F0834 XPlayer_StateRejoin
+- 138864 LineSegKiller_Init (the PC null-placement branch is right)
+- 1F9850 Sys_InitGameVideo
+- 1178AA SegmentMinusPowerUp_Init (`[7]` = step 0's frame byte, commented)
+- 02690C RetractFloor_TriggerNearest
+- 087BAC BroodBoss_StateDeathStart
+- 1FDFCE VDP_ClearVsram (shadow-tested)
+- 1F60E4 Cam_SetPosScaled ("without the foreground base" checked against Cam_SetPos's `(g_CameraY - g_FgScrollBaseY)`)
+- 1D0148 Gambit_CrouchAim
+- 159138 Magneto_AirShotEndAnim
+- 097514 XClone_ActBallsRoll ("angle $5A" is right: motionSize is BioBalls_MotionRoll's angle in degrees; the asm header's "$5A frames" is the wrong one)
+- 0644D4 Cerebro_BigSpriteDecode
+- 022B2E AvalonA2_HookEndOnEvent3 (nit: message 3 is Seg_CollideObj's test, sent for any object Obj_CollideSegs runs on, not only players; "a player reached the exit" is the likely gameplay case)
+- 1B9248 Psylocke_GroundAttackDown
+- 11DE9E WallCrawlBio_ActCrawlHorizontal
+- 10BA6A SpaceA1_InstallHooks
+- 1B906E Psylocke_SetAirFrame
+- 10B9C8 SpaceA1_EmptyStub2
+- 1F64B4 Obj_AttachChild (the PC null-parent branch reproduces the vector-table reads and drops the ROM write; nit: spr.unk_0C / unk_0F are understood, parent link and previous sibling, and could be named)
+- 1F01FE XPlayer_DoubleJumpNone
+- 120DA2 BioSentinel_StateFalling
+- 085402 TeleportReceiver_GetSize
+- 0BC8AC SavageBio_ActCrossIfUp
+- 112D1E Deathbird_StateDiveLow
+- 047834 BaniMazaA2_CamHook
+- 0BAEC4 SavageBio_ActScript2052
+- 0AC4E8 PerimeterDoor_TileHit (Explosion argument order and the 3x3 tile cases checked)
+- 15AB44 Seg_FindLeft
+- 037924 MagnetoBoss_StateAimShoot (nit: `dir` is the ROM's saved copy in d7 and is never read; the comment explains the do/while but not it)
+- 1336DC BrainRocket_Update
+- 0376C2 MagnetoBoss_Zone4Exit
+- 13EA46 ExplodeFx_ChainStep
+- 0DF20A SentinelElevator_Nop66
+- 15D7F8 Map_SetBlockFG
+- 0F4C72 SentinelsB2_InstallHooks
+- 087582 BroodBoss_StateChargeWall
+- 085F82 LittleLeg_Destroy
+- 1F27EA XPlayer_AirAttackUp
+- 1A65EC Nightcrawler_StateWallCling (nit: `register Seg *seg = self->climbSeg;` is immediately overwritten with `&g_Segs[unk_7B]`; the dead first load is the ROM's but isn't commented)
+- 1835C2 Beast_StateStompEnd
+- 02DC80 Exodus_StartPsiFlash
+- 197A3C Wolverine_Update
+- 15DB8E Actor_SpawnFromRec (nit: unk_14 is understood, the placement/spawn index that Exodus_NextPattern and WallCrawlBio use to index g_PlacementList, and could be named)
+- 0AB370 BubbleManager_SetWaveParams (Sw_0AB370 checked)
+- 1F423A Player_IsBeastOrPsylocke
+- 05DCD0 Tuskette_StateExitFall2
+- 038A6C BaniMazaA1_CamHook
+- 158C0E FluxBomb_DrawBurst (shadow-tested; the always-on priority is kept and said; nit: `self->strong ? Tbl_FluxBombBurstDirs : Tbl_FluxBombBurstDirs` has identical arms because jt entries 2289/2290 point to the same table, which deserves a comment)
+- 1E34BA Cyclops_StateAirBeamBrake
+- 1FE630 Snd_SetParam (shadow-tested; slot/value come from the frame Z80_BusAcquire builds, in that order)
+- 05C3C2 Tusk_StateWaitP1Platform
+- 02CBD0 AvalonA3_InitCamera
+- 0BE3B4 Barbarian_StateAttack1
+- 0BB52E SavageBio_ActExtendTentacle
+- 11C9DC BabyBio_ActStopWait60
+- 1128AE Deathbird_StateStart

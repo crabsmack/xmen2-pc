@@ -777,7 +777,7 @@ extra = [
   0x002BDA,  # jt 1335 -> 106B68 Platform1_GetSize
   0x002BE2,  # jt 1336 -> 106B76 Platform1_Nop66
   0x002BEA,  # jt 1337 -> 106B8C Platform1_ClassInit
-  0x002BF2,  # jt 1338 -> 106BCE Platform1_LevelStart
+  0x002BF2,  # jt 1338 -> 106BCE Platform1_LevelEnd
   0x002BFA,  # jt 1339 -> 106BF0 Platform1_Init
   0x002C02,  # jt 1340 -> 106DC0 Platform1_Move
   0x002C0A,  # jt 1341 -> 106E14 Platform1_MemberInWindow
@@ -904,7 +904,7 @@ extra = [
   0x0032F2,  # jt 1562 -> 11C154 BabyBio_Nop66
   0x0032FA,  # jt 1563 -> 11C16A BabyBio_Nop6A
   0x003302,  # jt 1564 -> 11C172 BabyBio_ClassInit
-  0x00330A,  # jt 1565 -> 11C184 BabyBio_LevelStart
+  0x00330A,  # jt 1565 -> 11C184 BabyBio_LevelEnd
   0x003312,  # jt 1566 -> 11C190 BabyBio_Init
   0x00331A,  # jt 1567 -> 11C3C2 BabyBio_Move
   0x003322,  # jt 1568 -> 11C576 BabyBio_Deactivate
@@ -1428,7 +1428,7 @@ extra = [
   0x004E4A,  # jt 2437 -> 1F2126 XPlayer_UpdateCharge
   0x004E52,  # jt 2438 -> 1F21C0 XPlayer_InitSpawnRec
   0x004E5A,  # jt 2439 -> 1F220E XPlayer_ClassInit
-  0x004E62,  # jt 2440 -> 1F2216 XPlayer_LevelStart
+  0x004E62,  # jt 2440 -> 1F2216 XPlayer_LevelEnd
   0x004E6A,  # jt 2441 -> 1F221E XPlayer_Nop66
   0x004E72,  # jt 2442 -> 1F2234 XPlayer_Init
   0x004E7A,  # jt 2443 -> 1F2306 XPlayer_Jump

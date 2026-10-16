@@ -437,7 +437,7 @@ CHECK_SIZE(ApocBombFrame, 4);
    and blows up after three passes in front (angle 180) or when hit. */
 #define APOCBOMB_FIELDS \
 	ACTOR_FIELDS \
-	s32 angle;			/* +$8C orbit angle, degrees with 8 fraction bits ($B400 = 180, in front) */ \
+	s32 angle;			/* +$8C orbit angle, degrees with 8 fraction bits ($B400 = 180, the far side of the orbit; 0 nearest the viewer) */ \
 	s16 speed;			/* +$90 angle step per Move (g_ApocBombSpeed) */ \
 	s16 bombFlags;			/* +$92 bit 0 dropping, 1 bouncing, 2 expired (third pass at 180) */ \
 	s16 passes;			/* +$94 passes through angle 180 */ \

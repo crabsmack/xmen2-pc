@@ -1993,7 +1993,7 @@ extra = [
   0x106B68,  # Platform1_GetSize
   0x106B76,  # Platform1_Nop66
   0x106B8C,  # Platform1_ClassInit
-  0x106BCE,  # Platform1_LevelStart
+  0x106BCE,  # Platform1_LevelEnd
   0x106BF0,  # Platform1_Init
   0x106CC8,  # Platform1_Init_SetFrame2
   0x106CEC,  # Platform1_Init_SetFrame1
@@ -2260,7 +2260,7 @@ extra = [
   0x11C154,  # BabyBio_Nop66
   0x11C16A,  # BabyBio_Nop6A
   0x11C172,  # BabyBio_ClassInit
-  0x11C184,  # BabyBio_LevelStart
+  0x11C184,  # BabyBio_LevelEnd
   0x11C190,  # BabyBio_Init
   0x11C3C2,  # BabyBio_Move
   0x11C576,  # BabyBio_Deactivate
@@ -3323,7 +3323,7 @@ extra = [
   0x1F2126,  # XPlayer_UpdateCharge
   0x1F21C0,  # XPlayer_InitSpawnRec
   0x1F220E,  # XPlayer_ClassInit
-  0x1F2216,  # XPlayer_LevelStart
+  0x1F2216,  # XPlayer_LevelEnd
   0x1F221E,  # XPlayer_Nop66
   0x1F2234,  # XPlayer_Init
   0x1F2306,  # XPlayer_Jump

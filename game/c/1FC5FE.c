@@ -1,7 +1,8 @@
 /* Scaler_Start - start a picture-scaling job (Scaler_Step runs it): the work area is allocated on
- * the first job ($DC0 bytes, "SCALER DATA", cut into the six $280-byte lines g_ScalerLine0-5),
- * the parameters copied into g_ScalerParams (unless they are it), the sources, the output buffer
- * and VRAM address kept.
+ * the first job ($DC0 bytes, "SCALER DATA": five $280-byte tables g_ScalerLine0-4 and the last
+ * $140 bytes, g_ScalerLine5, the expanded half-width source row of Scaler_RowBlocks), the
+ * parameters copied into g_ScalerParams (unless they are it), the sources, the output buffer and
+ * VRAM address kept.
  *
  * params: a ScaleParams record ($26 bytes), or 0 to keep g_ScalerParams.  srcA: a packed 4bpp
  * source (or 0).  srcB: an unpacked one (or 0).  buf: the output.  vram: the output's VRAM
