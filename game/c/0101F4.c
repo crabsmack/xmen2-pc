@@ -39,7 +39,7 @@ void BigAcolyte_Init(register BigAcolyte *self, long x, long y, Placement *pl)
 	self->bobAngle = 0;
 	self->maxVy = 0x280;		/* its speed limits, both axes (BigAcolyte_Move) */
 	self->minVy = -0x280;
-	self->unk_9E = 0;
+	self->unread_9E = 0;
 	self->arrivedY = 1;
 	self->arrivedX = 1;
 	self->bobbing = 0;

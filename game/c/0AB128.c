@@ -17,8 +17,8 @@ void BubbleManager_Init(BubbleManager *self, long x, long y, Placement *pl)
 	self->flags6 |= 0x408B;
 	self->state = BubbleManager_StateStart;
 	self->defaultState = BubbleManager_StateStart;
-	self->unk_94 = 0;
-	self->unk_96 = 0;
+	self->unread_94 = 0;
+	self->unread_96 = 0;
 	self->bubbleDir = 0;
 	self->bubbleSpeed = 0;
 	self->period = 180;

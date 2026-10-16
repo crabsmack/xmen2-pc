@@ -31,7 +31,7 @@ void BrainChild_Init(BrainChild *self, long x, long y, Placement *pl)
 	self->flags6 |= 2;
 	self->flags6 |= 1;
 	STOP_MOVING(self);
-	self->unk_A4 = 0;
+	self->unread_A4 = 0;
 	Obj_SetAnim(self, CODEPTR(Tbl_BrainChildAnim));
 	Obj_UpdateBoxes(self);
 	Snd_Stop(0x45);

@@ -103,12 +103,12 @@ void PlayerSelect_Run(void)
 	SLOT1->params = g_ScaleParamsPtr;
 	SLOT1->tiles = tiles;
 	SLOT1->tileBase = g_VramTileCursor;
-	SLOT1->unk_0C = 1;
+	SLOT1->pal = 1;
 	g_VramTileCursor += tiles;
 	SLOT2->params = g_ScaleParamsPtr;
 	SLOT2->tiles = tiles;
 	SLOT2->tileBase = g_VramTileCursor;
-	SLOT2->unk_0C = 1;
+	SLOT2->pal = 1;
 	g_VramTileCursor += tiles;
 	g_TextState = 7;
 	o = (Actor *)(*CLASS(Tbl_BoxInputActor_vtable)->method[2])(0, CLASS(Tbl_BoxInputActor_vtable), 0, 0,

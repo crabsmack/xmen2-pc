@@ -3,7 +3,7 @@
  *
  * x, y: the point (pixels).  pool: the debris pool.  n: pieces.
  * Each piece: position x, y +/- up to $3FF (8 fraction bits, a difference of two draws), vx
- * +/- $7FF, vy +/- $3FF, unk_0C 2 with vx's sign, gravity $20, frame 0-3, bounce 0-1, frame delay
+ * +/- $7FF, vy +/- $3FF, dirX 2 with vx's sign, gravity $20, frame 0-3, bounce 0-1, frame delay
  * 4-7, spin 0-255.
  * MPW C draws the left Rand_Next() of each difference first; C++ leaves that order open, so
  * the PC build draws it into a variable first. */
@@ -40,9 +40,9 @@ void Debris_Spawn(register short x, register short y, register DebrisPool *pool,
 		p->vy = (short)(r - RND(0x3FF));
 #endif
 		if (p->vx > 0)
-			p->unk_0C = 2;
+			p->dirX = 2;
 		else
-			p->unk_0C = -2;
+			p->dirX = -2;
 		p->gravity = 0x20;
 		p->frame = RND(3);
 		p->bounce = RND(1);

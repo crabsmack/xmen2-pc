@@ -52,9 +52,9 @@ void LightBeam_Init(register LightBeam *self, long x, long y, Placement *pl)
 	}
 	self->xOff = xOff;
 	self->topY = top + adjust;
-	self->unk_9A = -1;
-	self->unk_9C = -1;
-	self->unk_9E = -1;
+	self->unread_9A = -1;
+	self->unread_9C = -1;
+	self->unread_9E = -1;
 	Obj_SetSpriteDef((Actor *)self, g_LightBeamSprDef);
 	self->sprDef = g_LightBeamSprDef;
 	self->spr.flags = self->spr.flags & ~3 | 2;

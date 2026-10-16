@@ -45,15 +45,16 @@ void BigAcolyte_ActAppear(register BigAcolyte *self)
 		sp.outH = sp.srcH;
 		sp.clearMode = 1;
 		sp.tableKey = 1;
-		sp.unk_16 = 0;
-		sp.unk_18 = 0;
+		sp.hflip = 0;
+		sp.vflip = 0;
+		sp.transpose = 0;
 		sp.direct = 1;
 		sp.packed = 0;
 		sp.rowsPerCall = 0;
-		sp.unk_1E = 0;
-		sp.unk_20 = 0;
-		sp.unk_22 = 0;
-		sp.unk_24 = 0;
+		sp.unread_1E = 0;
+		sp.unread_20 = 0;
+		sp.unread_22 = 0;
+		sp.unread_24 = 0;
 		BigAcolyte_RenderScaled(pic, &sp, self->spr.tileBase << 5, 1);
 	}
 	self->picture = 1;

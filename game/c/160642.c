@@ -26,7 +26,7 @@ void Sys_InitHardware(void)
 #endif
 		g_VBlankHook = 0;
 	}
-	g_HeapTop = AT68(void, 0xFF0000);
+	g_HeapTop = AT68(void, WORK_RAM_START);
 	Irq_Enable();
 	if (g_ExtIntMode[0])
 		g_VdpReg11 = (short)0x8B08;

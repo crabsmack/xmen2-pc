@@ -84,8 +84,8 @@ short PlayerSelect_AllocCharBuffers(void)
 		maxTiles = g_PlayerTiles;
 	g_ScaleTileBuf = Mem_StackAlloc(maxTiles << 5, STR(Str_Empty_0647CE, ""));
 	pic = (ScalePicture *)(g_ScaleSrcBitmap = Mem_StackAlloc(maxArea + 0x26, STR(Str_Empty_0647CC, "")));
-	pic->unk_00[0] = 0;
-	pic->unk_00[1] = 0;
+	pic->unread_00[0] = 0;
+	pic->unread_00[1] = 0;
 	pic->left = 0;
 	pic->top = 0;
 	pic->right = maxW;

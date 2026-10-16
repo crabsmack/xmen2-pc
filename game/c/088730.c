@@ -6,8 +6,8 @@
  * y only, plane B fixed; the boss offsets at (0, $33); the palette cycle (a RAM copy of
  * Tbl_CloneA5PalCycle in this frame, health bar 5); floor-segment types $16 and $15 hooks; the
  * players at their start, each live one drawn with priority; the two debris pools ($12 pieces);
- * no spawn pass; the shock sprites, a ball list of 16, palette line 0 (Pal_CloneA2Line0, colour 0
- * = $200); the boss flags cleared; the tile hooks, the camera and the frame hook
+ * no spawn pass; the shock sprites, a ball list of 16, palette line 0 from Pal_CloneA2Line0 (a store of $200 to colour 0 just
+ * before is overwritten by the copy: the original's dead store); the boss flags cleared; the tile hooks, the camera and the frame hook
  * (CloneA5_FrameHook, which spawns the boss); one-player stepping; then the level (Level_Run).
  * PC: the pool and the table are game memory (generated code uses them for the whole level):
  * placed on the 68000 stack where the original's frame had them (-$2D0(a6) and -$304(a6), a6 =
@@ -75,7 +75,7 @@ void CloneA5_RunScene(void)
 	}
 	CloneA5_InitShockSprites();
 	BioBalls_AllocBallList(0x10);
-	g_PalBase[0] = 0x200;
+	g_PalBase[0] = 0x200;		/* dead: the copy below overwrites it */
 	{
 		register s16 *dst;
 		register s16 *src = (s16 *)CODEPTR(Pal_CloneA2Line0);

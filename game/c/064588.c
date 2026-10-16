@@ -24,15 +24,16 @@ void Cerebro_BigSpriteInit(BigSprite *bs, register ScalePicture *pic)
 	p->outH = p->srcH;
 	p->clearMode = 1;
 	p->tableKey = 1;
-	p->unk_16 = 0;
-	p->unk_18 = 0;
+	p->hflip = 0;
+	p->vflip = 0;
+	p->transpose = 0;
 	p->direct = 1;
 	p->packed = 0;
 	p->rowsPerCall = 0;
-	p->unk_1E = 0;
-	p->unk_20 = 0;
-	p->unk_22 = 0;
-	p->unk_24 = 0;
+	p->unread_1E = 0;
+	p->unread_20 = 0;
+	p->unread_22 = 0;
+	p->unread_24 = 0;
 	bs->pic = pic;
 	bs->sprFlags = 0;
 }

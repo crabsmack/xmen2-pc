@@ -18,7 +18,7 @@ MineRec *Mine_PoolAdd(register Placement *pl)
 		m->handler = Mine_StateStart;
 		m->delay = 0;
 		m->target = 0;
-		m->unk_24 = 0;
+		m->unread_24 = 0;
 	}
 	return m;
 }

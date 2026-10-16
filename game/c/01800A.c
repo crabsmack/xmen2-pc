@@ -67,7 +67,7 @@ void ShootAcolyte_Init(register ShootAcolyte *self, long x, long y, register Pla
 		self->shotDelay = v;
 	else
 		self->shotDelay = 0x3C;
-	self->unk_9C = 0;
-	self->unk_A0 = 0;
+	self->unread_9C = 0;
+	self->unread_A0 = 0;
 	self->shotsLeft = self->burstShots;
 }

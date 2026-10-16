@@ -5,7 +5,7 @@
  * pl:   its placement entry (FloatBubble_Spawn makes one), or 0: then it drifts up at speed
  *       $100 (max $100, start $80 on both axes). With one: param 0 & 7 the direction, param 1
  *       the speed index (0-4: max speed $100-$500, other values $100), param 2 (when
- *       nonzero) unk_92, param 4 or'ed into bubbleFlags (which starts as 4: moving).
+ *       nonzero) placeParam2, param 4 or'ed into bubbleFlags (which starts as 4: moving).
  * Sprite definition g_FloatBubbleSprDef; sprAttr = its first tile with palette 0 in the jungle
  * scenes (SavageC1, SavageB1), else 2. Layer 0, high priority, flags6 |= $88. First state
  * FloatBubble_StateGrowStart when bubbleFlags bit 0 is set, else FloatBubble_StateStart;
@@ -27,9 +27,9 @@ void FloatBubble_Init(FloatBubble *self, long x, long y, Placement *pl)
 	   pending argument pops of the two calls before it. */
 	do {
 		self->bubbleFlags = 4;
-		self->unk_8E = 0;
+		self->unread_8E = 0;
 		self->dir = 0;
-		self->unk_92 = 0x20;
+		self->placeParam2 = 0x20;
 	} while (0);
 	v = 0x100;				/* from here the speed */
 	self->anchorX = x;
@@ -62,7 +62,7 @@ void FloatBubble_Init(FloatBubble *self, long x, long y, Placement *pl)
 		}
 		/* FloatBubble_Init_SetSpeed */
 		if (pl->param[2])
-			self->unk_92 = pl->param[2];
+			self->placeParam2 = pl->param[2];
 		self->bubbleFlags |= pl->param[4];
 	}
 	self->maxVx = self->maxVy = v;

@@ -17,7 +17,7 @@ void ThronePhone_Init(register ThronePhone *self, long x, long y, Placement *pl)
 	Obj_SetSpriteDef((Actor *)self, g_ThronePhoneSprDef);
 	self->spr.flags = self->spr.flags & ~3 | 0;
 	self->boss = 0;
-	self->unk_90 = 0;
+	self->unread_90 = 0;
 	self->mode = 0;
 	self->angleX = 0;
 	self->angleY = 0;

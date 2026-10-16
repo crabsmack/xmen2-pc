@@ -18,7 +18,7 @@ Spore *SporeMine_AddSpore(register Placement *pl)
 		s->handler = SporeMine_RecIdle;
 		s->delay = 0;
 		s->target = 0;
-		s->unk_24 = 0;
+		s->unread_24 = 0;
 	}
 	return s;
 }

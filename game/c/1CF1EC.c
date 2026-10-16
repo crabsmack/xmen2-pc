@@ -40,7 +40,7 @@ GambitCard *Gambit_SpawnCard(register Gambit *self, char kind, char damage, regi
 	card->y = y;
 	card->vx = !(self->spr.flags & 0x10) ? vx : -vx;
 	card->vy = up ? -vy : vy;
-	card->unk_0F = 8;
+	card->unread_0F = 8;
 	card->hitType = self->hitType;
 	card->damage = damage;
 	return card;

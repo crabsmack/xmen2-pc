@@ -50,8 +50,8 @@ void FlyBrood_Init(FlyBrood *self, long x, long y, Placement *pl)
 			self->spr.flags &= ~4;
 	}
 	AiScript_Set(&self->ai, 0);
-	self->unk_96 = 1;
-	self->unk_97 = 1;
+	self->unread_96 = 1;
+	self->unread_97 = 1;
 	self->xMin = pl->x - 0xA0;
 	self->xMax = pl->x + 0xA0;
 	self->yMin = pl->y - 0x80;

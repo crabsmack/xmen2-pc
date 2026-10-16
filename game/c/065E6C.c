@@ -173,7 +173,7 @@ void Cerebro_PlayIntro(void)
 	BS->params = g_ScaleParamsPtr;
 	BS->tiles = 0xAB;
 	BS->tileBase = g_VramTileCursor;
-	BS->unk_0C = 1;
+	BS->pal = 1;
 	g_VramTileCursor += 0xAB;
 	{
 		register s16 *dst;
@@ -260,7 +260,7 @@ void Cerebro_PlayIntro(void)
 	BS->params = g_ScaleParamsPtr;
 	BS->tiles = 0x2C;
 	BS->tileBase = g_VramTileCursor;
-	BS->unk_0C = 2;
+	BS->pal = 2;
 	g_VramTileCursor += 0x2C;
 	n = 0x5A;
 	while (n) {

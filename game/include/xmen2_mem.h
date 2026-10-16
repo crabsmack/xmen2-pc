@@ -422,6 +422,7 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define Z80_RESET      HW16(0xA11200)   /* Z80 reset */
 #define TMSS_PORT      HW32(0xA14000)   /* TMSS "SEGA" */
 #define Z80_RAM(off)   HW8(0xA00000 + (off))   /* Z80 RAM byte (bus held) */
+#define WORK_RAM_START 0xFF0000L        /* first byte of the 68000's work RAM: the heap's base (Level_Load) */
 
 /* A loop waiting for a flag only an interrupt handler sets (`while (!g_FrameTick) IRQ_WAIT();`):
    on the 68000 the interrupt simply arrives, so MPW compiles nothing for it; on PC the

@@ -4,7 +4,8 @@
  *
  * Every sound stops first. Level_Load: FG map Lvl_AvalonB2FgMap, FG tiles Lvl_AvalonB1Fg, BG map
  * and tiles Lvl_AvalonB1Bg, FG floor segments Lvl_AvalonB2FgSegs, no BG segments, flags 1 0 1 0,
- * class-init argument $F, no music, grid shifts 8 and 8, class list Tbl_AvalonB2ClassList. Then plane
+ * class-init argument $F, music track 0 (only -1 is none), grid shifts 8 and 8, spawns from the FG
+ * map, class list Tbl_AvalonB2ClassList. Then plane
  * B fixed (scroll factors 0), the HUD on, the frame hook AvalonB2_FrameHook, one-player stepping,
  * the players at their start, the tile hooks, the scene sprite (AvalonB2_InitSprite), the camera
  * (CAMERA's New, Cam_New, with AvalonB2_CamHook), the gauss bullet pool, and a 60-frame timer that

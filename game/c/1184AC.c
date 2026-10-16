@@ -20,18 +20,18 @@ void ICandy_Init(register ICandy *self, register long x, register long y)
 	self->flags = 0;
 	self->anim = 0;
 	self->sprFlags = 0;
-	self->unk_27 = 0;
+	self->unread_27 = 0;
 	self->frame = 0;
 	self->sprDef = 0;
 	self->uploaded = 0xFF;
 	self->tileBase = -1;
-	self->unk_3A = 0;
-	self->unk_29 = 0xFF;
-	self->unk_28 = 0xFF;
-	self->unk_2A = 0xFF;
-	self->unk_2B = 0xFF;
+	self->unread_3A = 0;
+	self->firstChild = 0xFF;
+	self->parent = 0xFF;
+	self->nextSibling = 0xFF;
+	self->prevSibling = 0xFF;
 	self->sprDef = 0;
-	self->unk_2C = 0;
+	self->unread_2C = 0;
 	self->layer = 0x7F;
 	self->timer = Timer_Create((TimerFn)self->cls->method[3], 1, self, 1);	/* +$12 Update */
 }

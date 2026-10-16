@@ -28,6 +28,6 @@ void BanimazaDoor_Init(register BanimazaDoor *self, long x, long y, register Pla
 	self->respawnDelay = 90;
 	self->look = 0;
 	self->solid = 0;
-	self->unk_A1 = 0;
+	self->unread_A1 = 0;
 	self->state = BanimazaDoor_StateReset;
 }

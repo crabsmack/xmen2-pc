@@ -63,8 +63,8 @@ void Deathbird_Init(register Deathbird *self, long x, long y, Placement *pl)
 	self->wobbleY = 0;
 	self->wobbleVx = 0;
 	self->wobbleVy = 0;
-	self->unk_AA = 0;
-	self->unk_AC = 0;
+	self->unread_AA = 0;
+	self->unread_AC = 0;
 	self->burstTimer = Timer_Create((TimerFn)Deathbird_UpdateBurst, 1, self, 1);
 	self->burst = (DeathbirdBurst *)g_SpaceA1Buf;
 	self->spr2 = g_DeathbirdSpr2;

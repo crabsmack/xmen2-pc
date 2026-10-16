@@ -5,7 +5,7 @@
  * pl:   its placement entry (not tested for 0).
  * Sprite set g_CoreShieldsSprDef, state (and default state) CoreShields_StateStart, flags6 |=
  * $81, high priority, not moving, no zap cooldown, panel 0 in front at phase 0, no panel broken.
- * unk_8C: placement param 0 (0: 40), then overwritten by param 1 (0: $B4). Both boxes from 53 px
+ * placeParam: placement param 0 (0: 40), then overwritten by param 1 (0: $B4). Both boxes from 53 px
  * left / 37 px above its position to 5 px left / 4 px above it. Palette line 3, colours 2-7 =
  * $002-$00C (reds) and 9-12 = $0AE, $0CE, $0EE, $2EE. */
 #include "xmen2.h"
@@ -27,13 +27,13 @@ void CoreShields_Init(register CoreShields *self, long x, long y, register Place
 	self->phase = 0;
 	Mem_Set(self->broken, 0, 8);
 	if (v = pl->param[0])
-		self->unk_8C = v;
+		self->placeParam = v;
 	else
-		self->unk_8C = 40;
+		self->placeParam = 40;
 	if (v = pl->param[1])
-		self->unk_8C = v;
+		self->placeParam = v;
 	else
-		self->unk_8C = 0xB4;
+		self->placeParam = 0xB4;
 	px = self->x >> 8;
 	py = self->y >> 8;
 	self->box2Left = px + -0x35;

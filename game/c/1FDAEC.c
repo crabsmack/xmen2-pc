@@ -35,7 +35,7 @@ void Scroll_SetParallax(void *descp)
 		VDP_CTRL = g_VdpReg11 + 4;
 	g_ParallaxDesc = desc;
 	count = (s8)desc->count;
-	band = (ParallaxBand *)((u8 *)desc + 2);
+	band = (ParallaxBand *)((s16 *)desc + 1);	/* desc->band, past the type and count bytes */
 	for (i = 0; i < count; band += 1, i++) {
 		switch ((s8)band->mode) {
 		case 0:					/* Scroll_SetParallax_Band0 */

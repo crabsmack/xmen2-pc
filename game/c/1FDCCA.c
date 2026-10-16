@@ -1,7 +1,7 @@
 /* Irq_VBlank - the V-int handler (the hook at $210 that Irq_VBlankVector, the level-6 vector,
  * calls with d0-d2/a0-a1 saved): read the pads, count the frame, run the system hook
- * (g_VBlankHook: VDP_FrameUpdate) and the game's (g_VBlankGameHook, unless g_Unk38C0 or
- * g_Unk359E is set), then clear g_VBlankFrameDone.
+ * (g_VBlankHook: VDP_FrameUpdate) and the game's (g_VBlankGameHook, unless g_GameHookOff or
+ * g_GameHookOff2 is set), then clear g_VBlankFrameDone.
  *
  * g_FrameUpdated is read first and never used. */
 #include "xmen2.h"
@@ -17,7 +17,7 @@ void Irq_VBlank(void)
 	++g_VBlankCount;
 	if (g_VBlankHook)
 		(*g_VBlankHook)();
-	if (!g_Unk38C0 && !g_Unk359E && g_GameHook)
+	if (!g_GameHookOff && !g_GameHookOff2 && g_GameHook)
 		(*g_GameHook)();
 	g_VBlankFrameDone = 0;
 	if (0)

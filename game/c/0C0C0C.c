@@ -31,7 +31,7 @@ void SwampFly_Init(register SwampFly *self, long x, long y, register Placement *
 		self->shiftX = pl->param[2] + 8;
 		self->shiftY = pl->param[3] + 8;
 	}
-	self->unk_B3 = 0;
+	self->unread_B3 = 0;
 	self->target = 0;
 	self->flapShift = 2;
 	self->state = self->defaultState = SwampFly_StateStart;

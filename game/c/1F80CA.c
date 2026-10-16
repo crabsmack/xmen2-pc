@@ -2,9 +2,10 @@
  * downward until a cell has one.
  *
  * x, y: the point (pixels); type: the segment type wanted, 1001 any, 1000 the types $21-$24.
- * Score of an in-use segment of that type: the distance from y to the middle of its height plus
- * the distance from x to its x range (0 inside); its box is first widened to at least 6 px each
- * way (around its first corner less 3). The lowest score under 20000 in a cell wins; the scan goes
+ * Score of an in-use segment of that type: the distance from y to the middle of its height (its
+ * ends ordered, and widened to at least 6 px: min - 3 .. min + 3) plus the distance from x to its
+ * x range as stored, x1 .. x2 (0 inside). The left/right are ordered and widened the same way and
+ * then never read (the original's dead code). The lowest score under 20000 in a cell wins; the scan goes
  * on one cell height (1 << g_SegGridShiftY) down while none is found and the cell changes.
  * Returns it, or 0. Endpoints are ordered with xor swaps (the original's). */
 #include "xmen2.h"

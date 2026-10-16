@@ -1,7 +1,7 @@
 /* Scaler_InitParams - reset the scaler's parameter block and start a job on g_ScaleTileBuf.
  *
- * Sizes and rectangles 0, clearMode 1 (clear the tile buffer), tableKey 1, no flips (+$16,
- * +$17) or transposition (+$18), direct 1 (scale into tiles), not packed, no row budget;
+ * Sizes and rectangles 0, clearMode 1 (clear the tile buffer), tableKey 1, no flips (hflip,
+ * vflip) or transposition, direct 1 (scale into tiles), not packed, no row budget;
  * g_ScalerTableKey $FF, so the next pass rebuilds its step tables. Then Scaler_Start(
  * &g_ScalerParams, no source A, source B 10, the tile buffer, VRAM 10): the 10 only stands for
  * "a source" (Scaler_Start marks a job ready when it has one); callers start their own job
@@ -22,8 +22,9 @@ void Scaler_InitParams(void)
 	g_ScalerParams.outH = 0;
 	g_ScalerParams.clearMode = 1;
 	g_ScalerParams.tableKey = 1;
-	g_ScalerParams.unk_16 = 0;
-	g_ScalerParams.unk_18 = 0;
+	g_ScalerParams.hflip = 0;
+	g_ScalerParams.vflip = 0;
+	g_ScalerParams.transpose = 0;
 	g_ScalerParams.direct = 1;
 	g_ScalerParams.packed = 0;
 	g_ScalerParams.rowsPerCall = 0;

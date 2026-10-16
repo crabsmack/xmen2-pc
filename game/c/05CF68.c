@@ -5,7 +5,7 @@
  *
  * self: the object.  x, y: position (8 fraction bits).  pl: its placement entry.
  * The do/while (0) blocks are the original's (macros, most likely): their labels are where
- * MPW C pops the calls' arguments. hittable and unk_9B are cleared by one clr.w. */
+ * MPW C pops the calls' arguments. hittable and unread_9B are cleared by one clr.w. */
 #include "xmen2.h"
 
 void Tusk_Init(Tusk *self, long x, long y, Placement *pl)
@@ -32,5 +32,5 @@ void Tusk_Init(Tusk *self, long x, long y, Placement *pl)
 		self->arenaFloor = Seg_FindBelow(px, py, 1000);
 	} while (0);
 	self->hittable = 0;
-	self->unk_9B = 0;
+	self->unread_9B = 0;
 }

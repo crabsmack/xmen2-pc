@@ -12,8 +12,8 @@
  * after each row, g_ScalerRowsLeft blank rows below), 0 keeps it. The source steps: g_ScalerLine0
  * per output pixel, g_ScalerLine1 per output row, as the differences of the 16.16 positions
  * rectW / outW and rectH / outH, rows in multiples of the source stride (srcW bytes; a packed
- * 4bpp source, g_ScalerHalfWidth: (srcW + 1) / 2), backwards for a flip (+$16 horizontal, +$17
- * vertical); a transposition (+$18) swaps the two (rows of the output go across the source).
+ * 4bpp source, g_ScalerHalfWidth: (srcW + 1) / 2), backwards for a flip (hflip, vflip); a
+ * transposition (transpose) swaps the two (rows of the output go across the source).
  * Then Scaler_BuildStepTables, the first source pixel (the rectangle's corner, the flipped
  * one's far corner) and the row loop: Scaler_RowBlocks from the first row, or from the first
  * 32-row chunk of packed output.
@@ -73,7 +73,7 @@ long Scaler_BeginPass(void)
 	across = g_ScalerLine0;
 	nDown = g_ScalerParams.outH;
 	nAcross = g_ScalerParams.outW;
-	if (g_ScalerParams.unk_18) {
+	if (g_ScalerParams.transpose) {
 		down = g_ScalerLine0;
 		across = g_ScalerLine1;
 		nDown = g_ScalerParams.outW;
@@ -84,7 +84,7 @@ long Scaler_BeginPass(void)
 	acc = 0;
 	sum = 0;
 	s = (short)stride;
-	if (g_ScalerParams.unk_16 & 0x00FF)	/* +$17: flipped vertically */
+	if (g_ScalerParams.vflip)
 		s = (short)-s;
 	n = nDown;
 	do {
@@ -97,7 +97,7 @@ long Scaler_BeginPass(void)
 	step = ((unsigned long)(unsigned short)g_ScalerParams.rectW << 16) / nAcross;
 	acc = 0;
 	sum = 0;
-	if (g_ScalerParams.unk_16 & 0xFF00) {	/* +$16: flipped horizontally */
+	if (g_ScalerParams.hflip) {
 		step = 0 - step;
 		sum = -1;
 	}
@@ -112,11 +112,11 @@ long Scaler_BeginPass(void)
 	Scaler_BuildStepTables(&pair, &count);
 	/* the first source pixel; the 68000 keeps the product's high word (d0) */
 	n = g_ScalerParams.srcY;
-	if (g_ScalerParams.unk_16 & 0x00FF)	/* flipped vertically: its last row */
+	if (g_ScalerParams.vflip)	/* its last row */
 		n = (unsigned short)(n + g_ScalerParams.rectH - 1);
 	prod = (unsigned long)n * (unsigned short)g_ScalerSrcStride;
 	off = (short)(prod + g_ScalerParams.srcX);
-	if (g_ScalerParams.unk_16 & 0xFF00)	/* flipped horizontally: its last column */
+	if (g_ScalerParams.hflip)	/* its last column */
 		off = (short)(off + g_ScalerParams.rectW - 1);
 	r.src = (u8 *)(g_ScalerHalfWidth ? g_ScalerSrcA : g_ScalerSrcB) + off;
 	g_ScalerRowStep = g_ScalerLine4;

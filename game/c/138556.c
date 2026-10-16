@@ -1,4 +1,4 @@
-/* LaserCannon_StateWaitExtended - LASERCANNON state: once unk_98 bit 0 is clear,
+/* LaserCannon_StateWaitExtended - LASERCANNON state: once waitFlags bit 0 is clear,
  * LaserCannon_StateAim from the next update; else it stays the state.
  *
  * self: the cannon. Returns flags & 8 on the change, no value otherwise (d0 is the bit tested). */
@@ -6,7 +6,7 @@
 
 short LaserCannon_StateWaitExtended(LaserCannon *self)
 {
-	if (!(self->unk_98 & 1)) {
+	if (!(self->waitFlags & 1)) {
 		SET_STATE(self, (StateFn)LaserCannon_StateAim);
 		return self->flags & 8;
 	}

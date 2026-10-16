@@ -33,5 +33,5 @@ pal:	/* (here MPW C pops all the arguments, as the ROM does) */
 	self->step = 0;
 	self->hittableTimer = 0;
 	self->moveFlags = 0;
-	self->unk_AD = 0;
+	self->unread_AD = 0;
 }

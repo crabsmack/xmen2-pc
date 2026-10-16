@@ -21,7 +21,7 @@ void ExodusBlast_Init(register ExodusBlast *self, long x, long y, register Place
 	self->trailDx = 0;
 	self->trailDy = 0;
 	self->kind = 0;
-	self->unk_99 = 0;
+	self->unread_99 = 0;
 	if (pl) {
 	}
 }

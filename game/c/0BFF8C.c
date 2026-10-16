@@ -31,6 +31,6 @@ void SwampPlatform_Init(register SwampPlatform *self, long x, long y, register P
 		self->phase = pl->param[0] ? pl->param[0] : 0;
 		self->shift = pl->param[1] ? pl->param[1] : 0;
 	}
-	self->unk_9A = 0;
+	self->unread_9A = 0;
 	self->state = self->defaultState = SwampPlatform_StateIdle;
 }

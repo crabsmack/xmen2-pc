@@ -2,8 +2,9 @@
  * the scroll from the camera. g_CameraX/Y = position + transition offset (+ look offset in y),
  * clamped to the camera limits; plane A scroll moves by the wind (g_BgOffsetX/Y, set by
  * SiberiaB1_StepWind) and by plane B's own change; plane B scroll follows the camera through the
- * parallax factors. Both wrap (512 x 256), then the map streaming hooks run with interrupts off
- * and both planes are marked for the next V-blank.
+ * parallax factors. Plane A's scroll wraps (512 x 256), then the map streaming hooks run with
+ * interrupts off; plane B is marked for the next V-blank, plane A when it has a map
+ * (g_BgMapPresent).
  *
  * cam: the camera. */
 #include "xmen2.h"

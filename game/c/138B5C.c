@@ -26,17 +26,17 @@ void MaintRobot_Init(register MaintRobot *self, long x, long y, register Placeme
 	self->flags6 |= 0x80;
 	self->health = (self->stats = (NpcStats *)CODEPTR(Tbl_MaintRobotStats))->health;
 	self->layer = 0x10;
-	self->unk_98 = 0;
+	self->unread_98 = 0;
 	self->speed = pl->param[0] ? (long)pl->param[0] << 8 : 0x200;
 	self->fireDelay = pl->param[1] ? pl->param[1] : 0x3C;
 	self->volley = pl->param[2] ? pl->param[2] : 2;
 	self->shotDelay = pl->param[3] ? pl->param[3] : 0x14;
 	self->patrol = pl->param[4] ? pl->param[4] : 0;
 	self->shotsLeft = 0;
-	self->unk_A6 = 0;
+	self->unread_A6 = 0;
 	self->patrolVx = self->speed;
 	self->vx = self->speed;
-	self->unk_94 = 0;
+	self->unread_94 = 0;
 	if ((IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)->spr.flags & 4)
 		self->spr.flags |= 4;
 	Obj_StandOnSegHere(self);

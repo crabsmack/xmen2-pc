@@ -1242,7 +1242,7 @@ extern u8 g_SceneVar3B02[];
 #else
 #define g_SceneVar3B02 XM_GA(u8, 0xFFC6FE)
 #endif
-/* $FFC700 word: 0 at Game_SceneLoop's start; nothing else reaches it A5-relative. Not yet named in the disassembly (-$3B00) */
+/* $FFC700 word: 0 at Game_SceneLoop's start; nothing else reaches it A5-relative. */
 #ifdef XMEN2_MPW
 extern s16 g_Unk3B00;
 #else
@@ -1620,7 +1620,7 @@ extern PTR(ParallaxDesc) g_ParallaxDesc;
 #else
 #define g_ParallaxDesc XM_G(PTR(ParallaxDesc), 0xFFC7BC)
 #endif
-/* $FFC7C0 7 bytes: the button mask of actions 0-6 in the control layout (Game_Main fills them from Pad_ConfigButtonMask). Not yet named in the disassembly (-$3A40) */
+/* $FFC7C0 7 bytes: the button mask of actions 0-6 in the control layout (Game_Main fills them from Pad_ConfigButtonMask). */
 #ifdef XMEN2_MPW
 extern s8 g_ActionButtonMasks[7];
 #else
@@ -1824,7 +1824,7 @@ extern u8 g_LevelFreeze;
 #else
 #define g_LevelFreeze XM_G(u8, 0xFFC91C)
 #endif
-/* $FFC91E byte: the g_PlayersAlive the HUD was drawn for: HUD_UpdateHealthBars redraws both panels (HUD_Redraw) when it changes. Not yet named in the disassembly (-$38E2) */
+/* $FFC91E byte: the g_PlayersAlive the HUD was drawn for: HUD_UpdateHealthBars redraws both panels (HUD_Redraw) when it changes. */
 #ifdef XMEN2_MPW
 extern u8 g_HudPlayersAlive;
 #else
@@ -1902,11 +1902,11 @@ extern u8 g_SceneIndexSet;
 #else
 #define g_SceneIndexSet XM_G(u8, 0xFFC93E)
 #endif
-/* $FFC940 byte: Irq_VBlank skips g_VBlankGameHook while set; no other reference (never set). Provisional name (Irq worker): not yet in the disassembly */
+/* $FFC940 byte: Irq_VBlank skips g_VBlankGameHook while set; no other reference (never set). */
 #ifdef XMEN2_MPW
-extern u8 g_Unk38C0;
+extern u8 g_GameHookOff;
 #else
-#define g_Unk38C0 XM_G(u8, 0xFFC940)
+#define g_GameHookOff XM_G(u8, 0xFFC940)
 #endif
 /* $FFC942 byte: set while a frame loop runs its classes (Level_Run and PlayerSelect_Run around ClassList_InitAll..ClassList_CallSlot62; Game_Main clears); Player_SetCharacter places a joining player differently when set */
 #ifdef XMEN2_MPW
@@ -1944,13 +1944,13 @@ extern u8 g_HudDirty;
 #else
 #define g_HudDirty XM_G(u8, 0xFFC94E)
 #endif
-/* $FFC950 long: 0 at Game_SceneLoop's start; nothing else reaches it A5-relative. Not yet named in the disassembly (-$38B0) */
+/* $FFC950 long: 0 at Game_SceneLoop's start; nothing else reaches it A5-relative. */
 #ifdef XMEN2_MPW
 extern s32 g_Unk38B0;
 #else
 #define g_Unk38B0 XM_G(s32, 0xFFC950)
 #endif
-/* $FFC954 word: 3 at Game_SceneLoop's start (next to the lives words); nothing else reaches it A5-relative. Not yet named in the disassembly (-$38AC) */
+/* $FFC954 word: 3 at Game_SceneLoop's start (next to the lives words); nothing else reaches it A5-relative. */
 #ifdef XMEN2_MPW
 extern s16 g_Unk38AC;
 #else
@@ -2028,40 +2028,40 @@ extern s16 g_LevelVramStart;
 #else
 #define g_LevelVramStart XM_G(s16, 0xFFC978)
 #endif
-/* Provisional names (Level worker), not yet in the disassembly: written by Level_Load only, no
+/* Written by Level_Load only, no
    other A5-relative reference.
    $FFC976 word: 2 at Level_Load.  $FFC96A word: 0 at Level_Load.  $FFC960 long: 0 at Level_Load.
    $FFC948 byte: 0 at Level_Load.  $FFEBA0 byte: 1 at Level_Load (next to g_PauseExit). */
 #ifdef XMEN2_MPW
-extern s16 g_Unk388A;
-extern s16 g_Unk3896;
-extern s32 g_Unk38A0;
-extern u8 g_Unk38B8;
-extern u8 g_Unk1660;
+extern s16 g_LevelLoadWord388A;
+extern s16 g_LevelLoadWord3896;
+extern s32 g_LevelLoadLong38A0;
+extern u8 g_LevelLoadByte38B8;
+extern u8 g_LevelLoadByte1660;
 #else
-#define g_Unk388A XM_G(s16, 0xFFC976)
-#define g_Unk3896 XM_G(s16, 0xFFC96A)
-#define g_Unk38A0 XM_G(s32, 0xFFC960)
-#define g_Unk38B8 XM_G(u8, 0xFFC948)
-#define g_Unk1660 XM_G(u8, 0xFFEBA0)
+#define g_LevelLoadWord388A XM_G(s16, 0xFFC976)
+#define g_LevelLoadWord3896 XM_G(s16, 0xFFC96A)
+#define g_LevelLoadLong38A0 XM_G(s32, 0xFFC960)
+#define g_LevelLoadByte38B8 XM_G(u8, 0xFFC948)
+#define g_LevelLoadByte1660 XM_G(u8, 0xFFEBA0)
 #endif
-/* Provisional names (Level worker), not yet in the disassembly: Level_LoadMaps' only.
+/* Level_LoadMaps' only.
    $FFC908 ptr: compared with Cam_SetPosScaled (then the scroll starts from the camera through
    the plane factors); nothing writes it A5-relative.  $FFC780 ptr: the FG map (Level_LoadMaps).
    $FFC79A word: the first VRAM tile of the map tiles ($80).  $FFC798 word: the first BG tile.
    $FFC75E ptr: g_HeapTop after the maps. */
 #ifdef XMEN2_MPW
-extern PTR(void) g_Unk38F8;
-extern PTR(void) g_Unk3A80;
-extern s16 g_Unk3A66;
-extern s16 g_Unk3A68;
-extern PTR(void) g_Unk3AA2;
+extern FrameHookFn g_CamSetPosHook;
+extern PTR(void) g_LoadedFgMap;
+extern s16 g_MapFirstTile;
+extern s16 g_BgFirstTile;
+extern PTR(void) g_MapsHeapEnd;
 #else
-#define g_Unk38F8 XM_G(PTR(void), 0xFFC908)
-#define g_Unk3A80 XM_G(PTR(void), 0xFFC780)
-#define g_Unk3A66 XM_G(s16, 0xFFC79A)
-#define g_Unk3A68 XM_G(s16, 0xFFC798)
-#define g_Unk3AA2 XM_G(PTR(void), 0xFFC75E)
+#define g_CamSetPosHook XM_G(FrameHookFn, 0xFFC908)
+#define g_LoadedFgMap XM_G(PTR(void), 0xFFC780)
+#define g_MapFirstTile XM_G(s16, 0xFFC79A)
+#define g_BgFirstTile XM_G(s16, 0xFFC798)
+#define g_MapsHeapEnd XM_G(PTR(void), 0xFFC75E)
 #endif
 /* $FFC97A array of $14-byte sprite-definition records {+0 flag bits, +2 def ptr, +6 word, +8 word} (Obj_SetSpriteDef) */
 #ifdef XMEN2_MPW
@@ -2190,11 +2190,11 @@ extern u32 g_FrameCounter;
 #else
 #define g_FrameCounter XM_G(u32, 0xFFCC5E)
 #endif
-/* $FFCC62 byte: Irq_VBlank skips g_VBlankGameHook while set; no other reference (never set). Provisional name (Irq worker): not yet in the disassembly */
+/* $FFCC62 byte: Irq_VBlank skips g_VBlankGameHook while set; no other reference (never set). */
 #ifdef XMEN2_MPW
-extern u8 g_Unk359E;
+extern u8 g_GameHookOff2;
 #else
-#define g_Unk359E XM_G(u8, 0xFFCC62)
+#define g_GameHookOff2 XM_G(u8, 0xFFCC62)
 #endif
 /* $FFCC64 word: current scene, index into g_SceneTable (Cerebro screens and stage parts; TAS steps 0,1,2,... per screen) */
 #ifdef XMEN2_MPW
@@ -2370,7 +2370,7 @@ extern SegHookFn g_SegTypeHooks[];
 #else
 #define g_SegTypeHooks XM_GA(SegHookFn, 0xFFCD96)
 #endif
-/* $FFCE2A ptr: g_HeapTop after the level's floor-segment grid (Seg_LoadList writes it, nothing reads it by name); name proposed by the Seg worker, not yet in the disassembly */
+/* $FFCE2A ptr: g_HeapTop after the level's floor-segment grid (Seg_LoadList writes it, nothing reads it by name) */
 #ifdef XMEN2_MPW
 extern PTR(void) g_SegHeapEnd;
 #else
@@ -2496,7 +2496,7 @@ extern PTR(void) g_SyncPool;
 #else
 #define g_SyncPool XM_G(PTR(void), 0xFFE55E)
 #endif
-/* $FFE562 byte: cleared by BabyBio_LevelStart; no other code reads or writes it (A5 -$1C9E; not yet in the disassembly's ram.asm) */
+/* $FFE562 byte: cleared by BabyBio_LevelStart; no other code reads or writes it */
 #ifdef XMEN2_MPW
 extern u8 g_BabyBioUnused;
 #else
@@ -2544,7 +2544,7 @@ extern s16 g_BioFlameSprDef;
 #else
 #define g_BioFlameSprDef XM_G(s16, 0xFFE778)
 #endif
-/* $FFE77A word: decremented by FlyBrood_Deactivate; no code increments or reads it (a live FLYBROOD count left unused; A5 -$1A86, not yet in the disassembly's ram.asm) */
+/* $FFE77A word: decremented by FlyBrood_Deactivate; no code increments or reads it (a live FLYBROOD count left unused) */
 #ifdef XMEN2_MPW
 extern s16 g_FlyBroodCount;
 #else

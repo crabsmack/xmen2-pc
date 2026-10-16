@@ -33,6 +33,6 @@ void SavageBioBase_Init(register SavageBioBase *self, register long x, register 
 	self->flashTimer = 0;
 	g_A4CamFocus = (Actor *)self;
 	self->bioFlags = 0;
-	self->unk_A6 = 0;
+	self->unread_A6 = 0;
 	*(s32 *)&self->dashBrakeX = 0;	/* both dash marks, one long store (moveq / move.l) */
 }

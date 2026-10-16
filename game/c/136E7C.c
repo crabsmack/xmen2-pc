@@ -44,8 +44,8 @@ void Hornet_Init(Hornet *self, long x, long y, Placement *pl)
 	self->shotDelay = pl->param[4] ? pl->param[4] : 10;
 	self->swingAngle = self->swingStep >= 0 ? -180 : 0;
 	self->swingCentre = self->swingStep >= 0 ? self->swingRadius : -self->swingRadius;
-	self->unk_B2 = 8;
-	self->unk_B4 = 9;
+	self->unread_B2 = 8;
+	self->unread_B4 = 9;
 	self->path = (FlyPathStep *)CODEPTR(Tbl_HornetCirclePath);
 	self->pathShift = 4;
 	self->lifetime = 480;

@@ -27,7 +27,7 @@ void SentinelElevator_Init(register SentinelElevator *self, long x, long y,
 	self->spr.flags = self->spr.flags & ~3 | 0;
 	self->topWait = 20;
 	self->bottomWait = 20;
-	self->unk_9A = 0;
+	self->unread_9A = 0;
 	if (pl) {
 		v = pl->param[0];
 		if (v < 0 || v >= 15)
@@ -47,7 +47,7 @@ void SentinelElevator_Init(register SentinelElevator *self, long x, long y,
 			self->flags6 &= ~0x1000;
 		}
 	}
-	self->unk_92 = 0;
+	self->unread_92 = 0;
 	Obj_UpdateBoxes(self);
 end:	;	/* (a label: MPW C pops the calls' arguments before it and before the if, as the ROM) */
 }

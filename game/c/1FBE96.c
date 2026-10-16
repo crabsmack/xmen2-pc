@@ -23,7 +23,7 @@ void Art_LoadToVramRecolor(register void *art, short tile, register short c0, re
 	case 1:
 		type = ((s16 *)art)[3];
 		VDP_CTRL32 = VRAM_WRITE((long)tile << 5);
-		VDP_WriteWords((char *)art + 8, (long)type << 4);
+		VDP_WriteWords((s16 *)art + 4, (long)type << 4);	/* the tiles, after the 4-word header */
 		break;
 	case 4:
 		rows = hdr[1];

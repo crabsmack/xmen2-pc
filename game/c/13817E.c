@@ -48,6 +48,6 @@ void LaserCannon_Init(LaserCannon *self, long x, long y, Placement *pl)
 		self->shotDelay = 40;
 	self->tracks = pl->param[4] ? 1 : 0;
 	self->target = 0;
-	self->unk_98 = 0;
+	self->waitFlags = 0;
 	self->shotsLeft = self->burst;
 }

@@ -10,7 +10,7 @@ void Elevator_Init(register Elevator *self, long pos, register short speed, shor
 	self->speed = speed;
 	self->accel = accel;
 	self->prevSpeed = speed;
-	self->unk_0E = -1;
+	self->unread_0E = -1;
 	self->up = 1;
 	self->toggleDelay = 0;
 	self->stopped = 0;

@@ -39,8 +39,8 @@ void TechWallGun_Init(register TechWallGun *self, long x, long y, register Place
 		(*self->cls->method[20])(self, 2);	/* +$56 SetFrame */
 	}
 	self->spr.flags |= 4;
-	self->unk_8C = 0;
-	self->unk_9C = 40;
+	self->unread_8C = 0;
+	self->unread_9C = 40;
 	self->range = 250;
 	self->aimState = 0;
 	self->burstPause = pl->param[1] ? pl->param[1] : 120;
