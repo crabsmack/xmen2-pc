@@ -4,3 +4,11 @@ Phase-2 criterion K10: the user played the Release build (`build\Release\XMen2Re
 game\xmen2.bin`) and confirmed it looks, sounds and plays correctly (quick play).
 
 user-verified: 2026-10-15
+
+Phase-4 criterion D8: the user played the hand-C build (`build/XMen2Stepped game/xmen2.bin`,
+frame-synchronous, all 3,164 functions in C, live input; commit 731f5f6, engine 22ed7f6) on
+Linux up to Avalon and confirmed it plays fine, with no crash and 0 misses. Some chugging during
+the Sentinel escape was not investigated. The D2/D6 traces still need a re-run on the new
+engine (docs/NOTES.md "The D8 playtest build").
+
+handc-verified: 2026-10-17
