@@ -14,6 +14,19 @@ if(MSVC)
     add_link_options(/OPT:REF /OPT:NOICF)
 endif()
 
+# Reproducible runners: the same sources give byte-identical executables, in any build directory,
+# at any time, after any commit that changes no code (phase 5 keys its trace and verify caches on
+# the runners' SHA-1). /Brepro: no PE/COFF timestamps (link: a content hash instead), and
+# __DATE__/__TIME__ expand to "1" (the engine's runtime_evidence.c prints them). The engine's
+# build-info header (`git describe` of both repos, rewritten at every commit) is replaced by
+# reproducible/genesis_build_info.h; a build's exact identity is the executable fingerprint the
+# runner computes from its own bytes (runtime_evidence.c).
+option(XMEN2_REPRODUCIBLE "Byte-identical runners for identical sources" ON)
+if(MSVC AND XMEN2_REPRODUCIBLE)
+    add_compile_options(/Brepro)
+    add_link_options(/Brepro)
+endif()
+
 # ---------------------------------------------------------------------------
 # X-Men 2: Clone Wars, statically recompiled with segagenesisrecomp.
 #
@@ -68,6 +81,9 @@ function(xmen2_runner TARGET PORT)
     endif()
     genesisrecomp_runner_target(${TARGET})
     target_compile_definitions(${TARGET} PRIVATE ${XMEN2_COMMON_DEFS} DEFAULT_DEBUG_PORT=${PORT} ${XR_DEFS})
+    if(XMEN2_REPRODUCIBLE)   # ahead of the engine's per-target build-info directory
+        target_include_directories(${TARGET} BEFORE PRIVATE "${CMAKE_SOURCE_DIR}/game/runtime/reproducible")
+    endif()
     target_include_directories(${TARGET} PRIVATE ${XMEN2_INCLUDE_DIRS})
     target_link_libraries(${TARGET} PRIVATE SDL2::SDL2main SDL2::SDL2)
     if(WIN32)

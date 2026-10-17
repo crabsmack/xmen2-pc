@@ -23,14 +23,15 @@ extern uint32_t g_xrts;
 
 namespace xm {
 
+char g_fatal_msg[512];   /* the fatal error ending the run: verify.cpp's report names it */
+
 [[noreturn]] void fatal(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stderr, "[handc] ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
+    vsnprintf(g_fatal_msg, sizeof g_fatal_msg, fmt, ap);
     va_end(ap);
+    fprintf(stderr, "[handc] %s\n", g_fatal_msg);
     fflush(stderr);
     exit(5);
 }

@@ -103,7 +103,8 @@ def main() -> int:
         out = a.out / r
         p = subprocess.run([sys.executable, str(common.ROOT / "tools" / "xmen2check.py"), "trace", "--mode", a.mode,
                             "--replay", str(refs / f"{r}-recomp-sync"), "--run", r, "--input", str(refs / f"{r}.input"),
-                            "--out", str(out), "--json", "--timeout", str(a.timeout)] + (["--fb"] if a.fb else []),
+                            "--out", str(out), "--json", "--timeout", str(a.timeout)] + (["--fb"] if a.fb else [])
+                           + (["--keep-runner"] if a.keep_runner else []),   # else the trace drops it after a pass
                            capture_output=True, text=True, env=env)
         res: dict = {"seconds": round(time.time() - t0, 1)}
         if p.returncode:

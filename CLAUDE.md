@@ -36,7 +36,8 @@ Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
   rule. Phase 4's retrospective recommends retiring it once workers get their own build dir and
   runner copy, so they can verify per batch. That is the user's call at phase 5 P0: see
   `xmen2disasm/docs/LESSONS.md`, which also lists this repo's open speed-ups, such as
-  `pccheck.py` running 3,161 `cl` calls serially and runner-native savestates for fuzz runs.)
+  runner-native savestates for fuzz runs. Headless traces, verify and `tools/gate.py` play
+  private runner copies and run side by side.)
 - No CI (the ROM can't be in it): the gate is `uv run tools/phase.py 2` in xmen2disasm.
   Commit and push after every green batch (trunk-based, `main`).
 
@@ -94,4 +95,17 @@ uv run tools/xmen2check.py trace --mode native --run R --input F --replay REFDIR
 uv run tools/synccorpus.py --refs PHASE_TRACES --mode stepped-gen --fb --out REF --jobs 24   # references, this engine
 uv run tools/synccorpus.py --refs PHASE_TRACES --mode native --fb --against REF --out D --jobs 24   # all runs vs them
 XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the image zeroed
+```
+
+Harness (NOTES.md "Phase 5 harness"). `XMEN2_REFS` = the phase-4 `build/phase_traces` (inputs and
+D1 REFDIRs; today `../xmen2disasm/build/phase_traces`). The
+runners are reproducible (CMakeLists `XMEN2_REPRODUCIBLE`, /Brepro): same sources, same SHA-1, so
+stepped-gen reference rows are cached by runner hash in `.git/xmen2-cache` (all worktrees).
+```
+uv run tools/gate.py [--files game/c/A.c ...] [--mode native]   # worker batch gate, own build dir: build,
+    # pccheck, MPW match (docs/p4_mpw_matched.txt), verify + 6,000-frame TAS trace; fail-fast, one line per step
+uv run tools/bench.py [--quick]          # the P0 gates -> docs/bench.json (clean build, corpus check, 2 build dirs)
+uv run tools/pccheck.py --all            # all game/c on 32 threads (~80 s; one file ~1 s)
+xmen2check.py verify ... [--keep-going]  # fails (exit 1, names the run) when a run's testing stopped early
+xmen2check.py trace ... [--keep-runner]  # a passed trace deletes OUT/runner (XMEN2_KEEP_RUNNER=1 keeps it)
 ```

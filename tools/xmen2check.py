@@ -156,9 +156,12 @@ def cmd_build(a) -> dict:
         # P5 P3: what each game object still needs from the 68000 machine (its COFF symbol table)
         # and which 68000-machine symbols XMen2Native still defines (its link map)
         import native_scan
-        res = {"ok": res["ok"], "exe": res["native_exe"], "log": res["log"],
-               **native_scan.scan(BUILD, "XMen2Native", exe_path(NATIVE_EXE))}
-        res["ok"] = res["ok"] and rc == 0
+        build_ok = res["ok"]
+        scan = native_scan.scan(BUILD, "XMen2Native", exe_path(NATIVE_EXE))
+        # the scan's own "ok" (objects and map found) can't stand for the build's: a failed
+        # build over stale objects scans fine
+        res = {"exe": res["native_exe"], "log": res["log"], **{k: v for k, v in scan.items() if k != "ok"},
+               "build_ok": build_ok, "scan_ok": scan.get("ok"), "ok": build_ok and scan.get("ok") is True}
         return res
     if a.handc:
         # The hand-C build is the stepped runner: the recompiler leaves every function written in
@@ -283,10 +286,7 @@ def cmd_trace(a) -> dict:
     if run_dir.exists():
         shutil.rmtree(run_dir)
     run_dir.mkdir()
-    for f in src.parent.iterdir():
-        if f.is_file() and f.suffix.lower() in (".exe", ".dll", ".pdb", ""):
-            shutil.copy2(f, run_dir / f.name)
-    (run_dir / "settings.ini").write_text(SETTINGS)
+    copy_runner(src, run_dir)
     env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy"}
     sync_csv = out / "sync.csv"
     if a.mode in STEPPED_MODES:
@@ -335,7 +335,7 @@ def cmd_trace(a) -> dict:
         sys.exit(f"runner failed ({r.returncode}); see {out / 'runner.log'}")
     b, c = json.loads(bench.group(1)), json.loads(counters.group(1))
     res = {"dispatch_misses": c["dispatch_misses"], "interp_instructions": c["interp_instructions"],
-           "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(run_dir / src.name)}
+           "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(src), "exe_sha1": common.sha1(src)}
     if a.mode in STEPPED_MODES:
         res["sync_points"] = csv_rows(sync_csv)
         if a.fb:
@@ -344,7 +344,7 @@ def cmd_trace(a) -> dict:
             if "exported" not in c:
                 sys.exit(f"{src.name} reported no export counts; see {out / 'runner.log'}")
             res["exported"] = c["exported"]
-        return res
+        return drop_runner(a, run_dir, res)
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
     if a.sync:
         # stack_low: the fixed bound the sync CRCs mask from (the corpus's lowest A7);
@@ -353,6 +353,28 @@ def cmd_trace(a) -> dict:
         low = c.get("stack_low")
         res.update(sync_points=csv_rows(sync_csv), a7_min=a7,
                    stack_low=low if a7 is not None and low is not None and a7 >= low else None)
+    return drop_runner(a, run_dir, res)
+
+
+def copy_runner(src: Path, run_dir: Path) -> None:
+    """A private copy of one runner (settings.ini and the evidence files it writes beside itself
+    stay per run): the executable and the DLLs next to it, not the build's other runners."""
+    for f in src.parent.iterdir():
+        if f.is_file() and (f.name == src.name or f.suffix.lower() == ".dll" or f.name == src.stem + ".pdb"):
+            shutil.copy2(f, run_dir / f.name)
+    (run_dir / "settings.ini").write_text(SETTINGS)
+
+
+def drop_runner(a, run_dir: Path, res: dict) -> dict:
+    """A passed trace deletes its runner copy (~5-30 MB each, x the corpus). It stays for
+    debugging when the run failed (the exits above), when a counter is nonzero (its evidence
+    files: dispatch_misses.toml...), or with --keep-runner / XMEN2_KEEP_RUNNER=1."""
+    import os
+    keep = a.keep_runner or os.environ.get("XMEN2_KEEP_RUNNER", "") not in ("", "0")
+    if keep or any(res.get(k) for k in ("dispatch_misses", "interp_instructions", "stub_hits")):
+        res["runner_dir"] = str(run_dir)
+    else:
+        shutil.rmtree(run_dir, ignore_errors=True)
     return res
 
 
@@ -381,7 +403,10 @@ def code_addrs_by_function() -> dict[str, list[int]]:
 
 def cmd_verify(a) -> dict:
     """Play every corpus input on the verification runner (all generated code, timed, with the
-    hand-written C as shadow tests: game/runtime/verify.cpp) and merge what the runs report."""
+    hand-written C as shadow tests: game/runtime/verify.cpp) and merge what the runs report.
+    Exits non-zero, naming the run and why, when a run fails, plays short, or stopped testing
+    early (its JSON's `stopped_early`); the output adds `per_run` (frames, functions_tested,
+    calls_checked, calls_refused, seconds)."""
     import os
     common.ensure_rom()
     src = exe_path(VERIFY_EXE)
@@ -395,7 +420,9 @@ def cmd_verify(a) -> dict:
         sys.exit(f"no <run>.input files in {a.inputs}")
     import concurrent.futures
     import queue
-    out = BUILD / "verify"
+    import threading
+    import time
+    out = Path(a.out).resolve() if a.out else BUILD / "verify"
     out.mkdir(parents=True, exist_ok=True)
     jobs = max(1, min(a.jobs, len(inputs)))
     free: "queue.Queue[Path]" = queue.Queue()
@@ -404,18 +431,36 @@ def cmd_verify(a) -> dict:
         if run_dir.exists():
             shutil.rmtree(run_dir)
         run_dir.mkdir()
-        for f in src.parent.iterdir():
-            if f.is_file() and f.suffix.lower() in (".exe", ".dll", ".pdb", ""):
-                shutil.copy2(f, run_dir / f.name)
-        (run_dir / "settings.ini").write_text(SETTINGS)
+        copy_runner(src, run_dir)
         free.put(run_dir)
     # each function's instruction count: verify.cpp probes the calls its sampling skips until
     # the checked calls have covered them all
     insns = out / "insns.txt"
     insns.write_text("".join(f"{addr} {len(pcs)}\n" for addr, pcs in sorted(code_addrs_by_function().items())))
 
+    # A run fails when its runner fails, plays fewer frames than asked, or its testing stopped
+    # before the end (verify.cpp `stopped_early`: a fatal error, a C run or synthetic case that
+    # never returned, calls refused for frames on end). The first failure kills the runs still
+    # going (by their own process) and skips the rest, unless --keep-going.
+    stop = threading.Event()
+    lock = threading.Lock()
+    live: dict = {}            # run -> its runner process
+    killed: set[str] = set()   # runs stopped because another one failed
+
+    def fail(run: str, why: str) -> str:
+        if not a.keep_going and not stop.is_set():
+            stop.set()
+            with lock:
+                for other, p in live.items():
+                    if other != run and p.poll() is None:
+                        killed.add(other)
+                        p.kill()
+        return why
+
     def one(inp: Path):
         run = inp.stem
+        if stop.is_set():
+            return run, None, None, None
         script = out / f"{run}.input"
         script.write_text("".join(l for l in inp.read_text().splitlines(True)
                                   if not l.strip().upper().startswith("EXIT")), newline="\n")
@@ -430,28 +475,70 @@ def cmd_verify(a) -> dict:
         frames = a.frames or script_frames(inp)
         cmd = [src.name, str(common.ROM), "--benchmark", str(frames),
                "--input-script", str(script), "--fresh-evidence"]
+        logf = out / f"{run}.log"
         run_dir = free.get()
+        t0 = time.time()
+        timed_out = False
         try:
+            if stop.is_set():
+                return run, None, None, None
             cmd[0] = str(run_dir / src.name)
             log(f"verify {run}: {frames} frames")
-            with open(out / f"{run}.log", "w", encoding="utf-8", errors="replace") as lf:
-                r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.DEVNULL, stderr=lf, timeout=a.timeout)
+            with open(logf, "w", encoding="utf-8", errors="replace") as lf:
+                p = subprocess.Popen(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
+                                     errors="replace")
+                with lock:
+                    live[run] = p
+                try:
+                    stdout, _ = p.communicate(timeout=a.timeout)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    stdout, _ = p.communicate()
+                    timed_out = True
+                finally:
+                    with lock:
+                        live.pop(run, None)
         finally:
             free.put(run_dir)
-        if r.returncode != 0 or not res.exists():
-            return run, None, f"verification runner failed on {run} ({r.returncode}); see {out / (run + '.log')}"
-        return run, json.loads(res.read_text()), None
+        secs = round(time.time() - t0, 1)
+        if run in killed:
+            return run, None, None, secs
+        data = json.loads(res.read_text()) if res.exists() else None
+        why = (data or {}).get("stopped_early")
+        if timed_out:
+            return run, data, fail(run, f"verify {run}: timed out after {a.timeout} s; see {logf}"), secs
+        if p.returncode != 0 or data is None:
+            last = [l for l in logf.read_text(errors="replace").splitlines() if l.startswith(("[handc]", "[verify]"))]
+            return run, data, fail(run, f"verify {run}: the verification runner failed ({p.returncode})"
+                                        f"{': ' + (why or last[-1]) if why or last else ''}; see {logf}"), secs
+        bench = re.search(r"GENESISRECOMP_BENCHMARK (\{.*\})", stdout or "")
+        b = json.loads(bench.group(1)) if bench else {}
+        if not b.get("complete") or b.get("frames") != frames:
+            return run, data, fail(run, f"verify {run}: the runner played {b.get('frames')} of {frames} frames; "
+                                        f"see {logf}"), secs
+        if why:
+            return run, data, fail(run, f"verify {run}: testing stopped early: {why} ({data.get('functions_tested')} "
+                                        f"functions tested); see {logf}"), secs
+        return run, data, None, secs
 
     merged: dict[str, dict] = {}
+    per_run: dict[str, dict] = {}
     # the longest runs start first (the TAS, then the late fuzz runs: their TAS prefix), so the
     # last ones to finish are short; the merge stays in run order
     longest = sorted(inputs, key=lambda p: -(a.frames or script_frames(p)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
         done = {p: f for p, f in zip(longest, [ex.submit(one, p) for p in longest])}
         results = [done[p].result() for p in inputs]
-    for run, data, err in results:   # in run order: the same merge as a serial run
-        if err:
-            sys.exit(err)
+    errs = [err for _run, _data, err, _s in results if err]
+    if errs:
+        sys.exit("\n".join(errs) + (f"\n({sum(1 for r in results if r[1] is None and not r[2])} other runs stopped or "
+                                    f"skipped: rerun with --keep-going for all)" if not a.keep_going else ""))
+    if not (a.keep_runner or os.environ.get("XMEN2_KEEP_RUNNER", "") not in ("", "0")):
+        for k in range(jobs):
+            shutil.rmtree(out / f"runner{k}", ignore_errors=True)
+    for run, data, _err, secs in results:   # in run order: the same merge as a serial run
+        per_run[run] = {k: data.get(k) for k in ("frames", "functions_tested", "calls_checked", "calls_refused")}
+        per_run[run]["seconds"] = secs
         for addr, v in data["functions"].items():
             m = merged.setdefault(addr, {"calls_checked": 0, "mismatches": 0, "irq_skipped": 0,
                                          "first_mismatch": None, "covered": set()})
@@ -472,7 +559,7 @@ def cmd_verify(a) -> dict:
                        "first_uncovered": f"{unc[0]:06X}" if unc else None}
         if 0 < len(unc) <= 64:   # for P4-decomp.md decisions 10, 13 (listed unreachable instructions)
             funcs[addr]["uncovered_pcs"] = [f"{pc:06X}" for pc in unc]
-    return {"runs": len(inputs), "functions": funcs}
+    return {"runs": len(inputs), "per_run": per_run, "functions": funcs}
 
 
 # --- phase 4: the hand-written C (types, handc, lint) ----------------------------------
@@ -614,6 +701,9 @@ def main() -> int:
     p.add_argument("--jobs", type=int, default=24,
                    help="runs played at once (each on its own runner copy; ~80 MB and a fraction of a core each)")
     p.add_argument("--timeout", type=int, default=7200)
+    p.add_argument("--out", default="", help="output directory (default build/verify)")
+    p.add_argument("--keep-going", action="store_true", help="play every run even after one failed")
+    p.add_argument("--keep-runner", action="store_true", help="keep the runner copies after a pass (XMEN2_KEEP_RUNNER=1)")
     for name in ("gen", "build", "trace"):
         p = sub.add_parser(name)
         p.add_argument("--json", action="store_true")
@@ -633,6 +723,8 @@ def main() -> int:
                            help="stepped modes: + sync.csv column fb_fnv1a64, the frame rendered at the last sync point")
             p.add_argument("--timeout", type=int, default=7200)
             p.add_argument("--dump-frames", default="", help="dev: dump full state after these frames")
+            p.add_argument("--keep-runner", action="store_true",
+                           help="keep OUT/runner (the private runner copy) after a pass (XMEN2_KEEP_RUNNER=1)")
     a = ap.parse_args()
     res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "types": cmd_types,
            "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify}[a.cmd](a)

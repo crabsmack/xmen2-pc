@@ -32,9 +32,19 @@
  * hardware writes captured, not performed; then everything is put back. Passing cases count
  * as checked calls and add coverage; failing ones as mismatches.
  *
- * XMEN2_VERIFY_OUT=<path> writes {"functions": {"ADDR": {"calls_checked", "mismatches",
+ * XMEN2_VERIFY_OUT=<path> writes {"stopped_early": null or why, "frames", "functions_tested",
+ * "calls_checked", "calls_refused", "functions": {"ADDR": {"calls_checked", "mismatches",
  * "irq_skipped", "synthetic_checked", "first_mismatch", "covered": [pc, ...]}}} at exit;
  * XMEN2_VERIFY_ONLY=ADDR,... restricts the tests to those functions.
+ *
+ * Testing that stops is loud (xmen2disasm LESSONS.md, kickoff item 6: two full verifies ran on
+ * for ~1.5 h after testing had stopped, with 498 and 416 functions checked). `stopped_early` is
+ * set when the run ended (a) on a fatal error (xm::fatal), (b) inside a C run or a synthetic
+ * case (they are untimed: one still open at the end never returned, e.g. a case that took a
+ * V-int and ran the game on inside it), or (c) after STOP_FRAMES or more frames in which every
+ * call of a function under test was refused because no test could open (a C run or case open,
+ * or MAX_DEPTH reached). xmen2check.py verify fails on it. XMEN2_VERIFY_DEV_STOP=<frame> (dev)
+ * refuses every test from that frame on, to prove the check.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -60,6 +70,7 @@ struct XmVerifyFn { uint32_t addr, end; void (*slot)(void); void (*gen)(void); i
                     int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; int arg_bytes; };
 namespace xm {
 extern bool g_retnv;       /* the C call just made returned no value (handc_rt.cpp) */
+extern char g_fatal_msg[]; /* the fatal error ending the run, if one did (handc_rt.cpp) */
 uint32_t fn_current(void); /* the C function running (the bridge's fn_enter/fn_leave) */
 }
 
@@ -69,6 +80,8 @@ extern const int xm_verify_fn_count;
 namespace {
 
 const int MAX_DEPTH = 16;
+/* refused calls this many frames in a row, up to the end of the run: testing stopped */
+const uint64_t STOP_FRAMES = 60;
 
 struct Stat {
     uint64_t checked = 0, mismatches = 0, irq = 0, seen = 0, synth = 0;
@@ -107,6 +120,7 @@ struct Ctx {
     const std::vector<Poke> *pokes;   /* a synthetic case's (else null) */
     size_t nreads;                 /* hardware reads made so far in this run (for pokes) */
     uint64_t irq0;                 /* g_xirq_taken when the test started */
+    uint64_t frame0;               /* g_frame_count when the test started */
     bool doomed;                   /* its generated run took an interrupt: it won't be compared */
 };
 
@@ -117,6 +131,10 @@ Ctx *s_ctx[MAX_DEPTH];
 int s_depth;
 uint32_t s_entering;              /* the function whose generated code is being started */
 bool s_any_done;
+/* calls of functions under test that no test could take (a C run or synthetic case open, or
+   MAX_DEPTH): how many, and 1 + the frame of the first since the last call that could (0: none) */
+uint64_t s_refused, s_refused_since;
+uint64_t s_dev_stop;              /* XMEN2_VERIFY_DEV_STOP: 1 + the frame testing stops at (dev) */
 
 /* A generated run that has taken an interrupt can't be compared (its test is skipped as soon as
    it ends): stop collecting for it. A long-running function (a scene, the level loop) is such a
@@ -209,6 +227,7 @@ void load_only()
             s = *end ? end + 1 : end;
         }
     }
+    if (const char *d = getenv("XMEN2_VERIFY_DEV_STOP")) s_dev_stop = 1u + strtoull(d, nullptr, 0);
     /* XMEN2_VERIFY_INSNS=<path>: lines "ADDR COUNT" (hex address, decimal count of the
        function's instructions): the probing of sampled-out calls below stops once a function's
        checked calls have covered that many */
@@ -320,13 +339,57 @@ uint32_t eval(const char *&s)
 }
 uint32_t eval_str(const std::string &x) { const char *s = x.c_str(); return eval(s); }
 
+std::string json_str(const std::string &s)
+{
+    std::string o = "\"";
+    for (char c : s) {
+        if (c == '"' || c == '\\') o += '\\';
+        o += (unsigned char)c < 0x20 ? ' ' : c;
+    }
+    return o + "\"";
+}
+
+/* Why testing stopped before the end of the run, or "" (the header comment's (a)-(c)). */
+std::string stopped_early()
+{
+    char b[400];
+    if (xm::g_fatal_msg[0]) return std::string("fatal error: ") + xm::g_fatal_msg;
+    for (int d = 0; d < s_depth; d++) {
+        const Ctx &c = *s_ctx[d];
+        if (c.mode == 1) continue;
+        snprintf(b, sizeof b, "the run ended inside the %s of $%06X opened at frame %llu (untimed: it never "
+                              "returned), so nothing was tested after it",
+                 c.mode == 2 ? "C run" : "synthetic case", (unsigned)c.fn->addr, (unsigned long long)c.frame0);
+        return b;
+    }
+    if (s_refused_since && g_frame_count + 1 >= s_refused_since + STOP_FRAMES) {
+        snprintf(b, sizeof b, "no test could open from frame %llu to the end (%llu frames%s; %d tests open, the "
+                              "innermost $%06X mode %d)", (unsigned long long)(s_refused_since - 1),
+                 (unsigned long long)(g_frame_count + 1 - s_refused_since),
+                 s_dev_stop ? ", XMEN2_VERIFY_DEV_STOP" : "", s_depth,
+                 s_depth ? (unsigned)s_ctx[s_depth - 1]->fn->addr : 0u, s_depth ? s_ctx[s_depth - 1]->mode : 0);
+        return b;
+    }
+    return "";
+}
+
 void report()
 {
     const char *path = getenv("XMEN2_VERIFY_OUT");
     if (!path) return;
     FILE *f = fopen(path, "w");
     if (!f) return;
-    fprintf(f, "{\"functions\": {");
+    uint64_t tested = 0, checked = 0;
+    for (const auto &kv : s_stats) {
+        tested += kv.second.checked + kv.second.mismatches > 0;
+        checked += kv.second.checked;
+    }
+    std::string stop = stopped_early();
+    if (!stop.empty()) fprintf(stderr, "[verify] testing stopped early: %s\n", stop.c_str());
+    fprintf(f, "{\"stopped_early\": %s, \"frames\": %llu, \"functions_tested\": %llu, \"calls_checked\": %llu, "
+               "\"calls_refused\": %llu,\n\"functions\": {", stop.empty() ? "null" : json_str(stop).c_str(),
+            (unsigned long long)g_frame_count, (unsigned long long)tested, (unsigned long long)checked,
+            (unsigned long long)s_refused);
     bool firstf = true;
     for (int i = 0; i < xm_verify_fn_count; i++) {
         uint32_t a = xm_verify_fns[i].addr;
@@ -430,6 +493,7 @@ Ctx *push(const XmVerifyFn *fn, int mode)
     c->pokes = nullptr;
     c->nreads = 0;
     c->irq0 = g_xirq_taken;
+    c->frame0 = g_frame_count;
     c->doomed = false;
     s_depth++;
     g_xhw_hook = hw_hook;
@@ -444,6 +508,10 @@ void pop()
         g_xhw_hook = nullptr;
         g_xinsn_hook = nullptr;
     }
+    /* a test can open again: the refusals so far were a C run's or case's own (brief) calls */
+    if (!(s_depth && (s_ctx[s_depth - 1]->mode != 1 || s_depth >= MAX_DEPTH))
+        && !(s_dev_stop && g_frame_count + 1 >= s_dev_stop))
+        s_refused_since = 0;
 }
 
 void run_gen(const XmVerifyFn *fn)
@@ -581,9 +649,17 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
         xm_install_crash_report(crash_report);
     }
     if (s_entering == addr) { s_entering = 0; return 0; }   /* the generated run under test */
-    if (s_depth && (s_ctx[s_depth - 1]->mode != 1 || s_depth >= MAX_DEPTH)) return 0;
     auto it = s_fns.find(addr);
     if (it == s_fns.end() || (!s_only.empty() && !s_only.count(addr))) return 0;
+    /* no test can open inside a C run or a synthetic case (they are brief: untimed), or past
+       MAX_DEPTH; refusals that last frames mean testing has stopped (report: stopped_early) */
+    if ((s_depth && (s_ctx[s_depth - 1]->mode != 1 || s_depth >= MAX_DEPTH))
+        || (s_dev_stop && g_frame_count + 1 >= s_dev_stop)) {
+        s_refused++;
+        if (!s_refused_since) s_refused_since = g_frame_count + 1;
+        return 0;
+    }
+    s_refused_since = 0;
     const XmVerifyFn *fn = it->second;
     for (int d = 0; d < s_depth; d++)
         if (s_ctx[d]->fn == fn) return 0;   /* recursion: the outer test covers it */
