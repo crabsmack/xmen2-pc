@@ -389,6 +389,13 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
 
 ## Open questions
 
+- **AvalonB1_RunScene's CLEAR_COUNTER (for the user):** it byte-matches only through
+  `#define CLEAR_COUNTER(x) if (1) (x) = 0` (game/c/00FDAA.c), a code-free basic-block boundary
+  that stops MPW C merging the six adjacent counter clears into clr.l. The original probably
+  cleared six separate globals, which ram_globals doesn't name. Keep the macro, or drop it and
+  the match (then nothing verifies the function: every call spans frames). Raised 2026-10-17.
+- (Resolved 2026-10-17 by the user, P4-decomp.md decision 13: dead features and interrupt-only
+  paths listed as unreachable; the reachable rest got synthetic cases.)
 - (Resolved 2026-10-16 by the user, P4-decomp.md decisions 9-12: the cases verify couldn't decide
   as defined.) (9) A tested function's own argument slots are dead stack: Spr_EmitPre,
   Spr_EmitPreClip and Spr_EmitPreLinked store into theirs (`move.w d7,$16(a6)`), VDP_QueueDma
