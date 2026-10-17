@@ -141,3 +141,44 @@ l $FFCD9A = 0
 l $FFCDD2 = 0
 l $FFEE9C = [arg0+8]
 l $FFEE98 = [arg0+$C]
+
+# an event contact in a second pass: the scan reads a contact's flags before Seg_CollideObj sets
+# bit 15, so only a contact flagged in an earlier pass competes as an event ($1F8C74-$1F8C7E).
+# Player 1 against two left walls, segments 253 and 254 (g_SegLevelCount $FFCD8E 253,
+# g_SegHighWater $FFCD8C 254): a plain type 1
+# wall 4 px into its box wins the first pass (the smaller push) and is resolved; the type $20
+# event wall 8 px in is then the second pass's event contact.
+case event_second_pass
+b arg0+$15 = 0
+w $FFCD8C = 254
+w $FFCD8E = 253
+b $FFE1F2 = $80
+b $FFE1F3 = $01
+w $FFE1F4 = [arg0+$40]
+b $FFE1F5 = 0
+w $FFE1F6 = 0
+w $FFE1F8 = 32
+w $FFE1FA = [arg0+$4C]+4
+w $FFE1FC = [arg0+$4A]-16
+w $FFE1FE = [arg0+$4C]+4
+w $FFE200 = [arg0+$4E]+16
+b $FFE202 = $FF
+b $FFE203 = $FF
+b $FFE204 = $FE
+b $FFE205 = $FF
+b $FFE206 = $80
+b $FFE207 = $20
+w $FFE208 = [arg0+$40]
+b $FFE209 = 0
+w $FFE20A = 0
+w $FFE20C = 32
+w $FFE20E = [arg0+$4C]+8
+w $FFE210 = [arg0+$4A]-16
+w $FFE212 = [arg0+$4C]+8
+w $FFE214 = [arg0+$4E]+16
+b $FFE216 = $FF
+b $FFE217 = $FF
+b $FFE218 = $FE
+b $FFE219 = $FF
+l $FFCE16 = 0
+l $FFCD9A = 0

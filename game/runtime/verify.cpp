@@ -83,7 +83,15 @@ struct Hw {
 
 /* One synthetic case: assignments to the entry state, hardware read values to supply. */
 struct Assign { int what; int size; std::string addr; std::string value; };   /* what: 0 memory, 1 register, 2 SR */
-struct SynCase { std::string name; std::vector<Assign> sets; std::vector<uint16_t> reads; };
+/* `poke N` in a case: a RAM write once the run has made N hardware reads (resolved at the case's
+   start); both runs make the same reads in the same order, so both see it at the same point */
+struct Poke { size_t after; uint32_t addr; int size; uint32_t value; };
+struct SynCase {
+    std::string name;
+    std::vector<Assign> sets;
+    std::vector<uint16_t> reads;
+    std::vector<std::pair<size_t, Assign>> pokes;
+};
 struct SynSpec { bool at_any = false; std::vector<SynCase> cases; };
 
 /* One test in progress (a nesting level). */
@@ -96,6 +104,8 @@ struct Ctx {
     std::vector<uint32_t> cov;
     const std::vector<uint16_t> *supply;
     size_t supply_pos;
+    const std::vector<Poke> *pokes;   /* a synthetic case's (else null) */
+    size_t nreads;                 /* hardware reads made so far in this run (for pokes) */
     uint64_t irq0;                 /* g_xirq_taken when the test started */
     bool doomed;                   /* its generated run took an interrupt: it won't be compared */
 };
@@ -121,6 +131,17 @@ bool live(Ctx &c)
     return !c.doomed;
 }
 
+/* A synthetic case's pokes due after this run's hardware read number t.nreads (RAM only). */
+void apply_pokes(Ctx &t)
+{
+    if (!t.pokes) return;
+    for (const Poke &p : *t.pokes) {
+        if (p.after != t.nreads) continue;
+        for (int i = 0; i < p.size; i++)
+            g_ram[(p.addr + (uint32_t)i) & 0xFFFFu] = (uint8_t)(p.value >> (8 * (p.size - 1 - i)));
+    }
+}
+
 int hw_hook(uint32_t a, int size, int kind, uint16_t v, uint16_t *out)
 {
     if (!s_depth) return 0;
@@ -143,6 +164,8 @@ int hw_hook(uint32_t a, int size, int kind, uint16_t v, uint16_t *out)
             if (t.readpos < t.logA.size()) r = t.logA[t.readpos++].v;
             *out = r;
             t.logB.push_back({ a, size, 0, r });
+            t.nreads++;
+            apply_pokes(t);
             return 1;
         }
         if (kind == 2) { t.logB.push_back({ a, size, 1, v }); return 1; }
@@ -153,6 +176,8 @@ int hw_hook(uint32_t a, int size, int kind, uint16_t v, uint16_t *out)
             uint16_t r = t.supply && t.supply_pos < t.supply->size() ? (*t.supply)[t.supply_pos++] : 0;
             *out = r;
             t.logA.push_back({ a, size, 0, r });
+            t.nreads++;
+            apply_pokes(t);
             return 1;
         }
         if (kind == 2) { t.logA.push_back({ a, size, 1, v }); return 1; }
@@ -198,7 +223,8 @@ void load_only()
 /* <ADDR>.syn: '#' comments; `at any` (run at the first top-level call of any function, for
    functions the corpus never runs; default: at F's own first top-level call); `case NAME`
    starts a case; in a case, `b|w|l ADDR = VALUE` (memory), `reg dN|aN = VALUE`, `sr = VALUE`,
-   `hw V V ...` (hardware read values, in order). ADDR and VALUE are sums/differences of terms:
+   `hw V V ...` (hardware read values, in order), `poke N b|w|l ADDR = VALUE` (a RAM write once
+   the run has made N hardware reads: input a frame later, e.g. a pad's V-int copy). ADDR and VALUE are sums/differences of terms:
    $hex, decimal, dN, aN (register values at entry), argN (the long in argument slot N:
    A7+4+4N), [EXPR] (the long at EXPR). */
 void load_synth()
@@ -236,6 +262,16 @@ void load_synth()
                 }
                 continue;
             }
+            size_t after = 0;
+            bool poke = l.rfind("poke ", 0) == 0;
+            if (poke) {   /* `poke N b|w|l ADDR = VALUE`: a RAM write after N hardware reads */
+                char *e;
+                after = strtoul(l.c_str() + 5, &e, 0);
+                l = e;
+                size_t nb = l.find_first_not_of(" \t");
+                if (nb == std::string::npos) continue;
+                l = l.substr(nb);
+            }
             size_t eq = l.find('=');
             if (eq == std::string::npos) continue;
             std::string lhs = l.substr(0, eq), rhs = l.substr(eq + 1);
@@ -245,6 +281,10 @@ void load_synth()
             if (lhs == "sr") { a.what = 2; }
             else if (lhs.rfind("reg ", 0) == 0) { a.what = 1; a.addr = lhs.substr(4); }
             else { a.what = 0; a.size = lhs[0] == 'b' ? 1 : lhs[0] == 'w' ? 2 : 4; a.addr = lhs.substr(2); }
+            if (poke) {
+                if (a.what == 0) c.pokes.push_back({ after, a });
+                continue;
+            }
             c.sets.push_back(a);
         }
         fclose(f);
@@ -387,6 +427,8 @@ Ctx *push(const XmVerifyFn *fn, int mode)
     c->readpos = 0;
     c->supply = nullptr;
     c->supply_pos = 0;
+    c->pokes = nullptr;
+    c->nreads = 0;
     c->irq0 = g_xirq_taken;
     c->doomed = false;
     s_depth++;
@@ -447,23 +489,37 @@ void run_case(const XmVerifyFn *fn, Stat &st, const SynCase &k)
         else if (a.size == 2) m68k_write16(at, (uint16_t)v);
         else m68k_write32(at, v);
     }
+    /* the pokes, resolved against the same entry state (RAM addresses only) */
+    std::vector<Poke> pokes;
+    for (const auto &pk : k.pokes) {
+        uint32_t at = eval_str(pk.second.addr) & 0xFFFFFFu;
+        if (at >= 0xFF0000u) pokes.push_back({ pk.first, at, pk.second.size, eval_str(pk.second.value) });
+    }
     g_xend = 0xFFFFFFFFu;   /* untimed: no slice, no interrupt */
     Ctx &c = *push(fn, 3);
     memcpy(c.pre, g_ram, 0x10000);
     M68KState r0 = g_cpu;
     uint32_t xrts0 = g_xrts;
     c.supply = &k.reads;
+    c.pokes = &pokes;
     g_xirq_hold = 1;   /* untimed: an SR write takes no interrupt (exact_sched.c) */
     run_gen(fn);
     g_xirq_hold = 0;
     M68KState r1 = g_cpu;
     uint32_t xrts1 = g_xrts;
     memcpy(c.post, g_ram, 0x10000);
+    /* XMEN2_VERIFY_TRACE_CASE=<name>: the path a case's generated run took (writing cases) */
+    if (const char *tc = getenv("XMEN2_VERIFY_TRACE_CASE"); tc && k.name == tc) {
+        fprintf(stderr, "[verify] case %s path:", k.name.c_str());
+        for (uint32_t pc : c.cov) fprintf(stderr, " %06X", (unsigned)pc);
+        fprintf(stderr, "\n");
+    }
     memcpy(g_ram, c.pre, 0x10000);
     g_cpu = r0;
     g_xrts = xrts0;
     c.mode = 2;
     c.readpos = 0;
+    c.nreads = 0;      /* the C run sees the pokes after the same reads */
     g_xirq_hold = 1;   /* untimed: an SR write takes no interrupt (exact_sched.c) */
     fn->slot();
     g_xirq_hold = 0;

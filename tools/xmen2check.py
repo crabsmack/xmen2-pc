@@ -419,7 +419,7 @@ def cmd_verify(a) -> dict:
                        "first_mismatch": m["first_mismatch"], "irq_skipped": m["irq_skipped"],
                        "instructions": len(own), "uncovered": len(unc),
                        "first_uncovered": f"{unc[0]:06X}" if unc else None}
-        if 0 < len(unc) <= 16:   # for P4-decomp.md decision 10 (listed unreachable instructions)
+        if 0 < len(unc) <= 64:   # for P4-decomp.md decisions 10, 13 (listed unreachable instructions)
             funcs[addr]["uncovered_pcs"] = [f"{pc:06X}" for pc in unc]
     return {"runs": len(inputs), "functions": funcs}
 

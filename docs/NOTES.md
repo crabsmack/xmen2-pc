@@ -344,6 +344,13 @@ Additions (2026-10-15, the asm functions):
   g_P1StartRec (fuzz-48600 on): the start is the vector table's words at 2 and 4. These states
   come from the timed runner (verify), where an
   interrupt can land mid-set-up; the stepped runner (D2/D6) never made them.
+- **Writing synthetic cases (2026-10-17)**: `poke N b|w|l ADDR = VALUE` writes RAM once the run
+  has made N hardware reads (both runs read in the same order, so both see it at the same point):
+  input that arrives a frame later, e.g. a pad press (the V-int copies the pads into
+  g_Pad1Raw/g_Pad2Raw, which a synthetic run never changes, so a value held from the start is a
+  press only on the first frame: PlayerSelect_Run's joining player). `XMEN2_VERIFY_TRACE_CASE=<name>`
+  prints the instructions a case's generated run executed (event_second_pass gathered no contact:
+  g_SegHighWater is $FFCD8C and g_SegLevelCount $FFCD8E, not the other way round).
 - **A crash names itself (2026-10-16)**: XMen2Verify installs a vectored exception handler
   (`game/runtime/crash_win.cpp`) that prints, before the runner dies, the tests open (outermost
   first, with their mode: 1 generated run, 2 C run) and the C function running
