@@ -108,3 +108,36 @@ b $FFE217 = $FF
 b $FFE218 = $FE
 b $FFE219 = $FF
 l $FFCD9A = 0
+
+# the same stuck object as player 1 (index 0): after 30 passes it is put back at the last safe
+# position (g_CollideSafeX/Y $FFEE9C/$FFEE98, set here to where it is, so it stays stuck),
+# velocity cleared, 25 passes again (g_CollideReset $FF, $1F8CCC-$1F8CF4); stuck once more,
+# g_SegBlockedHook is called and the passes end ($1F8CF8-$1F8D0C). The corpus gets there in 9
+# runs, in calls long enough to take an interrupt.
+case stuck_player
+b arg0+$15 = 0
+w arg0+4 = $9000
+w arg0+6 = 0
+l arg0+$76 = 0
+b arg0+$7A = 254
+l $FFCD78 = $1F949E
+w $FFCD8C = 254
+w $FFCD8E = 254
+b $FFE206 = $80
+b $FFE207 = 1
+w $FFE208 = [arg0+$40]
+b $FFE209 = 0
+w $FFE20A = 0
+w $FFE20C = 32
+w $FFE20E = [arg0+$4C]+8
+w $FFE210 = [arg0+$4A]-16
+w $FFE212 = [arg0+$4C]+8
+w $FFE214 = [arg0+$4E]+16
+b $FFE216 = $FF
+b $FFE217 = $FF
+b $FFE218 = $FE
+b $FFE219 = $FF
+l $FFCD9A = 0
+l $FFCDD2 = 0
+l $FFEE9C = [arg0+8]
+l $FFEE98 = [arg0+$C]

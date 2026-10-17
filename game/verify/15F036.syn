@@ -1,0 +1,10 @@
+# Map_PutColBlockB: a vertically flipped block (block word bit 10) puts its column's tiles bottom
+# up; no plane B block in the corpus is flipped. At its first call (its block table a2 and VRAM
+# column d7 kept): block 0 flipped (d2 $0400), column 1, rows 0-3, VRAM row 5 (below 32: no new
+# VDP address).
+case vflip_block
+reg d2 = $00000400
+reg d1 = $00000001
+reg d4 = $00000000
+reg d3 = $00000003
+reg d6 = $00000005

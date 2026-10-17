@@ -10,3 +10,23 @@ w $FFC6FA = 3072
 w $FFC6C0 = 0
 w $FFC6B8 = 0
 w $0FD770 = 2944
+# The wind at the table's last keyframe ($0FD76C, the 11th): the next one is the end marker
+# ($0FD774, hold $FFFF), so it wraps to the first (the corpus never stays in the level that long).
+case wrap
+l $FFC6EC = $0FD76C
+w $FFC6F8 = 0
+w $FFC6C0 = 0
+w $FFC6B8 = 0
+# (a [long] read, kept as its low word: the strength at $0FD770, the angle at $0FD76E)
+w $FFC6FA = [$0FD76E]
+w $FFC6FC = [$0FD76C]
+# A keyframe change with no strength change (the next one, $0FD76C, patched to the current
+# strength 3072): no strength steps, so the angle step is the whole angle change (then clamped).
+case zero_strength_steps
+l $FFC6EC = $0FD764
+w $FFC6F8 = 0
+w $FFC6FC = 0
+w $FFC6FA = 3072
+w $FFC6C0 = 0
+w $FFC6B8 = 0
+w $0FD770 = 3072

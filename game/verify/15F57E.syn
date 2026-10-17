@@ -1,0 +1,11 @@
+# Nem_PutRowMasked: on a tile's last row (the row count, g_SceneVar3B04 $FFC6FC, down to 0) it
+# picks the next tile's writer from the mask (bit n of byte n/8 at the frame's $1C(a6), the
+# tile number in g_SceneVar3B06 $FFC6FA): itself when set, the skipping entry $15F580 when clear.
+# Every masked decode in the corpus selects the tile after a selected one, so the clear path
+# ($15F5C0) never ran. At its first call: the last row of tile 7, tile 8 not in the mask.
+case next_tile_skipped
+w $FFC6FC = 1
+w $FFC6FA = 7
+l a6+$1C = $00FF4000
+b $FF4001 = $FE
+reg d2 = 2

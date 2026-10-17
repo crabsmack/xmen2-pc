@@ -59,3 +59,12 @@ l a7-$300+$58 = $FFFFFFFF
 l a7-$300+$5C = $00110022
 l a7-$300+$60 = 0
 l a7-$300+$64 = $AB00CD00
+
+# a 6x7 box: the bitmap is 42 bytes, so the clear ends with two single bytes (the corpus's
+# boxes are all a multiple of 4); no pieces
+case odd_size
+l a7+4 = a7-$300
+w a7+$A = 0
+l a7-$300+$24 = $00000607
+b a7-$300+$34 = 0
+w a7-$300+$36 = $40

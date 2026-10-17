@@ -9,15 +9,18 @@
  * (AvalonB1_InitCamera), the gauss bullet pool; the level runs with the sound muted (the intro
  * unmutes it), then every sound stops.
  * Palette line 0 is saved for the intro in a buffer of this frame (g_SceneVar3B14).
- * MPW: not matched. The ROM keeps the buffer's address in a4 (saved) and clears the six cycle
- * counters with six clr.w; MPW merges the adjacent ones of the array into clr.l (the original
- * probably had six globals). Verified by shadow tests.
+ * MPW: matches (CLEAR_COUNTER's if (1) keeps MPW from merging adjacent clears into clr.l).
  * PC: the buffer must be game memory (other functions reach it through g_SceneVar3B14): it is
  * placed on the 68000 stack where the original's frame had it (-$20(a6), a6 = A7 at entry - 4),
  * with that frame's 4 more bytes (the saved a4) reserved below it for the calls made from here. */
 #include "xmen2.h"
 
 #define g_AvalonB1SavedPal	(*(PTR(s16) *)g_SceneVar3B14)	/* scene variable: the buffer for palette line 0 (AvalonB1_InitCamera) */
+
+/* The original's six counters were probably separate globals: MPW C merges two adjacent clears
+   of one array into a clr.l, and the if ends a basic block after each clear (no code), which
+   keeps the ROM's six clr.w. */
+#define CLEAR_COUNTER(x)	if (1) (x) = 0
 
 void AvalonB1_RunScene(void)
 {
@@ -41,12 +44,12 @@ void AvalonB1_RunScene(void)
 	AvalonB1_InstallTileHooks();
 	g_SceneFrameHook = AvalonB1_FrameHook;
 	g_TwoPlayerStep = 0;
-	g_AvalonB1PalCycles[5] = 0;	/* Pal_AvalonB1Cycle: timer, step, sequence */
-	g_AvalonB1PalCycles[3] = 0;
-	g_AvalonB1PalCycles[4] = 0;
-	g_AvalonB1PalCycles[2] = 0;	/* Pal_AvalonB1Cycle2 */
-	g_AvalonB1PalCycles[0] = 0;
-	g_AvalonB1PalCycles[1] = 0;
+	CLEAR_COUNTER(g_AvalonB1PalCycles[5]);	/* Pal_AvalonB1Cycle: timer, step, sequence */
+	CLEAR_COUNTER(g_AvalonB1PalCycles[3]);
+	CLEAR_COUNTER(g_AvalonB1PalCycles[4]);
+	CLEAR_COUNTER(g_AvalonB1PalCycles[2]);	/* Pal_AvalonB1Cycle2 */
+	CLEAR_COUNTER(g_AvalonB1PalCycles[0]);
+	CLEAR_COUNTER(g_AvalonB1PalCycles[1]);
 	AvalonB1_InitCamera();
 	GaussBullet_InitPool();
 	g_SndMute = 1;

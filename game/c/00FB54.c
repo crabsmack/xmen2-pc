@@ -2,8 +2,7 @@
  * AvalonB1_PalFadeStep / AvalonB1_RestorePalette), a new CAMERA (g_Camera) running the intro hook
  * chain from AvalonB1_CamHookWait2, camera y $430 (plane B scroll y $E0), palette lines 0 and 2
  * black, then the map rows redrawn there with the wide streaming margin (interrupts off).
- * MPW: one byte off (the first loop's g_PalBase index is copied with move.l, the ROM's with
- * move.w); verified by shadow tests. */
+ * MPW: matches (index 0 * 16 + i: MPW copies a bare i with move.l, an i + k with move.w). */
 #include "xmen2.h"
 
 #define g_AvalonB1Timer		(*(s16 *)g_SceneVar3B32)	/* scene variable: frames in this intro stage (AvalonB1_FrameHook counts) */
@@ -16,7 +15,7 @@ void AvalonB1_InitCamera(void)
 	register short i;
 
 	for (i = 0; i < 16; i++)
-		g_AvalonB1SavedPal[i] = g_PalBase[i];
+		g_AvalonB1SavedPal[i] = g_PalBase[0 * 16 + i];	/* line 0, colour i */
 	g_AvalonB1FadeRow = 0;
 	g_AvalonB1Timer = 0;
 	g_Camera = (Camera *)(*CLASS(Tbl_Camera_vtable)->method[1])(CLASS(Tbl_Camera_vtable), 0);	/* New */

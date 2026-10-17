@@ -73,3 +73,30 @@ w arg0+$16 = -$400
 l arg0+$1E = 0
 l arg0+$22 = $08000800
 l arg0+$26 = 0
+
+# two linked flat floors: segment 1 ($FFCE42, length 36, (64,200)-(100,200), next 0) left of
+# segment 0 (prev 1); 0.5 px into segment 0, walking left at normal speed: segPos goes below 0
+# and the object moves onto the previous segment, its position there its length - 3.5 px
+# ($1F4D84-$1F4DA4; the corpus never walks left across a segment link)
+case seg_onto_previous
+b $FFC946 = 0
+b $FFC93C = 0
+b $FFC922 = 0
+l $FFCE2E = $80130000
+l $FFCE32 = $00000040
+l $FFCE36 = $006400C8
+l $FFCE3A = $00A400C8
+l $FFCE3E = $01FFFFFF
+l $FFCE42 = $80130000
+l $FFCE46 = $00000024
+l $FFCE4A = $004000C8
+l $FFCE4E = $006400C8
+l $FFCE52 = $FF00FFFF
+l $FFCDE2 = 0
+w arg0+4 = $8000
+l arg0+$76 = $FFFFCE2E
+l arg0+$72 = $0080
+w arg0+$16 = -$400
+l arg0+$1E = 0
+l arg0+$22 = $08000800
+l arg0+$26 = 0

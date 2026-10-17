@@ -35,3 +35,8 @@ b $FFF57F = $9
 case direct0
 # direct 0 (no job in the game): the picture as sprites, Scaler_EmitSprites given the four longs above the return address (Scaler_Step's saved registers) as arguments
 b $FFF583 = $0
+case packed_tall
+# packed output 40 rows tall (outH +$12): the first chunk is cut to 32 rows (the corpus's
+# packed jobs fit one chunk)
+b $FFF584 = $1
+w $FFF57C = $28

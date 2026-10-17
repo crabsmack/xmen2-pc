@@ -260,7 +260,11 @@ with the recorded reads replayed and writes captured; compare RAM outside [stack
 A7 + the function's own argument slots) (the slots since 2026-10-16, P4-decomp.md decision 9:
 4 bytes per parameter of a stack-convention function, `arg_bytes` in the verify table), A7, return target, d0 (as wide as the C return type), d3-d7/a2-a6, and the hardware
 access sequence; put the generated result back. Nested calls run generated code in both.
-Checks every call until 2,000 passed, then 1 in 64. Negative test: a planted bug in
+Checks every call until 2,000 passed, then 1 in 64; since 2026-10-17 a call the sampling skips
+is still a probe while the function's checked calls haven't covered all its instructions
+(`XMEN2_VERIFY_INSNS`, counts from xmen2check.py): its generated run is traced, and it is compared
+only if it reached an instruction not covered yet (Obj_CollideSegs' stuck player and two upward
+pushes ran in 9 and 33 corpus runs, in no sampled call). Negative test: a planted bug in
 `AiScript_Set` gives 45/45 mismatches ("RAM FF5107: generated 00, C 01").
 
 Additions (2026-10-15, the asm functions):

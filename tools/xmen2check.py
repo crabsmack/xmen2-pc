@@ -358,6 +358,10 @@ def cmd_verify(a) -> dict:
                 shutil.copy2(f, run_dir / f.name)
         (run_dir / "settings.ini").write_text(SETTINGS)
         free.put(run_dir)
+    # each function's instruction count: verify.cpp probes the calls its sampling skips until
+    # the checked calls have covered them all
+    insns = out / "insns.txt"
+    insns.write_text("".join(f"{addr} {len(pcs)}\n" for addr, pcs in sorted(code_addrs_by_function().items())))
 
     def one(inp: Path):
         run = inp.stem
@@ -369,7 +373,7 @@ def cmd_verify(a) -> dict:
             res.unlink()
         # synthetic cases (game/verify/<ADDR>.syn; verify.cpp load_synth)
         env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_VERIFY_OUT": str(res),
-               "XMEN2_VERIFY_SYNTH": str(common.GAME / "verify")}
+               "XMEN2_VERIFY_SYNTH": str(common.GAME / "verify"), "XMEN2_VERIFY_INSNS": str(insns)}
         if a.functions:
             env["XMEN2_VERIFY_ONLY"] = a.functions
         frames = a.frames or script_frames(inp)
@@ -388,8 +392,12 @@ def cmd_verify(a) -> dict:
         return run, json.loads(res.read_text()), None
 
     merged: dict[str, dict] = {}
+    # the longest runs start first (the TAS, then the late fuzz runs: their TAS prefix), so the
+    # last ones to finish are short; the merge stays in run order
+    longest = sorted(inputs, key=lambda p: -(a.frames or script_frames(p)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
-        results = list(ex.map(one, inputs))
+        done = {p: f for p, f in zip(longest, [ex.submit(one, p) for p in longest])}
+        results = [done[p].result() for p in inputs]
     for run, data, err in results:   # in run order: the same merge as a serial run
         if err:
             sys.exit(err)
@@ -552,7 +560,8 @@ def main() -> int:
     p.add_argument("--functions", default="", help="only these (comma-separated addresses)")
     p.add_argument("--runs", default="", help="dev: only these runs (comma-separated)")
     p.add_argument("--frames", type=int, default=0, help="dev: only the first N frames of each run")
-    p.add_argument("--jobs", type=int, default=12, help="runs played at once (each on its own runner copy)")
+    p.add_argument("--jobs", type=int, default=24,
+                   help="runs played at once (each on its own runner copy; ~80 MB and a fraction of a core each)")
     p.add_argument("--timeout", type=int, default=7200)
     for name in ("gen", "build", "trace"):
         p = sub.add_parser(name)

@@ -1,0 +1,5 @@
+# Z80_LoadDriver: it runs with interrupts masked, and the `move.w (a7)+,sr` that ends it lets the
+# V-int that fell due meanwhile in before its rts, so every corpus call (one per run, at boot) took
+# an interrupt and none was compared. This runs it untimed from its first call's entry state;
+# Z80_BusRequest's poll of $A11100 reads 0 (the bus granted).
+case boot

@@ -170,18 +170,29 @@ void insn_hook(uint32_t pc)
 }
 
 std::unordered_set<uint32_t> s_only;
+std::unordered_map<uint32_t, size_t> s_insns;   /* each function's instruction count */
 
 void load_only()
 {
     const char *e = getenv("XMEN2_VERIFY_ONLY");
-    if (!e) return;
-    for (const char *s = e; *s;) {
-        char *end;
-        unsigned long v = strtoul(s, &end, 16);
-        if (end == s) break;
-        s_only.insert((uint32_t)v);
-        s = *end ? end + 1 : end;
+    if (e) {
+        for (const char *s = e; *s;) {
+            char *end;
+            unsigned long v = strtoul(s, &end, 16);
+            if (end == s) break;
+            s_only.insert((uint32_t)v);
+            s = *end ? end + 1 : end;
+        }
     }
+    /* XMEN2_VERIFY_INSNS=<path>: lines "ADDR COUNT" (hex address, decimal count of the
+       function's instructions): the probing of sampled-out calls below stops once a function's
+       checked calls have covered that many */
+    const char *ip = getenv("XMEN2_VERIFY_INSNS");
+    FILE *f = ip ? fopen(ip, "r") : nullptr;
+    if (!f) return;
+    unsigned a, n;
+    while (fscanf(f, "%x %u", &a, &n) == 2) s_insns[a] = n;
+    fclose(f);
 }
 
 /* <ADDR>.syn: '#' comments; `at any` (run at the first top-level call of any function, for
@@ -526,8 +537,17 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
     if (!s_depth && !s_any_done) { s_any_done = true; run_synth(addr, false); }
     run_synth(addr, true);
     Stat &st = s_stats[addr];
-    /* every call until 2000 have been checked, then one in 64 */
-    if (st.checked >= 2000 && (st.seen++ & 63)) return 0;
+    /* every call until 2000 have been checked, then one in 64. A call the sampling skips is
+       still a probe while the function's checked calls haven't covered all its instructions
+       (XMEN2_VERIFY_INSNS): its generated run is traced, and it is compared only if it reached an
+       instruction not covered yet (the rare paths are what sampling misses: Obj_CollideSegs'
+       stuck player ran in 9 corpus runs, in no sampled call) */
+    bool probe = false;
+    if (st.checked >= 2000 && (st.seen++ & 63)) {
+        auto n = s_insns.find(addr);
+        if (n == s_insns.end() || st.covered.size() >= n->second) return 0;
+        probe = true;
+    }
 
     /* 1. the generated run */
     Ctx &c = *push(fn, 1);
@@ -540,9 +560,18 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
     uint32_t xrts1 = g_xrts;
     memcpy(c.post, g_ram, 0x10000);
     if (g_xirq_taken != irq0) {    /* 2. not comparable */
-        st.irq++;
+        if (!probe) st.irq++;
         pop();
         return 1;
+    }
+    if (probe) {
+        bool fresh = false;
+        for (uint32_t pc : c.cov)
+            if (!st.covered.count(pc)) { fresh = true; break; }
+        if (!fresh) {               /* nothing new: the generated run stands, as unsampled */
+            pop();
+            return 1;
+        }
     }
 
     /* 3. the C run: untimed (no slice end can park it), hardware replayed */
