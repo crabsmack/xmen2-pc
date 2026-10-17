@@ -24,6 +24,8 @@ Shared findings for whoever works the phase-2 criteria next. Criteria and status
   It existed in `GameSpec` but nothing called it (nor `on_post_reset`/`handle_arg`).
 - `video/genesis_vdp.c`: VSRAM cells keep 11 bits (hardware, gpgx); they were masked to 10.
 - `m68k_interp.c`: `g_m68ki_insn_total`, a never-reset count of interpreted instructions (K7).
+- `runner/exact_sched.c` (phase 4, 2026-10-17): the frame-synchronous runner renders a frame and
+  its Z80 takes its V-int ("The D8 playtest build" below).
 
 ## Recompiler (core fork) changes
 
@@ -379,6 +381,36 @@ Additions (2026-10-15, the asm functions):
 - A C bug the shadow test found: ApocBomb_Draw drew the shadow whether or not the bomb was on
   screen; the ROM's off-screen tests of the bomb all branch to the end (fuzz-25200-s1, "RAM
   FFE21D": a sprite slot holding the shadow's attribute where the original left the old one).
+
+### The D8 playtest build (2026-10-17)
+
+First played on Linux (GCC 13 / SDL 2.30), to Avalon: plays fine, no crash, 0 misses.
+Getting there:
+- **No picture**: the stepped scheduler's frame returned without rendering a line (only the timed
+  path rendered), so the playtest build was black on every host; the CRC checks never look.
+  Frame-synchronous mode now renders the whole frame right after the V-int at each sync point
+  (`fsync_render`): no H-int, and the main program's mid-frame VDP writes show a frame late.
+  Status reads there are synthesized (`fsync_read`), so sprite flags from rendering change
+  nothing.
+- **No sound**: the Z80 driver's main loop ($0047-$0062) waits for its V-int (the handler at
+  $38 stores SP to $3E, the loop polls $3F). `fsync_z80_frame` held the IRQ for frame time
+  [0, MPL) only, and the 8-line slices of the 68000's bus releases had run the Z80 to ~165k
+  master clocks by then: the IRQ was never taken and the driver went quiet after its init. The
+  IRQ is now held for a line from where the Z80 is. Over 600 frames XMen2Stepped and
+  XMen2SteppedGen write bit-identical audio, and their sync CSVs agree at all 900 sync points.
+  **D2/D6 results recorded before this change used the old Z80 model: re-run them.**
+- **Level_LoadUsedTiles overflows its bitmap, as the original does**: Bitmap_FromTileWords
+  clears count / 16 + 1 words, up to ~1 KB for the block definitions, into `bits[$100]`. In the
+  ROM's frame `remap` sits right above `bits` (-$1004 / -$1104(a6)) and takes it; GCC's stack
+  protector caught it at the first level load. The PC branch now keeps that layout (one struct).
+  Where the bytes went in MSVC's frame is unknown: Windows runs before this may have had silent
+  corruption there.
+- **LP64**: `long` is 32 bits on MPW and Windows, 64 on Linux. `xmen2_mem.h` maps it to `int`
+  on `__LP64__` (so every file includes system headers before it; the bridge now does). Long
+  literals (`0x10000L`) keep 64 bits there; the 24 files with one all truncate back to 32.
+- **`be(T)` is explicit**: `c ? 5 : field` with a `be<T>` field converted both ways, which GCC
+  rejects (155 sites, mostly MAX/MIN/ABS). Now the field converts to its T, as C promotes it.
+- `xmen2check.py` passes `CMAKE_BUILD_TYPE=Release` off Windows. `pccheck.py` is still MSVC-only.
 
 ### MPW matching from the game repo
 

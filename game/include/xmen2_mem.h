@@ -84,6 +84,14 @@ typedef long (*AnyFn)();
 #include <string.h>
 #include <type_traits>
 
+/* MPW C's long is 32 bits, and so was the PC's (Windows is LLP64). An LP64 host (Linux) makes it
+   64, and the C's long arithmetic then wraps elsewhere: map it to int for every file that includes
+   this header, which therefore comes after all of that file's system headers. */
+#if defined(__LP64__)
+#define long int
+#endif
+static_assert(sizeof(long) == 4, "xmen2_mem.h: the C's long is 32 bits");
+
 extern "C" {
 extern uint8_t *g_ram;        /* work RAM as $00FFxxxx (the engine's view) */
 extern uint8_t *g_ram_ffff;   /* the same RAM as $FFFFxxxx */
@@ -149,7 +157,9 @@ struct be {
         }
     }
     be() = default;
-    be(T v) { set(v); }
+    /* explicit: `c ? 5 : field` then converts the field to its T (as C promotes it), not 5 to a
+       be<T> (both ways make ?: ambiguous, which MSVC let through and GCC rejects) */
+    explicit be(T v) { set(v); }
     operator T() const { return get(); }
     be &operator=(T v) { set(v); return *this; }
     template <class U> be &operator+=(U v)  { set((T)(get() + v)); return *this; }
@@ -222,8 +232,10 @@ template <class A> inline uint32_t slot(A a)
 struct ret68 {
     uint32_t d0;
     template <class R> operator R *() const { return (R *)host(d0); }
+#if !defined(__LP64__)   /* there long is int (above) */
     operator long() const { return (long)(int32_t)d0; }
     operator unsigned long() const { return (unsigned long)d0; }
+#endif
     operator int() const { return (int)(int32_t)d0; }
     operator unsigned() const { return (unsigned)d0; }
     operator short() const { return (short)(uint16_t)d0; }

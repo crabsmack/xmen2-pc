@@ -12,8 +12,18 @@
 
 short Level_LoadUsedTiles(void *map, void *tileset, short vram, s16 *layout, void *defs, unsigned char fromMap)
 {
+#ifdef XMEN2_MPW
 	u8 bits[0x100];
 	s16 remap[0x800];
+#else
+	/* The original's frame: remap right above bits (-$1004(a6), -$1104(a6)). Bitmap_FromTileWords
+	   clears count / 16 + 1 words, past bits' $100 bytes for the block definitions (blocks << 4
+	   words), and on the 68000 that runs into remap; the PC's own layout put it elsewhere (GCC:
+	   the stack canary). */
+	struct { u8 bits[0x100]; s16 remap[0x800]; } frame;
+	u8 *bits = frame.bits;
+	s16 *remap = frame.remap;
+#endif
 	s16 *p;
 	register short tiles = ((MapHeader *)tileset)->tileCount;
 	register short blocks = ((MapHeader *)tileset)->blockCount;

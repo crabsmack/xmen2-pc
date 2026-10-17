@@ -54,6 +54,8 @@ def configure() -> None:
     args = ["-S", str(common.ROOT), "-B", str(BUILD)]
     if sys.platform == "win32":
         args += ["-G", GENERATOR, "-A", "x64"]
+    else:
+        args += ["-DCMAKE_BUILD_TYPE=Release"]   # single-config generators ignore --config
     if cmake(*args, logfile=BUILD / "configure.log"):
         sys.exit(f"configure failed: {BUILD / 'configure.log'}")
 
