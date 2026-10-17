@@ -22,7 +22,8 @@
  * 3 V-blanks (g_VBlankCount).
  * PC: the tilemap buffer, the big sprite and the sprite instance are game memory (generated code
  * and the scaler read them): placed on the 68000 stack where the original's frame had them
- * (a6 = A7 at entry - 4; -$1A6, -$1E8, -$14), the frame ($1F0 bytes, 7 saved registers) reserved. */
+ * (a6 = A7 at entry - 4; -$1A6, -$1E8, -$14), the frame ($1F0 bytes, 7 saved registers) reserved.
+ * MPW: matches (i doubles as the start height, the last waits count in frames, while loops). */
 #include "xmen2.h"
 
 #define g_TextState	(*(s16 *)g_SceneVar3B02)	/* scene variable: Cerebro text state */
@@ -57,14 +58,13 @@ void Cerebro_PlayIntro(void)
 	SprInst *SPR = AT68(SprInst, fp - 0x14);
 #endif
 	register s16 *map = buf;
-	register short i;
+	register short i;		/* index; also the big sprite's start height */
 	register short n;
-	register short tile;
-	register short count;
+	short tile;
+	short count;
 	register s16 *p;
-	register long j;
-	register short h0;
 	register short offY;
+	register short frames;	/* the waits after the flights */
 
 #ifndef XMEN2_MPW
 	xm::sp_reserve(28);
@@ -76,8 +76,13 @@ void Cerebro_PlayIntro(void)
 	Scaler_InitParams();
 	g_ScaleSrcBitmap = Mem_StackAlloc(0x2A56, STR(Str_Empty_066B24, ""));
 	g_ScaleTileBuf = Mem_StackAlloc(0x1560, STR(Str_Empty_066B22, ""));
-	for (i = 0, p = &g_PalBase[0x10]; i < 0x30; i++, p++)
+	i = 0;
+	p = &g_PalBase[0x10];
+	while (i < 0x30) {
 		*p = 0;
+		i++;
+		p++;
+	}
 	if (!(g_ProgressFlags & 2)) {
 		char *text;
 
@@ -90,8 +95,13 @@ void Cerebro_PlayIntro(void)
 		VDP_WriteTileRect(0x51C, map, 0xC, 4, 0x40);
 		Intro_SegaLogoFlash(0, 2);
 		Cerebro_ClearScreen();
-		for (i = 0, p = &g_PalBase[0x10]; i < 0x30; i++, p++)
+		i = 0;
+		p = &g_PalBase[0x10];
+		while (i < 0x30) {
 			*p = 0;
+			i++;
+			p++;
+		}
 		g_PalBaseDirty = 1;
 		VDP_WaitVBlank();
 		Art_LoadNemToVram(CODEPTR(Art_CerebroIntroPic1), g_VramTileCursor);
@@ -158,8 +168,13 @@ void Cerebro_PlayIntro(void)
 	Snd_Stop(0xA);
 	Snd_Play(0xA);
 	Cerebro_ClearScreen();
-	for (i = 0, p = &g_PalBase[0x10]; i < 0x30; i++, p++)
+	i = 0;
+	p = &g_PalBase[0x10];
+	while (i < 0x30) {
 		*p = 0;
+		i++;
+		p++;
+	}
 	g_PalBaseDirty = 1;
 	VDP_WaitVBlank();
 	Art_LoadNemToVram(CODEPTR(Art_CerebroIntroPic2), g_VramTileCursor);
@@ -177,11 +192,15 @@ void Cerebro_PlayIntro(void)
 	g_VramTileCursor += 0xAB;
 	{
 		register s16 *dst;
+		long j;
 
 		p = (s16 *)CODEPTR(Pal_CerebroIntroLine1);
 		dst = &g_PalBase[0x10];
-		for (j = 0; j < 16; j++)
+		j = 0;
+		do {
 			*dst++ = *p++;
+			j++;
+		} while (j < 16);
 	}
 	g_PalBase[0x3F] = 0xA0;
 	g_PalBase[0x3E] = 0x80;
@@ -202,18 +221,18 @@ void Cerebro_PlayIntro(void)
 	x0 = 0xA0;
 	y0 = 0x70;
 	w0 = 0;
-	h0 = 0;
+	i = 0;		/* start height */
 	w1 = BS->params->srcW;
 	h1 = BS->params->srcH;
 	n = 12;
 	BS->vw = ((long)(w1 - w0) << 16) / n;
-	BS->vh = ((long)(h1 - h0) << 16) / n;
+	BS->vh = ((long)(h1 - i) << 16) / n;
 	BS->vx = ((long)(x1 - x0) << 16) / n;
 	BS->vy = ((long)(y1 - y0) << 16) / n;
 	BS->x = (long)x0 << 16;
 	BS->y = (long)y0 << 16;
 	BS->w = (long)w0 << 16;
-	BS->h = (long)h0 << 16;
+	BS->h = (long)i << 16;
 	g_CerebroIntro = 0x112;
 	while (n) {
 		g_VBlankCount = 0;
@@ -253,7 +272,7 @@ void Cerebro_PlayIntro(void)
 		register SprFrame *fr;
 
 		def = CODEPTR(Art_CerebroSpr);
-		fr = ((SprDef *)def)->frame;
+		fr = SPR_FRAME(def, 0);
 		offX = -fr->left;
 		offY = -fr->top;
 	}
@@ -275,24 +294,28 @@ void Cerebro_PlayIntro(void)
 	x0 = 0xA0;
 	y0 = 0x95;
 	w0 = 0;
-	h0 = 2;
+	i = 2;
 	w1 = BS->params->srcW;
 	h1 = 2;
 	n = 8;
 	BS->vw = ((long)(w1 - w0) << 16) / n;
-	BS->vh = ((long)(h1 - h0) << 16) / n;
+	BS->vh = ((long)(h1 - i) << 16) / n;
 	BS->vx = ((long)(x1 - x0) << 16) / n;
 	BS->vy = ((long)(y1 - y0) << 16) / n;
 	BS->x = (long)x0 << 16;
 	BS->y = (long)y0 << 16;
 	BS->w = (long)w0 << 16;
-	BS->h = (long)h0 << 16;
+	BS->h = (long)i << 16;
 	{
 		register s16 *src = (s16 *)CODEPTR(Pal_CerebroIntroLine2);
+		long j;
 
 		p = &g_PalBase[0x20];
-		for (j = 0; j < 16; j++)
+		j = 0;
+		do {
 			*p++ = *src++;
+			j++;
+		} while (j < 16);
 	}
 	g_PalBaseDirty = 1;
 	while (n) {
@@ -322,18 +345,18 @@ void Cerebro_PlayIntro(void)
 	x0 = 0x48;
 	y0 = 0x95;
 	w0 = BS->params->srcW;
-	h0 = 2;
+	i = 2;
 	w1 = BS->params->srcW;
 	h1 = BS->params->srcH;
 	n = 8;
 	BS->vw = ((long)(w1 - w0) << 16) / n;
-	BS->vh = ((long)(h1 - h0) << 16) / n;
+	BS->vh = ((long)(h1 - i) << 16) / n;
 	BS->vx = ((long)(x1 - x0) << 16) / n;
 	BS->vy = ((long)(y1 - y0) << 16) / n;
 	BS->x = (long)x0 << 16;
 	BS->y = (long)y0 << 16;
 	BS->w = (long)w0 << 16;
-	BS->h = (long)h0 << 16;
+	BS->h = (long)i << 16;
 	while (n) {
 		Spr_BeginFrame();
 		NEXT_SPRITE();
@@ -362,14 +385,14 @@ void Cerebro_PlayIntro(void)
 	g_TextCol = g_TextWinLeft + 1;
 	g_TextRow = g_TextWinBottom - 1;
 	Cerebro_PrintText(STR(Str_DevelopedByHeadgamesInc, "DEVELOPED BY  HEADGAMES, INC."), 0);
-	n = 0x78;
-	while (n) {
-		--n;
+	frames = 0x78;
+	while (frames) {
+		--frames;
 		VDP_WaitVBlank();
 	}
 	if (g_ScnLogoAndDemo == g_SceneIndex) {
 		register char *s;
-		register short x;
+		short x;
 		register char c;
 		short y;
 
@@ -411,24 +434,24 @@ void Cerebro_PlayIntro(void)
 		Cerebro_BigSpriteDraw(BS);
 		Spr_EndFrame();
 		g_DmaFlushReq = 1;
-		n = 0x258;
-		while (n) {
+		frames = 0x258;
+		while (frames) {
 			g_FrameTick = 0;
-			--n;
+			--frames;
 			VDP_WaitVBlank();
 			if ((g_Pad1Raw | g_Pad2Raw) & 0xF0) {
 				g_ProgressFlags |= 2;
-				n = 0;
+				frames = 0;
 			}
 		}
 	} else {
-		n = 0x258;
-		while (n) {
+		frames = 0x258;
+		while (frames) {
 			g_FrameTick = 0;
-			--n;
+			--frames;
 			VDP_WaitVBlank();
 			if ((g_Pad1Raw | g_Pad2Raw) & 0xF0)
-				n = 0;
+				frames = 0;
 		}
 	}
 	Spr_BeginFrame();
