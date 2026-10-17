@@ -41,11 +41,11 @@ void PowerUp_Update(register PowerUp *self)
 		}
 	}
 	self->animDist += steps;
-	if (self->animDist >= ((AnimScript *)self->anim)->delay) {
+	if (self->animDist >= ANIM_SCRIPT(self)->delay) {
 		++self->animStep;
-		if (((AnimScript *)self->anim)->count <= self->animStep) {
+		if (ANIM_SCRIPT(self)->count <= self->animStep) {
 			self->animStep = 0;
-			if (((AnimScript *)self->anim)->flags & 2)
+			if (ANIM_SCRIPT(self)->flags & 2)
 				self->anim = 0;
 		}
 		if (self->anim) {

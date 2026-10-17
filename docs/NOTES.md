@@ -257,7 +257,8 @@ from XENTRY, which may now tell the generated wrapper to return): snapshot, run 
 body with hardware accesses recorded and F's instructions traced (`g_xinsn_hook`), discard
 the call if an interrupt was taken, else roll back and run the C untimed (`g_xend` frozen)
 with the recorded reads replayed and writes captured; compare RAM outside [stack_low, returned
-A7), A7, return target, d0 (as wide as the C return type), d3-d7/a2-a6, and the hardware
+A7 + the function's own argument slots) (the slots since 2026-10-16, P4-decomp.md decision 9:
+4 bytes per parameter of a stack-convention function, `arg_bytes` in the verify table), A7, return target, d0 (as wide as the C return type), d3-d7/a2-a6, and the hardware
 access sequence; put the generated result back. Nested calls run generated code in both.
 Checks every call until 2,000 passed, then 1 in 64. Negative test: a planted bug in
 `AiScript_Set` gives 45/45 mismatches ("RAM FF5107: generated 00, C 01").
@@ -291,6 +292,18 @@ Additions (2026-10-15, the asm functions):
 - **Z80_BusRelease** ($1FE4EC) is its own function (xmen2disasm split it out of
   Z80_BusAcquire; 3,621 functions): ten Snd_* functions jmp to it, and inside Z80_BusAcquire's
   range its instructions could never be covered by Z80_BusAcquire's own calls.
+- **Parallel compiles (2026-10-16)**: each C file is compiled through a generated wrapper
+  (`build/bridge/handc/<ADDR>.cpp`: `#define Name hc_Name`, `#define XMEN2_FN`, `#include` the
+  file). Per-file `COMPILE_DEFINITIONS` (the old way) gave every file its own cl command line,
+  which MSBuild runs one at a time, so `/MP` did nothing: a full rebuild took ~90 min at 1-3%
+  CPU, now ~1.5 min. Don't add per-source compile flags to the runner targets.
+- **No identical-code folding (2026-10-16)**: a Release link folds identical functions
+  (`/OPT:ICF` is the default without /DEBUG), and BrainRocket_StateFly / DropRocket_StateFly
+  (each re-arms itself: `SET_STATE(self, itself)`) became one host function: the function table
+  then gave DropRocket's state the address $133B42 ("xm::fn_value: $133CD0 takes the address of
+  $133B42, which the original never did", 27 verify runs from fuzz-34200 on). CMakeLists links
+  with `/OPT:REF /OPT:NOICF`, and the bridge's function table checks once that no two game
+  functions share a host address.
 - **Builds while C is being written**: `xmen2check.py build` compiles a snapshot of game/c and
   game/include (`build/handc_src`), and bridge.py leaves out a file whose definition doesn't fit
   its prototype (caught mid-edit), so concurrent edits can't mix two states into one link.
@@ -316,7 +329,12 @@ Additions (2026-10-15, the asm functions):
   (`(SprDef *)Vectors` under `#ifndef XMEN2_MPW`). The same for an object made with no
   placement: Boulder_Spawn's boulder (TUSK carries it) has `pl` 0, and Boulder_Init's
   `pl->param[0]` is the ROM word at 6 on the 68000 (verify crashed in fuzz-21600-s1 at frame
-  ~23700; bisected to $05BF4A). No other Init that gets a null placement reads it.
+  ~23700; bisected to $05BF4A). No other Init that gets a null placement reads it. And an
+  object with no animation script: a WALLCRAWLBIO's first Move comes before its first
+  Obj_SetAnim, and WallCrawlBio_Move reads `anim->delay` anyway (verify crashed in the TAS at
+  frame ~32650, $11E176); `ANIM_SCRIPT(o)` (xmen2_macros.h) reads the vector table for anim 0
+  on PC, in it, BabyBio_Move and PowerUp_Update (after a one-shot clears anim). At address 0 an
+  AnimScript is flags 0, count $FF, delay $C518 (the initial SSP $00FFC518).
 - **Two more bridge gaps (2026-10-16)**, both in calls between generated code and C:
   (5) a plain `short *` / `long *` parameter (the C's host value, a caller's local) that arrives
   from generated code points at a big-endian 68000 local, and the C wrote it in host order
@@ -347,35 +365,20 @@ and `xmen2_globals.h` that declare names the file uses (unused declarations emit
 
 ## Open questions
 
-- **Instructions no state can execute (for the user, D4):** `Scroll_ComputeParallax` ($15FD0E,
-  asm, can't match) has a `beq.s` at $16008E right after a `bne.w` whose flags (from a `cmpi`
-  whose `bls` was just not taken) always take it: no corpus call and no synthetic case can run
-  it, so its `uncovered` stays 1 and D4 can't count it verified as defined. Options: count
-  statically unreachable instructions (shown so, listed in the phase doc) as covered, or leave
-  the function short of done. Collected here until the end of D4 with any others like it.
-  (Player_NearestLive's `$1F6AB6-$1F6AB8` and Exodus_StateSwoopStart's `$02D40A-$02D410` were
-  the same kind; both now byte-match, so D4 doesn't need their coverage.)
-  Related: instructions only a state the game never creates reaches. Actor_Move ($1F4C56, asm)
-  has paths for g_HalfSpeed ($FFC946) and g_SegFlag38C4 ($FFC93C), which no code in the ROM sets
-  (they are only cleared); `game/verify/1F4C56.syn` sets them to cover those paths. Whether such
-  cases count is the same question.
-- **A function that never returns (for the user, D4):** EntryPoint ($1F43AE, the reset vector,
-  hand-written 68000) can't be shadow-tested (verify compares a call when it returns) and can't
-  byte-match. What checks it is the whole-game comparison of D2/D6 from reset (RAM, VRAM, CRAM,
-  VSRAM at every sync point). Options: count that as its verification, or leave it short of done.
-- **A callee's own argument slots (for the user, D4 `verify`):** Spr_EmitPre, Spr_EmitPreClip and
-  Spr_EmitPreLinked (hand-written 68000 in MPW frames) store a computed value into their own
-  argument slot (`move.w d7,$16(a6)`), MPW's storage for a by-value parameter the caller pops
-  unread. verify compares RAM from the returned A7 up, which includes those slots, so their C
-  (which updates its parameter on the host) can never pass. Options: treat the callee's
-  argument slots as dead stack like the area below A7 (a change to the comparison P4-decomp.md
-  defines), or hand-written `conv` adapters that write the slots back.
-  The full corpus verify (2026-10-16) shows ten functions doing it: five byte-match, so D4 has
-  them anyway (AvalonB1_PalFadeStep, BanimazaDoor_DrawDebris, Apocalypse_Move, Cerebro_PrintText,
-  Collide_ObjVsList: MPW C writes a parameter it modifies back to its slot); the five it blocks
-  are the three Spr_EmitPre*, VDP_QueueDma (asm: a request split at a 64 KB boundary rewrites
-  the caller's `$4/$A/$E(a7)` slots, 7 of 117k calls) and Tile_RunHooksAtPoints (C, 4 bytes
-  short of a match). 26 functions in the ROM write a slot of their MPW frame.
+- (Resolved 2026-10-16 by the user, P4-decomp.md decisions 9-12: the cases verify couldn't decide
+  as defined.) (9) A tested function's own argument slots are dead stack: Spr_EmitPre,
+  Spr_EmitPreClip and Spr_EmitPreLinked store into theirs (`move.w d7,$16(a6)`), VDP_QueueDma
+  rewrites the caller's `$4/$A/$E(a7)` when it splits a request at a 64 KB boundary (7 of 117k
+  calls), Tile_RunHooksAtPoints as MPW C does with a parameter it changes (4 bytes short of a
+  match); five more do it and byte-match (AvalonB1_PalFadeStep, BanimazaDoor_DrawDebris,
+  Apocalypse_Move, Cerebro_PrintText, Collide_ObjVsList); 26 ROM functions write a slot of their
+  MPW frame. (10) Statically unreachable instructions listed in the phase doc count as covered:
+  Scroll_ComputeParallax's `beq.s` at $16008E, after a `bne.w` whose flags (a `cmpi` whose `bls`
+  was just not taken) always take it. (Player_NearestLive's `$1F6AB6-$1F6AB8` and
+  Exodus_StateSwoopStart's `$02D40A-$02D410` were the same kind and byte-match.) (11) A synthetic
+  case for a state the game never creates counts: Actor_Move's paths for g_HalfSpeed ($FFC946)
+  and g_SegFlag38C4 ($FFC93C), which the ROM only clears (`game/verify/1F4C56.syn`). (12)
+  EntryPoint and the two interrupt vectors (no match, no shadow test) are verified by D2 + D6.
 - (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
   and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
 - MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe

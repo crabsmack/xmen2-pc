@@ -78,6 +78,15 @@
 /* The record (SprFrame) of frame f of sprite definition def, as the original computed it: the
    definition's address as a long, + $24, + (f << 4) + (f << 2) (XPlayer_Draw, XPlayer_Update
    compute it the same odd way; MPW keeps it in a data register). PC: the same record. */
+/* An object's animation script (o->anim). With none (0: before the first Obj_SetAnim, after a
+   one-shot) code that reads it anyway (the Move slots, PowerUp_Update) reads the vector table at
+   address 0 on the 68000 (flags 0, count $FF, delay $C518), where the host would dereference null. */
+#ifdef XMEN2_MPW
+#define ANIM_SCRIPT(o)		((AnimScript *)(o)->anim)
+#else
+#define ANIM_SCRIPT(o)		((o)->anim ? (AnimScript *)(o)->anim : (AnimScript *)Vectors)
+#endif
+
 #ifdef XMEN2_MPW
 #define SPR_FRAME(def, f)	((SprFrame *)((long)(def) + 0x24 + ((f) << 4) + ((f) << 2)))
 #else

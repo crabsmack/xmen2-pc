@@ -13,7 +13,9 @@
  *
  * MPW: not byte-identical (verified by shadow tests). The ROM keeps its copy of py on the stack
  * in the v-flipped arm of the rectangle (as in the h-flip arms) where this compiles to d7, 4 bytes
- * shorter; the rest is the ROM's code shifted by those 4 bytes. */
+ * shorter; the rest is the ROM's code shifted by those 4 bytes. The ROM's copy shares one stack
+ * temp (-$1C) with the h-flip arms' copy of px, the only such temp in the ROM; ~40 variants got
+ * no closer than 4 bytes (xmen2disasm docs/COMPILER.md, "Copies of stack variables"). */
 #include "xmen2.h"
 
 /* 1 if any of bits m of v are set (the original's materialized form). */

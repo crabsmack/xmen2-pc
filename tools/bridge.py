@@ -6,8 +6,8 @@
 From game/include/xmen2_funcs.h (a prototype per function) and the game/c/<ADDR>.c files:
 
   xmen2_bridge.cpp
-    - for a function written in C: the C is compiled as hc_<Name> (handc.cmake renames it per
-      file), and <Name> is a wrapper every C caller reaches: it counts the entry (logical
+    - for a function written in C: the C is compiled as hc_<Name> (its handc/<ADDR>.cpp renames
+      it), and <Name> is a wrapper every C caller reaches: it counts the entry (logical
       positions, x68k_entry) and calls hc_<Name>. Its slot entry hcslot_<ADDR> takes a call
       from generated code: arguments from the 4-byte stack slots, result to d0, then RTS. In
       the stepped/handc builds that entry IS func_<ADDR>: the recompiler leaves the function
@@ -16,7 +16,8 @@ From game/include/xmen2_funcs.h (a prototype per function) and the game/c/<ADDR>
       calls the generated code, so C never knows which side a callee is on.
     - the function-address table (xm::fn_value / fn_host): the 68000 value a function's
       address had where the original took it (game/xmen2.fnrefs.csv).
-  handc.cmake       XMEN2_HANDC_SOURCES and the per-file definitions (Name=hc_Name, XMEN2_FN)
+  handc/<ADDR>.cpp  one per C file: `#define Name hc_Name`, `#define XMEN2_FN 0xADDR`, the file
+  handc.cmake       XMEN2_HANDC_SOURCES: those wrappers (same compile options, so /MP batches them)
   handc_skip.txt    the addresses whose generated code the stepped/handc builds leave out
 """
 from __future__ import annotations
@@ -475,9 +476,11 @@ def generate(out: Path, mode: str) -> None:
             ends[int(r["addr"], 16)] = int(r["end"], 16)
     # kind 1 = asm (hand-written 68000), 2 = asm with hand-written adapters (conv): verify.cpp
     # compares their results by kind; out_* = the registers a register convention hands back
-    # (as wide as their C type), skip_mask = clobbers()
+    # (as wide as their C type), skip_mask = clobbers(); arg_bytes = the function's own argument
+    # slots above its return address (stack convention only), dead stack for the comparison
+    # (P4-decomp.md decision 9)
     L += ["", "struct XmVerifyFn { uint32_t addr, end; void (*slot)(void); void (*gen)(void); int ret_bytes;",
-          "                    int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; };"]
+          "                    int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; int arg_bytes; };"]
     if mode == "verify":
         L += [f'extern "C" void func_{f["addr"]:06X}(void);' for f in wraps]
     L.append("extern const XmVerifyFn xm_verify_fns[] = {")
@@ -493,9 +496,10 @@ def generate(out: Path, mode: str) -> None:
             ob[r] = f"val_bytes<{t}>()"
         rb = "0" if f["regs"] is not None else f"ret_bytes(&hc_{f['name']})"
         kind = 2 if f["conv"] else 1 if f["asm"] else 0
+        argb = 0 if f["conv"] or f["regs"] is not None else 4 * len(f["types"])
         L.append(f"    {{ 0x{f['addr']:06X}u, 0x{ends.get(f['addr'], f['addr']):06X}u, hcslot_{f['addr']:06X}, {gen}, "
                  f"{rb}, {kind}, 0x{sum(1 << r for r, _ in o):04X}u, "
-                 f"0x{sum(1 << regno(r) for r in f['clobbers']):04X}u, {{ {', '.join(ob)} }} }},")
+                 f"0x{sum(1 << regno(r) for r in f['clobbers']):04X}u, {{ {', '.join(ob)} }}, {argb} }},")
     L += ["    { 0, 0, nullptr, nullptr, 0, 0, 0, 0, { 0 } }", "};",
           f"extern const int xm_verify_fn_count = {len(tested)};"]
     # function-address table: host function (the C-visible name) <-> 68000 address
@@ -517,8 +521,24 @@ def generate(out: Path, mode: str) -> None:
           "static uint32_t s_cur_fn;   /* the C function running (the one whose references apply) */",
           "void fn_enter(uint32_t fn, uint32_t *saved) { *saved = s_cur_fn; s_cur_fn = fn; }",
           "void fn_leave(uint32_t saved) { s_cur_fn = saved; }",
+          "/* Every game function has its own host address: two at one means the linker folded",
+          "   identical code (CMakeLists.txt links with /OPT:NOICF), and a stored state would come",
+          "   back as the other function. Checked once. */",
+          "static void fn_check(void)",
+          "{",
+          "    static bool done;",
+          "    if (done) return;",
+          "    done = true;",
+          "    const size_t n = sizeof s_fns / sizeof s_fns[0];",
+          "    for (size_t i = 0; i < n; i++)",
+          "        for (size_t j = i + 1; j < n; j++)",
+          "            if (s_fns[i].host == s_fns[j].host && s_fns[i].addr != s_fns[j].addr)",
+          "                fatal(\"xm: $%06X and $%06X share one host address (identical code folded)\",",
+          "                      (unsigned)s_fns[i].addr, (unsigned)s_fns[j].addr);",
+          "}",
           "static uint32_t fn_addr(const void *host)",
           "{",
+          "    fn_check();",
           "    for (const FnEntry &e : s_fns) if (e.host == host) return e.addr;",
           "    fatal(\"xm::fn_value: %p is not a game function\", host);",
           "}",
@@ -531,6 +551,7 @@ def generate(out: Path, mode: str) -> None:
           "}",
           "const void *fn_host(uint32_t a)",
           "{",
+          "    fn_check();",
           "    for (const FnEntry &e : s_fns) if (e.addr == (a & 0xFFFFFFu)) return e.host;",
           "    return nullptr;",
           "}",
@@ -552,13 +573,23 @@ def generate(out: Path, mode: str) -> None:
                              f'a fragment of a function written in C"); }}')
     out.mkdir(parents=True, exist_ok=True)
     write_if_changed(out / "xmen2_bridge.cpp", "\n".join(L))
-    cm = ["# GENERATED by tools/bridge.py. Do not edit.", "set(XMEN2_HANDC_SOURCES"]
-    cm += [f'    "{p.as_posix()}"' for p in hc.values()]
-    cm.append(")")
+    # One wrapper per C file (handc/<ADDR>.cpp: the renaming defines, then the file), all with
+    # the same compile options: MSBuild hands them to one cl call, which /MP spreads over the
+    # cores. Per-file COMPILE_DEFINITIONS made every file its own cl call, one at a time.
+    wd = out / "handc"
+    wd.mkdir(parents=True, exist_ok=True)
+    wrappers = []
     for a, p in hc.items():
         f = by_addr[a]
-        cm.append(f'set_source_files_properties("{p.as_posix()}" PROPERTIES LANGUAGE CXX '
-                  f'COMPILE_DEFINITIONS "{f["name"]}=hc_{f["name"]};XMEN2_FN=0x{a:06X}")')
+        w = wd / f"{a:06X}.cpp"
+        write_if_changed(w, f"/* GENERATED by tools/bridge.py: {p.name} as hc_{f['name']}. Do not edit. */\n"
+                            f"#define {f['name']} hc_{f['name']}\n"
+                            f"#define XMEN2_FN 0x{a:06X}\n"
+                            f'#include "{p.as_posix()}"\n')
+        wrappers.append(w)
+    cm = ["# GENERATED by tools/bridge.py. Do not edit.", "set(XMEN2_HANDC_SOURCES"]
+    cm += [f'    "{w.as_posix()}"' for w in wrappers]
+    cm.append(")")
     write_if_changed(out / "handc.cmake", "\n".join(cm) + "\n")
     write_if_changed(out / "handc_skip.txt", "".join(f"{a:06X}\n" for a in sorted(skip)))
     print(f"bridge ({mode}): {len(wraps)} functions in C, {len(stubs)} stubs to generated code -> {out}")

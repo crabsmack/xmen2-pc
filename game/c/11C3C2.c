@@ -16,7 +16,7 @@ void BabyBio_Move(BabyBio *self, short steps)
 	short x, y;
 
 	if (self->anim == CODEPTR(Tbl_BabyBioAnim5)) {
-		if (self->animDist >= ((AnimScript *)self->anim)->delay - 1 && self->animStep == 3) {
+		if (self->animDist >= ANIM_SCRIPT(self)->delay - 1 && self->animStep == 3) {
 			if (self->vx > 0)
 				self->homeX += 0x700;
 			else if (self->vx < 0)

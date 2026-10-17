@@ -8,6 +8,10 @@ set(CMAKE_CXX_STANDARD 17)
 # project's own files in parallel (XMen2Stepped and XMen2Verify have ~3,200 hand-C files each).
 if(MSVC)
     add_compile_options(/MP)
+    # No identical-code folding: game functions are values the game stores and compares (state
+    # functions, hooks), so two with the same code need two addresses. Release links fold by
+    # default, and DropRocket_StateFly became BrainRocket_StateFly (both re-arm themselves).
+    add_link_options(/OPT:REF /OPT:NOICF)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -96,8 +100,9 @@ xmen2_runner(XMen2Recomp 4382 SOURCES $<TARGET_OBJECTS:xmen2_timed_code>)
 # ---------------------------------------------------------------------------
 # Phase 4. Hand-written C (game/c) joins a runner through the bridge tools/bridge.py writes
 # (xmen2check.py build runs it first): build/bridge for the stepped runner, build/bridge_verify
-# for the verification runner. handc.cmake lists the C files and renames each one's function
-# to hc_<Name> (the bridge's <Name> counts the entry and calls it).
+# for the verification runner. handc.cmake lists a wrapper per C file (build/bridge/handc/
+# <ADDR>.cpp) that renames its function to hc_<Name> (the bridge's <Name> counts the entry and
+# calls it); the wrappers share one set of compile options, so /MP compiles them in parallel.
 # ---------------------------------------------------------------------------
 set(XMEN2_BRIDGE_DIR "${CMAKE_BINARY_DIR}/bridge")
 set(XMEN2_VERIFY_BRIDGE_DIR "${CMAKE_BINARY_DIR}/bridge_verify")

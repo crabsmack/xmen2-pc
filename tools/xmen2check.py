@@ -411,6 +411,8 @@ def cmd_verify(a) -> dict:
                        "first_mismatch": m["first_mismatch"], "irq_skipped": m["irq_skipped"],
                        "instructions": len(own), "uncovered": len(unc),
                        "first_uncovered": f"{unc[0]:06X}" if unc else None}
+        if 0 < len(unc) <= 16:   # for P4-decomp.md decision 10 (listed unreachable instructions)
+            funcs[addr]["uncovered_pcs"] = [f"{pc:06X}" for pc in unc]
     return {"runs": len(inputs), "functions": funcs}
 
 
@@ -477,11 +479,16 @@ def cmd_handc(a) -> dict:
     # and AI-script thunk tables) are done with the C that contains / names them; asm functions
     # (no MPW frame) are reported for the never-executed rule.
     tags = {}
+    whole_game = []
     for line in (INC / "xmen2_funcs.h").read_text(encoding="utf-8").splitlines():
         # the first word of the tag: `asm`, `fragment`... (an asm tag may go on: `asm regs(d0)->d0`)
-        m = re.search(r"\b([A-Za-z_]\w*)\s*\([^;]*\)\s*;\s*/\*\s*\$([0-9A-F]{6})\s*(\w+)?[^*]*\*/", line)
+        m = re.search(r"\b([A-Za-z_]\w*)\s*\([^;]*\)\s*;\s*/\*\s*\$([0-9A-F]{6})\s*((\w+)?[^*]*)\*/", line)
         if m:
-            tags[m.group(2)] = (m.group(1), m.group(3) or "")
+            tags[m.group(2)] = (m.group(1), m.group(4) or "")
+            # decision 12: hand-written 68000 that never returns or ends in rte (no match, no
+            # shadow test) is verified by the whole-game comparisons
+            if m.group(4) == "asm" and re.search(r"\b(noreturn|vector)\b", m.group(3)):
+                whole_game.append(m.group(2))
     texts = {a: (CDIR / f"{a}.c").read_text(encoding="utf-8") for a in out}
     order = sorted(tags)
     frags = {}
@@ -495,7 +502,7 @@ def cmd_handc(a) -> dict:
             parent = next((order[j] for j in range(i - 1, -1, -1) if tags[order[j]][1] != "fragment"), None)
         frags[addr] = {"name": name, "parent": parent, "named": bool(named_in)}
     return {"functions": out, "fragments": frags,
-            "asm": sorted(a for a, (_n, t) in tags.items() if t == "asm")}
+            "asm": sorted(a for a, (_n, t) in tags.items() if t == "asm"), "whole_game": sorted(whole_game)}
 
 
 LINT_RULES = ("registers", "raw_addresses", "raw_offsets", "cross_function_goto")

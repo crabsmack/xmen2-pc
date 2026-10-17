@@ -6,7 +6,9 @@
  * On the last frame of its animation's step 3 the home position lunges 7 px the way it moves:
  * x on a ceiling (mode 2), else y. Past an end of the crawl range (xMin / xMax, along the same
  * axis) it is put on it and stops (a closed end: wallLeft / wallRight), or falls
- * (BabyBio_StateFallOff, an open end). Written like BabyBio_Move, gotos included (they give x\n * and y registers of their own, as in the ROM). */
+ * (BabyBio_StateFallOff, an open end). Written like BabyBio_Move, gotos included (they give x
+ * and y registers of their own, as in the ROM). Its first call comes before any animation (anim
+ * 0: the 68000 reads the vector table, ANIM_SCRIPT). */
 #include "xmen2.h"
 
 void WallCrawlBio_Move(WallCrawlBio *self, short steps)
@@ -14,14 +16,14 @@ void WallCrawlBio_Move(WallCrawlBio *self, short steps)
 	short x, y;		/* the home position in pixels */
 
 	if (self->mode == 2) {
-		if (self->animDist >= ((AnimScript *)self->anim)->delay - 1 && self->animStep == 3) {
+		if (self->animDist >= ANIM_SCRIPT(self)->delay - 1 && self->animStep == 3) {
 			if (self->vx > 0)
 				self->homeX += 0x700;
 			else if (self->vx < 0)
 				self->homeX -= 0x700;
 		}
 	} else {
-		if (self->animDist >= ((AnimScript *)self->anim)->delay - 1 && self->animStep == 3) {
+		if (self->animDist >= ANIM_SCRIPT(self)->delay - 1 && self->animStep == 3) {
 			if (self->vy > 0)
 				self->homeY += 0x700;
 			else if (self->vy < 0)

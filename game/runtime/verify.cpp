@@ -56,7 +56,7 @@ uint32_t xmen2_stack_low(void);
 }
 
 struct XmVerifyFn { uint32_t addr, end; void (*slot)(void); void (*gen)(void); int ret_bytes;
-                    int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; };
+                    int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; int arg_bytes; };
 namespace xm { extern bool g_retnv; }   /* the C call just made returned no value (handc_rt.cpp) */
 
 extern const XmVerifyFn xm_verify_fns[];
@@ -312,10 +312,13 @@ std::string compare(const Ctx &c, const XmVerifyFn *fn, const M68KState &r1, uin
 {
     std::string bad;
     M68KState rc = g_cpu;
-    uint32_t lo = xmen2_stack_low() & 0xFFFFu, hi = r1.A[7] & 0xFFFFu;
+    /* dead stack: below the returned A7, and the function's own argument slots just above it,
+       which its caller pops unread (P4-decomp.md decision 9: MPW keeps a by-value parameter
+       there, and the original writes it where the C changes a host variable) */
+    uint32_t lo = xmen2_stack_low() & 0xFFFFu, hi = (r1.A[7] & 0xFFFFu) + (uint32_t)fn->arg_bytes;
     if (hi < lo) hi = lo;
     for (uint32_t i = 0; i < 0x10000u && bad.empty(); i++) {
-        if (i >= lo && i < hi) continue;   /* dead stack: below the returned A7 */
+        if (i >= lo && i < hi) continue;
         if (g_ram[i] != c.post[i]) bad = describe("RAM", 0xFF0000u + i, c.post[i], g_ram[i], call);
     }
     if (bad.empty() && rc.A[7] != r1.A[7]) bad = describe("A7", 7, r1.A[7], rc.A[7], call);
