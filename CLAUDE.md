@@ -32,7 +32,11 @@ Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
   repo (submodule pointer). Never push a pointer to a commit that isn't pushed.
 - `tier3_floor_default` stays 0: a dispatch miss must be loud (K7 needs 0 misses, 0
   interpreter instructions).
-- One runner at a time (#24); kill a stuck one **by PID**, never by image name.
+- One runner at a time (#24); kill a stuck one **by PID**, never by image name. (A phase-2
+  rule. Phase 4's retrospective recommends retiring it once workers get their own build dir and
+  runner copy, so they can verify per batch. That is the user's call at phase 5 P0: see
+  `xmen2disasm/docs/LESSONS.md`, which also lists this repo's open speed-ups, such as
+  `pccheck.py` running 3,161 `cl` calls serially and runner-native savestates for fuzz runs.)
 - No CI (the ROM can't be in it): the gate is `uv run tools/phase.py 2` in xmen2disasm.
   Commit and push after every green batch (trunk-based, `main`).
 
