@@ -1,6 +1,6 @@
-/* xmen2_mem.h - the one switch between the two compilers of the hand-written C.
+/* xmen2_mem.h - the one switch between the compilers (and memory models) of the hand-written C.
  *
- * Every game/c/<ADDR>.c is compiled twice:
+ * Every game/c/<ADDR>.c is compiled in three modes:
  *
  *   MPW  (applec): Apple MPW C 3.3, -mbg off -b, the game's own compiler. The object code
  *        must equal the ROM's bytes (xmen2disasm tools/cc.py --match-recomp). Game memory
@@ -8,6 +8,14 @@
  *   PC   (C++17): inside the recomp runner. Game memory is still the emulated 68000's
  *        (work RAM, ROM; big-endian), because the generated code of the functions not yet
  *        written in C shares it. The types below make plain-looking C read and write it.
+ *   NATIVE (C++17, XMEN2_NATIVE; the XMen2Native runner, phase 5): where the native types
+ *        land, game state in host structs and pointers off the emulated machine. Today it IS
+ *        PC mode (it builds on it and changes nothing yet). XMen2Native is XMen2Stepped plus
+ *        game/runtime/export.cpp, which writes the game state out as the 68000 image (work
+ *        RAM, VRAM, CRAM, VSRAM) its sync rows are computed from, so the stepped-gen
+ *        references still decide equality. A global moved to native storage here keeps its
+ *        entry in the export table (tools/export_table.py, from xmen2_globals.h), which then
+ *        serializes it from the native storage by its declared type.
  *
  * Rules for C written against these headers (lint: xmen2check.py lint):
  *   - s8 u8 s16 u16 s32 u32 for every value that lives in game memory: struct fields,
@@ -413,10 +421,17 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define HW16(a)                (xm::hw16{ (uint32_t)(a) })
 #define HW32(a)                (xm::hw32{ (uint32_t)(a) })
 
+#ifdef XMEN2_NATIVE
+/* ------------------------------------------------------------------------ */
+/* NATIVE (phase 5) on top of PC mode: nothing differs yet. Native storage    */
+/* and host types go here, each with its writer in the export table.          */
+/* ------------------------------------------------------------------------ */
+#endif
+
 #endif /* PC */
 
 /* ======================================================================== */
-/* Hardware names (both modes)                                               */
+/* Hardware names (all modes)                                                */
 /* ======================================================================== */
 #define VDP_DATA       HW16(0xC00000)   /* VDP data port */
 #define VDP_DATA_B     HW8(0xC00000)    /* its byte (the value of a DMA fill) */

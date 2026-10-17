@@ -72,7 +72,7 @@ position, C where it exists), `XMen2Verify` (timed + C as shadow tests). With no
 all hand C and live input: the D8 playtest build (only the user writes `handc-verified:` in
 `docs/USER_VERIFIED.md`).
 ```
-uv run tools/xmen2check.py build                          # all three runners (+ bridge)
+uv run tools/xmen2check.py build                          # all five runners (+ bridge, export table)
 uv run tools/xmen2check.py trace --run tas --input X --out D --sync         # D1: + sync.csv, replay.bin
 uv run tools/xmen2check.py trace --mode stepped --run tas --replay D --out E  # D2
 uv run tools/xmen2check.py verify --inputs DIR [--functions A,B] [--frames N]
@@ -80,4 +80,16 @@ uv run tools/xmen2check.py types|handc|lint
 uv run tools/pccheck.py game/c/X.c      # compile one file as C++ (no build tree; safe in parallel)
 # matching: in xmen2disasm, uv run tools/cc.py --match ../XMen2Recomp/game/c/X.c
 uv run tools/replaydump.py D/replay.bin --sync N; uv run tools/syncdiff.py A.ram B.ram
+```
+
+## Phase 5 (native port)
+
+`XMen2Native` (built by `build` with the others) = the hand-C stepped build in `xmen2_mem.h`'s
+NATIVE mode + `game/runtime/export.cpp`: its sync rows are the CRCs of the exported 68000 image
+(table from `xmen2_globals.h` by `tools/export_table.py`). Notes: docs/NOTES.md "Phase 5".
+```
+uv run tools/xmen2check.py build --native --json   # + per object: what it still needs from the 68000 (COFF), and the link map
+uv run tools/xmen2check.py trace --mode native --run R --input F --replay REFDIR --out D --json   # + "exported"
+uv run tools/synccorpus.py --refs PHASE_TRACES --mode native --out D --jobs 24   # all runs vs stepped-gen
+XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the image zeroed
 ```

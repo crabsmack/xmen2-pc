@@ -419,6 +419,90 @@ with the headers. MPW C 3.3's global symbol table can't hold every declaration o
 (Fatal Error 429), so cc.py gives each compile the lines of `xmen2_funcs.h`, `xmen2_data.h`
 and `xmen2_globals.h` that declare names the file uses (unused declarations emit no code).
 
+## Phase 5: native port (measurement first)
+
+Criteria: `xmen2disasm/docs/phases/P5-port.md` (draft). Before any state moves, the target, the
+exporter and the measurement exist and are proven on the phase-4 C (LESSONS.md "Phase 5 specific").
+
+### XMen2Native and the export (2026-10-17)
+
+- `XMen2Native` (CMakeLists.txt) = XMen2Stepped's sources (the D6 hand-C build) compiled with
+  `XMEN2_STEPPED=1 XMEN2_NATIVE=1` (target-level only: /MP keeps batching), plus
+  `game/runtime/export.cpp`; linked with `/MAP` (`build/Release/XMen2Native.map`). `xmen2check.py
+  build` builds it with the other four runners. `xmen2_mem.h` NATIVE mode is PC mode for now:
+  the place native types land.
+- **Its sync rows are computed from the export image only** (`xmen2_spec.c` `xmen2_on_sync`:
+  `xm_export(&image)`, then the same `sync_row` the other runners use; `XMEN2_SYNC_DUMP` dumps
+  the image). `game/runtime/xmen2_image.h`: RAM, VRAM, CRAM (& $0EEE), VSRAM (& $07FF) in the dump
+  files' layouts. The other runners now build the same CRAM/VSRAM bytes with `xmen2_words_be` and
+  call `sync_row`: one CRC path.
+- `xm_export`: (1) copy the emulated work RAM, (2) write every global of `xmen2_globals.h` by
+  name, address and declared type (`build/native/xmen2_export_globals.inc`, generated at build
+  time by `tools/export_table.py` from the snapshot headers: 549 globals, 62 arrays, 37 declared
+  without a length, taken to the next global), `put_value` serializing each value in its 68000
+  form (be<> big-endian, bptr/fnp raw, a record as its bytes; a record in native storage with no
+  writer is fatal), (3) VRAM/CRAM/VSRAM from the engine's VDP. Counts (runner counters,
+  `trace --mode native` JSON `exported`): `native_bytes` = work-RAM bytes written from storage
+  outside g_ram, `copied_bytes` = the rest. Baseline on every run: **native_bytes 0, copied_bytes
+  65,536** (no global lives off g_ram yet), the globals cover 14,851 RAM bytes, video 65,744.
+- Negative test, `XMEN2_EXPORT_SELFTEST=1` (or a global's name): the global's last byte is zeroed
+  in the image. Default `g_TextWinTop`: its low byte $FFC5A9 is 0 through TAS sync 4,528 and 5 from
+  sync 4,529 (image dumps); the TAS trace with the self-test is equal through 4,528 and differs
+  from 4,529, RAM CRC only. (First choice `g_P1Lives` differed at sync 1: the lives are 8/9 from
+  the first sync point, not only "at new game"; `g_LevelFrame` at sync 2.)
+- **Result:** `trace --mode native` equals the stepped-gen reference (every row: sync + four
+  CRCs, same count; 0 misses, 0 interpreter instructions) on the TAS (51,209 sync points, 24 s,
+  2,200 fps) and on **all 76 corpus runs** (2,042,653 sync points; `tools/synccorpus.py --jobs 24`,
+  92.5 s wall, longest fuzz-55800-s2 51 s).
+
+### What the C still needs from the 68000 (`build --native`, baseline 2026-10-17)
+
+`tools/native_scan.py` (pure-Python COFF reader, regular and /bigobj; MSVC names reduced to
+`ns::name`): the undefined externals of every object of XMen2Native (from its .vcxproj; hand-C
+wrapper `build/bridge/handc/<ADDR>.cpp` = `game/c/<ADDR>.c`), and the 68000-machine symbols the
+link map says the exe defines. ~1-2 s warm (30 s on a cold cache right after a build).
+
+| category (3,164 game/c objects) | references | files | symbols (files) |
+|---|---|---|---|
+| cpu68 | 2,986 | 1,018 | xm::call_slots 808, sp_restore 815, sp_reserve 767, g_frame/g_novalue 281 (NO_RETURN_VALUE), CPU_SetSR 11, CPU_GetSP 11, CPU_GetSR 9, irq_wait 3 |
+| emu_ram | 3,716 | 2,057 | g_ram_ffff 2,057 (XM_G globals), g_ram 1,659 |
+| bus | 2,526 | 868 | m68k_read8/16/32 ~815 each, write16 46, write32 29, write8 10 |
+| rom_image | 1,957 | 1,957 | g_rom |
+| fnid | 1,188 | 1,188 | xm::fn_value |
+| generated | 0 | 0 | |
+
+- The largest dependency is **call68**: a call through a function value stored in game memory
+  (fnp, class methods, state functions) goes `xm::call_slots` -> recomp_call_addr -> dispatch ->
+  the bridge's func_ADDR -> hcslot reads the 68000 stack slots, although every target is C. Its
+  `Scratch` (host pointers on the 68000 stack, sp_reserve/sp_restore) references all three
+  `m68k_read*` in its copy-back, so most bus reads are call68 too; the real hardware accesses are
+  the writes (46/29/10 files). Native dispatch of stored function values (fn_host, typed call)
+  is the first thing to port.
+- g_ram/g_ram_ffff/g_rom also come from `xm::host`/`xm::addr` (every stored pointer, bptr),
+  not only from globals and ROM data.
+- Runtime objects (bridge, handc_rt, asm_conv, export, spec): cpu68 42, emu_ram 7, bus 12, rom 3.
+- Link (`link.categories`): cpu_core 172 (exact_sched.obj, g_cpu and m68k_read/write in glue.obj,
+  CPU_* in handc_rt.obj), interpreter 48 (m68k_interp.obj, m68k_decoder.obj), recomp_runtime 6,968
+  (6,781 of them the bridge's func_/hcslot_/conv_ slot entries; glue.obj 145, dispatch 12),
+  generated 1,951, emu_ram 3 (ram_views.obj). Compiler labels ($unwind$, string literals) and the
+  CRT's inline printf/scanf COMDATs are left out; C tentative definitions (g_cpu, g_ram, g_x*), which
+  the map lists as `<common>`, are resolved to their declaring objects from the COFF tables.
+- **Generated code still linked**: 0 game functions (D6 holds), but 1,951 func_ definitions: 1,606
+  A5 jump-table thunks (`jmp abs.l` entries; call_slots follows such a jump itself) and **345
+  interior labels of C functions** (`game/xmen2.labels.toml`) in 37 generated bodies, e.g.
+  `func_body_005CF8` inside Game_SceneLoop with 17 entries. D6's definition counts only function starts, so it never saw
+  them. Nothing in the corpus showed a difference, but a dispatch to one would run generated code
+  silently instead of stopping: the stepped build's skip list should take them (open, P3).
+
+### Builds (this machine, own build tree)
+
+Clean build of the four phase-4 runners 3m16s (3 recompiler runs, 32 threads); adding XMen2Native
+plus a header edit that recompiles the hand C of three targets 6m15s; one source changed 2m02s;
+nothing changed (`build --native`, MSBuild up-to-date checks of 5 targets + the scan) 23 s. The
+build tree is ~0.7 GB without traces. Note: any edit of `game/include/*.h` (even a comment)
+changes the key of xmen2disasm's `cc.py --match-recomp` cache, so the next `phase.py 4`
+re-matches every file once (a 6-file sample re-matched after this change).
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

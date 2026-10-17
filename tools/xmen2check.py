@@ -1,11 +1,14 @@
-"""Phase-2 and phase-4 contract tool (xmen2disasm docs/phases/P2-recomp.md, P4-decomp.md):
-report what the build and the runner actually did. Never fills gaps: every number comes from
-the recompiler's or the runner's own output, or from reading the hand-written C.
+"""Phase-2, phase-4 and phase-5 contract tool (xmen2disasm docs/phases/P2-recomp.md,
+P4-decomp.md, P5-port.md): report what the build and the runner actually did. Never fills gaps:
+every number comes from the recompiler's or the runner's own output, from the object files and
+link map the build wrote, or from reading the hand-written C.
 
     uv run tools/xmen2check.py gen   [--json]   # regenerate C into build/gen-check/, count problems
     uv run tools/xmen2check.py build [--json]   # configure + build the Release runners
+    uv run tools/xmen2check.py build --native [--json]   # + what each object still needs from the 68000
     uv run tools/xmen2check.py trace --run NAME --input FILE.input --out DIR [--frames N]
-                                     [--mode recomp [--sync] | stepped --replay REFDIR] [--json]
+                                     [--mode recomp [--sync] | stepped|stepped-gen|handc|native
+                                      --replay REFDIR] [--json]
     uv run tools/xmen2check.py types|handc|lint [--json]   # phase 4: the hand-written C itself
 
 gen:   {"unsupported": N, "validator_errors": N, "functions": ["0BA4A4", ...], ...}
@@ -62,6 +65,7 @@ def configure() -> None:
 
 STEPPED_EXE = "XMen2Stepped.exe" if sys.platform == "win32" else "XMen2Stepped"
 STEPPED_GEN_EXE = "XMen2SteppedGen.exe" if sys.platform == "win32" else "XMen2SteppedGen"
+NATIVE_EXE = "XMen2Native.exe" if sys.platform == "win32" else "XMen2Native"
 
 
 def exe_path(name: str = common.EXE_NAME) -> Path:
@@ -136,13 +140,26 @@ def cmd_build(a) -> dict:
                             "--mode", mode, "--src", str(snap)], capture_output=True, text=True)
         if r.returncode:
             sys.exit(f"bridge.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
+    # phase 5: XMen2Native's export table, from the same snapshot of the headers
+    r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "export_table.py"), "--out", str(BUILD / "native"),
+                        "--src", str(snap)], capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(f"export_table.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
     configure()
     rc = cmake("--build", str(BUILD), "--config", "Release", "--target", "XMen2Recomp", "XMen2Stepped",
-               "XMen2SteppedGen", "XMen2Verify", "--parallel", logfile=BUILD / "build.log")
+               "XMen2SteppedGen", "XMen2Verify", "XMen2Native", "--parallel", logfile=BUILD / "build.log")
     exes = {"exe": exe_path(), "stepped_exe": exe_path(STEPPED_EXE), "stepped_gen_exe": exe_path(STEPPED_GEN_EXE),
-            "verify_exe": exe_path(VERIFY_EXE)}
+            "verify_exe": exe_path(VERIFY_EXE), "native_exe": exe_path(NATIVE_EXE)}
     res = {**{k: str(v) for k, v in exes.items()}, "config": "Release",
            "ok": rc == 0 and all(v.is_file() for v in exes.values()), "log": str(BUILD / "build.log")}
+    if a.native:
+        # P5 P3: what each game object still needs from the 68000 machine (its COFF symbol table)
+        # and which 68000-machine symbols XMen2Native still defines (its link map)
+        import native_scan
+        res = {"ok": res["ok"], "exe": res["native_exe"], "log": res["log"],
+               **native_scan.scan(BUILD, "XMen2Native", exe_path(NATIVE_EXE))}
+        res["ok"] = res["ok"] and rc == 0
+        return res
     if a.handc:
         # The hand-C build is the stepped runner: the recompiler leaves every function written in
         # C out of its code (--skip). Count the game functions (the disassembly's) whose generated
@@ -218,7 +235,8 @@ def stepped_script(inp: Path, ref: Path, out: Path) -> int:
     return len(frames)
 
 
-STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE", "handc": "STEPPED_EXE"}
+STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE", "handc": "STEPPED_EXE",
+                 "native": "NATIVE_EXE"}   # native (P5): the hand-C build whose sync rows are its export's
 
 
 def cmd_trace(a) -> dict:
@@ -226,7 +244,9 @@ def cmd_trace(a) -> dict:
     replay log (phase 4 D1). stepped / stepped-gen: the frame-synchronous untimed runner, with
     hand C / with all generated code, plays the input one sync interval per runner frame (the
     pads of each sync point's reference frame, from REFDIR = the run's D1 trace) and writes
-    sync.csv (phase 4 D2: the two must be equal)."""
+    sync.csv (phase 4 D2: the two must be equal). native: the same with XMen2Native, whose
+    sync rows are computed from its exported 68000 image (phase 5); the JSON adds "exported",
+    the runner's own count of where the image's bytes came from."""
     import os
     if a.mode not in ("recomp", *STEPPED_MODES):
         sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
@@ -295,6 +315,10 @@ def cmd_trace(a) -> dict:
            "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(run_dir / src.name)}
     if a.mode in STEPPED_MODES:
         res["sync_points"] = csv_rows(sync_csv)
+        if a.mode == "native":
+            if "exported" not in c:
+                sys.exit(f"{src.name} reported no export counts; see {out / 'runner.log'}")
+            res["exported"] = c["exported"]
         return res
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
     if a.sync:
@@ -570,6 +594,8 @@ def main() -> int:
         p.add_argument("--json", action="store_true")
         if name == "build":
             p.add_argument("--handc", action="store_true", help="P4 D6: count generated game functions linked")
+            p.add_argument("--native", action="store_true",
+                           help="P5: what XMen2Native's objects still need from the 68000 machine, and its link map")
         if name == "trace":
             p.add_argument("--run", required=True)
             p.add_argument("--input", default="")

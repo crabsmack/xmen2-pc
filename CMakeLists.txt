@@ -122,6 +122,23 @@ xmen2_runner(XMen2Stepped 4383 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2S_GENERATED_T
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp")
 
+# Phase 5, the native port's runner: XMen2Stepped's sources (the hand-C build, P4 D6: every game
+# function in C, no generated game code) compiled in xmen2_mem.h's NATIVE mode, plus the state
+# exporter game/runtime/export.cpp, whose table build/native/xmen2_export_globals.inc comes from
+# tools/export_table.py (xmen2check.py build runs it first). Its sync rows are the CRCs of the
+# exported 68000 image. `xmen2check.py build --native` reads its objects and link map. Only
+# target-level definitions here: per-source ones would stop /MP (one cl call per file).
+xmen2_runner(XMen2Native 4386 DEFS XMEN2_STEPPED=1 XMEN2_NATIVE=1 DEPENDS ${XMEN2S_GENERATED_TARGET}
+    SOURCES ${XMEN2S_GENERATED} ${XMEN2_HANDC_SOURCES}
+            "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/export.cpp")
+target_include_directories(XMen2Native PRIVATE "${CMAKE_BINARY_DIR}/native")
+if(MSVC)
+    target_link_options(XMen2Native PRIVATE "/MAP:$<TARGET_FILE_DIR:XMen2Native>/XMen2Native.map")
+endif()
+
 # The same stepped runner with ALL generated code (no hand C): the reference D2/D6 compare the
 # C against (xmen2disasm P4-decomp.md decision 5).
 genesisrecomp_add_generated_sources(XMEN2G_GENERATED xmen2g "${CMAKE_SOURCE_DIR}/game" xmen2.bin

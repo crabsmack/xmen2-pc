@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "xmen2_functions.h"   /* xmen2_game_functions[]: tools/sync_disasm.py */
+#include "runtime/xmen2_image.h"   /* the state a sync row is computed from; XMen2Native's export */
 
 #define XMEN2_ENTRY 0x1F43AEu
 #define XMEN2_VINT  0x1F4860u
@@ -61,14 +62,21 @@ static uint32_t crc32_bytes(const uint8_t *p, size_t n)
     return crc32_update(0xFFFFFFFFu, p, n) ^ 0xFFFFFFFFu;
 }
 
+/* n words (at most 64), each & mask, big-endian: the reference's CRAM / VSRAM format
+   (xmen2_image.h; export.cpp builds its image with it too). */
+void xmen2_words_be(uint8_t *out, const uint16_t *w, size_t n, uint16_t mask)
+{
+    for (size_t i = 0; i < n; i++) {
+        uint16_t v = (uint16_t)(w[i] & mask);
+        out[2 * i] = (uint8_t)(v >> 8);
+        out[2 * i + 1] = (uint8_t)v;
+    }
+}
+
 static uint32_t crc32_words_be(const uint16_t *w, size_t n, uint16_t mask)
 {
     uint8_t buf[2 * 64];
-    for (size_t i = 0; i < n; i++) {
-        uint16_t v = (uint16_t)(w[i] & mask);
-        buf[2 * i] = (uint8_t)(v >> 8);
-        buf[2 * i + 1] = (uint8_t)v;
-    }
+    xmen2_words_be(buf, w, n, mask);
     return crc32_bytes(buf, 2 * n);
 }
 
@@ -104,25 +112,26 @@ uint32_t xmen2_stack_low(void) { return s_stack_low; }   /* also verify.cpp's de
 int xmen2_verify_entry(uint32_t addr);                    /* game/runtime/verify.cpp */
 #endif
 
-static uint32_t ram_crc_masked(void)
+static uint32_t ram_crc_masked(const uint8_t *ram)
 {
     static const uint8_t zeros[256];
     uint32_t lo = s_stack_low & 0xFFFFu, hi = XMEN2_STACK_TOP & 0xFFFFu;
     if ((s_stack_low & 0xFF0000u) != 0xFF0000u || hi < lo)
         hi = lo;                                     /* stack_low not measured: mask nothing */
-    uint32_t c = crc32_update(0xFFFFFFFFu, g_ram, lo);
+    uint32_t c = crc32_update(0xFFFFFFFFu, ram, lo);
     for (uint32_t n = hi - lo; n; ) {
         uint32_t k = n > sizeof zeros ? (uint32_t)sizeof zeros : n;
         c = crc32_update(c, zeros, k);
         n -= k;
     }
-    c = crc32_update(c, g_ram + hi, 0x10000u - hi);
+    c = crc32_update(c, ram + hi, 0x10000u - hi);
     return c ^ 0xFFFFFFFFu;
 }
 
 /* First-divergence aid: XMEN2_SYNC_DUMP="661,662" + XMEN2_DUMP_DIR write sNNNNNN.ram (masked
- * like the CRC: zeros in [stack_low, A7)) and sNNNNNN.vram at those sync points. */
-static void maybe_dump_sync(uint64_t sync)
+ * like the CRC: zeros in [stack_low, $FFC518)) and sNNNNNN.vram at those sync points (XMen2Native:
+ * of its export image). */
+static void maybe_dump_sync(uint64_t sync, const uint8_t *src_ram, const uint8_t *src_vram)
 {
     const char *list = getenv("XMEN2_SYNC_DUMP"), *dir = getenv("XMEN2_DUMP_DIR");
     if (!list || !dir) return;
@@ -132,7 +141,7 @@ static void maybe_dump_sync(uint64_t sync)
         if (e == s) break;
         if (n == sync) {
             static uint8_t ram[0x10000];
-            memcpy(ram, g_ram, sizeof ram);
+            memcpy(ram, src_ram, sizeof ram);
             uint32_t lo = s_stack_low & 0xFFFFu, hi = XMEN2_STACK_TOP & 0xFFFFu;
             if ((s_stack_low & 0xFF0000u) == 0xFF0000u && hi > lo) memset(ram + lo, 0, hi - lo);
             char path[600];
@@ -141,23 +150,47 @@ static void maybe_dump_sync(uint64_t sync)
             if (f) { fwrite(ram, 1, sizeof ram, f); fclose(f); }
             snprintf(path, sizeof path, "%s/s%06llu.vram", dir, n);
             f = fopen(path, "wb");
-            if (f) { fwrite(g_machine.vdp.vram, 1, GVDP_VRAM_SIZE, f); fclose(f); }
+            if (f) { fwrite(src_vram, 1, GVDP_VRAM_SIZE, f); fclose(f); }
         }
         s = *e ? e + 1 : e;
     }
 }
 
+/* One sync row from a state in the image layouts (xmen2_image.h): RAM and VRAM in 68000 byte
+   order, CRAM / VSRAM already masked big-endian words (crc32_words_be's bytes). */
+static void sync_row(uint64_t sync, uint64_t frame, const uint8_t *ram, const uint8_t *vram,
+                     const uint8_t *cram_be, const uint8_t *vsram_be)
+{
+    fprintf(s_sync, "%llu,%llu,%08x,%08x,%08x,%08x\n", (unsigned long long)sync, (unsigned long long)frame,
+            ram_crc_masked(ram),
+            crc32_bytes(vram, GVDP_VRAM_SIZE),
+            crc32_bytes(cram_be, 2 * GVDP_CRAM_ENTRIES),
+            crc32_bytes(vsram_be, 2 * GVDP_VSRAM_ENTRIES));
+}
+
+#ifdef XMEN2_NATIVE
+/* XMen2Native (phase 5): a sync row is the CRCs of the export image, never of the emulated
+   machine directly (game/runtime/export.cpp builds it from wherever the game state lives). */
+static XmImage s_image;
+#endif
+
 static void xmen2_on_sync(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
-    maybe_dump_sync(sync);
+#ifdef XMEN2_NATIVE
+    xm_export(&s_image);
+    maybe_dump_sync(sync, s_image.ram, s_image.vram);
     if (!s_sync) return;
+    sync_row(sync, frame, s_image.ram, s_image.vram, s_image.cram, s_image.vsram);
+#else
     const GVDP *v = &g_machine.vdp;
-    fprintf(s_sync, "%llu,%llu,%08x,%08x,%08x,%08x\n", (unsigned long long)sync, (unsigned long long)frame,
-            ram_crc_masked(),
-            crc32_bytes(v->vram, GVDP_VRAM_SIZE),
-            crc32_words_be(v->cram, GVDP_CRAM_ENTRIES, 0x0EEE),
-            crc32_words_be(v->vsram, GVDP_VSRAM_ENTRIES, 0x07FF));
+    maybe_dump_sync(sync, g_ram, v->vram);
+    if (!s_sync) return;
+    uint8_t cram[2 * GVDP_CRAM_ENTRIES], vsram[2 * GVDP_VSRAM_ENTRIES];
+    xmen2_words_be(cram, v->cram, GVDP_CRAM_ENTRIES, 0x0EEE);
+    xmen2_words_be(vsram, v->vsram, GVDP_VSRAM_ENTRIES, 0x07FF);
+    sync_row(sync, frame, g_ram, v->vram, cram, vsram);
+#endif
 }
 
 static void xmen2_report_counters(void)
@@ -167,10 +200,16 @@ static void xmen2_report_counters(void)
     if (s_sync) fflush(s_sync);
     char a7[16] = "null";
     if (g_xa7min != 0xFFFFFFFFu) snprintf(a7, sizeof a7, "%u", (unsigned)(g_xa7min & 0xFFFFFFu));
+    char exported[640] = "";
+#ifdef XMEN2_NATIVE
+    /* where the image's bytes came from (export.cpp): xmen2check.py trace --mode native */
+    int k = snprintf(exported, sizeof exported, ", \"exported\": ");
+    xm_export_stats(exported + k, (int)sizeof exported - k);
+#endif
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": %llu, \"interp_instructions\": %llu, "
-                    "\"stub_hits\": 0, \"sync_points\": %llu, \"a7_min\": %s, \"stack_low\": %u}\n",
+                    "\"stub_hits\": 0, \"sync_points\": %llu, \"a7_min\": %s, \"stack_low\": %u%s}\n",
             (unsigned long long)glue_miss_count_any(), (unsigned long long)g_m68ki_insn_total,
-            (unsigned long long)s_sync_rows, a7, (unsigned)(s_stack_low & 0xFFFFFFu));
+            (unsigned long long)s_sync_rows, a7, (unsigned)(s_stack_low & 0xFFFFFFu), exported);
     fflush(stderr);
 }
 
