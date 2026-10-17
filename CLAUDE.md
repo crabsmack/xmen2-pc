@@ -89,7 +89,9 @@ NATIVE mode + `game/runtime/export.cpp`: its sync rows are the CRCs of the expor
 (table from `xmen2_globals.h` by `tools/export_table.py`). Notes: docs/NOTES.md "Phase 5".
 ```
 uv run tools/xmen2check.py build --native --json   # + per object: what it still needs from the 68000 (COFF), and the link map
-uv run tools/xmen2check.py trace --mode native --run R --input F --replay REFDIR --out D --json   # + "exported"
-uv run tools/synccorpus.py --refs PHASE_TRACES --mode native --out D --jobs 24   # all runs vs stepped-gen
+uv run tools/xmen2check.py trace --mode native --run R --input F --replay REFDIR --out D --json [--fb]   # + "exported"
+#   --fb (any stepped mode): + sync.csv column fb_fnv1a64, the frame rendered at the previous sync point
+uv run tools/synccorpus.py --refs PHASE_TRACES --mode stepped-gen --fb --out REF --jobs 24   # references, this engine
+uv run tools/synccorpus.py --refs PHASE_TRACES --mode native --fb --against REF --out D --jobs 24   # all runs vs them
 XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the image zeroed
 ```

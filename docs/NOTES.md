@@ -448,12 +448,25 @@ exporter and the measurement exist and are proven on the phase-4 C (LESSONS.md "
 - Negative test, `XMEN2_EXPORT_SELFTEST=1` (or a global's name): the global's last byte is zeroed
   in the image. Default `g_TextWinTop`: its low byte $FFC5A9 is 0 through TAS sync 4,528 and 5 from
   sync 4,529 (image dumps); the TAS trace with the self-test is equal through 4,528 and differs
-  from 4,529, RAM CRC only. (First choice `g_P1Lives` differed at sync 1: the lives are 8/9 from
-  the first sync point, not only "at new game"; `g_LevelFrame` at sync 2.)
-- **Result:** `trace --mode native` equals the stepped-gen reference (every row: sync + four
-  CRCs, same count; 0 misses, 0 interpreter instructions) on the TAS (51,209 sync points, 24 s,
-  2,200 fps) and on **all 76 corpus runs** (2,042,653 sync points; `tools/synccorpus.py --jobs 24`,
-  92.5 s wall, longest fuzz-55800-s2 51 s).
+  from 4,529, RAM CRC only (picture equal throughout). (First choice `g_P1Lives` differed at sync
+  1: the lives are 8/9 from the first sync point, not only "at new game"; `g_LevelFrame` at sync 2.)
+- **The picture, `trace --fb`** (stepped modes): since engine 22ed7f6 the frame-synchronous runner
+  renders the whole frame right after the V-int at each sync point (`fsync_render`), at the start
+  of the next runner frame, and runner frame k ends at sync k. `--fb` runs the runner with
+  `--hash-frames 1` (main.c `[FBHASH]`: FNV-1a-64 of the framebuffer's active region, the raw VDP
+  output, at the end of every runner frame) and adds column `fb_fnv1a64` to sync.csv: row k = the
+  frame rendered after sync k-1's V-int (row 1: the boot's empty frame). The tool checks one hash
+  per row. It is FNV-1a-64, not a CRC32, because that is what the engine computes; a CRC32 would
+  need an engine accessor to `s_framebuf` (or a GameSpec `video` hook, which would also change the
+  playtest build's widescreen options).
+- **Result (engine 22ed7f6, the D8 Z80/render change):** the stepped-gen references regenerated in
+  this tree (`synccorpus.py --mode stepped-gen --fb`, 272 s wall) equal the phase-4 ones on every
+  row of all 76 runs: the Z80's V-int moved no sync row. `trace --mode native --fb` equals them on
+  **all 76 corpus runs**, every row, the four CRCs and the picture (2,042,653 sync points; 0 misses,
+  0 interpreter instructions; `synccorpus.py --mode native --fb --against`, 275 s wall at 24 jobs,
+  longest fuzz-55800-s2 142 s). Before the bump the same 76 took 92.5 s (TAS alone 2,200 fps); the
+  render costs ~3x (TAS alone 674 fps, 631 with `--fb`: the hash is ~7%). A trace that compares
+  no picture could skip the render (an engine switch; not done).
 
 ### What the C still needs from the 68000 (`build --native`, baseline 2026-10-17)
 
@@ -481,7 +494,7 @@ link map says the exe defines. ~1-2 s warm (30 s on a cold cache right after a b
 - g_ram/g_ram_ffff/g_rom also come from `xm::host`/`xm::addr` (every stored pointer, bptr),
   not only from globals and ROM data.
 - Runtime objects (bridge, handc_rt, asm_conv, export, spec): cpu68 42, emu_ram 7, bus 12, rom 3.
-- Link (`link.categories`): cpu_core 172 (exact_sched.obj, g_cpu and m68k_read/write in glue.obj,
+- Link (`link.categories`): cpu_core 175 (exact_sched.obj, g_cpu and m68k_read/write in glue.obj,
   CPU_* in handc_rt.obj), interpreter 48 (m68k_interp.obj, m68k_decoder.obj), recomp_runtime 6,968
   (6,781 of them the bridge's func_/hcslot_/conv_ slot entries; glue.obj 145, dispatch 12),
   generated 1,951, emu_ram 3 (ram_views.obj). Compiler labels ($unwind$, string literals) and the
@@ -490,16 +503,20 @@ link map says the exe defines. ~1-2 s warm (30 s on a cold cache right after a b
 - **Generated code still linked**: 0 game functions (D6 holds), but 1,951 func_ definitions: 1,606
   A5 jump-table thunks (`jmp abs.l` entries; call_slots follows such a jump itself) and **345
   interior labels of C functions** (`game/xmen2.labels.toml`) in 37 generated bodies, e.g.
-  `func_body_005CF8` inside Game_SceneLoop with 17 entries. D6's definition counts only function starts, so it never saw
-  them. Nothing in the corpus showed a difference, but a dispatch to one would run generated code
-  silently instead of stopping: the stepped build's skip list should take them (open, P3).
+  `func_body_005CF8` inside Game_SceneLoop with 17 entries. D6's definition counts only function
+  starts, so it never saw them. Nothing in the corpus showed a difference, but a dispatch to one
+  would run generated code silently instead of stopping: the stepped build's skip list should
+  take them (open, P3).
+- `build --native` reads the MSVC build (COFF objects, .vcxproj, /MAP); elsewhere it says so.
 
 ### Builds (this machine, own build tree)
 
-Clean build of the four phase-4 runners 3m16s (3 recompiler runs, 32 threads); adding XMen2Native
-plus a header edit that recompiles the hand C of three targets 6m15s; one source changed 2m02s;
-nothing changed (`build --native`, MSBuild up-to-date checks of 5 targets + the scan) 23 s. The
-build tree is ~0.7 GB without traces. Note: any edit of `game/include/*.h` (even a comment)
+Clean build of all five runners (3 recompiler runs, 32 threads, + the scan) 3m42s; of the four
+phase-4 runners alone 3m16s; after the rebase onto the D8 commits (engine and header changed:
+nearly everything recompiles) 3m25s; one source changed 2m02s; nothing changed (`build --native`,
+MSBuild up-to-date checks of 5 targets + the scan) 23 s. The scan is ~1-2 s warm, 15-30 s on the
+cold cache right after a build. The build tree is ~0.7 GB without traces. Note: any edit of
+`game/include/*.h` (even a comment)
 changes the key of xmen2disasm's `cc.py --match-recomp` cache, so the next `phase.py 4`
 re-matches every file once (a 6-file sample re-matched after this change).
 

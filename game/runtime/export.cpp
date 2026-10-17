@@ -24,6 +24,7 @@
  * byte is 0 through sync 4,528 and 5 from sync 4,529 (the first text window), and the TAS trace
  * with the self-test is equal through 4,528 and differs from 4,529 (docs/NOTES.md "Phase 5").
  */
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +37,8 @@ extern "C" {
 }
 #include "xmen2_image.h"
 /* The table, generated from the snapshot of game/include the hand C is built with
-   (tools/export_table.py; it includes that snapshot's xmen2.h). */
+   (tools/export_table.py; it includes that snapshot's xmen2.h, which comes after every system
+   header: on an LP64 host it makes `long` 32 bits, so nothing below says `long`). */
 #include "xmen2_export_globals.inc"
 
 namespace {
@@ -180,9 +182,9 @@ extern "C" int xm_export_stats(char *buf, int n)
     if (t) snprintf(st, sizeof st, "\"%s+%u\"", t->name, (unsigned)(t->bytes - 1u));
     return snprintf(buf, (size_t)n,
                     "{\"native_bytes\": %u, \"copied_bytes\": %u, \"video_bytes\": %u, \"globals\": %d, "
-                    "\"globals_native\": %u, \"global_bytes\": %u, \"globals_unsized\": %u, \"exports\": %llu, "
+                    "\"globals_native\": %u, \"global_bytes\": %u, \"globals_unsized\": %u, \"exports\": %" PRIu64 ", "
                     "\"selftest\": %s}",
                     (unsigned)s_stats.native_bytes, (unsigned)s_stats.copied_bytes, (unsigned)s_stats.video_bytes,
                     s_nglobals, (unsigned)s_stats.globals_native, (unsigned)s_stats.global_bytes,
-                    (unsigned)s_stats.unsized, (unsigned long long)s_stats.exports, st);
+                    (unsigned)s_stats.unsized, s_stats.exports, st);
 }

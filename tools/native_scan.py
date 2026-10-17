@@ -297,6 +297,10 @@ def read_map(path: Path) -> list[tuple[str, str]]:
 
 def scan(build: Path, target: str, exe: Path) -> dict:
     t0 = time.time()
+    if not (build / f"{target}.vcxproj").is_file():
+        # COFF objects, a .vcxproj and an MSVC /MAP: the Windows build only
+        return {"ok": False, "error": f"no {target}.vcxproj in {build} (build --native reads the MSVC build)",
+                "scan_seconds": round(time.time() - t0, 2)}
     src_dir = build / "handc_src" if (build / "handc_src" / "xmen2_funcs.h").exists() else common.GAME / "include"
     game_names = game_function_names(src_dir)
     objects: dict[str, dict] = {}

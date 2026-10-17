@@ -235,6 +235,27 @@ def stepped_script(inp: Path, ref: Path, out: Path) -> int:
     return len(frames)
 
 
+FBHASH = re.compile(r"^\[FBHASH\] frame=(\d+) w=(\d+) h=(\d+) hash=0x([0-9A-Fa-f]{16})", re.M)
+
+
+def add_fb_column(sync_csv: Path, stderr: str, logname: Path) -> int:
+    """--fb (stepped modes): add `fb_fnv1a64` to every sync row, the picture. In the
+    frame-synchronous runner the engine renders the whole frame right after the V-int at each
+    sync point (exact_sched.c fsync_render), at the start of the next runner frame, and runner
+    frame k ends at sync point k; the runner's --hash-frames 1 prints at the end of every runner
+    frame the FNV-1a-64 of its framebuffer's active region (main.c framebuf_active_hash, the raw
+    VDP output). So row k gets runner frame k's hash: the frame rendered after sync k-1's V-int
+    (row 1: the picture before any, the boot's empty frame)."""
+    hashes = [(int(m.group(1)), m.group(4).upper()) for m in FBHASH.finditer(stderr)]
+    lines = sync_csv.read_text().splitlines()
+    rows = lines[1:]
+    if [f for f, _h in hashes] != list(range(1, len(hashes) + 1)) or len(hashes) != len(rows):
+        sys.exit(f"--fb: {len(hashes)} [FBHASH] lines (runner frames) for {len(rows)} sync rows; see {logname}")
+    sync_csv.write_text("\n".join([lines[0] + ",fb_fnv1a64"] + [r + "," + h for r, (_f, h) in zip(rows, hashes)]) + "\n",
+                        newline="\n")
+    return len(rows)
+
+
 STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE", "handc": "STEPPED_EXE",
                  "native": "NATIVE_EXE"}   # native (P5): the hand-C build whose sync rows are its export's
 
@@ -282,6 +303,8 @@ def cmd_trace(a) -> dict:
         env.pop("GENESIS_REPLAY_IN", None)
         cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames),
                "--input-script", str(script), "--fresh-evidence"]
+        if a.fb:   # the runner's [FBHASH] of every runner frame (see add_fb_column)
+            cmd += ["--hash-frames", "1"]
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -315,6 +338,8 @@ def cmd_trace(a) -> dict:
            "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(run_dir / src.name)}
     if a.mode in STEPPED_MODES:
         res["sync_points"] = csv_rows(sync_csv)
+        if a.fb:
+            res["fb_rows"] = add_fb_column(sync_csv, stderr, out / "runner.log")
         if a.mode == "native":
             if "exported" not in c:
                 sys.exit(f"{src.name} reported no export counts; see {out / 'runner.log'}")
@@ -604,6 +629,8 @@ def main() -> int:
             p.add_argument("--mode", default="recomp")
             p.add_argument("--sync", action="store_true", help="recomp: also sync.csv + replay.bin (P4 D1)")
             p.add_argument("--replay", default="", help="stepped: the D1 trace dir to replay")
+            p.add_argument("--fb", action="store_true",
+                           help="stepped modes: + sync.csv column fb_fnv1a64, the frame rendered at the last sync point")
             p.add_argument("--timeout", type=int, default=7200)
             p.add_argument("--dump-frames", default="", help="dev: dump full state after these frames")
     a = ap.parse_args()

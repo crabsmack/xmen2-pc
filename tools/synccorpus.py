@@ -1,17 +1,20 @@
 """Run a stepped-family trace mode over a whole corpus of phase-4 references and compare every
-run's sync rows with its stepped-gen reference (P4 D2/D6, P5 P2): every row, `sync` and the four
-CRCs, the same number of rows. Runs in parallel, longest first.
+run's sync rows with a reference (P4 D2/D6, P5 P2): every row, `sync` and the four CRCs (and the
+picture, fb_fnv1a64, when both sides have it), the same number of rows. Runs in parallel,
+longest first.
 
-    uv run tools/synccorpus.py --refs REFS --mode native --out DIR [--jobs 20] [--runs a,b]
-                               [--keep-runner] [--env NAME=VALUE ...] [--json]
+    uv run tools/synccorpus.py --refs REFS --mode native --out DIR [--against DIR2] [--fb]
+                               [--jobs 20] [--runs a,b] [--keep-runner] [--env NAME=VALUE ...] [--json]
 
 REFS holds, per run R (what xmen2disasm's phase.py 4 leaves in build/phase_traces):
     R.input                 the run's exported input
     R-recomp-sync/          its D1 trace (the REFDIR of --replay)
-    R-stepped-gen/sync.csv  the reference rows
+    R-stepped-gen/sync.csv  the reference rows, unless --against DIR2: then DIR2/R/sync.csv (the
+                            rows of an earlier synccorpus run, e.g. --mode stepped-gen with this
+                            build's engine)
 Each run is `xmen2check.py trace --mode MODE --replay REFS/R-recomp-sync --run R --input
-REFS/R.input --out DIR/R --json`; its runner copy (DIR/R/runner, ~70 MB) is deleted afterwards
-unless --keep-runner. Writes DIR/summary.json; exit 0 only if every run is equal.
+REFS/R.input --out DIR/R --json [--fb]`; its runner copy (DIR/R/runner, ~75 MB) is deleted
+afterwards unless --keep-runner. Writes DIR/summary.json; exit 0 only if every run is equal.
 """
 from __future__ import annotations
 
@@ -30,22 +33,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import common  # noqa: E402
 
 COLS = ("ram_crc32", "vram_crc32", "cram_crc32", "vsram_crc32")
+FB = "fb_fnv1a64"
 
 
-def rows(p: Path) -> list[tuple]:
+def rows(p: Path, cols: tuple) -> list[tuple]:
     with open(p, newline="") as f:
-        return [(int(r["sync"]), *(r[c] for c in COLS)) for r in csv.DictReader(f)]
+        return [(int(r["sync"]), *(r[c] for c in cols)) for r in csv.DictReader(f)]
+
+
+def header(p: Path) -> list[str]:
+    with open(p, newline="") as f:
+        return next(csv.reader(f), [])
 
 
 def compare(ref: Path, got: Path) -> dict:
-    """Every row in order: sync index and the four CRCs; the same count."""
-    a, b = rows(ref), rows(got)
+    """Every row in order: sync index and the four CRCs (+ the picture when both have it); the
+    same count."""
+    cols = COLS + ((FB,) if FB in header(ref) and FB in header(got) else ())
+    a, b = rows(ref, cols), rows(got, cols)
     first = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), None)
-    res = {"ref_rows": len(a), "rows": len(b), "equal": first is None and len(a) == len(b)}
+    res = {"ref_rows": len(a), "rows": len(b), "equal": first is None and len(a) == len(b), "fb_compared": FB in cols}
     if first is not None:
         res["first_diff"] = {"row": first, "sync": a[first][0],
-                             "columns": [c for c, x, y in zip(COLS, a[first][1:], b[first][1:]) if x != y]
+                             "columns": [c for c, x, y in zip(cols, a[first][1:], b[first][1:]) if x != y]
                              or ["sync"]}
+        # the first difference of each column (a picture difference alone vs state)
+        res["first_by_column"] = {c: next((a[i][0] for i in range(min(len(a), len(b))) if a[i][k + 1] != b[i][k + 1]), None)
+                                  for k, c in enumerate(cols)}
     elif len(a) != len(b):
         res["first_diff"] = {"row": min(len(a), len(b)), "sync": None, "columns": ["row count"]}
     return res
@@ -56,6 +70,8 @@ def main() -> int:
     ap.add_argument("--refs", required=True, type=Path)
     ap.add_argument("--mode", default="native")
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--against", type=Path, help="reference rows DIR/<run>/sync.csv instead of REFS/<run>-stepped-gen")
+    ap.add_argument("--fb", action="store_true", help="trace with --fb (sync.csv + fb_fnv1a64)")
     ap.add_argument("--jobs", type=int, default=20)
     ap.add_argument("--runs", default="", help="only these (comma-separated)")
     ap.add_argument("--keep-runner", action="store_true")
@@ -64,37 +80,41 @@ def main() -> int:
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     refs = a.refs.resolve()
+
+    def ref_rows(r: str) -> Path:
+        return (a.against.resolve() / r / "sync.csv") if a.against else refs / f"{r}-stepped-gen" / "sync.csv"
+
     runs = sorted(p.stem for p in refs.glob("*.input"))
     if a.runs:
         keep = set(a.runs.split(","))
         runs = [r for r in runs if r in keep]
-    runs = [r for r in runs if (refs / f"{r}-recomp-sync" / "sync.csv").is_file()
-            and (refs / f"{r}-stepped-gen" / "sync.csv").is_file()]
+    runs = [r for r in runs if (refs / f"{r}-recomp-sync" / "sync.csv").is_file() and ref_rows(r).is_file()]
     if not runs:
-        sys.exit(f"no complete references in {refs}")
+        sys.exit(f"no complete references in {refs}" + (f" / {a.against}" if a.against else ""))
     a.out.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     for kv in a.env:
         k, _, v = kv.partition("=")
         env[k] = v
-    size = {r: sum(1 for _ in open(refs / f"{r}-stepped-gen" / "sync.csv")) for r in runs}
+    size = {r: sum(1 for _ in open(refs / f"{r}-recomp-sync" / "sync.csv")) for r in runs}
 
     def one(r: str) -> tuple[str, dict]:
         t0 = time.time()
         out = a.out / r
         p = subprocess.run([sys.executable, str(common.ROOT / "tools" / "xmen2check.py"), "trace", "--mode", a.mode,
                             "--replay", str(refs / f"{r}-recomp-sync"), "--run", r, "--input", str(refs / f"{r}.input"),
-                            "--out", str(out), "--json", "--timeout", str(a.timeout)],
+                            "--out", str(out), "--json", "--timeout", str(a.timeout)] + (["--fb"] if a.fb else []),
                            capture_output=True, text=True, env=env)
         res: dict = {"seconds": round(time.time() - t0, 1)}
         if p.returncode:
             res.update(equal=False, error=(p.stdout + p.stderr).strip()[-600:])
         else:
             j = json.loads(p.stdout.strip().splitlines()[-1])
-            res.update({k: j[k] for k in ("sync_points", "dispatch_misses", "interp_instructions", "fps") if k in j})
+            res.update({k: j[k] for k in ("sync_points", "dispatch_misses", "interp_instructions", "fps", "fb_rows")
+                        if k in j})
             if "exported" in j:
                 res["exported"] = j["exported"]
-            res.update(compare(refs / f"{r}-stepped-gen" / "sync.csv", out / "sync.csv"))
+            res.update(compare(ref_rows(r), out / "sync.csv"))
             res["equal"] = res["equal"] and j.get("dispatch_misses") == 0 and j.get("interp_instructions") == 0
         if not a.keep_runner and (out / "runner").exists():
             shutil.rmtree(out / "runner", ignore_errors=True)
@@ -108,7 +128,9 @@ def main() -> int:
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(a.jobs, len(runs)))) as ex:
         results = dict(ex.map(one, order))
     per = {r: results[r] for r in runs}
-    summary = {"mode": a.mode, "runs": len(runs), "equal": sum(v["equal"] for v in per.values()),
+    summary = {"mode": a.mode, "against": str(a.against) if a.against else "REFS/<run>-stepped-gen",
+               "fb": a.fb, "runs": len(runs), "equal": sum(v["equal"] for v in per.values()),
+               "fb_compared": sum(bool(v.get("fb_compared")) for v in per.values()),
                "failed": [r for r, v in per.items() if not v["equal"]], "wall_seconds": round(time.time() - t0, 1),
                "jobs": a.jobs, "env": a.env, "per_run": per}
     (a.out / "summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
