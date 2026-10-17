@@ -7,8 +7,15 @@ void CloneA2_StartCamera(void)
 {
 	register unsigned char lockX = 1;
 	register unsigned char lockY = 0;
+#ifdef XMEN2_MPW
 	register short x = g_P1StartRec->x;
 	register short y = g_P1StartRec->y;
+#else
+	/* g_P1StartRec is 0 once the players are placed (Players_PlaceAtStart clears it): the 68000
+	   reads the vector table */
+	register short x = (g_P1StartRec ? (Placement *)g_P1StartRec : (Placement *)Vectors)->x;
+	register short y = (g_P1StartRec ? (Placement *)g_P1StartRec : (Placement *)Vectors)->y;
+#endif
 
 	x &= 0xFE00;
 	CloneA2_StartCamAltMode();

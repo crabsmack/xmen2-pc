@@ -53,11 +53,15 @@ extern uint8_t g_rom[0x400000];
 extern uint32_t g_xclk, g_xstart, g_xend, g_xrts;
 extern int g_xtrace;
 uint32_t xmen2_stack_low(void);
+void xm_install_crash_report(void (*report)(unsigned long code, void *addr));   /* crash_win.cpp */
 }
 
 struct XmVerifyFn { uint32_t addr, end; void (*slot)(void); void (*gen)(void); int ret_bytes;
                     int kind; uint16_t out_mask, skip_mask; uint8_t out_bytes[16]; int arg_bytes; };
-namespace xm { extern bool g_retnv; }   /* the C call just made returned no value (handc_rt.cpp) */
+namespace xm {
+extern bool g_retnv;       /* the C call just made returned no value (handc_rt.cpp) */
+uint32_t fn_current(void); /* the C function running (the bridge's fn_enter/fn_leave) */
+}
 
 extern const XmVerifyFn xm_verify_fns[];
 extern const int xm_verify_fn_count;
@@ -487,6 +491,17 @@ void run_synth(uint32_t addr, bool self)
 
 }  /* namespace */
 
+/* A host exception (a C function dereferencing what the 68000 reads harmlessly): name the
+   tests open and the C function running before the runner dies (crash_win.cpp). */
+void crash_report(unsigned long code, void *where)
+{
+    fprintf(stderr, "[verify] host exception %08lX at %p; tests open (outermost first):", code, where);
+    for (int d = 0; d < s_depth; d++)
+        fprintf(stderr, " $%06X (mode %d)", (unsigned)s_ctx[d]->fn->addr, s_ctx[d]->mode);
+    fprintf(stderr, "; C function running $%06X\n", (unsigned)xm::fn_current());
+    fflush(stderr);
+}
+
 extern "C" int xmen2_verify_entry(uint32_t addr)
 {
     static bool init;
@@ -496,6 +511,7 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
         load_only();
         load_synth();
         atexit(report);
+        xm_install_crash_report(crash_report);
     }
     if (s_entering == addr) { s_entering = 0; return 0; }   /* the generated run under test */
     if (s_depth && (s_ctx[s_depth - 1]->mode != 1 || s_depth >= MAX_DEPTH)) return 0;

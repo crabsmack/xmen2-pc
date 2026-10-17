@@ -334,7 +334,17 @@ Additions (2026-10-15, the asm functions):
   Obj_SetAnim, and WallCrawlBio_Move reads `anim->delay` anyway (verify crashed in the TAS at
   frame ~32650, $11E176); `ANIM_SCRIPT(o)` (xmen2_macros.h) reads the vector table for anim 0
   on PC, in it, BabyBio_Move and PowerUp_Update (after a one-shot clears anim). At address 0 an
-  AnimScript is flags 0, count $FF, delay $C518 (the initial SSP $00FFC518).
+  AnimScript is flags 0, count $FF, delay $C518 (the initial SSP $00FFC518). And Player_IsClimber
+  given no object (SpaceB1_Seg28Handler's segment message, TAS frame ~35170): its class is the
+  long at 0, $00FFC518, no player's. And CloneA2_StartCamera after Players_PlaceAtStart cleared
+  g_P1StartRec (fuzz-48600 on): the start is the vector table's words at 2 and 4. These states
+  come from the timed runner (verify), where an
+  interrupt can land mid-set-up; the stepped runner (D2/D6) never made them.
+- **A crash names itself (2026-10-16)**: XMen2Verify installs a vectored exception handler
+  (`game/runtime/crash_win.cpp`) that prints, before the runner dies, the tests open (outermost
+  first, with their mode: 1 generated run, 2 C run) and the C function running
+  (`xm::fn_current`): `[verify] host exception C0000005 ...; C function running $1F41C2`. It
+  replaces bisecting a crash by frames and function sets (an hour per crash).
 - **Two more bridge gaps (2026-10-16)**, both in calls between generated code and C:
   (5) a plain `short *` / `long *` parameter (the C's host value, a caller's local) that arrives
   from generated code points at a big-endian 68000 local, and the C wrote it in host order
@@ -351,7 +361,10 @@ Additions (2026-10-15, the asm functions):
   the generated row loop leaves (with the C run instead: 293 synthetic-case mismatches in
   Scaler_BeginPass / Scaler_Resume). The Nemesis/Enigma `conv` adapters pass their pointers as
   68000 addresses, so for them a host pointer runs the C too (excluding all `conv` functions
-  stopped fuzz-01800-s1 at "xm::addr: host pointer ... is not in game memory").
+  stopped fuzz-01800-s1 at "xm::addr: host pointer ... is not in game memory"). The C run this
+  way is entered like any C function (`fn_enter`): without it the references of the caller
+  applied, and Hornet_SpawnForDeathbird's C (given Deathbird_StateSendHornets' Placement)
+  stopped at "$1128E4 takes the address of $136642, which the original never did".
 - A C bug the shadow test found: ApocBomb_Draw drew the shadow whether or not the bomb was on
   screen; the ROM's off-screen tests of the bomb all branch to the end (fuzz-25200-s1, "RAM
   FFE21D": a sprite slot holding the shadow's attribute where the original left the old one).

@@ -136,4 +136,5 @@ xmen2_runner(XMen2Verify 4384 DEFS XMEN2_VERIFY=1
             "${XMEN2_VERIFY_BRIDGE_DIR}/xmen2_bridge.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp"
-            "${CMAKE_SOURCE_DIR}/game/runtime/verify.cpp")
+            "${CMAKE_SOURCE_DIR}/game/runtime/verify.cpp"
+            "${CMAKE_SOURCE_DIR}/game/runtime/crash_win.cpp")

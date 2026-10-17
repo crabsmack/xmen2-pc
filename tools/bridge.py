@@ -399,9 +399,20 @@ def generate(out: Path, mode: str) -> None:
                          if t.strip().endswith("*") and "(" not in t and pointee(t) not in REG_IMAGES
                          and not (f["regs"] is not None and f["regs"][i].startswith("&"))]
                 if hostp:
+                    # entered like any C function (fn_enter: the function references that apply
+                    # are its own; Hornet_SpawnForDeathbird's C stores Hornet_MoveVelocity)
                     hc_call = f"hc_{f['name']}({argv})"
-                    L.append(f"    if ({' || '.join(hostp)})")
-                    L.append(f"        {'{ ' + hc_call + '; return; }' if ret_void else 'return ' + hc_call + ';'}")
+                    L.append(f"    if ({' || '.join(hostp)}) {{")
+                    L.append(f"        uint32_t saved; xm::fn_enter(0x{a:06X}u, &saved);")
+                    if ret_void:
+                        L.append(f"        {hc_call};")
+                        L.append("        xm::fn_leave(saved);")
+                        L.append("        return;")
+                    else:
+                        L.append(f"        {f['ret']} r = call_c([&] {{ return {hc_call}; }});")
+                        L.append("        xm::fn_leave(saved);")
+                        L.append("        return r;")
+                    L.append("    }")
                 if odd:
                     c = f"{'conv' if f['conv'] else 'regs'}_call_{a:06X}({argv})"
                     L.append(f"    {c};" if ret_void else f"    return {c};")
@@ -521,6 +532,7 @@ def generate(out: Path, mode: str) -> None:
           "static uint32_t s_cur_fn;   /* the C function running (the one whose references apply) */",
           "void fn_enter(uint32_t fn, uint32_t *saved) { *saved = s_cur_fn; s_cur_fn = fn; }",
           "void fn_leave(uint32_t saved) { s_cur_fn = saved; }",
+          "uint32_t fn_current(void) { return s_cur_fn; }",
           "/* Every game function has its own host address: two at one means the linker folded",
           "   identical code (CMakeLists.txt links with /OPT:NOICF), and a stored state would come",
           "   back as the other function. Checked once. */",
