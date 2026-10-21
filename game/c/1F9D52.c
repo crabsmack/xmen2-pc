@@ -18,6 +18,9 @@ void Timer_RunAll(void)
 			arg = t->arg;
 			t->state = t->period;
 			g_TimerCurrent = t;
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(t);	/* phase 6 R4: the sprites it writes are this timer's */
+#endif
 			(*func)(arg, t);
 		}
 	}

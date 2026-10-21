@@ -150,6 +150,23 @@ static void print_json(void)
     fflush(stdout);
 }
 
+/* Played runs (host_sdl.cpp, R1 "keys for the two presentation options"): F9 turns high_fps off
+   and back to its rate (144 if none was given); F10 asks for the 16:9 view on or off, which takes
+   effect at the next screen (widescreen.cpp: the camera, the streamer and what activates follow it,
+   so it starts with a scene). */
+void options_toggle_high_fps(void)
+{
+    static int rate = 144;
+    if (g_opt.high_fps) { rate = g_opt.high_fps; g_opt.high_fps = 0; }
+    else g_opt.high_fps = rate;
+    find("high_fps")->value = std::to_string(g_opt.high_fps);
+    present_reset();
+}
+
+void options_toggle_widescreen(void) { ws_request_toggle(); }
+
+void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
+
 /* Removes --options and its argument from argv (main parses the rest); exits after --options --json. */
 void options_init(int *argc, char **argv)
 {

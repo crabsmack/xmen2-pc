@@ -154,13 +154,25 @@ void PlayerSelect_Run(void)
 			g_SprWritePtr->size = 0;
 			g_SprWritePtr->attr = 0;
 			g_SprWritePtr->x = 0x1C;
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(&g_SceneFrameHook);	/* phase 6 R4: sprites of the frame hook */
+#endif
 			(*g_SceneFrameHook)();
 			g_LevelFrame++;
 			g_FrameTick = 0;
 			if (!g_LevelFreeze)
 				Timer_RunAll();
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(&g_SceneDrawHook);	/* phase 6 R4: sprites of the draw hook */
+#endif
 			(*g_DrawHook)();
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(g_SceneVar3B10);	/* phase 6 R4: the portrait frames */
+#endif
 			PlayerSelect_DrawFrames();
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(&g_P1Lives);	/* phase 6 R4: the lives */
+#endif
 			if (g_P1Slot->charIndex != -1) {
 				register char *s = STR(Str_Lives_065D96, "LIVES ");
 				register unsigned char c;

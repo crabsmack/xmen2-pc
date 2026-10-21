@@ -6,7 +6,8 @@
  *   Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
  *   Game controllers (players 1 and 2): D-pad or left stick; X = A, A = B, B = C, Start;
  *   LB = X, Y = Y, RB = Z, Back = Mode.  Esc or closing the window quits.
- * Frames are paced to the NTSC rate (59.92 Hz) by the clock; F11 toggles fullscreen.
+ * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
+ * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen).
  */
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
@@ -23,6 +24,7 @@ extern "C" {
 #include "video/genesis_bus.h"
 }
 #include "host_sdl.h"
+#include "native.h"
 
 static SDL_Window *s_win;
 static SDL_Renderer *s_ren;
@@ -39,8 +41,8 @@ int host_open(const char *title)
         fprintf(stderr, "[native] SDL: %s\n", SDL_GetError());
         return 0;
     }
-    s_win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320 * 3, 224 * 3,
-                             SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    s_win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (g_opt.widescreen ? 400 : 320) * 3,
+                             224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
     s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
     if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, 0);
@@ -110,6 +112,9 @@ void host_input(uint16_t pads[2])
             Uint32 f = SDL_GetWindowFlags(s_win);
             SDL_SetWindowFullscreen(s_win, (f & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
         }
+        /* phase 6 R1: the two presentation options */
+        if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
+        if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
         if (e.type == SDL_CONTROLLERDEVICEADDED) {
             for (int n = 0; n < 2; n++)
                 if (!s_pad[n]) { s_pad[n] = SDL_GameControllerOpen(e.cdevice.which); break; }
@@ -136,7 +141,7 @@ void host_audio(uint64_t frame)
     if (s_audio) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
 }
 
-void host_present(const uint32_t *fb, int stride, int w, int h)
+static void draw(const uint32_t *fb, int stride, int w, int h)
 {
     SDL_Rect src = { 0, 0, w, h };
     SDL_UpdateTexture(s_tex, &src, fb, stride * 4);
@@ -149,6 +154,29 @@ void host_present(const uint32_t *fb, int stride, int w, int h)
     SDL_RenderClear(s_ren);
     SDL_RenderCopy(s_ren, s_tex, &src, &dst);
     SDL_RenderPresent(s_ren);
+}
+
+/* high_fps (phase 6 R4): the picture waits for its time on the present clock (us since the first
+   frame); a frame more than 4 NTSC frames late moves the clock instead of hurrying. */
+void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us)
+{
+    static bool started;
+    static double base;   /* performance-counter ticks at t_us 0 */
+    double f = (double)SDL_GetPerformanceFrequency();
+    double now = (double)SDL_GetPerformanceCounter();
+    if (!started) { base = now - t_us * f / 1e6; started = true; }
+    double due = base + t_us * f / 1e6;
+    if (now > due + 4 * s_period) base += now - due;
+    while ((now = (double)SDL_GetPerformanceCounter()) < due) {
+        double left_ms = (due - now) * 1000.0 / f;
+        if (left_ms > 2.0) SDL_Delay((Uint32)(left_ms - 1.5));
+    }
+    draw(fb, stride, w, h);
+}
+
+void host_present(const uint32_t *fb, int stride, int w, int h)
+{
+    draw(fb, stride, w, h);
 
     /* pace: one NTSC frame per frame; a late frame does not try to catch up */
     s_next += (uint64_t)s_period;

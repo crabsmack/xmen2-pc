@@ -22,6 +22,10 @@ int plat_ws_view(void);
 int plat_ws_act(void);
 void plat_ws_cerebro(int on);   /* Cerebro_Run: a Cerebro screen is running (4:3, R5) */
 
+/* high frame rate (platform/native/present.cpp): the sprites written from now on are owner's (a
+   draw-list node's object, a timer, a scene hook), for matching them between frames (R4) */
+void plat_spr_owner(const void *owner);
+
 #ifdef __cplusplus
 }
 #endif

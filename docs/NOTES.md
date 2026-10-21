@@ -861,7 +861,44 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   1; P1 compares the native with stepped-gen, the same machine): at sync 3,000 the native TAS is
   still in Siberia where the recording is in the Sentinels stage, and it never leaves Siberia.
 - **Results** (corpus, `widescreen=16:9`): 76/76 runs to their end, 0 terrain errors, 0 lost
-  sprites, 0 misplaced HUD frames.
+  sprites, 0 misplaced HUD frames. `phase.py 6` E5 passes (2026-10-21, XMen2Recomp ecae533).
+
+### E4: high frame rate (2026-10-21)
+
+- **Timing** (R4: no added latency): `platform/native/present.cpp`. Runner frame k's picture R_k
+  is rendered at sync point k-1 right after the V-int and shown at k x T (T = 16,688.9 us), as at
+  60 Hz. With `high_fps` = H, the frames of an H Hz clock between (k-1) x T and k x T are
+  interpolated from R_(k-1) toward R_k right after R_k is rendered, before the logic of runner
+  frame k: R_k's state is already there (its logic and its pads are those the 60 Hz build has at
+  that moment), so the whole frames keep their times and the in-between ones only show earlier
+  what R_k will show. A played run waits for each frame's time on the present clock
+  (`host_present_at`); a frame more than 4 NTSC frames late moves the clock.
+- **An interpolated frame** is R_k's VDP state rendered with the horizontal scroll of every line
+  (the camera, the parallax), the VSRAM and the matched sprites moved back toward R_(k-1); then
+  VRAM and VSRAM are put back (presentation only: the corpus at 144 Hz has the reference's rows).
+  A scroll step over 64 px or a sprite step over 48 px snaps. Not moved: the HUD's sprites, the
+  palettes, the planes' tiles.
+- **Matching sprites to their object**: the game announces each owner before it draws
+  (`plat_spr_owner`, native branches): every draw-list node's object (DrawList_DrawAll), every
+  timer (Timer_RunAll), and in Level_FrameLoop the scene's frame hook, the hits, the camera, the
+  scroll and palette hooks and the draw hook; in PlayerSelect_Run its hooks, the portrait frames
+  and the lives. The platform reads `g_SprIndex` at each mark; slots fill in order from 0, so
+  each slot has its owner and its piece number. A sprite's step: its own (the same owner and
+  piece, the same size), else its owner's (the median of the owner's own steps: a frame of
+  animation that changes the pieces moves with its object). A sprite written outside every owner
+  (the pause screen's text) is matched with the same slot, tile and size in R_(k-1).
+- **Measured** on the TAS at 144 Hz: whole frames equal P7's (`--fb`) and at the 60 Hz times,
+  96.2% of the non-HUD sprites on gameplay frames interpolated, render p99 1.6-1.8 ms (the 4:3
+  render ~1.1 ms). `--present-log` writes `present.csv`; `--flip N` inverts player 1's C in
+  runner frames N to N+7. The `present` counters add `unmatched` (no owner, new piece, size,
+  snap) and the fallback matches, for diagnosing.
+- **The latency probes** don't see the flip on most of the native TAS (queued in xmen2disasm
+  docs/QUESTIONS.md): the TAS doesn't play its recorded game in the frame-synchronous machine and
+  keeps pausing (the pause screen is a gameplay frame by the definition); C does nothing there. Of
+  the 10 probes, the 3 whose flip changes the picture show it one 144 Hz tick earlier than 60 Hz.
+- **Keys** (R1, played runs): F9 turns `high_fps` off and back (144 if none was given), F10 asks
+  for the 16:9 view on or off from the next screen (the camera, the streamer and what activates
+  follow it, so it starts with a scene). The window opens 16:9 when widescreen is on at start.
 
 ## Open questions
 

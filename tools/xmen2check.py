@@ -277,8 +277,8 @@ def cmd_trace(a) -> dict:
         sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
     if a.mode in STEPPED_MODES and not a.replay:
         sys.exit(f"--mode {a.mode} needs --replay REFDIR (the run's `--mode recomp --sync` trace)")
-    if a.options and a.mode != "native":
-        sys.exit("--options: only the native runner has options (phase 6)")
+    if (a.options or a.present_log or a.flip) and a.mode != "native":
+        sys.exit("--options, --present-log, --flip: only the native runner has them (phase 6)")
     common.ensure_rom()
     src = exe_path(globals()[STEPPED_MODES[a.mode]] if a.mode in STEPPED_MODES else common.EXE_NAME)
     if not src.is_file():
@@ -310,6 +310,10 @@ def cmd_trace(a) -> dict:
             cmd += ["--hash-frames", "1"]
         if a.options:   # phase 6: the enhancement options (P6-enhance.md "The contract")
             cmd += ["--options", a.options]
+        if a.present_log:   # phase 6 E4: OUT/present.csv, one row per displayed frame
+            cmd += ["--present-log", str(out / "present.csv")]
+        if a.flip:   # phase 6 E4: the latency probe
+            cmd += ["--flip", str(a.flip)]
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -711,6 +715,17 @@ Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D
 Game controllers (players 1 and 2): D-pad or left stick; X = A, A = B, B = C, Start;
 LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
 
+Enhancements, each off unless you turn it on:
+    full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
+    high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
+    widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3)
+on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
+or in xmen2.ini next to the program:
+    [options]
+    widescreen=16:9
+While playing: F9 turns the in-between frames on and off, F10 the 16:9 view (from the next
+screen).  {exe} --options --json lists them.
+
 Licenses of the parts it is built from: LICENSES/.
 """
 
@@ -966,6 +981,10 @@ def main() -> int:
             p.add_argument("--keep-runner", action="store_true",
                            help="keep OUT/runner (the private runner copy) after a pass (XMEN2_KEEP_RUNNER=1)")
             p.add_argument("--options", default="", help="native (phase 6): the runner's --options K=V,...")
+            p.add_argument("--present-log", action="store_true",
+                           help="native (phase 6 E4): OUT/present.csv, one row per displayed frame")
+            p.add_argument("--flip", type=int, default=0,
+                           help="native (phase 6 E4): player 1's C inverted in runner frames N to N+7")
     p = sub.add_parser("options")
     p.add_argument("--json", action="store_true")
     p = sub.add_parser("package")

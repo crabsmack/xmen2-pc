@@ -377,10 +377,35 @@ static void unhide_wrapped(void)
 
 /* ---- per frame ------------------------------------------------------------------------------ */
 
+/* F10 in a played run (options_toggle_widescreen): the view changes at the next screen */
+static int s_pending = -1, s_pending_idx, s_pending_cerebro, s_renderer_wide;
+
+void ws_request_toggle(void)
+{
+    s_pending = !(s_pending >= 0 ? s_pending : g_opt.widescreen);
+    s_pending_idx = s16at(0xFFCC64);
+    s_pending_cerebro = s_cerebro;
+}
+
 /* Before the frame is rendered: the renderer's margins for this screen, and its bars. */
 extern "C" void ws_frame_setup(void)
 {
-    if (!g_opt.widescreen) return;
+    if (s_pending >= 0 && (s16at(0xFFCC64) != s_pending_idx || s_cerebro != s_pending_cerebro)) {
+        options_set_widescreen(s_pending);
+        s_pending = -1;
+        s_cache_idx = -1000;
+    }
+    if (!g_opt.widescreen) {
+        if (s_renderer_wide) {   /* turned off: the renderer as it was */
+            gvdp_set_ws_canvas(0);
+            gvdp_set_ws_extra(0);
+            gvdp_set_unlimited_sprites(0);
+            s_renderer_wide = 0;
+            s_bar_l = s_bar_r = 0;
+        }
+        return;
+    }
+    s_renderer_wide = 1;
     gvdp_set_ws_canvas(WS_CANVAS);
     gvdp_set_ws_bar_black(1);
     /* a wider line shows more sprites than the VDP's 20 a line; the native machine's status

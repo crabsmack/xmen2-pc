@@ -203,10 +203,13 @@ static void report_counters(void)
     char memory[256];
     xm_mem_census(memory, (int)sizeof memory);
     char enhance[4096];
+    std::string more;
+    if (g_opt.high_fps || present_logging()) more += ", \"present\": " + present_counters_json();
+    if (g_opt.widescreen) more += ", \"ws\": " + ws_counters_json();
     snprintf(enhance, sizeof enhance, "{\"two_player_frames\": %llu, \"two_player_step_frames\": %llu, "
              "\"frame_tick_waits\": %llu%s}", (unsigned long long)s_two_player_frames,
              (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits(),
-             g_opt.widescreen ? (", \"ws\": " + ws_counters_json()).c_str() : "");
+             more.c_str());
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
                     "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
@@ -221,14 +224,18 @@ static void report_counters(void)
 #define FB_W 512
 #define FB_H 480
 static uint32_t s_fb[FB_H][FB_W];
+static uint32_t s_ifb[FB_H][FB_W];          /* high_fps: an in-between frame (present.cpp) */
+static uint32_t (*s_target)[FB_W] = s_fb;
 static uint32_t s_hash_frames;
 
 extern "C" void plat_scanline(int row, const uint32_t *argb, int width)
 {
     if (row < 0 || row >= FB_H) return;
     int n = width < FB_W ? width : FB_W;
-    memcpy(s_fb[row], argb, (size_t)n * sizeof(uint32_t));
+    memcpy(s_target[row], argb, (size_t)n * sizeof(uint32_t));
 }
+
+extern "C" void plat_scan_target(uint32_t *fb) { s_target = fb ? (uint32_t (*)[FB_W])fb : s_fb; }
 
 static uint64_t fb_hash(int w, int h)
 {
@@ -255,6 +262,11 @@ extern "C" void plat_frame_audio(uint64_t frame)
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }
+
+extern "C" void plat_after_render(void)
+{
+    present_after_render(machine_frame_no(), s_interactive != 0, &s_ifb[0][0], FB_W);
+}
 
 /* ---- input script --------------------------------------------------------------------------- */
 
@@ -286,6 +298,8 @@ static void load_script(const char *path)
     fclose(f);
 }
 
+static uint64_t s_flip;   /* --flip N: player 1's C button inverted in runner frames N to N+7 (phase 6 E4) */
+
 extern "C" void plat_frame_begin(uint64_t frame)
 {
     uint64_t at = 0;
@@ -300,6 +314,7 @@ extern "C" void plat_frame_begin(uint64_t frame)
             at += p.frames;
         }
     }
+    if (s_flip && frame >= s_flip && frame < s_flip + 8) pad[0] ^= GPAD_C;   /* --flip: the latency probe */
     g_machine.bus.pad[0] = pad[0];
     g_machine.bus.pad[1] = pad[1];
 }
@@ -353,7 +368,9 @@ extern "C" void plat_frame_end(uint64_t frame)
         fprintf(stderr, "[FBHASH] frame=%llu w=%d h=%d hash=0x%016llX\n", (unsigned long long)frame, w, h,
                 (unsigned long long)fb_hash(w, h));
     }
-    if (s_interactive) host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
+    /* the present clock (--present-log, high_fps: present.cpp shows the frame at its time) */
+    bool shown = present_whole(frame, &s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height(), s_interactive != 0);
+    if (s_interactive && !shown) host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
     if (s_quit_after && frame >= s_quit_after) {   /* a played run's smoke test */
         if (s_screenshot) host_screenshot(s_screenshot, &s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
         exit(0);
@@ -371,7 +388,7 @@ extern "C" void plat_frame_end(uint64_t frame)
 
 int main(int argc, char **argv)
 {
-    const char *rom = nullptr, *script = nullptr;
+    const char *rom = nullptr, *script = nullptr, *present_log = nullptr;
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--benchmark") && i + 1 < argc) s_benchmark = strtoull(argv[++i], nullptr, 10);
@@ -380,6 +397,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--fresh-evidence")) {}
         else if (!strcmp(argv[i], "--quit-after") && i + 1 < argc) s_quit_after = strtoull(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
+        else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
+        else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
@@ -391,6 +410,7 @@ int main(int argc, char **argv)
         audio_mixer_init();
     }
     if (script) load_script(script);
+    present_init(present_log);
     crc_init();
     if (const char *sl = getenv("XMEN2_STACK_LOW"); sl && *sl) s_stack_low = (uint32_t)strtoul(sl, nullptr, 0);
     if (const char *p = getenv("XMEN2_SYNC_CSV"); p && *p) {

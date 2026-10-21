@@ -10,8 +10,19 @@
 #ifdef __cplusplus
 #include <string>
 void        options_init(int *argc, char **argv);   /* options.cpp: --options, xmen2.ini */
+void        options_toggle_high_fps(void);          /* played: F9 */
+void        options_toggle_widescreen(void);        /* played: F10 (from the next screen) */
+void        options_set_widescreen(int on);
+void        ws_request_toggle(void);                /* widescreen.cpp */
+void        present_reset(void);                    /* present.cpp: high_fps turned on again */
 std::string options_effective_json(void);           /* {"opt": "value", ...} */
 std::string ws_counters_json(void);                 /* widescreen.cpp: the `ws` counters */
+/* present.cpp (phase 6 R4): the present clock and log, high_fps's in-between frames */
+void        present_init(const char *log_path);
+bool        present_logging(void);
+bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
+void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
+std::string present_counters_json(void);
 extern "C" {
 #endif
 
@@ -52,6 +63,12 @@ void plat_sync_row(uint64_t sync, uint64_t frame);   /* a sync point: its row, f
 void ws_frame_setup(void);
 void ws_frame_check(void);
 void ws_mask_line(int row, uint32_t *argb, int width);   /* the bars (R6) on one rendered row */
+
+/* present.cpp / main.cpp / machine.cpp (phase 6 R4) */
+void machine_render(void);                  /* render the frame from the VDP's state now */
+void plat_scan_target(uint32_t *fb);        /* where plat_scanline writes (null: the frame buffer) */
+void plat_after_render(void);               /* the frame begun is rendered: high_fps's frames */
+void present_note_render(double us);        /* a displayed frame's render time */
 
 #ifdef __cplusplus
 }

@@ -91,6 +91,9 @@ void Level_FrameLoop(void)
 				HUD_SPRITE(0x1C, 0, 0, 0x1C);
 		} else
 			HUD_SPRITE(0x1C, 0, 0, 0x1C);
+#if defined(XMEN2_NATIVE)
+		plat_spr_owner(&g_SceneFrameHook);	/* phase 6 R4: sprites of the scene's frame hook */
+#endif
 		(*g_SceneFrameHook)();
 		g_LevelFrame++;
 		g_FrameTick = 0;
@@ -135,7 +138,13 @@ void Level_FrameLoop(void)
 				}
 			}
 			Timer_RunAll();
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(&g_HitListPlayerAtk);	/* phase 6 R4: sprites of the hits */
+#endif
 			Collide_RunAll();
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(g_Camera);	/* phase 6 R4: sprites of the camera's update */
+#endif
 			if (g_CamActive)
 				(*g_Camera->cls->method[3])(g_Camera);		/* Update */
 		}
@@ -145,9 +154,18 @@ void Level_FrameLoop(void)
 			g_DemoSkipped = 1;
 		}
 		if (!g_LevelFreeze) {
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(&g_LevelScrollHook);	/* phase 6 R4: sprites of the scroll hook */
+#endif
 			(*g_ScrollHook)();
+#if defined(XMEN2_NATIVE)
+			plat_spr_owner(&g_LevelPalHook);	/* and of the palette hook */
+#endif
 			(*g_PalHook)();
 		}
+#if defined(XMEN2_NATIVE)
+		plat_spr_owner(&g_SceneDrawHook);	/* phase 6 R4: sprites of the draw hook (the list marks its nodes) */
+#endif
 		(*g_DrawHook)();
 		Spr_EndFrame();
 		g_DmaFlushReq = 1;

@@ -13,6 +13,7 @@
  * logs, the bus front) is gone: the game's C calls the platform functions here directly. The video
  * model (genesis_vdp.c), the Z80 core (superzazu) and the sound chips are the engine's.
  */
+#include <chrono>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -769,9 +770,17 @@ extern "C" void plat_sync_point(void)
     frame_begin();
     fsync_vint();
     ws_frame_setup();
-    render_frame();
+    if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
+        auto r0 = std::chrono::steady_clock::now();
+        render_frame();
+        present_note_render(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - r0).count());
+    } else
+        render_frame();
+    plat_after_render();
     ws_frame_check();
 }
+
+extern "C" void machine_render(void) { render_frame(); }
 
 /* Power-on, then frame 1 up to the game's first instruction. */
 extern "C" void machine_power_on(void)
