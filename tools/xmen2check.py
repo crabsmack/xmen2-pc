@@ -737,7 +737,7 @@ def cmd_native_build(a) -> dict:
 
 def package_linux(a) -> dict:
     """P9: the Linux package, built and checked in this machine's WSL Ubuntu (P5-port.md R7):
-    `native-build` there (build dir ~/xmen2-native-build), staged here with a README and the
+    `native-build` there (build dir ~/xmen2-native-build/<hash of the tree>), staged here with a README and the
     licenses (SDL2 is the system's: libsdl2-2.0-0), zipped (the runner keeps its exec bit), scanned
     for ROM windows, smoke-tested in WSL (600 frames on the ROM; a changed ROM refused), and its
     TAS trace in WSL as the stepped runners play it (tas_sync: P1's comparison, on Linux)."""
@@ -755,8 +755,10 @@ def package_linux(a) -> dict:
         return subprocess.run(["wsl", "--", "bash", "-lc", cmd], capture_output=True, text=True,
                               errors="replace", timeout=timeout)
 
+    import hashlib
     root = wsl_path(common.ROOT)
-    r = wsl(f"cd '{root}' && XMEN2_BUILD=$HOME/xmen2-native-build python3 tools/xmen2check.py native-build --json")
+    bdir = "$HOME/xmen2-native-build/" + hashlib.sha1(root.encode()).hexdigest()[:10]   # one per source tree
+    r = wsl(f"cd '{root}' && XMEN2_BUILD={bdir} python3 tools/xmen2check.py native-build --json")
     j = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")), None)
     if r.returncode or not j or not j.get("ok"):
         sys.exit(f"WSL native-build failed: {(r.stdout + r.stderr).strip()[-600:]}")
@@ -764,7 +766,7 @@ def package_linux(a) -> dict:
     if stage.exists():
         shutil.rmtree(stage)
     (stage / "LICENSES").mkdir(parents=True)
-    c = wsl(f"cp \"$HOME/xmen2-native-build/XMen2Native\" '{wsl_path(stage)}/xmen2' && chmod +x '{wsl_path(stage)}/xmen2'")
+    c = wsl(f"cp \"{bdir}/XMen2Native\" '{wsl_path(stage)}/xmen2' && chmod +x '{wsl_path(stage)}/xmen2'")
     if c.returncode:
         sys.exit(f"copying the Linux runner failed: {c.stderr.strip()[-300:]}")
     readme = PACKAGE_README.format(exe="./xmen2").replace("path\\to\\xmen2.bin", "path/to/xmen2.bin")
