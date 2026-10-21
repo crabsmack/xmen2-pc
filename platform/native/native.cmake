@@ -49,7 +49,7 @@ target_link_libraries(XMen2Native PRIVATE SDL2::SDL2)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # the game's arithmetic wraps as the 68000's does, and its memory is reached through
     # reinterpreting casts of game-memory types: no optimisation may assume otherwise
-    target_compile_options(XMen2Native PRIVATE -fwrapv -fno-strict-aliasing)
+    target_compile_options(XMen2Native PRIVATE -fwrapv -fno-strict-aliasing -fno-delete-null-pointer-checks)
 endif()
 if(MSVC)
     target_compile_options(XMen2Native PRIVATE /W3 /WX- /utf-8 /wd4102 /wd4996)

@@ -721,6 +721,12 @@ ram_views, handc_rt or asm_conv).
   reference at all 51,209 sync points**. One fix it found: `g_snd_frame` was defined twice
   (chip_trace.c and machine.cpp); MSVC had linked two different variables (C++ name mangling),
   GCC refused. machine.cpp now uses chip_trace.c's.
+- **Reads through a null reference** (P5-port.md "Platform layer": in the memory layer, not in
+  scattered guards): in NATIVE a game-type read whose host address is within 64 KB of null reads
+  the ROM image there, big-endian, which is what the 68000 reads (its vector table); a store there
+  is fatal. `XMEN2_NULL_SELFTEST=1` proves it (a word at +4 and a long at +$78 through a null
+  pointer equal the ROM's; GCC gets `-fno-delete-null-pointer-checks`). The six phase-4 guards
+  (`grep -n Vectors game/c/*.c game/include/xmen2_macros.h`) stay: the MPW and PC modes need them.
 - **Frame time (R5's work item: D8 chugged in the Sentinel escape on a slower Linux PC).**
   `XMEN2_FRAME_TIMES=path` logs each runner frame's wall time. The whole TAS headless on this
   machine (a 16-core desktop, with `phase.py` running alongside): 636 fps, median 1.7 ms, p99 2.0 ms,

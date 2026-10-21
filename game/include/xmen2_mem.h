@@ -186,6 +186,12 @@ struct mem {
             for (size_t i = 0; i < sizeof(T); i++) v = v << 8 | b[i];
             return (T)v;
         }
+        if (u < 0x10000u) {                       /* through a null reference: the 68000 reads its
+                                                     vector table there (ROM from address 0) */
+            uint32_t v = 0;
+            for (size_t i = 0; i < sizeof(T); i++) v = v << 8 | g_rom[u + i];
+            return (T)v;
+        }
         T v;                                      /* host memory */
         memcpy(&v, b, sizeof v);
         return v;
@@ -201,6 +207,7 @@ struct mem {
             return;
         }
         if (u - (uintptr_t)g_rom < 0x400000u) fatal("a store into the ROM image at $%06X", (unsigned)(u - (uintptr_t)g_rom));
+        if (u < 0x10000u) fatal("a store through a null reference (+$%04X)", (unsigned)u);
         memcpy(b, &v, sizeof v);
     }
     mem() = default;
