@@ -520,6 +520,87 @@ cold cache right after a build. The build tree is ~0.7 GB without traces. Note: 
 changes the key of xmen2disasm's `cc.py --match-recomp` cache, so the next `phase.py 4`
 re-matches every file once (a 6-file sample re-matched after this change).
 
+### Phase 5 harness (P0 gates, 2026-10-17)
+
+The P0 exit gates (xmen2disasm LESSONS.md "Kickoff checklist") measured by `tools/bench.py` ->
+`docs/bench.json`: **clean build 213 s (< 5 min), corpus check 860 s (< 15 min), two build dirs
+at once OK: all three pass.** Machine: a 16-core / 32-thread desktop; normal
+priority; engine 22ed7f6. Numbers before 14:40 had another agent's 33-`cl` build running for part
+of the time (noted where it mattered).
+
+- **Builds.** Clean, five runners: 213 s; `cl.exe` 33 at once (mean ~29 while compiling), none
+  during the first ~60 s (configure, recompiler build, three generations) and the links. Two
+  fresh `XMEN2_BUILD` dirs at once: 354 s each. Nothing changed: 16-21 s (`gate.py`), 39 s the
+  first time. After the engine bump: 238 s; a comment in a header: 133 s (the hand C compiles in
+  three targets); relinking all runners: 35 s.
+- **Reproducible runners** (CMakeLists `XMEN2_REPRODUCIBLE`, default ON): `/Brepro` on compile and
+  link (no PE/COFF timestamps; `__DATE__`/`__TIME__` become "1") and
+  `game/runtime/reproducible/genesis_build_info.h` ahead of the engine's (whose `git describe` of
+  both repos changed every runner at every commit). Same SHA-1 for all five runners after: a
+  relink; a comment edited in `xmen2_mem.h`'s PC branch; a comment line added there (lines
+  shift); that header rewritten with LF endings; a planted bug, reverted, with a build killed in
+  between; the worktree's build vs a clean dir vs two dirs built at once (bench). The exes hold no
+  absolute paths. So caches can key on runner SHA-1: a commit that changes no code reruns nothing.
+  (New worktrees check out CRLF here, `core.autocrlf=true`, the main checkout's files are LF: no
+  effect on the runners; it does change `cc.py`'s match-cache keys.)
+- **pccheck --all**: 558 s serial (`cl` max 1; partly beside the other build) -> **78 s** (pool
+  of 32, mean 30 `cl`), same verdicts (3,164 OK, 162 with warnings). ~0.75 CPU-s per file, nearly
+  all parsing the headers; no PCH is possible (`-D<Name>=hc_<Name>` renames the file's own
+  prototype in them). MSVC only.
+- **Corpus check, phase 4's way** (engine 22ed7f6): per run stepped-gen then handc trace, 24 jobs:
+  414 s; then `verify --jobs 24`: 503 s; **917 s in sequence: over the gate**. Before the engine
+  bump the traces took 62 s (1,460 sync points/s per job; the frame-synchronous render now costs
+  ~3x: 422-446/s per job at 24 jobs, 515-535/s alone).
+- **Corpus check, bench**: one pool of 32 runners holding the 76 verify runs (`verify --runs R`,
+  the same per-run test) and 76 trace tasks (stepped-gen reference rows, then `--mode native`),
+  longest first: **860 s** with the reference rows made fresh (an engine change); with them cached (a C
+  commit) not measured yet (the references are ~6,100 of the 26,920 job-seconds). Job-seconds: verify 14,622, references 6,139, native 6,159 = 26,920
+  in 860 s, 31.3 runners busy on average: CPU-bound, no single run is the pole (longest: verify
+  fuzz-55800-s2 345 s at 172 fps; trace task fuzz-55800-s1 154 + 159 s at ~340 fps).
+- **Where the time goes (for the savestate step, LESSONS item 2).** Per job at 32 at once:
+  verify ~172 fps (TAS alone 273 fps; the timed runner without shadow tests 356 fps), stepped-gen
+  and native ~345 sync points/s. (1) verify is 54% of the work, and 62 of its 76 runs are fuzz
+  runs that replay the TAS up to their branch point: of 2,273,389 verify frames only 62 x 3,600 =
+  223k are fuzzed; states every 1,800 TAS frames on both sides would cut verify ~4x and the fuzz
+  traces likewise. (2) The render in frame-synchronous mode is ~2/3 of every trace (12,300
+  job-s); traces that compare no picture (P1; only P7 does) could skip it (an engine switch).
+  (3) Shadow tests cost ~25% of the TAS's verify speed (273 vs 356 fps).
+- **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
+  mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
+  phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner
+  and DLLs and deletes them after a pass (kept on failure, on a nonzero counter, with
+  `--keep-runner` / `XMEN2_KEEP_RUNNER=1`; nothing in xmen2disasm's `phase.py` or the
+  first-divergence tools reads `runner/` after a pass): 0 bytes per passed trace. verify's 24
+  copies (1.7 GB left behind) are XMen2Verify only (~32 MB each) and go after a pass. The trace
+  JSON's `exe` is now the build's runner, plus `exe_sha1`.
+- **verify fails loudly** (LESSONS item 6: two full verifies ran on after a fatal had stopped
+  testing, 498 and 416 functions checked). The per-run JSON has `stopped_early` (null or why),
+  `frames`, `functions_tested`, `calls_checked`, `calls_refused`. Testing stopped when the run
+  ended on `xm::fatal` (its message is kept), inside a C run or synthetic case (untimed: one open
+  at the end never returned), or after >= 60 frames in which every call of a function under test
+  was refused (a C run or case open, or MAX_DEPTH). `xmen2check.py verify` exits 1 naming the run
+  and reason, also when a run played short of its frames or its runner failed, and kills the
+  runs still going (`--keep-going` plays all). `calls_refused` is ~580k in a normal 6,000-frame
+  run: callees inside C runs, cleared when the C run returns. Proof: `XMEN2_VERIFY_DEV_STOP=3000`
+  on fuzz-01800-s1 + scenario-pause-cheats: exit 1, "fuzz-01800-s1: testing stopped early: no test
+  could open from frame 3000 to the end (2400 frames ...) (475 functions tested)", the other run
+  killed; without it: exit 0, 560 / 549 functions tested, 0 mismatches.
+- **The worker gate**, `tools/gate.py` (own worktree and build dir; files = changed vs the merge
+  base with origin/main, or `--files`): build, pccheck, MPW match of changed files that matched at
+  the end of phase 4 (`docs/p4_mpw_matched.txt`, 3,034, from the D4 ledger), verify of the changed
+  functions (all of them when anything but game/c, game/verify or docs changed) on tas +
+  scenario-two-player/pause-cheats/options-menu/char-nightcrawler x 6,000 frames, and the TAS's
+  first 6,000 sync points in `--mode native` against stepped-gen rows of this build (made once per
+  XMen2SteppedGen hash, cached in `.git/xmen2-cache`). Fail-fast, independent steps at once.
+  No change: PASS 58 s (verify: 663/3,160 functions checked, 1.16M calls). Two files: 32 s.
+  Planted bugs: Obj_UpdateBox `boxRight + 1` (not matched) -> FAIL at verify, 44 s ("call 1: RAM
+  FFEAFB: generated 7A, C 7B"; the trace step alone also fails, sync 247 RAM); Obj_GetLiftCarrier
+  without `|| type == '#'` (matched) -> FAIL at mpw, 2 s, build stopped; a missing `;` -> FAIL at
+  pccheck, 1 s. Reverted, every runner hashes as before. A header change re-matched all 3,034
+  files (~2.4 s each, 8 at a time: ~15 min). Since xmen2disasm cc.py `mpw_view` (2026-10-17) the
+  cache keys on what MPW compiles, so edits to the PC or native branches (and line endings)
+  re-match nothing; whether MPW matching stays through phase 5 is P5-port.md R4.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

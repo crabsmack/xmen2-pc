@@ -1,0 +1,186 @@
+{
+ "date": "2026-10-17",
+ "game_rev": "7ae8d7e5b35aca3c18d573fdecaec173970bb9f3",
+ "engine_rev": "22ed7f646fc1e04252ce55bb03299afb3bab7463",
+ "machine": {
+  "threads": 32
+ },
+ "corpus_check_mode": "native",
+ "quick": false,
+ "priority": "normal",
+ "gates": {
+  "clean_build": "< 5 min",
+  "corpus_check": "< 15 min",
+  "parallel_build_dirs": "two XMEN2_BUILD dirs built at once both succeed with identical runner hashes"
+ },
+ "clean_build_s": 213.3,
+ "clean_build": {
+  "ok": true,
+  "sha1": {
+   "XMen2Recomp.exe": "343b199874736ea919a45a6013f101808321b61b",
+   "XMen2Stepped.exe": "b5d6e19c5170b00ae18a1867b65243d23c2a5d06",
+   "XMen2SteppedGen.exe": "eae1ed5b81d0c82874f84096e8f5fb80810bbb29",
+   "XMen2Verify.exe": "70a04493bc16a6a65b2339a46b4aad2e52db2016",
+   "XMen2Native.exe": "b3d8dc9c1a60fb50ac4c23cd6ee86eb1fca17d57"
+  },
+  "detail": ""
+ },
+ "parallel_build_dirs_ok": true,
+ "parallel_builds": {
+  "s": 354.5,
+  "a": {
+   "s": 354.5,
+   "ok": true,
+   "sha1": {
+    "XMen2Recomp.exe": "343b199874736ea919a45a6013f101808321b61b",
+    "XMen2Stepped.exe": "b5d6e19c5170b00ae18a1867b65243d23c2a5d06",
+    "XMen2SteppedGen.exe": "eae1ed5b81d0c82874f84096e8f5fb80810bbb29",
+    "XMen2Verify.exe": "70a04493bc16a6a65b2339a46b4aad2e52db2016",
+    "XMen2Native.exe": "b3d8dc9c1a60fb50ac4c23cd6ee86eb1fca17d57"
+   },
+   "detail": ""
+  },
+  "b": {
+   "s": 354.4,
+   "ok": true,
+   "sha1": {
+    "XMen2Recomp.exe": "343b199874736ea919a45a6013f101808321b61b",
+    "XMen2Stepped.exe": "b5d6e19c5170b00ae18a1867b65243d23c2a5d06",
+    "XMen2SteppedGen.exe": "eae1ed5b81d0c82874f84096e8f5fb80810bbb29",
+    "XMen2Verify.exe": "70a04493bc16a6a65b2339a46b4aad2e52db2016",
+    "XMen2Native.exe": "b3d8dc9c1a60fb50ac4c23cd6ee86eb1fca17d57"
+   },
+   "detail": ""
+  },
+  "same_as_clean": true
+ },
+ "incremental_build_s": 58.9,
+ "runner_sha1": {
+  "XMen2Recomp.exe": "343b199874736ea919a45a6013f101808321b61b",
+  "XMen2Stepped.exe": "b5d6e19c5170b00ae18a1867b65243d23c2a5d06",
+  "XMen2SteppedGen.exe": "eae1ed5b81d0c82874f84096e8f5fb80810bbb29",
+  "XMen2Verify.exe": "70a04493bc16a6a65b2339a46b4aad2e52db2016",
+  "XMen2Native.exe": "b3d8dc9c1a60fb50ac4c23cd6ee86eb1fca17d57"
+ },
+ "corpus_check_s": {
+  "traces_s": 848.9,
+  "verify_s": 859.9,
+  "total_s": 859.9,
+  "mode": "native",
+  "refs_made": 76
+ },
+ "corpus_check": {
+  "runs": 76,
+  "verify_runs": 76,
+  "mode": "native",
+  "jobs": 32,
+  "traces": {
+   "s": 848.9,
+   "ok": true,
+   "refs_made": 76,
+   "refs_job_s": 6139.3,
+   "traces_job_s": 6159.1,
+   "detail": "76/76 runs equal",
+   "longest": [
+    {
+     "run": "fuzz-55800-s1",
+     "s": 159.0,
+     "ref_s": 153.4,
+     "sync_points": 53168,
+     "fps": 337.743,
+     "ref_fps": 351.766
+    },
+    {
+     "run": "fuzz-55800-s2",
+     "s": 155.2,
+     "ref_s": 154.9,
+     "sync_points": 53167,
+     "fps": 348.138,
+     "ref_fps": 347.853
+    },
+    {
+     "run": "tas",
+     "s": 151.6,
+     "ref_s": 150.3,
+     "sync_points": 51209,
+     "fps": 341.122,
+     "ref_fps": 344.273
+    },
+    {
+     "run": "fuzz-54000-s2",
+     "s": 148.8,
+     "ref_s": 151.8,
+     "sync_points": 51405,
+     "fps": 348.824,
+     "ref_fps": 346.819
+    },
+    {
+     "run": "fuzz-54000-s1",
+     "s": 150.7,
+     "ref_s": 147.7,
+     "sync_points": 51405,
+     "fps": 344.658,
+     "ref_fps": 352.172
+    },
+    {
+     "run": "fuzz-52200-s2",
+     "s": 148.5,
+     "ref_s": 145.8,
+     "sync_points": 49647,
+     "fps": 337.768,
+     "ref_fps": 346.491
+    }
+   ]
+  },
+  "verify": {
+   "s": 859.9,
+   "ok": true,
+   "job_s": 14622.5,
+   "detail": "76/76 runs pass",
+   "longest": [
+    {
+     "run": "fuzz-55800-s2",
+     "s": 344.6,
+     "frames": 59400,
+     "fps": 172
+    },
+    {
+     "run": "fuzz-55800-s1",
+     "s": 340.8,
+     "frames": 59400,
+     "fps": 174
+    },
+    {
+     "run": "fuzz-54000-s1",
+     "s": 337.0,
+     "frames": 57600,
+     "fps": 171
+    },
+    {
+     "run": "tas",
+     "s": 335.7,
+     "frames": 57465,
+     "fps": 171
+    },
+    {
+     "run": "fuzz-54000-s2",
+     "s": 335.2,
+     "frames": 57600,
+     "fps": 172
+    },
+    {
+     "run": "fuzz-41400-s2",
+     "s": 332.4,
+     "frames": 45000,
+     "fps": 135
+    }
+   ]
+  },
+  "total_s": 859.9
+ },
+ "pass": {
+  "clean_build": true,
+  "corpus_check": true,
+  "parallel_build_dirs": true
+ }
+}
