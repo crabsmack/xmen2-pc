@@ -51,7 +51,13 @@ void Level_FrameLoop(void)
 			++g_PlayersAlive;
 		if (IS_ALIVE(&g_Player2))
 			++g_PlayersAlive;
+#if defined(XMEN2_NATIVE)
+		/* phase 6 R3 (full_rate_2p): two players on the one-player stepping, so no frame-tick
+		   wait below and every counter steps by 1 (PlayerSelect_Run inherits the 0) */
+		g_TwoPlayerStep = g_PlayersAlive == 2 && !g_opt.full_rate_2p;
+#else
 		g_TwoPlayerStep = g_PlayersAlive == 2;
+#endif
 		Spr_BeginFrame();
 		if (g_HudOn) {
 			if (g_HudDirty)

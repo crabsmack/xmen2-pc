@@ -43,6 +43,8 @@ void plat_scanline(int row, const uint32_t *argb, int width);
 void plat_frame_begin(uint64_t frame);   /* runner frame `frame` begins: its pads */
 void plat_frame_audio(uint64_t frame);   /* the Z80 has run its frame: the sound of it */
 void plat_frame_end(uint64_t frame);     /* it ends (at its sync point): its picture, the benchmark */
+int  plat_realtime(void);                /* a played run (a window, paced): nothing is traced */
+void plat_frame_repeat(void);            /* played: one more display period of the same picture */
 void plat_sync_row(uint64_t sync, uint64_t frame);   /* a sync point: its row, from the export */
 
 #ifdef __cplusplus

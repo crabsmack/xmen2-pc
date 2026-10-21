@@ -173,15 +173,37 @@ static void maybe_dump_sync(uint64_t sync)
     }
 }
 
+/* ---- the game's state as the platform reads it (phase 6) ------------------------------------- */
+
+static uint32_t ram16(uint32_t off) { return (uint32_t)xm_ram_peek8(off & 0xFFFFu) << 8 | xm_ram_peek8((off + 1) & 0xFFFFu); }
+static uint32_t ram32(uint32_t off) { return ram16(off) << 16 | ram16(off + 2); }
+
+/* The screen id (P6-enhance.md "The contract"): the name string of the running scene's
+   g_SceneTable entry ($FFF3AE, 8 bytes each: name, run), g_SceneIndex ($FFCC64); "boot" before
+   the first scene. */
+std::string scene_id(void)
+{
+    int idx = (int16_t)ram16(0xCC64);
+    uint32_t p = idx >= 0 && idx < 52 ? ram32(0xF3AE + 8u * (uint32_t)idx) & 0xFFFFFFu : 0;
+    if (!p || p >= 0x400000u) return "boot";
+    std::string s;
+    while (p < 0x400000u && g_rom[p] && s.size() < 64) s += (char)g_rom[p++];
+    return s;
+}
+
 /* phase 6's `enhance` counters (P6-enhance.md "The contract"), from the game's own state at each
-   sync point (a logic frame): g_PlayersAlive ($FFC920), g_TwoPlayerStep ($FFC922) */
+   logic frame: a sync point inside the game's frame loops (g_InLevelLoop, $FFC942: Level_Run's
+   Level_FrameLoop and PlayerSelect_Run; not loads and fades, where Level_Load leaves
+   g_TwoPlayerStep at 1 in one-player games too): g_PlayersAlive ($FFC920), g_TwoPlayerStep ($FFC922) */
 static uint64_t s_two_player_frames, s_two_player_step_frames;
 
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
-    if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
-    if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
+    if (xm_ram_peek8(0xC942)) {   /* g_InLevelLoop: a pass of Level_FrameLoop / PlayerSelect_Run */
+        if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
+        if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
+    }
     if (!s_sync && !getenv("XMEN2_SYNC_DUMP")) return;   /* a played run compares nothing */
     xm_export(&s_image);
     maybe_dump_sync(sync);
@@ -249,6 +271,8 @@ extern "C" void plat_frame_audio(uint64_t frame)
     if (s_interactive) host_audio(frame);
 }
 
+extern "C" int plat_realtime(void) { return s_interactive; }
+
 /* ---- input script --------------------------------------------------------------------------- */
 
 struct PadSpan { uint16_t pad[2]; uint64_t frames; };
@@ -307,6 +331,11 @@ static std::chrono::steady_clock::time_point s_t0;
    export, the Z80 and the render; with --benchmark nothing else), for finding slow scenes */
 static FILE *s_ftimes;
 static std::chrono::steady_clock::time_point s_tlast;
+
+extern "C" void plat_frame_repeat(void)
+{
+    if (s_interactive) host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
+}
 
 extern "C" void plat_frame_end(uint64_t frame)
 {

@@ -762,7 +762,34 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
 - **Which corpus runs have two players** (options off): only `scenario-options-menu`, 3,192 of
   its 6,070 logic frames (3,194 with the step flag; 746 frame-tick waits). The TAS and
   `scenario-two-player` never have two players alive in a level: each has one frame with
-  `g_TwoPlayerStep` set (which setter is open; see E3) and no wait.
+  `g_TwoPlayerStep` set and no wait: sync point 1 (see E3).
+
+### E3: two players at the full rate (2026-10-21)
+
+- **Who sets `g_TwoPlayerStep`.** `Level_FrameLoop` (`1FA124`) every pass (`g_PlayersAlive == 2`),
+  then waits for the frame tick (`IRQ_WAIT`) in stepped frames. `PlayerSelect_Run` (`0656B0`)
+  never sets it: it inherits the last level pass's value (two players: it waits and steps by 2
+  too). `Level_Load` (`1F98A8`) sets 1 and `SentinelsA1_LoadLevel` (`0E78F2`) sets 0 then 1: both
+  hold only until the frame loop's first pass, in one-player games too (every run has the flag
+  at sync point 1: the power-on `Level_Load`, before any frame loop). `BaniMazaA1_`, `SavageC1_`
+  and `SavageB1_LoadLevel` (`0383DC`, `0C0E54`, `0C1258`) set 1 then 0 at once (no effect).
+  `Cerebro_PlayIntro` paces itself by V-blank counts in every mode, not by the step.
+- **The option** is one native branch in `Level_FrameLoop`:
+  `g_TwoPlayerStep = g_PlayersAlive == 2 && !g_opt.full_rate_2p`. So the frame-tick wait and
+  every `g_TwoPlayerStep ? 2 : 1` go with it, and `PlayerSelect_Run` inherits the 0. The loaders'
+  1 stays (it is one-player behaviour too, and E3 requires one-player runs unchanged).
+- **Logic frames** for the `enhance` counters are sync points inside the game's frame loops
+  (`g_InLevelLoop`, $FFC942: `Level_Run` sets it around `Level_FrameLoop`, `PlayerSelect_Run`
+  around its loop), not the loads and fades between them, where the loaders' 1 sits.
+- **Result** (corpus, `--fb`): the 75 runs without two players have identical rows and frames
+  with the option on; `scenario-options-menu` (3,192 two-player frames) has 0 stepped frames and
+  0 frame-tick waits with it on, and runs to its end.
+- **Played two-player speed with the option off.** The frame-synchronous machine (P5 R5) shows
+  one frame per logic frame, so two players (logic stepping by 2) played at twice the speed. A
+  played run (no trace) now gives each frame-tick V-int its console frame: the Z80's frame and
+  its sound, and one more display period of the same picture (`plat_frame_repeat`). Two players
+  play at the original's 30 logic frames a second with the music at its tempo. Traced runs keep
+  the stepped runners' machine (no Z80 frame there), so the corpus is unchanged.
 
 ## Open questions
 

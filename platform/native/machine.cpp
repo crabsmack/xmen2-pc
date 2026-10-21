@@ -679,11 +679,23 @@ static void fsync_vint(void)
 }
 
 static uint64_t s_frame_tick_waits;   /* phase 6's frame_tick_waits: V-ints taken here */
+static void z80_frame(void);
+static uint64_t s_frame_no, s_sync_no;
 
+/* A played run (no sync rows to keep) gives this V-int the frame it is on the console: the Z80's
+   frame and its sound, and one display period with the picture unchanged (plat_frame_repeat). So
+   two players with the frame-tick wait play at the original's 30 logic frames a second, with the
+   music at its tempo, not at twice the speed. Traced runs keep the stepped runners' machine. */
 extern "C" void plat_wait_vint(void)
 {
     if ((REG(1) & 0x20) && ((s_sr >> 8) & 7u) < 6u) {
         s_frame_tick_waits++;
+        if (plat_realtime()) {
+            z80_frame();
+            plat_frame_audio(s_frame_no);
+            g_snd_frame++;
+            plat_frame_repeat();
+        }
         take_vint();
     }
 }
@@ -692,8 +704,6 @@ extern "C" uint64_t machine_frame_tick_waits(void) { return s_frame_tick_waits; 
 
 /* ======================================================================== */
 /* Frames                                                                    */
-
-static uint64_t s_frame_no, s_sync_no;
 
 static void render_frame(void)
 {
