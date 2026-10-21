@@ -14,6 +14,10 @@ void Game_ResetPlayers(void)
 	g_Player2.cls = 0;
 	g_Player2.flags = 0;
 	g_P2Lives = 9;
+#if defined(XMEN2_NATIVE)
+	g_SceneIndex = plat_debug_first_scene(g_ScnSiberiaB1);	/* XMEN2_DEBUG_SCENE: a development test */
+#else
 	g_SceneIndex = g_ScnSiberiaB1;
+#endif
 	g_SceneIndexSet = 1;
 }

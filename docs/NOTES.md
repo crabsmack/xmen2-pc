@@ -862,6 +862,14 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   still in Siberia where the recording is in the Sentinels stage, and it never leaves Siberia.
 - **Results** (corpus, `widescreen=16:9`): 76/76 runs to their end, 0 terrain errors, 0 lost
   sprites, 0 misplaced HUD frames. `phase.py 6` E5 passes (2026-10-21, XMen2Recomp ecae533).
+- **Every world** (a development test, beyond the corpus): `XMEN2_DEBUG_SCENE=n` starts a new
+  game at scene n (Game_ResetPlayers, native branch); from each world's Cerebro briefing (scenes
+  1, 8, 18, 24, 34, 38) a "walker" input (right held, B/C/A presses, a Start pair every 300
+  frames) plays 30,000 frames with widescreen: SentinelsD1, AvalonB1, BaniMazaB2, SavageC1,
+  SpaceB1 and CloneA1 (plus their briefings, player selects and the failure screen) all with 0
+  terrain errors, 0 lost sprites, the HUD in place; the same with all three options on (15,000
+  frames each). `uv run tools/ws_warp.py OUT [--frames N] [--options ...]` (headless,
+  `XMEN2_SHOTS` every 1,500 frames; exit 1 on any terrain error, lost sprite or misplaced HUD).
 
 ### E4: high frame rate (2026-10-21)
 

@@ -167,6 +167,12 @@ void options_toggle_widescreen(void) { ws_request_toggle(); }
 
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
+extern "C" int plat_debug_first_scene(int scene)
+{
+    const char *e = getenv("XMEN2_DEBUG_SCENE");
+    return e && *e ? atoi(e) : scene;
+}
+
 /* Removes --options and its argument from argv (main parses the rest); exits after --options --json. */
 void options_init(int *argc, char **argv)
 {

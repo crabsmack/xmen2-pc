@@ -26,6 +26,10 @@ void plat_ws_cerebro(int on);   /* Cerebro_Run: a Cerebro screen is running (4:3
    draw-list node's object, a timer, a scene hook), for matching them between frames (R4) */
 void plat_spr_owner(const void *owner);
 
+/* development tests (options.cpp): XMEN2_DEBUG_SCENE=n makes scene n the first one of a new game
+   (Game_ResetPlayers); without it, `scene` (the original) */
+int plat_debug_first_scene(int scene);
+
 #ifdef __cplusplus
 }
 #endif
