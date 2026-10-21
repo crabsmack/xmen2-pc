@@ -25,7 +25,7 @@ void Explosion_Update(register Explosion *e)
 		register short sx = e->x - g_CameraX;
 		register short sy = e->y - g_CameraY;
 
-		if (sx > -32 && sx < 320 && sy > -32 && sy < 224) {
+		if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy > -32 && sy < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 0xF;

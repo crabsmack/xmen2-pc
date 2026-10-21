@@ -12,7 +12,7 @@ char SwampFly_SpawnRecInView(register SpawnRec *self, register SpawnRec *rec)
 {
 	if (g_JunglePalPhase)
 		return rec->placement->param[4] < g_JunglePalPhase
-		    && (rec->x < g_CameraX || rec->x > g_CameraX + 0x140 || rec->y < g_CameraY
+		    && (rec->x < ACT_L(g_CameraX) || rec->x > g_CameraX + ACT_R(0x140) || rec->y < g_CameraY
 			|| rec->y > g_CameraY + 0xC8)
 		    && (char)Actor_SpawnRecInView(self, rec);
 	return Actor_SpawnRecInView(self, rec);

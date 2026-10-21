@@ -11,7 +11,7 @@
 
 /* One 32x32 hardware sprite at screen (x, y) when on screen. */
 #define EMIT_32X32(X, Y, ATTR) \
-	if ((X) > -0x20 && (X) < 0x140 && (Y) > -0x20 && (Y) < 0xE0) { \
+	if ((X) > VIEW_L(-0x20) && (X) < VIEW_R(0x140) && (Y) > -0x20 && (Y) < 0xE0) { \
 		g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link); \
 		g_SprWritePtr->y = (Y) + 0x80; \
 		g_SprWritePtr->size = 0xF; \

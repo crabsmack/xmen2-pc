@@ -22,7 +22,7 @@ void ApocBomb_DrawShadow(register Actor *obj)
 	register short x = px - g_CameraX - dx;
 	register short y = gy - g_CameraY - dy;
 
-	if (x > -(dx << 1) && x < 320 && y > -dy && y < 224) {
+	if (x > VIEW_L(-(dx << 1)) && x < VIEW_R(320) && y > -dy && y < 224) {
 		register short attr = g_SpriteDefs[g_ApocBombSprDef].tileBase + f->tile;
 		char size = f->size;
 		register unsigned char flags = obj->spr.flags;

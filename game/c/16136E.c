@@ -104,10 +104,10 @@ void Cam_TrackPlayer(Camera *self)
 		short cx = c->x;
 		short cy = c->y;
 
-		if (cx > g_CamMaxX)
-			c->x = g_CamMaxX;
-		if (cx < g_CamMinX)
-			c->x = g_CamMinX;
+		if (cx > CAM_HI(g_CamMinX, g_CamMaxX))
+			c->x = CAM_HI(g_CamMinX, g_CamMaxX);
+		if (cx < CAM_LO(g_CamMinX, g_CamMaxX))
+			c->x = CAM_LO(g_CamMinX, g_CamMaxX);
 		if (cy > g_CamMaxY)
 			c->y = g_CamMaxY;
 		if (cy < g_CamMinY)

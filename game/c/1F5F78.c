@@ -15,10 +15,10 @@ void Cam_SetPos(short x, short y)
 
 	g_CameraX = x;
 	g_CameraY = y;
-	if (g_CameraX > g_CamMaxX)
-		g_CameraX = g_CamMaxX;
-	if (g_CameraX < g_CamMinX)
-		g_CameraX = g_CamMinX;
+	if (g_CameraX > CAM_HI(g_CamMinX, g_CamMaxX))
+		g_CameraX = CAM_HI(g_CamMinX, g_CamMaxX);
+	if (g_CameraX < CAM_LO(g_CamMinX, g_CamMaxX))
+		g_CameraX = CAM_LO(g_CamMinX, g_CamMaxX);
 	if (g_CameraY > g_CamMaxY)
 		g_CameraY = g_CamMaxY;
 	if (g_CameraY < g_CamMinY)

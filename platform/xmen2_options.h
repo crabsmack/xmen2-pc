@@ -16,6 +16,12 @@ typedef struct XmOptions {
 
 extern XmOptions g_opt;
 
+/* widescreen (platform/native/widescreen.cpp): the wide view's margin per side in px on the
+   running screen (0: a 4:3 screen, or the option off), and the activation margin (R6) */
+int plat_ws_view(void);
+int plat_ws_act(void);
+void plat_ws_cerebro(int on);   /* Cerebro_Run: a Cerebro screen is running (4:3, R5) */
+
 #ifdef __cplusplus
 }
 #endif

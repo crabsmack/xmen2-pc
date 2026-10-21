@@ -39,6 +39,9 @@ void Cerebro_Run(void)
 	register s16 *p;
 	register s16 *q;
 
+#if defined(XMEN2_NATIVE)
+	plat_ws_cerebro(1);	/* phase 6 R5: a Cerebro screen (4:3), even under a stage's scene index */
+#endif
 	music = 9;
 	if (g_ScnCredits == g_SceneIndex)
 		music = -1;
@@ -184,4 +187,7 @@ void Cerebro_Run(void)
 	VDP_WaitVBlank();
 	g_Player1.health = g_P1Health;
 	g_Player2.health = g_P2Health;
+#if defined(XMEN2_NATIVE)
+	plat_ws_cerebro(0);
+#endif
 }

@@ -565,4 +565,39 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define IRQ_WAIT()             plat_wait_vint()
 #endif
 
+/* Phase 6, 16:9 (xmen2disasm docs/phases/P6-enhance.md R5-R7): in NATIVE, WS is the wide view's
+   margin per side in px (plat_ws_view(): 0 on 4:3 screens and with the option off); VIEW_L/VIEW_R
+   widen a horizontal bound of the 320-px view by it (what is drawn), ACT_L/ACT_R by the activation
+   margin (R6: what spawns and acts), and CAM_LO/CAM_HI(g_CamMinX, g_CamMaxX) are the camera's limits
+   with the wide view kept inside them (an arena narrower than the wide view: its middle). In MPW and PC each is
+   the original bound, token for token, so every byte match stays (the globals are arguments: cc.py
+   substitutes their names in the source text before MPW compiles it). */
+#if defined(XMEN2_NATIVE)
+#define WS                     ((short)plat_ws_view())
+#define VIEW_L(v)              ((v) - WS)
+#define VIEW_R(v)              ((v) + WS)
+#define ACT_L(v)               ((v) - (short)plat_ws_act())
+#define ACT_R(v)               ((v) + (short)plat_ws_act())
+static inline short ws_cam_lo(short lo, short hi)
+{
+    short m = WS;
+    return !m ? lo : lo + m <= hi - m ? (short)(lo + m) : (short)((lo + hi) / 2);
+}
+static inline short ws_cam_hi(short lo, short hi)
+{
+    short m = WS;
+    return !m ? hi : lo + m <= hi - m ? (short)(hi - m) : (short)((lo + hi) / 2);
+}
+#define CAM_LO(lo, hi)         ws_cam_lo(lo, hi)
+#define CAM_HI(lo, hi)         ws_cam_hi(lo, hi)
+#else
+#define WS                     0
+#define VIEW_L(v)              (v)
+#define VIEW_R(v)              (v)
+#define ACT_L(v)               (v)
+#define ACT_R(v)               (v)
+#define CAM_LO(lo, hi)         (lo)
+#define CAM_HI(lo, hi)         (hi)
+#endif
+
 #endif /* XMEN2_MEM_H */

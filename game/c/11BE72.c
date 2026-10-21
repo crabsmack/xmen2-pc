@@ -16,7 +16,7 @@
 		step = 1; \
 	else \
 		step = 0; \
-	if (sx > -32 && sx < 320 && sy + (step >> 1) > -32 && sy + (step >> 1) < 224) { \
+	if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy + (step >> 1) > -32 && sy + (step >> 1) < 224) { \
 		g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link); \
 		g_SprWritePtr->y = (short)(sy + (step >> 1)) + 0x80; \
 		g_SprWritePtr->size = 0; \

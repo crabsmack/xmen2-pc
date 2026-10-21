@@ -35,7 +35,7 @@ short Scaler_EmitSprites(short x, short y, short pal, char prio)
 			short sx = x + dx;
 			short sy = y + dy;
 
-			if (sx >= 0x60 && sx <= 0x1C0 && sy >= 0x60 && sy <= 0x160) {	/* Scaler_EmitSprites_Loop */
+			if (sx >= VIEW_L(0x60) && sx <= VIEW_R(0x1C0) && sy >= 0x60 && sy <= 0x160) {	/* Scaler_EmitSprites_Loop */
 				unsigned short slot = (u8)g_SprWritePtr->link;
 				HwSprite *s;
 

@@ -720,6 +720,7 @@ static void render_frame(void)
             if (host_palette)
                 memcpy(s_cram_argb + GVDP_HOST_PALETTE_BASE, host_palette, GVDP_HOST_PALETTE_SIZE * sizeof(uint32_t));
             for (int x = 0; x < n; x++) rowbuf[x] = s_cram_argb[idxbuf[x]];
+            if (g_opt.widescreen) ws_mask_line(row, rowbuf, n);
             plat_scanline(row, rowbuf, n);
         }
     }
@@ -767,7 +768,9 @@ extern "C" void plat_sync_point(void)
     plat_frame_end(s_frame_no);
     frame_begin();
     fsync_vint();
+    ws_frame_setup();
     render_frame();
+    ws_frame_check();
 }
 
 /* Power-on, then frame 1 up to the game's first instruction. */

@@ -11,6 +11,7 @@
 #include <string>
 void        options_init(int *argc, char **argv);   /* options.cpp: --options, xmen2.ini */
 std::string options_effective_json(void);           /* {"opt": "value", ...} */
+std::string ws_counters_json(void);                 /* widescreen.cpp: the `ws` counters */
 extern "C" {
 #endif
 
@@ -46,6 +47,11 @@ void plat_frame_end(uint64_t frame);     /* it ends (at its sync point): its pic
 int  plat_realtime(void);                /* a played run (a window, paced): nothing is traced */
 void plat_frame_repeat(void);            /* played: one more display period of the same picture */
 void plat_sync_row(uint64_t sync, uint64_t frame);   /* a sync point: its row, from the export */
+
+/* widescreen.cpp (phase 6): the renderer's margins before a frame is rendered, the checks after */
+void ws_frame_setup(void);
+void ws_frame_check(void);
+void ws_mask_line(int row, uint32_t *argb, int width);   /* the bars (R6) on one rendered row */
 
 #ifdef __cplusplus
 }

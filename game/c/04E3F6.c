@@ -25,7 +25,7 @@ void ApocBomb_Draw(register ApocBomb *self)
 		register short x = (self->x >> 8) - g_CameraX - dx;
 		register short y = (self->y >> 8) - g_CameraY - dy;
 
-		if (x > -(dx << 1) && x < 320 && y > -dy && y < 224) {
+		if (x > VIEW_L(-(dx << 1)) && x < VIEW_R(320) && y > -dy && y < 224) {
 			register short attr = spr->tileBase + f->tile;
 			register unsigned char flags;
 
@@ -47,7 +47,7 @@ void ApocBomb_Draw(register ApocBomb *self)
 				register short x = (self->x >> 8) - g_CameraX - dx;
 				register short y = self->groundY - g_CameraY - dy;
 
-				if (x > -(dx << 1) && x < 320 && y > -dy && y < 224) {
+				if (x > VIEW_L(-(dx << 1)) && x < VIEW_R(320) && y > -dy && y < 224) {
 					register short attr = spr->tileBase + f->tile;
 					register unsigned char flags;
 

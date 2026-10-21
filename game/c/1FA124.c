@@ -66,25 +66,25 @@ void Level_FrameLoop(void)
 			if (IS_ALIVE(pl)) {
 				if (pl->health <= 0x200 && !(g_FrameCounter & 0xE))
 					HUD_UpdateHealthBars();
-				HUD_SPRITE(0x132, 0xF, 0xA7E8, 0xA5);
+				HUD_SPRITE(0x132, 0xF, 0xA7E8, VIEW_L(0xA5));
 				if (g_P1HasMeter)
-					HUD_SPRITE(0x133, 7, 0xA7F8, 0x8F);
+					HUD_SPRITE(0x133, 7, 0xA7F8, VIEW_L(0x8F));
 				else
-					HUD_SPRITE(0x133, 3, 0xA7FC, 0x97);
+					HUD_SPRITE(0x133, 3, 0xA7FC, VIEW_L(0x97));
 			}
 			pl = &g_Player2;
 			if (IS_ALIVE(pl)) {
 				if (pl->health <= 0x200 && !(g_FrameCounter & 0xE))
 					HUD_UpdateHealthBars();
-				HUD_SPRITE(0x132, 0xF, 0xA7D0, 0x17A);
+				HUD_SPRITE(0x132, 0xF, 0xA7D0, VIEW_R(0x17A));
 				if (g_P2HasMeter)
-					HUD_SPRITE(0x133, 7, 0xA7E0, 0x1A1);
+					HUD_SPRITE(0x133, 7, 0xA7E0, VIEW_R(0x1A1));
 				else
-					HUD_SPRITE(0x133, 3, 0xA7E0, 0x1A1);
+					HUD_SPRITE(0x133, 3, 0xA7E0, VIEW_R(0x1A1));
 			} else if ((g_SiberiaIntro && (char)Pad_IsP2Connected()) || g_DemoActive) {
 				if (g_FrameCounter & 0x10) {
-					HUD_SPRITE(0x148, 0xC, 0xA7D0, 0x16D);
-					HUD_SPRITE(0x148, 0xC, 0xA7D4, 0x191);
+					HUD_SPRITE(0x148, 0xC, 0xA7D0, VIEW_R(0x16D));
+					HUD_SPRITE(0x148, 0xC, 0xA7D4, VIEW_R(0x191));
 				}
 			}
 			if (g_SprIndex == 0x51)

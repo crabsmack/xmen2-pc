@@ -28,7 +28,7 @@ void FluxBomb_DrawBurst(FluxBomb *self)
 		if (p->flags & 1) {
 			x = sx + p->x;
 			y = sy + p->y;
-			if (x > -8 && x < 0x140 && y > -8 && y < 0xE0) {
+			if (x > VIEW_L(-8) && x < VIEW_R(0x140) && y > -8 && y < 0xE0) {
 				NEXT_SPRITE();
 				g_SprWritePtr->y = y + 0x80;
 				g_SprWritePtr->size = 0;

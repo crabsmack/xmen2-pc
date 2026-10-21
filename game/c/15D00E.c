@@ -12,7 +12,11 @@
 #include "xmen2.h"
 
 /* How far left and right of the screen a block is still drawn: what the streamer keeps. */
+#if defined(XMEN2_NATIVE)	/* phase 6 R7: with the 16:9 view the streamer keeps the whole plane */
+#define MARGIN(narrow)	((narrow) && !WS ? 0x20 : 0xC0)
+#else
 #define MARGIN(narrow)	((narrow) ? 0x20 : 0xC0)
+#endif
 /* MIN of the block's last tile (unsigned: bx, by are) and the streamed window's: MPW compares
    them unsigned (shi), so a window edge below 0 never wins; PC compares the same way. */
 #ifdef XMEN2_MPW

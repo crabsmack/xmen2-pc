@@ -173,24 +173,6 @@ static void maybe_dump_sync(uint64_t sync)
     }
 }
 
-/* ---- the game's state as the platform reads it (phase 6) ------------------------------------- */
-
-static uint32_t ram16(uint32_t off) { return (uint32_t)xm_ram_peek8(off & 0xFFFFu) << 8 | xm_ram_peek8((off + 1) & 0xFFFFu); }
-static uint32_t ram32(uint32_t off) { return ram16(off) << 16 | ram16(off + 2); }
-
-/* The screen id (P6-enhance.md "The contract"): the name string of the running scene's
-   g_SceneTable entry ($FFF3AE, 8 bytes each: name, run), g_SceneIndex ($FFCC64); "boot" before
-   the first scene. */
-std::string scene_id(void)
-{
-    int idx = (int16_t)ram16(0xCC64);
-    uint32_t p = idx >= 0 && idx < 52 ? ram32(0xF3AE + 8u * (uint32_t)idx) & 0xFFFFFFu : 0;
-    if (!p || p >= 0x400000u) return "boot";
-    std::string s;
-    while (p < 0x400000u && g_rom[p] && s.size() < 64) s += (char)g_rom[p++];
-    return s;
-}
-
 /* phase 6's `enhance` counters (P6-enhance.md "The contract"), from the game's own state at each
    logic frame: a sync point inside the game's frame loops (g_InLevelLoop, $FFC942: Level_Run's
    Level_FrameLoop and PlayerSelect_Run; not loads and fades, where Level_Load leaves
@@ -220,10 +202,11 @@ static void report_counters(void)
     xm_export_stats(exported, (int)sizeof exported);
     char memory[256];
     xm_mem_census(memory, (int)sizeof memory);
-    char enhance[512];
+    char enhance[4096];
     snprintf(enhance, sizeof enhance, "{\"two_player_frames\": %llu, \"two_player_step_frames\": %llu, "
-             "\"frame_tick_waits\": %llu}", (unsigned long long)s_two_player_frames,
-             (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits());
+             "\"frame_tick_waits\": %llu%s}", (unsigned long long)s_two_player_frames,
+             (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits(),
+             g_opt.widescreen ? (", \"ws\": " + ws_counters_json()).c_str() : "");
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
                     "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
@@ -337,8 +320,28 @@ extern "C" void plat_frame_repeat(void)
     if (s_interactive) host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
 }
 
+/* XMEN2_SHOTS=n,m,... + XMEN2_DUMP_DIR: the picture of those runner frames as fNNNNNN.bmp (headless
+   too; for looking at what a trace did) */
+static void maybe_shot(uint64_t frame)
+{
+    static const char *list = getenv("XMEN2_SHOTS"), *dir = getenv("XMEN2_DUMP_DIR");
+    if (!list || !dir) return;
+    for (const char *s = list; *s; ) {
+        char *e;
+        unsigned long long n = strtoull(s, &e, 10);
+        if (e == s) break;
+        if (n == frame) {
+            char path[600];
+            snprintf(path, sizeof path, "%s/f%06llu.bmp", dir, n);
+            host_screenshot(path, &s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
+        }
+        s = *e ? e + 1 : e;
+    }
+}
+
 extern "C" void plat_frame_end(uint64_t frame)
 {
+    maybe_shot(frame);
     if (s_ftimes) {
         auto now = std::chrono::steady_clock::now();
         fprintf(s_ftimes, "%llu,%lld\n", (unsigned long long)frame,

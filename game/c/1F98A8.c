@@ -149,20 +149,20 @@ void Level_Load(void *fgMap, void *fgTiles, void *bgMap, void *bgTiles, void *fg
 	{
 		register char ok = (char)DrawList_Init();
 
-		g_SpawnWinLeft = -0x80;
-		g_SpawnWinRight = 0x1C0;
+		g_SpawnWinLeft = ACT_L(-0x80);
+		g_SpawnWinRight = ACT_R(0x1C0);
 		g_SpawnWinTop = -0x80;
 		g_SpawnWinBottom = 0x160;
-		g_DespawnWinLeft = -0x100;
-		g_DespawnWinRight = 0x240;
+		g_DespawnWinLeft = ACT_L(-0x100);
+		g_DespawnWinRight = ACT_R(0x240);
 		g_DespawnWinTop = -0x100;
 		g_DespawnWinBottom = 0x1E0;
-		g_DeactWinLeft = -0x64;
-		g_DeactWinRight = 0x1A4;
+		g_DeactWinLeft = ACT_L(-0x64);
+		g_DeactWinRight = ACT_R(0x1A4);
 		g_DeactWinTop = -0x32;
 		g_DeactWinBottom = 0x13A;
-		g_ActWinLeft = -0x5A;
-		g_ActWinRight = 0x19A;
+		g_ActWinLeft = ACT_L(-0x5A);
+		g_ActWinRight = ACT_R(0x19A);
 		g_ActWinTop = -0x28;
 		g_ActWinBottom = 0x130;
 		g_HalfSpeed = 0;

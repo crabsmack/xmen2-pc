@@ -48,7 +48,7 @@ void Launcher_Draw(register Launcher *self)
 				shot->x = 0;
 				continue;
 			}
-			if (sx > -0x20 && sx < 0x140 && sy > -0x20 && sy < 0xE0) {
+			if (sx > VIEW_L(-0x20) && sx < VIEW_R(0x140) && sy > -0x20 && sy < 0xE0) {
 				g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 				g_SprWritePtr->y = sy + 0x80;
 				g_SprWritePtr->size = 0;

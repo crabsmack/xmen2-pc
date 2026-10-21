@@ -65,7 +65,7 @@ void BigBio_Draw(register BigBio *self)
 			attr |= (self->spr.flags & 3) << 13;
 			for (j = 0; j < 16; j++, orb++) {
 				if ((orb->x > 0 || orb->y > 0)
-				    && orb->x - g_CameraX > -32 && orb->x - g_CameraX < 320
+				    && orb->x - g_CameraX > VIEW_L(-32) && orb->x - g_CameraX < VIEW_R(320)
 				    && orb->y - g_CameraY > -32 && orb->y - g_CameraY < 224) {
 					g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 					g_SprWritePtr->y = orb->y - g_CameraY + 0x80;

@@ -22,7 +22,7 @@ void HornetBullet_Draw(register HornetBullet *self)
 	attr = self->spr.tileBase | 0xA000;
 	if (self->vx < 0)
 		attr |= 0x800;
-	if (sx > -8 && sx < 320 && sy > -8 && sy < 224) {
+	if (sx > VIEW_L(-8) && sx < VIEW_R(320) && sy > -8 && sy < 224) {
 		g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 		g_SprWritePtr->y = (short)(sy + 0x80);
 		g_SprWritePtr->size = 0;

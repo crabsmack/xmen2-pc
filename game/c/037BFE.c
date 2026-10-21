@@ -44,14 +44,14 @@ void ThronePhone_Draw(register ThronePhone *self)
 		x1 = cx + off;
 		x2 = cx - off;
 		if (y > -8 && y < 0xE0) {
-			if (x1 > -8 && x1 < 0x140) {
+			if (x1 > VIEW_L(-8) && x1 < VIEW_R(0x140)) {
 				g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 				g_SprWritePtr->y = y + 0x80;
 				g_SprWritePtr->size = 0;
 				g_SprWritePtr->attr = attr;
 				g_SprWritePtr->x = x1 + 0x80;
 			}
-			if (x2 > -8 && x2 < 0x140) {
+			if (x2 > VIEW_L(-8) && x2 < VIEW_R(0x140)) {
 				g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 				g_SprWritePtr->y = y + 0x80;
 				g_SprWritePtr->size = 0;

@@ -1,0 +1,47 @@
+# The 16:9 view per screen (xmen2disasm docs/phases/P6-enhance.md R5, E5): every screen id the
+# runner reports (`ws.screens`: the running scene's g_SceneTable name, or "boot"), wide or 4:3, and
+# why. platform/native/widescreen.cpp decides the same way (levels wide, the rest 4:3); phase.py 6
+# checks that every reported screen is listed here with the mode the runner used.
+
+"boot" = { mode = "4:3", why = "power-on and the region check, before the first scene: text on a blank screen, nothing past 320 px" }
+
+# Cerebro screens (Cerebro_Run): drawn wide (XMEN2_WS_ALLWIDE=1, 2026-10-21) the Cerebro frame's
+# machinery continues 40 px at the left, but at the right it ends in a black strip about 40 px wide,
+# and the sprites placed off its left edge show: no wide version that looks meant, so 4:3 with bars.
+"CerebroScreen LogoAndDemo" = { mode = "4:3", why = "the SEGA and Marvel logos, the intro pictures and the title: centred 320-px art (the attract demo runs as a level scene)" }
+"CerebroScreen PlayerSelect" = { mode = "4:3", why = "the select screen's portrait frames and text are laid out for 320 px; also the player select after a death, which runs under the stage's scene index (PlayerSelect_RunScene restores it before Cerebro_Run; the runner knows it by Cerebro_Run)" }
+"CerebroScreen Sentinels" = { mode = "4:3", why = "a Cerebro briefing: the Cerebro frame and its text, 320 px" }
+"CerebroScreen Avalon" = { mode = "4:3", why = "a Cerebro briefing: the Cerebro frame and its text, 320 px" }
+"CerebroScreen BaniMaza" = { mode = "4:3", why = "a Cerebro briefing: the Cerebro frame and its text, 320 px" }
+"CerebroScreen Savage" = { mode = "4:3", why = "a Cerebro briefing: the Cerebro frame and its text, 320 px" }
+"CerebroScreen Space" = { mode = "4:3", why = "a Cerebro briefing: the Cerebro frame and its text, 320 px" }
+"CerebroScreen Clone" = { mode = "4:3", why = "a Cerebro briefing: the Cerebro frame and its text, 320 px" }
+"CerebroScreen FinalText" = { mode = "4:3", why = "the ending's text on the Cerebro frame, 320 px" }
+"CerebroScreen Credits" = { mode = "4:3", why = "the credits' text, laid out for 320 px" }
+"CerebroScreen Failure" = { mode = "4:3", why = "the game-over screen: the Cerebro frame and its text, 320 px" }
+
+# Levels: the level's own maps continue past 320 px, so the wide columns show more of the level
+# (R7: the streamer keeps them drawn; R6: objects activate across the wide view).
+"SiberiaB1 Blizzard" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SentinelsD1 Exterior_1" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SentinelsB1 Exterior_3" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SentinelsA1 CoolantCore" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SentinelsB2 Exterior_Escape" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"AvalonB1 Exterior" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"AvalonB2 InnerShell" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"AvalonA2 Falling_Room" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"AvalonA3 Exodus" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"AvalonA4 Throne_Room" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"BaniMazaB2 Exterior" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"BaniMazaA1 Moving_Blocks" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"BaniMazaA2 ApocalypseBoss" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SavageC1 Jungle_1" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SavageB1 Jungle_2" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SavageA2 Perimeter_1" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SavageA3 Perimeter_2" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SavageA4 Chamber" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SpaceB1 Maintenance_Shaft" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"SpaceA1 Space_Elevator" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"CloneA1 Factory_Floor_1" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"CloneA2 Vertical_Corridor_1" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }
+"CloneA5 BroodBoss" = { mode = "wide", why = "a level: its maps continue past the 320-px view" }

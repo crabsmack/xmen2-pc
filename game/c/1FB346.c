@@ -9,6 +9,15 @@
  * Spr_EmitPreLinked (at +$80) / Spr_EmitStreamLinked (at x, y: it adds the $80 itself). */
 #include "xmen2.h"
 
+/* NATIVE, 16:9 (phase 6): always the clipping emitters. The test for the unclipped ones compares
+   screen x with the camera position itself, so a frame past the view's right edge can go out
+   unclipped, its x past 511, and the VDP's 9 bits put it into the wide view's left margin. */
+#if defined(XMEN2_NATIVE)
+#define NO_CLIP_OK	!WS &&
+#else
+#define NO_CLIP_OK
+#endif
+
 void Spr_Draw(SprInst *spr, short x, short y)
 {
 	short frame;
@@ -36,7 +45,7 @@ void Spr_Draw(SprInst *spr, short x, short y)
 #endif
 	if (type == 0x20) {
 		if (spr->firstChild == 0xFF) {
-			if (f->left + x >= g_CameraX && f->right + x <= g_CameraX + 0x140
+			if (NO_CLIP_OK f->left + x >= g_CameraX && f->right + x <= g_CameraX + 0x140
 			    && f->top + y > g_CameraY && f->bottom + y <= g_CameraY + 0xE0)
 				Spr_EmitPre(spr, x + 0x80, y + 0x80, tile);
 			else
@@ -45,7 +54,7 @@ void Spr_Draw(SprInst *spr, short x, short y)
 			Spr_EmitPreLinked(spr, x + 0x80, y + 0x80, tile);
 	} else if (type == 0x18 || type == 0x19) {
 		if (spr->firstChild == 0xFF) {
-			if (f->left + x >= g_CameraX && f->right + x <= g_CameraX + 0x140
+			if (NO_CLIP_OK f->left + x >= g_CameraX && f->right + x <= g_CameraX + 0x140
 			    && f->top + y > g_CameraY && f->bottom + y <= g_CameraY + 0xE0)
 				Spr_EmitStream(spr, x + 0x80, y + 0x80, tile);
 			else

@@ -26,14 +26,14 @@ void FarAcolyte_Draw(register FarAcolyte *self)
 				attr |= 0x4000;
 		} else
 			attr |= 0x2000;
-		if (sx > -32 && sx < 320 && sy > -32 && sy < 224) {
+		if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy > -32 && sy < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 7;
 			g_SprWritePtr->attr = attr | 0x800;
 			g_SprWritePtr->x = sx + 0x80;
 		}
-		if (sx + 15 > -32 && sx + 15 < 320 && sy > -32 && sy < 224) {
+		if (sx + 15 > VIEW_L(-32) && sx + 15 < VIEW_R(320) && sy > -32 && sy < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 7;

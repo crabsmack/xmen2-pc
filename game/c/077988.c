@@ -47,7 +47,7 @@ void LightBeam_Draw(LightBeam *self)
 		while (left) {
 			if (sx > 0x180)
 				sx -= 0x200;
-			if (sx >= -0x10 && sx <= 0x140) {
+			if (sx >= VIEW_L(-0x10) && sx <= VIEW_R(0x140)) {
 				EMIT(sy, 7, attr + 0x10, sx);
 				EMIT(sy + 0x20, 7, attr + 8, sx);
 				EMIT(sy + 0x40, 7, attr, sx);
@@ -60,7 +60,7 @@ void LightBeam_Draw(LightBeam *self)
 		while (left) {
 			if (sx > 0x180)
 				sx -= 0x200;
-			if (sx >= -8 && sx <= 0x140) {
+			if (sx >= VIEW_L(-8) && sx <= VIEW_R(0x140)) {
 				EMIT(sy, 2, attr1C + 4, sx);
 				EMIT(sy + 0x18, 3, attr1C, sx);
 			}
@@ -73,7 +73,7 @@ void LightBeam_Draw(LightBeam *self)
 		while (left) {
 			if (sx > 0x180)
 				sx -= 0x200;
-			if (sx >= -8 && sx <= 0x140) {
+			if (sx >= VIEW_L(-8) && sx <= VIEW_R(0x140)) {
 				EMIT(sy, 3, attr18, sx);
 			}
 			left--;

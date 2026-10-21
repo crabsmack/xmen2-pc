@@ -43,7 +43,7 @@ void RetractFloor_Draw(register RetractFloor *self)
 	for (i = 1; i < 3; i++) {
 		left -= 32;
 		right += 32;
-		if (right > 0x140)
+		if (right > VIEW_R(0x140))
 			return;
 		g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 		g_SprWritePtr->y = y + 0x80;

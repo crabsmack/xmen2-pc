@@ -23,7 +23,7 @@ void BanimazaDoor_DrawColumn(register BanimazaDoor *self)
 	while (h >= 32) {
 		sy -= 32;
 		h -= 32;
-		if (sx > -32 && sx < 320 && sy > -32 && sy < 224) {
+		if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy > -32 && sy < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 0xF;
@@ -35,7 +35,7 @@ void BanimazaDoor_DrawColumn(register BanimazaDoor *self)
 	while (h >= 16) {
 		sy -= 16;
 		h -= 16;
-		if (sx > -32 && sx < 320 && sy > -32 && sy < 224) {
+		if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy > -32 && sy < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 0xD;
@@ -45,7 +45,7 @@ void BanimazaDoor_DrawColumn(register BanimazaDoor *self)
 	}
 	sy -= 16;
 	h -= 16;
-	if (sx > -32 && sx < 320 && sy > -32 && sy < 224) {
+	if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy > -32 && sy < 224) {
 		g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 		g_SprWritePtr->y = sy + 0x80;
 		g_SprWritePtr->size = 0xD;

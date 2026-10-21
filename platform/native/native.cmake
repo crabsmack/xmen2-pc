@@ -15,6 +15,7 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/machine.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/main.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/options.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/widescreen.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/game_entry.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/host_sdl.cpp"
     "${RUNNER_ROOT}/video/genesis_vdp.c"

@@ -163,7 +163,7 @@ void Cyclops_DrawBeam(Cyclops *self, CyclopsBeam *beam)
 			}
 			y += oy;
 			x += ox;
-			if (x > -0x20 && x < 0x140 && y > -0x20 && y < 0xE0) {
+			if (x > VIEW_L(-0x20) && x < VIEW_R(0x140) && y > -0x20 && y < 0xE0) {
 				if (spr->link == 0x50)
 					break;
 				g_SprIndex = spr->link;

@@ -20,7 +20,7 @@ void Map_DrawRowB(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, 
 	VDP_CTRL32 = PLANE_B_WRITE(vramRow, vramCol);
 	Map_PutRowPartB(defs, *cells++, r, start, 4, vramRow, &vramCol);
 	vramCol += 4 - start;
-	for (n = !g_BgWrapX && g_BgNarrow ? 10 : 15; n != 0; n--) {
+	for (n = !g_BgWrapX && g_BgNarrow && !WS ? 10 : 15; n != 0; n--) {
 		Map_PutRowBlockB(defs, *cells++, r, vramRow, &vramCol);
 		vramCol += 4;
 	}

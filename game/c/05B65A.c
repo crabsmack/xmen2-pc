@@ -15,7 +15,7 @@
 
 /* Is o's body box, grown by m on each side, off the screen? */
 #define OFF_SCREEN(o, m) \
-	((o)->boxLeft - (m) - g_CameraX > 320 || (o)->boxRight + (m) - g_CameraX < 0 \
+	((o)->boxLeft - (m) - g_CameraX > VIEW_R(320) || (o)->boxRight + (m) - g_CameraX < VIEW_L(0) \
 	 || (o)->boxTop - (m) - g_CameraY > 224 || (o)->boxBottom + (m) - g_CameraY < 0)
 
 short Boulder_StateBounce(register Boulder *self)

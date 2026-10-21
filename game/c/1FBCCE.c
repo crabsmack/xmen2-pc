@@ -59,7 +59,7 @@ char Spr_EmitStreamLinked(SprInst *spr, long x, long y, short tile)
 		sy += (short)y;
 		/* Spr_EmitStreamLinked_Piece */
 		sx += 0x80;
-		if (sx < 0x60 || sx > 0x1C0)
+		if (sx < VIEW_L(0x60) || sx > VIEW_R(0x1C0))
 			clipped = -1;
 		else if ((sy += 0x80) < 0x60 || sy > 0x160)
 			clipped = -1;

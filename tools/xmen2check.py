@@ -854,8 +854,11 @@ def cmd_options(a) -> dict:
         (Path(td) / "xmen2.ini").write_text("[options]\n" + "".join(f"{k}={v}\n" for k, v in want.items()),
                                             encoding="utf-8")
         got = runner_options([str(Path(td) / src.name)])
+    # "options": the option table itself (phase.py 6's E2 reads options[name]); "runner": all the
+    # runner printed (package's "options" is that whole report: E6 reads options.options[name])
     return {"ok": got.get("effective") == want and got.get("settings_file_found") is True, "exe": str(src),
-            "options": listed, "set_in_settings": want, "from_settings": got.get("effective")}
+            "options": listed["options"], "runner": listed, "set_in_settings": want,
+            "from_settings": got.get("effective")}
 
 
 def cmd_package(a) -> dict:

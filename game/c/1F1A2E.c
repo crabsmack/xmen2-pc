@@ -16,7 +16,7 @@ void XPlayer_Draw(register XPlayer *self)
 	short frame;
 
 	spr = &self->spr;
-	if (self->boxLeft - 40 - g_CameraX <= 320 && self->boxRight + 40 - g_CameraX >= 0
+	if (self->boxLeft - 40 - g_CameraX <= VIEW_R(320) && self->boxRight + 40 - g_CameraX >= VIEW_L(0)
 	    && self->boxTop - 40 - g_CameraY <= 224 && self->boxBottom + 40 - g_CameraY >= 0) {
 		if (self->sparkTimer) {
 			self->sparkTimer -= g_TwoPlayerStep + 1;
@@ -34,6 +34,11 @@ void XPlayer_Draw(register XPlayer *self)
 			short y = self->anim && (*(u8 *)self->anim & 0x30) == 0x30
 				? ((self->y - self->animDist) >> 8) - g_CameraY : (self->y >> 8) - g_CameraY;
 
+#if defined(XMEN2_NATIVE)
+			if (WS)	/* phase 6, 16:9: pieces reach past the box test; clip them to the wide view */
+				Spr_EmitStreamClip(spr, x + 0x80, y + 0x80, self->spr.tileBase);
+			else
+#endif
 			Spr_EmitStream(spr, x + 0x80, y + 0x80, self->spr.tileBase);
 		}
 	}

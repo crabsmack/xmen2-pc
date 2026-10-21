@@ -18,7 +18,7 @@
 #define g_A4Hit1		(*(s32 *)g_SceneVar3B18)	/* scene variable: where the tentacle touched player 1: x | y << 16 */
 #define g_A4Hit2		(*(s32 *)g_SceneVar3B1C)	/* scene variable: the same for player 2 */
 
-#define ON_SCREEN(x, y)	((x) > -0x20 && (x) < 0x140 && (y) > -0x20 && (y) < 0xE0)
+#define ON_SCREEN(x, y)	((x) > VIEW_L(-0x20) && (x) < VIEW_R(0x140) && (y) > -0x20 && (y) < 0xE0)
 
 void SavageBigBio_Draw(SavageBigBio *self)
 {

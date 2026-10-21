@@ -11,7 +11,7 @@ short BabyBio_ActFireLoop(BabyBio *self)
 {
 	short hx = self->homeX >> 8;
 
-	if (hx > g_CameraX && hx < g_CameraX + 0x140) {
+	if (hx > ACT_L(g_CameraX) && hx < g_CameraX + ACT_R(0x140)) {
 		short dx = 13;
 		short dy = -31;
 

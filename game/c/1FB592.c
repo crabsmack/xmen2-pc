@@ -59,7 +59,7 @@ char Spr_EmitPreLinked(SprInst *spr, long x, long y, short tile)
 			sy = -sy - TBL(Tbl_SprHeightLinked)[size];
 		sy += (short)y;
 		/* Spr_EmitPreLinked_Piece */
-		if (sx < 0x60 || sx > 0x1C0 || sy < 0x60 || sy > 0x160
+		if (sx < VIEW_L(0x60) || sx > VIEW_R(0x1C0) || sy < 0x60 || sy > 0x160
 		    || (p->attr < 0 && *(s8 *)&spr->partStates != 0)) {
 			clipped = -1;
 			continue;

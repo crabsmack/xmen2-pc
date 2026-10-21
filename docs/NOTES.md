@@ -791,6 +791,78 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   play at the original's 30 logic frames a second with the music at its tempo. Traced runs keep
   the stepped runners' machine (no Z80 frame there), so the corpus is unchanged.
 
+### E5: 16:9 (2026-10-21, first batch)
+
+- **The view**: 400x224, 40 px beside each side of the 320 (square pixels as the host shows them;
+  224 x 16 / 9 = 398). The renderer is the engine's VDP model with its margins
+  (`gvdp_set_ws_extra(40)`) on a fixed 400-px canvas (`gvdp_set_ws_canvas`): 4:3 screens are
+  centred with black bars. Unlimited sprites while the option is on (the native machine's status
+  never shows the overflow flag, so it is the picture only). `platform/native/widescreen.cpp`.
+- **Which screens** (R5, `game/widescreen_screens.toml`): levels wide, Cerebro screens 4:3. Drawn
+  wide (`XMEN2_WS_ALLWIDE=1`), the Cerebro frame's machinery continues at the left but ends in a
+  black strip at the right, and sprites placed off its left edge show. **The player select after
+  a death runs under the stage's scene index** (`PlayerSelect_RunScene` restores `g_SceneIndex`
+  before `Cerebro_Run`), so `Cerebro_Run` tells the platform (`plat_ws_cerebro`, native branch)
+  and the screen is reported as `CerebroScreen PlayerSelect` (queued in xmen2disasm
+  docs/QUESTIONS.md: the contract's screen id is the scene's name).
+- **The game's width sites** (every `0x140` / `320` / `0x1C0` / `0x60` hardware x in game/c,
+  classified; the macros are in `xmen2_mem.h`, each the original bound token for token in MPW and
+  PC, so all 3,034 byte matches stay):
+  - drawn, `VIEW_L`/`VIEW_R` (+-40): the on-screen culls of 017506, 01C282, 026AA0, 037BFE,
+    039E94, 03A2F4, 04E3F6, 04E644, 05B65A, 05B98C, 05BD92, 077988, 081D08, 0ABF3A, 0BA8FA,
+    0BEA74 (draw), 0BF680, 0BFE6C, 111BAA, 1182D4, 11BE72, 11E9CC, 1219FE, 1375DA, 13DBD8,
+    13E14A, 13E6EE, 13EE20, 158AF8, 158C0E, 1CF432, 1E1604, 1F1A2E, and the sprite emitters'
+    clipping (1FB592, 1FB8A2, 1FBB5E, 1FBCCE, 1FD520). `Spr_Draw` (1FB346) and `XPlayer_Draw`
+    (1F1A2E) always clip in the wide view: Spr_Draw's "wholly on screen" test compares screen x
+    with the camera position itself, and the player's pieces reach past its box test.
+  - activation, `ACT_L`/`ACT_R` (R6): 0BF9EA, 11D2C6, 1340D0, and the eight horizontal spawn,
+    despawn, activate and deactivate windows `Level_Load` (1F98A8) sets (every reader of them
+    reads the globals: 15DB26, 15DBF2, 15DE1E, 15E18C, 106E14, 106EA8, 15A6FC, 01738E...).
+  - camera: the clamps to `g_CamMinX`/`g_CamMaxX` (00FC12, 0AD674, 0FC78A, 10B7A0, 16136E,
+    1F5788, 1F5F78, 1F60E4) become `CAM_LO`/`CAM_HI(g_CamMinX, g_CamMaxX)`: the limits less the
+    margin, the middle when the range is under 80 px. The limit setters (`- 0x140`: 0820AE, 082176,
+    09907A, 0FC8A4, 1F5F5A, 1F5788's `w - 0x28`) stay: they give the 4:3 camera's range.
+  - left alone, behaviour that isn't the view: 06DB86 (a box around the object), 08827A and
+    16136E/1F4334 (camera tracking with its wall margin), 0868F0 (boss logic on the players),
+    0BEA74's shot removal at -128/448 and 112C9E/112D9E/142CD6 (removal 60 px or more past the
+    screen, beyond the 40-px margin), 0E9B2E (a gate 320 px left of an object).
+  - not widths: 006584 (a DMA length), 038BAC and 1FDAEC (loop counts), 0AD866 and 0B0484 (scroll
+    factors), 0B62F2, 0B674E, 0B6824, 0B6916, 0B6B2A, 0B70B0, 0BA1B8, 0E9BCE, 0EA5FE (positions),
+    133A40 (speeds).
+  - `cc.py` substitutes the globals' names in the source text before MPW compiles it, so a header
+    macro must not expand to a global (the first CAM_ macros did: "identifier not declared"): the
+    globals are its arguments.
+- **The streamer** (R7): with the wide view the streamer keeps the whole plane (64 columns, rows
+  of 64 tiles) also for the levels that stream 44 (`g_MapStreamNarrow`, `g_BgNarrow`), and the
+  drawn x from 40 px left of the camera to 184 - 40 behind it (Map_StreamColumns), so the 400 px
+  stay drawn; `Map_RedrawBlock` redraws blocks across the whole plane. The initial fill
+  (Level_LoadMaps) already starts 96 px left of the camera.
+- **The HUD**: player 1's sprites at their x - 40, player 2's at x + 40 (Level_FrameLoop).
+- **Bars** (R6): where the wide view would show past the camera's limits or the FG map's edges
+  (Siberia's 320-px rooms, the arenas), black, the HUD's sprite rectangles kept on top
+  (`ws_mask_line`, after each rendered row).
+- **Wrapped sprites**: a sprite whose x word is outside 0-511 is off screen where the game put
+  it, but the VDP's 9 bits put it 512 px away, which the wide view can show (in 4:3 it never
+  could): ~60 functions write sprite entries directly, some without a cull (Spr_EmitFlicker...).
+  For a wide frame those entries of the VRAM sprite table get y 0 while it renders, then their y
+  back (`sprites_wrapped` counts them; `sprites_lost`, the contract's definition, counts x words
+  in the wide view that the 9 bits can't hold, none at 400 px).
+- **The terrain check** reads the block map, block definitions, tile attribute, stream position
+  and scroll adjustments through the 68000's view, finds the cells each line shows (its
+  horizontal scroll, the vertical scroll, the window plane excluded) and compares the name table
+  with the map tile the streamer put there (both write paths: a row adds the tile base to pairs as
+  longs, a column word by word). E5 checks the wide columns; `XMEN2_WS_CHECK_ALL=1` checks the
+  whole view, and with `XMEN2_WS_MARGIN=0` (the 4:3 view) the TAS has 0 errors in 118M cells: the
+  check agrees with the original everywhere.
+- **What the corpus reaches in the native machine**: SiberiaB1, LogoAndDemo, the player select
+  and the four attract-demo stages (BaniMazaA1, SentinelsB1, AvalonB2, SentinelsD1) only. The
+  frame-synchronous machine (P5 R5: no lag frames) is not timed like the TAS was recorded, so the
+  TAS's input stops fitting in the first stage (its sync rows differ from the D1 recomp's from sync
+  1; P1 compares the native with stepped-gen, the same machine): at sync 3,000 the native TAS is
+  still in Siberia where the recording is in the Sentinels stage, and it never leaves Siberia.
+- **Results** (corpus, `widescreen=16:9`): 76/76 runs to their end, 0 terrain errors, 0 lost
+  sprites, 0 misplaced HUD frames.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

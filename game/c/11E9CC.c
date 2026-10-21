@@ -11,7 +11,7 @@
 #include "xmen2.h"
 
 /* the ball on screen? */
-#define BALL_ON_SCREEN(b)	((b)->x - g_CameraX > -32 && (b)->x - g_CameraX < 320 \
+#define BALL_ON_SCREEN(b)	((b)->x - g_CameraX > VIEW_L(-32) && (b)->x - g_CameraX < VIEW_R(320) \
 				&& (b)->y - g_CameraY > -32 && (b)->y - g_CameraY < 224)
 /* the next hardware sprite: the ball */
 #define BALL_EMIT(b, attr) \

@@ -21,7 +21,7 @@ void FloatBubble_Draw(FloatBubble *self)
 		x = (self->x >> 8) - g_CameraX - 8;
 		y = (self->y >> 8) - g_CameraY - 16;
 		tile = self->sprAttr + 0x24 + (frame - 6) * 4;
-		if (x > -32 && x < 320 && y > -32 && y < 224) {
+		if (x > VIEW_L(-32) && x < VIEW_R(320) && y > -32 && y < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = y + 0x80;
 			g_SprWritePtr->size = 5;

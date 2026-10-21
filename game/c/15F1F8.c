@@ -11,7 +11,9 @@
  * g_BgScrollX (narrow when g_BgNarrow; no limit on the right) when a BG map is loaded and
  * doesn't wrap horizontally (g_BgWrapX). While g_MapDrawOff is set the drawn x still moves but
  * nothing is drawn.
- * Hand-written 68000, called each frame through a function pointer (Level_LoadMaps). */
+ * Hand-written 68000, called each frame through a function pointer (Level_LoadMaps).
+ * NATIVE, 16:9 (phase 6 R7, WS the view's margin): always the whole plane (64 columns), and the
+ * drawn x kept from WS left of the camera to 184 - WS behind it, so the wide view stays drawn. */
 #include "xmen2.h"
 
 void Map_StreamColumns(void)
@@ -23,7 +25,7 @@ void Map_StreamColumns(void)
 	short vramRow = (short)(g_FgStreamY + g_FgScrollAdjY) >> 3 & 0x1F;
 	short tileY = (unsigned short)g_FgStreamY >> 3;
 	short x = g_FgStreamX;
-	short d = x - g_FgScrollX;	/* drawn x - camera x */
+	short d = x - g_FgScrollX + WS;	/* drawn x - camera x (+ the 16:9 margin) */
 	short margin;
 	short limit;
 	short n;			/* columns to draw */
@@ -43,16 +45,16 @@ void Map_StreamColumns(void)
 		margin = 24;
 		tileX += 44;
 		vramCol += 44;
-		if (!g_MapStreamNarrow) {
+		if (!g_MapStreamNarrow || WS) {
 			margin = 184;
 			tileX += 20;
 			vramCol += 20;
 		}
-		d += margin;
+		d += margin - 2 * WS;
 		if (d < 0) {
 			n = (short)-d >> 3;
 			limit = g_FgMapExtraW - x;
-			if (g_MapStreamNarrow)
+			if (g_MapStreamNarrow && !WS)
 				limit += 0xC0;
 			limit >>= 3;
 			if (n > limit)
@@ -77,7 +79,7 @@ void Map_StreamColumns(void)
 	vramRow = (short)(g_BgStreamY + g_BgScrollAdjY) >> 3 & 0x1F;
 	tileY = (unsigned short)g_BgStreamY >> 3;
 	x = g_BgStreamX;
-	d = x - g_BgScrollX;
+	d = x - g_BgScrollX + WS;
 	if (d >= 0) {
 		n = (short)(d + 7) >> 3;
 		if (n > x >> 3)
@@ -93,12 +95,12 @@ void Map_StreamColumns(void)
 		margin = 24;
 		tileX += 44;
 		vramCol += 44;
-		if (g_BgWrapX || !g_BgNarrow) {
+		if (g_BgWrapX || !g_BgNarrow || WS) {
 			margin = 184;
 			tileX += 20;
 			vramCol += 20;
 		}
-		d += margin;
+		d += margin - 2 * WS;
 		if (d < 0) {
 			n = (short)-d >> 3;
 			vramCol &= 0x3F;

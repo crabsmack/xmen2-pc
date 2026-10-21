@@ -20,7 +20,7 @@ void Gambit_UpdateCard(register Gambit *self, register GambitCard *card)
 	short tile = base + *((s8 *)CODEPTR(Tbl_GambitCardTile) + card->kind);
 	short trailTile = self->cardTile + 12;
 	short count = self->health >= 0x701 ? 6 : 2;
-	short right = g_CameraX + 0x140;
+	short right = g_CameraX + VIEW_R(0x140);
 	register short bottom = g_CameraY + 0xE0;
 	short vx = card->vx;
 	short vy = card->vy;
@@ -29,7 +29,7 @@ void Gambit_UpdateCard(register Gambit *self, register GambitCard *card)
 	register short x = card->x >> 8;
 	register short y = card->y >> 8;
 
-	if (x >= g_CameraX && x <= right && y >= g_CameraY && y <= bottom) {
+	if (x >= VIEW_L(g_CameraX) && x <= right && y >= g_CameraY && y <= bottom) {
 		register unsigned char size;
 		short halfW, halfH, pal;
 
@@ -52,7 +52,7 @@ void Gambit_UpdateCard(register Gambit *self, register GambitCard *card)
 			card->kind = -1;
 			return;
 		}
-	} else if (x >= g_CameraX - 50 && x <= right + 50 && y >= g_CameraY - 50 && y <= bottom + 50) {
+	} else if (x >= VIEW_L(g_CameraX) - 50 && x <= right + 50 && y >= g_CameraY - 50 && y <= bottom + 50) {
 		card->x += card->vx;
 		card->y += card->vy;
 		if (g_TwoPlayerStep) {
@@ -81,7 +81,7 @@ void Gambit_UpdateCard(register Gambit *self, register GambitCard *card)
 			sy -= vy;
 			tx = (short)(sx >> 8);
 			ty = (short)(sy >> 8);
-			if (tx >= 0 && tx <= 0x140 && ty >= 0 && ty <= 0xE0) {
+			if (tx >= VIEW_L(0) && tx <= VIEW_R(0x140) && ty >= 0 && ty <= 0xE0) {
 				switch ((g_FrameCounter >> 1) + n & 3) {	/* Gambit_UpdateCard_TrailLoop */
 				case 0:
 					flip = 0;

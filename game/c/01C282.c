@@ -39,7 +39,7 @@ void YoyoAcolyte_Draw(YoyoAcolyte *self)
 		attr += yo->frame << 4;
 		if (self->spr.flags & 0x10)
 			attr |= 0x800;
-		if (sx > -32 && sx < 320 && sy > -32 && sy < 224) {
+		if (sx > VIEW_L(-32) && sx < VIEW_R(320) && sy > -32 && sy < 224) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 0xF;

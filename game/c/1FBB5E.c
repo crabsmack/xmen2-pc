@@ -52,7 +52,7 @@ void Spr_EmitStreamClip(SprInst *spr, long x, long y, short tile)
 			sy = -sy - TBL(Tbl_SprHeightStreamClip)[size];
 		sy += (short)y;
 		/* Spr_EmitStreamClip_Piece */
-		if (sx >= 0x60 && sx <= 0x1C0 && sy >= 0x60 && sy <= 0x160) {
+		if (sx >= VIEW_L(0x60) && sx <= VIEW_R(0x1C0) && sy >= 0x60 && sy <= 0x160) {
 			hw++;
 			hw->y = sy;
 			hw->size = (u8)size;
