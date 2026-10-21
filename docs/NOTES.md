@@ -870,6 +870,20 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   terrain errors, 0 lost sprites, the HUD in place; the same with all three options on (15,000
   frames each). `uv run tools/ws_warp.py OUT [--frames N] [--options ...]` (headless,
   `XMEN2_SHOTS` every 1,500 frames; exit 1 on any terrain error, lost sprite or misplaced HUD).
+  `--all` starts from the player select before every later stage too (22 stages; scene 7 for
+  SentinelsB2): all wide, 0 lost sprites, the HUD in place; 0 terrain errors in 19 of them.
+- **Known exceptions to the terrain check** (the definition's "tiles the game rewrites"): the
+  same three stages fail it in the original 4:3 view too (`XMEN2_WS_MARGIN=0 XMEN2_WS_CHECK_ALL=1
+  tools/ws_warp.py --all`), so their planes are not their map's to begin with:
+  - **AvalonA3 Exodus**: plane B holds tiles the block map doesn't (the arena's own background
+    drawing); 1.6M cells over 20k frames in 4:3.
+  - **SavageA4 Chamber**: plane B shows rows below the BG map's last (tile row 56 of a shorter map).
+  - **CloneA5 BroodBoss**: plane A's arena tiles differ from the map by small tile numbers (the
+    boss's walls written at run time).
+  Drawn wide they look right (screenshots checked: AvalonA3 with a bar where the arena ends,
+  SavageA4 full width, CloneA5 the boss across the wide view); none is in the corpus.
+  AvalonA2 Falling_Room is a 320-px shaft: barred on both sides, so nothing to check. 4:3 screens
+  are not terrain-checked at all (no wide columns; their planes aren't a level's map).
 
 ### E4: high frame rate (2026-10-21)
 

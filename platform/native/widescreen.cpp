@@ -426,8 +426,10 @@ extern "C" void ws_frame_check(void)
     if (!m8(0xFFC942) || m8(0xFFC7FE)) return;
     s_gameplay_frames++;
     int margin = plat_ws_view();
-    check_plane(&g_machine.vdp, true, margin, s_bar_l, s_bar_r);
-    check_plane(&g_machine.vdp, false, margin, s_bar_l, s_bar_r);
+    if (s_cache_wide) {   /* a 4:3 screen has no wide columns (and its planes aren't a level's map) */
+        check_plane(&g_machine.vdp, true, margin, s_bar_l, s_bar_r);
+        check_plane(&g_machine.vdp, false, margin, s_bar_l, s_bar_r);
+    }
     check_sprites(margin);
 }
 
