@@ -15,6 +15,7 @@ void        options_toggle_widescreen(void);        /* played: F10 (from the nex
 void        options_set_widescreen(int on);
 void        ws_request_toggle(void);                /* widescreen.cpp */
 void        present_reset(void);                    /* present.cpp: high_fps turned on again */
+void        present_repeat(void);                   /* present.cpp: a played frame-tick V-int's period */
 std::string options_effective_json(void);           /* {"opt": "value", ...} */
 std::string ws_counters_json(void);                 /* widescreen.cpp: the `ws` counters */
 /* present.cpp (phase 6 R4): the present clock and log, high_fps's in-between frames */

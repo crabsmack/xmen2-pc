@@ -332,7 +332,9 @@ static std::chrono::steady_clock::time_point s_tlast;
 
 extern "C" void plat_frame_repeat(void)
 {
-    if (s_interactive) host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
+    if (!s_interactive) return;
+    if (g_opt.high_fps) present_repeat();   /* its period is covered by the frames in between */
+    else host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
 }
 
 /* XMEN2_SHOTS=n,m,... + XMEN2_DUMP_DIR: the picture of those runner frames as fNNNNNN.bmp (headless

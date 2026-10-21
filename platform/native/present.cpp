@@ -181,6 +181,19 @@ void present_init(const char *log_path)
 
 bool present_logging(void) { return s_log != nullptr; }
 
+/* A played run's frame-tick V-ints (two players stepping by 2: plat_frame_repeat) are display
+   periods of their own: s_extra of them so far, and the next logic frame spans 2 periods when it
+   will wait for the tick (g_TwoPlayerStep, $FFC922, unless g_LevelFreeze, $FFC91C). Traced runs
+   have none: their clock is the contract's k x T. */
+static uint64_t s_extra;
+
+void present_repeat(void) { s_extra++; }
+
+static int span_now(bool interactive)
+{
+    return interactive && m8(0xFFC922) && !m8(0xFFC91C) ? 2 : 1;
+}
+
 /* plat_frame_end(k): R_k, shown at k x T. Played with high_fps: presented here at its time. */
 bool present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive)
 {
@@ -188,7 +201,7 @@ bool present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, boo
     bool gameplay = m8(0xFFC942) && !m8(0xFFC7FE);
     log_row(k, (double)k * T_US, true, gameplay, s_log ? fnv(fb, stride, w, h) : 0);
     if (interactive && g_opt.high_fps) {
-        host_present_at(fb, stride, w, h, (double)k * T_US);
+        host_present_at(fb, stride, w, h, (double)(k + s_extra) * T_US);
         return true;
     }
     return false;
@@ -206,7 +219,7 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
     int hz = g_opt.high_fps;
     if (hz && s_prev.valid && k >= 2 && s_prev.reg5 == s_cur.reg5 && s_prev.reg13 == s_cur.reg13) {
         GVDP *v = &g_machine.vdp;
-        double t0 = (double)(k - 1) * T_US, t1 = (double)k * T_US, step = 1e6 / hz;
+        double t0 = (double)(k - 1 + s_extra) * T_US, t1 = t0 + span_now(interactive) * T_US, step = 1e6 / hz;
         uint32_t hb = hbase(v), sb = satbase(v);
         /* the prev frame's slots by tag (only tags that occur once) */
         std::unordered_map<uint64_t, int> prev_by_tag;
@@ -271,7 +284,7 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
             }
         }
         for (double j = (double)(int64_t)(t0 / step) + 1; j * step < t1 - 0.5; j++) {
-            double t = j * step, a = (t - t0) / T_US;
+            double t = j * step, a = (t - t0) / (t1 - t0);
             if (t <= t0 + 0.5) continue;
             /* the scroll: every line's A and B words, the VSRAM entries */
             for (int i = 0; i < 0x400; i += 2) {
