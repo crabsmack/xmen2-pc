@@ -721,6 +721,14 @@ ram_views, handc_rt or asm_conv).
   reference at all 51,209 sync points**. One fix it found: `g_snd_frame` was defined twice
   (chip_trace.c and machine.cpp); MSVC had linked two different variables (C++ name mangling),
   GCC refused. machine.cpp now uses chip_trace.c's.
+- **Frame time (R5's work item: D8 chugged in the Sentinel escape on a slower Linux PC).**
+  `XMEN2_FRAME_TIMES=path` logs each runner frame's wall time. The whole TAS headless on this
+  machine (a 16-core desktop, with `phase.py` running alongside): 636 fps, median 1.7 ms, p99 2.0 ms,
+  p99.9 2.9 ms, worst frame 17 ms (single frames at scene loads, where the original lags too).
+  So sustained play needs ~10% of a 60 Hz frame here; the D8 build ran the engine's stepped
+  runner (68000 state, dispatch, ~345 sync points/s per job), the port about twice as fast. A
+  played run no longer builds the export image every frame (it compares nothing): that was
+  ~0.3 ms a frame.
 
 ## Open questions
 

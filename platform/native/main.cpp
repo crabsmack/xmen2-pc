@@ -174,6 +174,7 @@ static void maybe_dump_sync(uint64_t sync)
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
+    if (!s_sync && !getenv("XMEN2_SYNC_DUMP")) return;   /* a played run compares nothing */
     xm_export(&s_image);
     maybe_dump_sync(sync);
     if (!s_sync) return;
@@ -288,8 +289,19 @@ static uint64_t s_benchmark, s_quit_after;
 static const char *s_screenshot;
 static std::chrono::steady_clock::time_point s_t0;
 
+/* XMEN2_FRAME_TIMES=path: each runner frame's wall time (microseconds, the game's logic, the
+   export, the Z80 and the render; with --benchmark nothing else), for finding slow scenes */
+static FILE *s_ftimes;
+static std::chrono::steady_clock::time_point s_tlast;
+
 extern "C" void plat_frame_end(uint64_t frame)
 {
+    if (s_ftimes) {
+        auto now = std::chrono::steady_clock::now();
+        fprintf(s_ftimes, "%llu,%lld\n", (unsigned long long)frame,
+                (long long)std::chrono::duration_cast<std::chrono::microseconds>(now - s_tlast).count());
+        s_tlast = now;
+    }
     if (s_hash_frames && frame % s_hash_frames == 0) {
         int w = machine_screen_width(), h = machine_screen_height();
         fprintf(stderr, "[FBHASH] frame=%llu w=%d h=%d hash=0x%016llX\n", (unsigned long long)frame, w, h,
@@ -343,7 +355,10 @@ int main(int argc, char **argv)
     atexit(report_counters);
     xm_native_mem_init();
     g_machine.bus.pad_type[0] = g_machine.bus.pad_type[1] = 1;   /* 6-button pads, as the runners' settings */
-    s_t0 = std::chrono::steady_clock::now();
+    s_t0 = s_tlast = std::chrono::steady_clock::now();
+    if (const char *p = getenv("XMEN2_FRAME_TIMES"); p && *p) {
+        if ((s_ftimes = fopen(p, "w"))) fprintf(s_ftimes, "frame,us\n");
+    }
     machine_power_on();
     g_machine.bus.pad_type[0] = g_machine.bus.pad_type[1] = 1;
     xm_entry_point();
