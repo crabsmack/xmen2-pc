@@ -13,6 +13,8 @@
  *   --hash-frames K      [FBHASH] frame=f w=W h=H hash=0x... every K runner frames (FNV-1a-64 of
  *                        the framebuffer's active region, as main.c framebuf_active_hash)
  *   --fresh-evidence     accepted (nothing is written beside the runner)
+ *   --options K=V,...    the enhancement options (phase 6, options.cpp; also xmen2.ini beside the
+ *                        runner); --options --json lists them and exits
  * Environment: XMEN2_SYNC_CSV=path (sync rows from the export image), XMEN2_SYNC_DUMP=n,m +
  * XMEN2_DUMP_DIR (sNNNNNN.ram/.vram), XMEN2_STACK_LOW (as game/xmen2_spec.c).
  * At exit stderr gets `[xmen2] counters {...}` with the export's counts.
@@ -171,9 +173,15 @@ static void maybe_dump_sync(uint64_t sync)
     }
 }
 
+/* phase 6's `enhance` counters (P6-enhance.md "The contract"), from the game's own state at each
+   sync point (a logic frame): g_PlayersAlive ($FFC920), g_TwoPlayerStep ($FFC922) */
+static uint64_t s_two_player_frames, s_two_player_step_frames;
+
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
+    if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
+    if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
     if (!s_sync && !getenv("XMEN2_SYNC_DUMP")) return;   /* a played run compares nothing */
     xm_export(&s_image);
     maybe_dump_sync(sync);
@@ -190,10 +198,16 @@ static void report_counters(void)
     xm_export_stats(exported, (int)sizeof exported);
     char memory[256];
     xm_mem_census(memory, (int)sizeof memory);
+    char enhance[512];
+    snprintf(enhance, sizeof enhance, "{\"two_player_frames\": %llu, \"two_player_step_frames\": %llu, "
+             "\"frame_tick_waits\": %llu}", (unsigned long long)s_two_player_frames,
+             (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits());
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
-                    "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s}\n",
-            (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory);
+                    "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
+                    "\"options\": %s, \"enhance\": %s}\n",
+            (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory,
+            options_effective_json().c_str(), enhance);
     fflush(stderr);
 }
 
@@ -326,6 +340,7 @@ extern "C" void plat_frame_end(uint64_t frame)
 int main(int argc, char **argv)
 {
     const char *rom = nullptr, *script = nullptr;
+    options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--benchmark") && i + 1 < argc) s_benchmark = strtoull(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--input-script") && i + 1 < argc) script = argv[++i];

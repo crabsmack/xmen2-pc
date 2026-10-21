@@ -736,6 +736,34 @@ ram_views, handc_rt or asm_conv).
   played run no longer builds the export image every frame (it compares nothing): that was
   ~0.3 ms a frame.
 
+## Phase 6: enhancements (options of the native runner)
+
+Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enhance.md`
+(approved 2026-10-21, R1-R7). Checked by `uv run tools/phase.py 6` there.
+
+### E2: the options (2026-10-21)
+
+- `platform/native/options.cpp`: the table (`full_rate_2p` 0/1, `high_fps` 0 or a rate in Hz,
+  listed 120/144/165/240, any of 61-1000 accepted; `widescreen` 0 / `16:9`), each off by
+  default. `--options K=V,...` on any run, `xmen2.ini` beside the runner (`[options]` section,
+  `K=V`; the runner's own directory, not the working one), the command line winning; an unknown
+  option or value exits 2. `--options --json` prints the table, the effective values and the
+  settings file path, and exits before the ROM is read.
+- The game's C reads them through `g_opt` (`platform/xmen2_options.h`, included by
+  `xmen2_platform.h` under `XMEN2_NATIVE` only), always in native-only branches.
+- `xmen2check.py options --json` adds `from_settings`: the effective values a private runner
+  copy reports with an `xmen2.ini` setting every option to its first non-default value.
+  `trace --mode native --options ...` passes them on; its JSON adds `options` (effective) and
+  `enhance` (the counters, from the runner's counters line). `package` adds the packaged
+  runner's `--options --json`.
+- `enhance` counters: `two_player_frames` / `two_player_step_frames` read `g_PlayersAlive`
+  ($FFC920) == 2 / `g_TwoPlayerStep` ($FFC922) at every sync point (`plat_sync_row`);
+  `frame_tick_waits` counts the V-ints `plat_wait_vint` (IRQ_WAIT) takes.
+- **Which corpus runs have two players** (options off): only `scenario-options-menu`, 3,192 of
+  its 6,070 logic frames (3,194 with the step flag; 746 frame-tick waits). The TAS and
+  `scenario-two-player` never have two players alive in a level: each has one frame with
+  `g_TwoPlayerStep` set (which setter is open; see E3) and no wait.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

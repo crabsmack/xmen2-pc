@@ -277,6 +277,8 @@ def cmd_trace(a) -> dict:
         sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
     if a.mode in STEPPED_MODES and not a.replay:
         sys.exit(f"--mode {a.mode} needs --replay REFDIR (the run's `--mode recomp --sync` trace)")
+    if a.options and a.mode != "native":
+        sys.exit("--options: only the native runner has options (phase 6)")
     common.ensure_rom()
     src = exe_path(globals()[STEPPED_MODES[a.mode]] if a.mode in STEPPED_MODES else common.EXE_NAME)
     if not src.is_file():
@@ -306,6 +308,8 @@ def cmd_trace(a) -> dict:
                "--input-script", str(script), "--fresh-evidence"]
         if a.fb:   # the runner's [FBHASH] of every runner frame (see add_fb_column)
             cmd += ["--hash-frames", "1"]
+        if a.options:   # phase 6: the enhancement options (P6-enhance.md "The contract")
+            cmd += ["--options", a.options]
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -345,6 +349,10 @@ def cmd_trace(a) -> dict:
             if "exported" not in c:
                 sys.exit(f"{src.name} reported no export counts; see {out / 'runner.log'}")
             res["exported"] = c["exported"]
+            # phase 6: the effective option values and the enhance counters, the runner's own
+            if "options" not in c or "enhance" not in c:
+                sys.exit(f"{src.name} reported no options / enhance counters; see {out / 'runner.log'}")
+            res["options"], res["enhance"] = c["options"], c["enhance"]
         return drop_runner(a, run_dir, res)
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
     if a.sync:
@@ -812,12 +820,42 @@ def package_linux(a) -> dict:
     t = wsl(f"cd '{wsl_path(out)}' && XMEN2_SYNC_CSV='{wsl_path(sync)}' SDL_AUDIODRIVER=dummy {x} {rp} "
             f"--benchmark {frames} --input-script '{wsl_path(script)}'", timeout=7200)
     (out / "runner.log").write_text(t.stderr, encoding="utf-8")
+    o = wsl(f"{x} --options --json", timeout=120)
+    opts = next((json.loads(l) for l in reversed(o.stdout.splitlines()) if l.startswith("{")), None)
     ok = (nwin == 0 and smoke["rom"]["exit"] == 0 and smoke["rom"]["benchmark"] and smoke["wrong_rom"]["exit"] == 2
           and smoke["wrong_rom"]["refused"] and t.returncode == 0 and sync.is_file())
     return {"ok": ok, "platform": "linux", "zip": str(zpath),
             "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
             "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke,
-            "tas_sync": str(sync), "tas_frames": frames, "tas_exit": t.returncode}
+            "tas_sync": str(sync), "tas_frames": frames, "tas_exit": t.returncode, "options": opts}
+
+
+def runner_options(cmd: list[str], cwd: Path | None = None) -> dict:
+    """The runner's own `--options --json` (phase 6)."""
+    r = subprocess.run([*cmd, "--options", "--json"], capture_output=True, text=True, timeout=120, cwd=cwd)
+    j = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")), None)
+    if r.returncode or not j or "options" not in j:
+        sys.exit(f"{cmd[-1]} --options --json failed ({r.returncode}): {(r.stdout + r.stderr).strip()[-300:]}")
+    return j
+
+
+def cmd_options(a) -> dict:
+    """Phase 6 E2 (P6-enhance.md "The contract"): the release runner's options as it lists them,
+    and what a private copy of it reports as effective when an xmen2.ini beside it sets every option
+    to its first non-default value (the settings file is read)."""
+    import tempfile
+    src = exe_path(NATIVE_EXE)
+    if not src.is_file():
+        sys.exit(f"no native runner at {src}: run `xmen2check.py build`")
+    listed = runner_options([str(src)])
+    want = {k: next(v for v in d["values"] if v != d["default"]) for k, d in listed["options"].items()}
+    with tempfile.TemporaryDirectory(prefix="xmen2opt_") as td:
+        copy_runner(src, Path(td))
+        (Path(td) / "xmen2.ini").write_text("[options]\n" + "".join(f"{k}={v}\n" for k, v in want.items()),
+                                            encoding="utf-8")
+        got = runner_options([str(Path(td) / src.name)])
+    return {"ok": got.get("effective") == want and got.get("settings_file_found") is True, "exe": str(src),
+            "options": listed, "set_in_settings": want, "from_settings": got.get("effective")}
 
 
 def cmd_package(a) -> dict:
@@ -881,7 +919,8 @@ def cmd_package(a) -> dict:
           and smoke["wrong_rom"]["exit"] == 2 and smoke["wrong_rom"]["refused"])
     return {"ok": ok, "platform": "windows", "zip": str(zpath),
             "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
-            "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke}
+            "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke,
+            "options": runner_options([str(stage / "XMen2.exe")])}
 
 
 def main() -> int:
@@ -923,6 +962,9 @@ def main() -> int:
             p.add_argument("--dump-frames", default="", help="dev: dump full state after these frames")
             p.add_argument("--keep-runner", action="store_true",
                            help="keep OUT/runner (the private runner copy) after a pass (XMEN2_KEEP_RUNNER=1)")
+            p.add_argument("--options", default="", help="native (phase 6): the runner's --options K=V,...")
+    p = sub.add_parser("options")
+    p.add_argument("--json", action="store_true")
     p = sub.add_parser("package")
     p.add_argument("--json", action="store_true")
     p.add_argument("--platform", default="windows", choices=["windows", "linux"])
@@ -931,7 +973,7 @@ def main() -> int:
     a = ap.parse_args()
     res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "types": cmd_types,
            "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify, "package": cmd_package,
-           "native-build": cmd_native_build}[a.cmd](a)
+           "native-build": cmd_native_build, "options": cmd_options}[a.cmd](a)
     if a.cmd == "gen" and not a.json:
         res = {k: v for k, v in res.items() if k != "functions"}
     print(json.dumps(res, indent=None if a.json else 1))

@@ -5,7 +5,12 @@
 
 #include <stdint.h>
 
+#include "xmen2_options.h"
+
 #ifdef __cplusplus
+#include <string>
+void        options_init(int *argc, char **argv);   /* options.cpp: --options, xmen2.ini */
+std::string options_effective_json(void);           /* {"opt": "value", ...} */
 extern "C" {
 #endif
 
@@ -29,6 +34,7 @@ void     machine_power_on(void);         /* power-on, then runner frame 1 begins
 uint64_t machine_frame_no(void);
 int      machine_screen_width(void);
 int      machine_screen_height(void);
+uint64_t machine_frame_tick_waits(void); /* V-ints taken by IRQ_WAIT (plat_wait_vint), outside a sync point */
 
 /* the host side (main.cpp), called by the machine */
 #define PLAT_AUDIO_PSG 4                 /* audio/event_queue.h AUDIO_PORT_PSG; 0-3 the YM2612's ports */

@@ -64,6 +64,9 @@ void           plat_wait_vint(void);          /* IRQ_WAIT */
 /* PC and NATIVE: the platform API                                           */
 /* ======================================================================== */
 #include <stdint.h>
+#ifdef XMEN2_NATIVE
+#include "xmen2_options.h"   /* phase 6: the enhancement options (g_opt), native-only branches */
+#endif
 
 extern "C" {
 /* video */

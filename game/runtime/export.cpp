@@ -31,8 +31,8 @@
 #include <string.h>
 #include <type_traits>
 
-extern "C" {
 #include "native.h"
+extern "C" {
 #include "video/genesis_machine.h"
 }
 #include "xmen2_image.h"

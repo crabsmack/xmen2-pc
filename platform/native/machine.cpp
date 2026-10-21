@@ -21,8 +21,8 @@
 extern "C" {
 #include "video/genesis_machine.h"
 #include "video/genesis_dac.h"
-#include "native.h"
 }
+#include "native.h"
 
 GenesisMachine g_machine;
 extern "C" unsigned long g_snd_frame;   /* the sound's frame number (chip_trace.c; genesis_vdp.c, mixer.c read it) */
@@ -678,10 +678,17 @@ static void fsync_vint(void)
     if ((REG(1) & 0x20) && ((s_sr >> 8) & 7u) < 6u) take_vint();
 }
 
+static uint64_t s_frame_tick_waits;   /* phase 6's frame_tick_waits: V-ints taken here */
+
 extern "C" void plat_wait_vint(void)
 {
-    if ((REG(1) & 0x20) && ((s_sr >> 8) & 7u) < 6u) take_vint();
+    if ((REG(1) & 0x20) && ((s_sr >> 8) & 7u) < 6u) {
+        s_frame_tick_waits++;
+        take_vint();
+    }
 }
+
+extern "C" uint64_t machine_frame_tick_waits(void) { return s_frame_tick_waits; }
 
 /* ======================================================================== */
 /* Frames                                                                    */
