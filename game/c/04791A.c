@@ -15,11 +15,11 @@ void BaniMazaA2_RunScene(void)
 	register DebrisGroup *debris = groups;
 	register Timer *t;
 #else
-	unsigned long a7 = CPU_GetSP();
-	DebrisGroup *debris = AT68(DebrisGroup, xm::sp_reserve(4 + 0x218));
+	unsigned long a7 = xm::frame_mark();
+	DebrisGroup *debris = AT68(DebrisGroup, xm::frame_alloc(4 + 0x218));
 	Timer *t;
 
-	xm::sp_reserve(8);
+	xm::frame_alloc(8);
 #endif
 
 	BaniMazaA2_CallEmptyStub();
@@ -34,6 +34,6 @@ void BaniMazaA2_RunScene(void)
 		Timer_Start(t);
 	Level_Run();
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

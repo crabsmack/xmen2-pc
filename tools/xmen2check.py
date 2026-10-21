@@ -113,13 +113,14 @@ def cmd_gen(a) -> dict:
 # --- build -----------------------------------------------------------------------------
 
 def snapshot_handc() -> Path:
-    """build/handc_src: game/c/*.c and game/include/*.h as they are now, in one directory, which
+    """build/handc_src: game/c/*.c, game/include/*.h and platform/*.h as they are now, in one directory, which
     the bridges and the hand-C compile read (C being edited meanwhile can't mix two states into
     one build). Unchanged files keep their timestamps, so only edits recompile."""
     import shutil
     snap = BUILD / "handc_src"
     snap.mkdir(parents=True, exist_ok=True)
-    want = {p.name: p for p in list((common.GAME / "c").glob("*.c")) + list((common.GAME / "include").glob("*.h"))}
+    want = {p.name: p for p in list((common.GAME / "c").glob("*.c")) + list((common.GAME / "include").glob("*.h"))
+            + list((common.ROOT / "platform").glob("*.h"))}
     for p in snap.iterdir():
         if p.name not in want:
             p.unlink()

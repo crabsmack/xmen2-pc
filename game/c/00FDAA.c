@@ -27,10 +27,10 @@ void AvalonB1_RunScene(void)
 #ifdef XMEN2_MPW
 	s16 pal[16];
 #else
-	unsigned long a7 = CPU_GetSP();
-	s16 *pal = AT68(s16, xm::sp_reserve(4 + 0x20));
+	unsigned long a7 = xm::frame_mark();
+	s16 *pal = AT68(s16, xm::frame_alloc(4 + 0x20));
 
-	xm::sp_reserve(4);
+	xm::frame_alloc(4);
 #endif
 
 	g_AvalonB1SavedPal = pal;
@@ -57,6 +57,6 @@ void AvalonB1_RunScene(void)
 	g_SndMute = 0;
 	Snd_StopAll();
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

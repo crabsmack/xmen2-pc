@@ -91,7 +91,7 @@ void EntryPoint(void)
 		for (i = 0; i < 4; i++)
 			PSG_PORT = t->psg[i];
 		Z80_RESET = 0;
-		CPU_SetSR(0x2700);
+		plat_set_sr(0x2700);
 	}
 
 	/* Boot_RegionCheck */

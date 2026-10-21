@@ -68,7 +68,8 @@ set(XMEN2_INCLUDE_DIRS
     "${RUNNER_ROOT}/video"
     "${RECOMP_ROOT}/recompiler/src"
     "${CMAKE_SOURCE_DIR}/game"
-    "${CMAKE_SOURCE_DIR}/game/include")
+    "${CMAKE_SOURCE_DIR}/game/include"
+    "${CMAKE_SOURCE_DIR}/platform")
 set(XMEN2_COMMON_DEFS INCLUDE_GENERATED_CODE=1 ENABLE_RECOMPILED_CODE=1 OWN_BACKEND=1
     GENESIS_GAME_VERSION="${PROJECT_VERSION}")
 
@@ -136,6 +137,7 @@ xmen2_runner(XMen2Stepped 4383 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2S_GENERATED_T
     SOURCES ${XMEN2S_GENERATED} ${XMEN2_HANDC_SOURCES}
             "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/platform/plat_engine.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp")
 
 # Phase 5, the native port's runner: XMen2Stepped's sources (the hand-C build, P4 D6: every game
@@ -148,6 +150,7 @@ xmen2_runner(XMen2Native 4386 DEFS XMEN2_STEPPED=1 XMEN2_NATIVE=1 DEPENDS ${XMEN
     SOURCES ${XMEN2S_GENERATED} ${XMEN2_HANDC_SOURCES}
             "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/platform/plat_engine.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/export.cpp")
 target_include_directories(XMen2Native PRIVATE "${CMAKE_BINARY_DIR}/native")
@@ -168,6 +171,7 @@ xmen2_runner(XMen2Verify 4384 DEFS XMEN2_VERIFY=1
     SOURCES $<TARGET_OBJECTS:xmen2_timed_code> ${XMEN2_HANDC_SOURCES}
             "${XMEN2_VERIFY_BRIDGE_DIR}/xmen2_bridge.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
+            "${CMAKE_SOURCE_DIR}/platform/plat_engine.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/verify.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/crash_win.cpp")

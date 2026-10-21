@@ -80,7 +80,7 @@ def main() -> int:
         ap.print_help()
         return 1
     fn = names()
-    inc = [common.GAME / "include", common.ENGINE / "runner" / "include", common.ENGINE / "runner"]
+    inc = [common.GAME / "include", common.ROOT / "platform", common.ENGINE / "runner" / "include", common.ENGINE / "runner"]
     bad = 0
     with tempfile.TemporaryDirectory(prefix="xmen2pc_") as td:
         cmds = []

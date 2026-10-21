@@ -105,25 +105,16 @@ uint32_t sp_reserve(uint32_t bytes)
 
 void sp_restore(uint32_t a7) { g_cpu.A[7] = a7; }
 
+/* The stack region (xmen2_mem.h xm::frame_*): where locals whose addresses escape into game memory
+   live at the original's addresses, and what a call through a stored pointer moves (bridge.py
+   call_native). Until the native runner has its own (phase 5 P6) it is the emulated A7. */
+uint32_t frame_mark(void) { return g_cpu.A[7]; }
+void frame_release(uint32_t mark) { g_cpu.A[7] = mark; }
+uint32_t frame_alloc(uint32_t bytes) { return sp_reserve(bytes); }
+
 }  /* namespace xm */
 
-/* xmen2_mem.h "The CPU itself": SR and A7 for the C of hand-written 68000 functions. A write of
-   SR is what the generated code does for `move to SR`: the stepped runner first takes a logged
-   interrupt still due under the old mask, the timed one checks for interrupts after it. */
-unsigned short CPU_GetSR(void) { return g_cpu.SR; }
-void CPU_SetSR(unsigned short sr)
-{
-    x68k_sr_pre();
-    g_cpu.SR = sr;
-    x68k_sr_written();
-}
-unsigned long CPU_GetSP(void) { return g_cpu.A[7]; }
-
 namespace xm {
-
-/* IRQ_WAIT() (xmen2_mem.h): the program waits for the V-int with no sync point; the
-   frame-synchronous runner takes it now, any other runner nothing. */
-void irq_wait(void) { x68k_wait_vint(0); }
 
 /* NO_RETURN_VALUE / RETURN_NO_VALUE (xmen2_macros.h): the C function ended on a path where the
    original returns no value; its slot entry then leaves d0 alone and verify doesn't compare it. */

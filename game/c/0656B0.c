@@ -52,7 +52,7 @@ void PlayerSelect_Run(void)
 #define SLOT1	(&slot1)
 #define SLOT2	(&slot2)
 #else
-	unsigned long a7 = CPU_GetSP();
+	unsigned long a7 = xm::frame_mark();
 	unsigned long sp = a7 & ((1L << 24) - 1);	/* the 68000's 24 address bits */
 	/* the original's a6: the initial SSP less the frames above this one (see the header) */
 	unsigned long fp = ((const u32 *)Vectors)[0] - (16 + 32 + 4 + 28 + 4) - 4;
@@ -61,7 +61,7 @@ void PlayerSelect_Run(void)
 
 	if (sp < fp - 0x84)
 		xm::fatal("PlayerSelect_Run: A7 $%06lX is below the original's frame", sp);
-	slot1 = AT68(BigSprite, xm::sp_reserve(sp - (fp - 0x84)));
+	slot1 = AT68(BigSprite, xm::frame_alloc(sp - (fp - 0x84)));
 	slot2 = slot1 + 1;
 #define SLOT1	slot1
 #define SLOT2	slot2
@@ -71,7 +71,7 @@ void PlayerSelect_Run(void)
 	register Actor *o;
 
 #ifndef XMEN2_MPW
-	xm::sp_reserve(2 + 24);
+	xm::frame_alloc(2 + 24);
 #endif
 	g_P1Slot = SLOT1;
 	g_P2Slot = SLOT2;
@@ -310,6 +310,6 @@ void PlayerSelect_Run(void)
 		break;
 	}
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

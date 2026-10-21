@@ -16,11 +16,11 @@ void AvalonA3_RunScene(void)
 	register s16 *pal0 = buf0;
 	register s16 *pal2 = buf2;
 #else
-	unsigned long a7 = CPU_GetSP();
-	s16 *pal0 = AT68(s16, xm::sp_reserve(4 + 0x38));
+	unsigned long a7 = xm::frame_mark();
+	s16 *pal0 = AT68(s16, xm::frame_alloc(4 + 0x38));
 	s16 *pal2 = pal0 + 14;
 
-	xm::sp_reserve(8);
+	xm::frame_alloc(8);
 #endif
 
 	AvalonA3_EmptyStub1();
@@ -34,6 +34,6 @@ void AvalonA3_RunScene(void)
 	AvalonA3_SavePalettes(pal0, pal2);
 	Level_Run();
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

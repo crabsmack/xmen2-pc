@@ -21,8 +21,8 @@ void Failure_RunScene(void)
 #ifdef XMEN2_MPW
 	s16 buf[28];
 #else
-	unsigned long a7 = CPU_GetSP();
-	s16 *buf = AT68(s16, xm::sp_reserve(4 + 0x38));
+	unsigned long a7 = xm::frame_mark();
+	s16 *buf = AT68(s16, xm::frame_alloc(4 + 0x38));
 #endif
 	register s16 *map = buf;
 	register short i;
@@ -32,7 +32,7 @@ void Failure_RunScene(void)
 	register short n;
 
 #ifndef XMEN2_MPW
-	xm::sp_reserve(8 + 24);
+	xm::frame_alloc(8 + 24);
 #endif
 	g_CerebroIntro = 0;
 	g_CerebroSelect = 0;
@@ -73,6 +73,6 @@ void Failure_RunScene(void)
 	Game_ResetPlayers();
 	g_ProgressFlags = 0;
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

@@ -10,8 +10,8 @@
 
 short Z80_BusAcquire(unsigned short *sr)
 {
-	*sr = CPU_GetSR();
-	CPU_SetSR(*sr | 0x0700);
+	*sr = plat_sr();
+	plat_set_sr(*sr | 0x0700);
 	Z80_BUSREQ = 0x100;
 	while (Z80_BUSREQ_B & 1)
 		;

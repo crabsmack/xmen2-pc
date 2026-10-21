@@ -8,5 +8,5 @@
 void Z80_BusRelease(unsigned short sr)
 {
 	Z80_BUSREQ = 0;
-	CPU_SetSR(sr);
+	plat_set_sr(sr);
 }

@@ -5,5 +5,5 @@
 
 void Irq_Enable(void)
 {
-	CPU_SetSR(CPU_GetSR() & 0xF8FF);
+	plat_set_sr(plat_sr() & 0xF8FF);
 }

@@ -11,7 +11,8 @@ line each, then a one-line verdict; exit 1 on any failure:
   pccheck  the changed game/c files compile as C++ (all of them when a header changed)
   mpw      every changed game/c file that byte-matched at the end of phase 4
            (docs/p4_mpw_matched.txt; all of those when a header changed) still matches:
-           xmen2disasm `uv run tools/cc.py --match FILE` in $XMEN2_DISASM
+           xmen2disasm `uv run tools/cc.py --match-recomp ROOT --only ...` in $XMEN2_DISASM
+           (cached by what MPW compiles: an edit outside the MPW branches re-matches nothing)
   verify   shadow tests of the changed functions (every function when anything but game/c,
            game/verify or docs changed) on the TAS and four short corpus runs, their first
            --frames frames; fails on a mismatch or a run whose testing stopped early
@@ -41,7 +42,6 @@ MATCHED = common.ROOT / "docs" / "p4_mpw_matched.txt"
 # changes that leave the runners' code alone (else verify tests every function)
 NOT_CODE = re.compile(r"^(docs/|game/c/[0-9A-Fa-f]{6}\.c$|game/verify/|\.claude/|README|CLAUDE\.md$|[^/]*\.md$|"
                       r"tools/(?!bridge\.py$)[^/]*\.py$|\.gitignore$)")
-TOOL_ERROR = re.compile(r"Unable to open the resource fork|end-of-file reached during read operation")
 
 
 def git(*args: str) -> list[str]:
@@ -123,20 +123,21 @@ def main() -> int:
         if not cc.is_file():
             return False, f"no {cc}: set XMEN2_DISASM to the xmen2disasm checkout"
 
-        def one(f: str):
-            for _attempt in range(3):
-                rc, so, se = procs.run(["uv", "run", "tools/cc.py", "--match", str(common.ROOT / f), "-q"],
-                                       env=env, cwd=common.DISASM_MAIN, timeout=600)
-                if rc == 0 or rc == -1 or not TOOL_ERROR.search(so + se):
-                    break
-            return f, rc, (so.strip().splitlines() or [se.strip()[-200:]])[0]
-
-        with concurrent.futures.ThreadPoolExecutor(8) as ex:
-            got = list(ex.map(one, mpw_files))
-        bad = [(f, line) for f, rc, line in got if rc != 0]
+        # cc.py --match-recomp: the same match, cached by what MPW compiles of each file and the
+        # headers (mpw_view), so an edit of a header's PC or native branch re-matches nothing; tool
+        # errors are retried there and never cached
+        want = sorted(Path(f).stem.upper() for f in mpw_files)
+        rc, so, se = procs.run(["uv", "run", "tools/cc.py", "--match-recomp", str(common.ROOT), "--only",
+                                ",".join(want), "--json"], env=env, cwd=common.DISASM_MAIN, timeout=3600)
+        j = harness.last_json(so)
+        if rc != 0 or j is None:
+            return False, f"cc.py --match-recomp failed: {(se.strip().splitlines() or ['?'])[-1][:200]}"
+        files = j.get("files") or {}
+        bad = [(a_, (files.get(a_) or {}).get("detail", "not compiled")) for a_ in want
+               if not (files.get(a_) or {}).get("ok")]
         if bad:
-            return False, f"{len(bad)}/{len(got)} no longer match; first: {bad[0][1][:160]}"
-        return True, f"{len(got)}/{len(got)} still byte-match" + (" (a header changed: every matched file)" if headers else "")
+            return False, f"{len(bad)}/{len(want)} no longer match; first ${bad[0][0]}: {bad[0][1][:160]}"
+        return True, f"{len(want)}/{len(want)} still byte-match" + (" (a header changed: every matched file)" if headers else "")
 
     def step_verify():
         args = ["verify", "--inputs", str(refs / "inputs"), "--runs", ",".join(runs), "--frames", str(a.frames),

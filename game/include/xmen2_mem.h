@@ -23,7 +23,8 @@
  *     parameters (they live on the host).
  *   - Pointers are plain C pointers (T *). A pointer stored IN game memory (a field, a
  *     global) is PTR(T); a function pointer stored there has a type made by FNTYPE().
- *   - Hardware is reached through the names in this file, never by address.
+ *   - Hardware is reached through the platform layer's names (platform/xmen2_platform.h),
+ *     never by address.
  *   - No register access: the C never sees the 68000.
  *
  * PC mode, how pointers keep their 68000 value: the 68000 has 24 address bits, so the same
@@ -74,11 +75,6 @@ typedef long (*AnyFn)();
    and back: a pointer to T at a 68000 address computed as a number (work RAM or ROM). */
 #define ADDR68(p)              ((unsigned long)(p))
 #define AT68(T, a)             ((T *)(a))
-
-/* Hardware (68000 addresses) */
-#define HW8(a)                 (*(volatile u8 *)(a))
-#define HW16(a)                (*(volatile s16 *)(a))
-#define HW32(a)                (*(volatile s32 *)(a))
 
 #else
 /* ======================================================================== */
@@ -263,6 +259,13 @@ uint32_t sp_reserve(uint32_t bytes);   /* A7 -= bytes (even); the new A7 */
 extern uint32_t g_frame, g_seq, g_novalue;
 extern bool g_retnv;
 void     sp_restore(uint32_t a7);
+/* The stack region of game memory: the original kept some locals whose addresses go into game
+   memory (a lift, a palette, select slots) on its stack, so the C places them where the original's
+   frame had them: frame_alloc(n) takes n bytes (even) below the mark, frame_release(mark) gives
+   back everything below it. */
+uint32_t frame_mark(void);
+uint32_t frame_alloc(uint32_t bytes);   /* the new mark: the bytes' address */
+void     frame_release(uint32_t mark);
 
 inline bool in_game_memory(const void *p)
 {
@@ -333,6 +336,33 @@ template <class... A> inline ret68 call68(uint32_t a, A... args)
     uint32_t s[sizeof...(A) + 1] = { sc.arg(args)... };
     return ret68{ call_slots(a, s, (int)sizeof...(A)) };
 }
+#ifdef XMEN2_NATIVE
+/* NATIVE (phase 5 P3): a call through a function value stored in game memory runs the C function
+   at that value directly, through a thunk typed by its prototype (bridge.py: call_native and its
+   table). An argument travels as narg: a value as the slot the original pushed (slot()); a pointer
+   to host memory (a caller's local) as itself, with `stack` = the bytes call68 reserves for its
+   copy, so that the stack region keeps the original's addresses (xm::frame_alloc). */
+struct narg { uint32_t v; const void *p; uint32_t stack; };
+template <class A> inline narg make_narg(A a)
+{
+    if constexpr (std::is_pointer<A>::value && !std::is_function<typename std::remove_pointer<A>::type>::value) {
+        if (!a || in_game_memory((const void *)a)) return narg{ addr((const void *)a), nullptr, 0u };
+        typedef typename std::remove_cv<typename std::remove_pointer<A>::type>::type T;
+        uint32_t n = 0;
+        if constexpr (std::is_arithmetic<T>::value) n = sizeof(T) < 2 ? 2u : (uint32_t)sizeof(T);
+        else if constexpr (!std::is_void<T>::value) n = ((uint32_t)sizeof(T) + 1u) & ~1u;
+        return narg{ 0u, (const void *)a, n };
+    } else {
+        return narg{ slot(a), nullptr, 0u };
+    }
+}
+uint32_t call_native(uint32_t a, const narg *args, int n);
+template <class... A> inline ret68 calln(uint32_t a, A... args)
+{
+    narg s[sizeof...(A) + 1] = { make_narg(args)... };
+    return ret68{ call_native(a, s, (int)sizeof...(A)) };
+}
+#endif
 /* The 68000 value a function's address had where the current C function took it
    (direct, or its jump-table entry when the original crossed segments). */
 uint32_t fn_value(const void *hostfn);
@@ -362,27 +392,15 @@ struct fnp {
     const fnp &operator*() const { return *this; }
     template <class... A> R operator()(A... a) const
     {
+#ifdef XMEN2_NATIVE
+        if constexpr (std::is_void<R>::value) (void)calln(v.get(), a...);
+        else return (R)calln(v.get(), a...);
+#else
         if constexpr (std::is_void<R>::value) (void)call68(v.get(), a...);
         else return (R)call68(v.get(), a...);
+#endif
     }
 };
-/* ---- hardware: every access goes through the runner's 68000 bus ------------ */
-struct hw8 {
-    uint32_t a;
-    operator uint8_t() const { return m68k_read8(a); }
-    const hw8 &operator=(uint8_t v) const { m68k_write8(a, v); return *this; }
-};
-struct hw16 {
-    uint32_t a;
-    operator uint16_t() const { return m68k_read16(a); }
-    const hw16 &operator=(uint16_t v) const { m68k_write16(a, v); return *this; }
-};
-struct hw32 {
-    uint32_t a;
-    operator uint32_t() const { return m68k_read32(a); }
-    const hw32 &operator=(uint32_t v) const { m68k_write32(a, v); return *this; }
-};
-
 /* ROM bytes at a 68000 address (data the C names: xmen2_data.h). */
 inline void *rom(uint32_t a) { return g_rom + a; }
 
@@ -417,10 +435,6 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #define ADDR68(p)              ((unsigned long)xm::addr(p))
 #define AT68(T, a)             ((T *)xm::host((uint32_t)(a)))
 
-#define HW8(a)                 (xm::hw8{ (uint32_t)(a) })
-#define HW16(a)                (xm::hw16{ (uint32_t)(a) })
-#define HW32(a)                (xm::hw32{ (uint32_t)(a) })
-
 #ifdef XMEN2_NATIVE
 /* ------------------------------------------------------------------------ */
 /* NATIVE (phase 5) on top of PC mode: nothing differs yet. Native storage    */
@@ -431,47 +445,18 @@ template <class F> inline F fn_at(const void *p) { F f; f.v = addr(p); return f;
 #endif /* PC */
 
 /* ======================================================================== */
-/* Hardware names (all modes)                                                */
+/* Hardware (all modes): the platform layer's names and API                  */
 /* ======================================================================== */
-#define VDP_DATA       HW16(0xC00000)   /* VDP data port */
-#define VDP_DATA_B     HW8(0xC00000)    /* its byte (the value of a DMA fill) */
-#define VDP_DATA32     HW32(0xC00000)
-#define VDP_CTRL       HW16(0xC00004)   /* VDP control port: status (read), commands (write) */
-#define VDP_CTRL32     HW32(0xC00004)
-#define VDP_HV         HW16(0xC00008)   /* H/V counter */
-#define VDP_HV_B       HW8(0xC00008)    /* its high byte: the V counter (SiberiaB1_InstallHooks) */
-#define PSG_PORT       HW8(0xC00011)    /* SN76489 */
-#define IO_VERSION     HW8(0xA10001)    /* region / version register */
-#define IO_DATA1       HW8(0xA10003)    /* pad port 1 data */
-#define IO_DATA2       HW8(0xA10005)    /* pad port 2 data */
-#define IO_CTRL1       HW8(0xA10009)    /* pad port 1 control */
-#define IO_CTRL2       HW8(0xA1000B)    /* pad port 2 control */
-#define IO_CTRL12_L    HW32(0xA10008)   /* control ports 1 and 2 as one long (the boot's soft-reset test) */
-#define IO_CTRL12_W    HW16(0xA10008)   /* the same as a word (Boot_StartApp's cold-start test) */
-#define IO_CTRL3_W     HW16(0xA1000C)   /* expansion port control (the boot's soft-reset test) */
-#define IO_DATA(n)     HW8(0xA10003 + 2 * (n))   /* pad port n (0, 1) data */
-#define IO_CTRL(n)     HW8(0xA10009 + 2 * (n))   /* pad port n (0, 1) control */
-#define Z80_BUSREQ     HW16(0xA11100)   /* Z80 bus request */
-#define Z80_BUSREQ_B   HW8(0xA11100)    /* its byte (btst #0: 1 = bus not yet granted) */
-#define Z80_RESET      HW16(0xA11200)   /* Z80 reset */
-#define TMSS_PORT      HW32(0xA14000)   /* TMSS "SEGA" */
-#define Z80_RAM(off)   HW8(0xA00000 + (off))   /* Z80 RAM byte (bus held) */
+#include "xmen2_platform.h"
 #define WORK_RAM_START 0xFF0000L        /* first byte of the 68000's work RAM: the heap's base (Level_Load) */
 
 /* A loop waiting for a flag only an interrupt handler sets (`while (!g_FrameTick) IRQ_WAIT();`):
    on the 68000 the interrupt simply arrives, so MPW compiles nothing for it; on PC the
-   frame-synchronous runner takes the V-int there (handc_rt.cpp, x68k_wait_vint). */
+   frame-synchronous runner takes the V-int there (plat_wait_vint). */
 #ifdef XMEN2_MPW
 #define IRQ_WAIT()
 #else
-namespace xm { void irq_wait(void); }
-#define IRQ_WAIT()             xm::irq_wait()
+#define IRQ_WAIT()             plat_wait_vint()
 #endif
-
-/* The CPU itself: what only the hand-written 68000 (asm) functions do, which C can't say.
-   MPW C never compiles a call to them (no asm function matches); on PC handc_rt.cpp. */
-unsigned short CPU_GetSR(void);           /* status register */
-void           CPU_SetSR(unsigned short sr);   /* move to SR (interrupt mask: Irq_Enable/Disable) */
-unsigned long  CPU_GetSP(void);           /* A7 as the asm function saw it */
 
 #endif /* XMEN2_MEM_H */

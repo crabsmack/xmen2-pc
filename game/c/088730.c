@@ -26,13 +26,13 @@ void CloneA5_RunScene(void)
 	u8 table[0x34];		/* the palette cycle table's copy */
 	u8 pool[0x2D0];		/* the ICANDY pool: 10 x $48 bytes */
 #else
-	unsigned long a7 = CPU_GetSP();
-	u8 *pool = AT68(u8, xm::sp_reserve(4 + 0x2D0));
-	u8 *table = AT68(u8, xm::sp_reserve(0x34));
+	unsigned long a7 = xm::frame_mark();
+	u8 *pool = AT68(u8, xm::frame_alloc(4 + 0x2D0));
+	u8 *table = AT68(u8, xm::frame_alloc(0x34));
 #endif
 
 #ifndef XMEN2_MPW
-	xm::sp_reserve(16);
+	xm::frame_alloc(16);
 #endif
 	Level_Load(CODEPTR(Lvl_CloneA5FgMap), CODEPTR(Lvl_CloneA2Fg), CODEPTR(Lvl_CloneA5Bg),
 		CODEPTR(Lvl_CloneA5Bg), CODEPTR(Lvl_CloneA5FgSegs), CODEPTR(Lvl_CloneA5BgSegs), 0, 1, 1, 0,
@@ -94,6 +94,6 @@ void CloneA5_RunScene(void)
 	g_TwoPlayerStep = 0;
 	Level_Run();
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

@@ -26,6 +26,9 @@ namespace xm {
 void call_raw(uint32_t a);
 void jump_raw(uint32_t a);
 uint32_t ret_from_c(void);
+#ifdef XMEN2_NATIVE
+extern uint32_t g_d0;   /* d0 of the native stored-pointer calls (bridge.py call_native) */
+#endif
 }
 
 static void push16(uint16_t v) { g_cpu.A[7] -= 2; m68k_write16(g_cpu.A[7], v); }
@@ -406,7 +409,13 @@ static void irq_vector(void (*c)(void))
     push32(g_cpu.D[2]);
     push32(g_cpu.D[1]);
     push32(g_cpu.D[0]);
+#ifdef XMEN2_NATIVE
+    uint32_t d0 = xm::g_d0;
     c();
+    xm::g_d0 = d0;
+#else
+    c();
+#endif
     g_cpu.D[0] = pop32();
     g_cpu.D[1] = pop32();
     g_cpu.D[2] = pop32();

@@ -19,11 +19,15 @@
 /* Ends a function that returns a value on some paths and falls off the end on others, as the
    original did (MPW C accepts it; d0 then holds whatever the last instruction left, and no
    caller reads it: state functions). MPW: nothing. PC: C++ needs a value: 0, flagged so the
-   slot entry leaves d0 alone and verify doesn't compare it.
+   slot entry leaves d0 alone and verify doesn't compare it. NATIVE: 0, unflagged.
    RETURN_NO_VALUE; is the same as a statement before the end (MPW: return;). */
 #ifdef XMEN2_MPW
 #define NO_RETURN_VALUE
 #define RETURN_NO_VALUE		return
+#elif defined(XMEN2_NATIVE)
+/* NATIVE: the value is 0 (a call through a stored pointer then sets d0 to it: bridge.py) */
+#define NO_RETURN_VALUE		return 0;
+#define RETURN_NO_VALUE		return 0
 #else
 #define NO_RETURN_VALUE		return (xm::g_novalue = xm::g_frame, 0);
 #define RETURN_NO_VALUE		return (xm::g_novalue = xm::g_frame, 0)

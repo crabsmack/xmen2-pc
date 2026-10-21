@@ -5,5 +5,5 @@
 
 void Irq_Disable(void)
 {
-	CPU_SetSR(CPU_GetSR() | 0x0700);
+	plat_set_sr(plat_sr() | 0x0700);
 }

@@ -7,10 +7,10 @@
 
 void Z80_DriverPause(void)
 {
-	unsigned short sr = CPU_GetSR();
+	unsigned short sr = plat_sr();
 	unsigned char busy;
 
-	CPU_SetSR(sr | 0x0700);
+	plat_set_sr(sr | 0x0700);
 	for (;;) {
 		Z80_BUSREQ = 0x100;
 		while (Z80_BUSREQ_B & 1)
@@ -21,5 +21,5 @@ void Z80_DriverPause(void)
 		if (busy == 0)
 			break;
 	}
-	CPU_SetSR(sr);
+	plat_set_sr(sr);
 }

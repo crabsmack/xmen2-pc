@@ -19,9 +19,9 @@ void SavageA4_RunScene(void)
 
 	g_A4Stats = &stats;
 #else
-	unsigned long a7 = CPU_GetSP();
+	unsigned long a7 = xm::frame_mark();
 
-	g_A4Stats = AT68(NpcStats, xm::sp_reserve(4 + 8));
+	g_A4Stats = AT68(NpcStats, xm::frame_alloc(4 + 8));
 #endif
 	SavageA4_InitStats();
 	SavageA4_CallEmptyStub();
@@ -38,6 +38,6 @@ void SavageA4_RunScene(void)
 	Level_Run();
 	Snd_StopAll();
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

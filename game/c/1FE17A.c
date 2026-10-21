@@ -21,7 +21,7 @@ void VDP_QueueDma(void *src, long dest, long len)
 		VDP_DmaToVram(from, dest, len);
 		return;
 	}
-	CPU_SetSR(CPU_GetSR() | 0x0700);
+	plat_set_sr(plat_sr() | 0x0700);
 	e = &g_DmaQueue[g_DmaQueueCount];
 	if (g_DmaQueueCount != 0) {
 		prev = e - 1;
@@ -59,5 +59,5 @@ void VDP_QueueDma(void *src, long dest, long len)
 	e->len = n;
 	e->regLenLo = 0x9300 | ((unsigned short)n >> 1 & 0xFF);
 	e->regLenHi = 0x9400 | (unsigned short)n >> 9;
-	CPU_SetSR(CPU_GetSR() & 0xF8FF);
+	plat_set_sr(plat_sr() & 0xF8FF);
 }

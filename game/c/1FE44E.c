@@ -7,12 +7,12 @@
 
 void Z80_LoadDriver(void)
 {
-	unsigned short sr = CPU_GetSR();
+	unsigned short sr = plat_sr();
 	u8 *src = (u8 *)Snd_Z80Driver;
 	unsigned short n = (unsigned short)((u8 *)Snd_Z80DriverEnd - src);
 	unsigned short at = 0;
 
-	CPU_SetSR(sr | 0x0700);
+	plat_set_sr(sr | 0x0700);
 	Z80_RESET = 0x100;
 	Z80_BusRequest();
 	while (n) {
@@ -21,5 +21,5 @@ void Z80_LoadDriver(void)
 	}
 	while (at != 0x2000)
 		Z80_RAM(at++) = 0;
-	CPU_SetSR(sr);
+	plat_set_sr(sr);
 }

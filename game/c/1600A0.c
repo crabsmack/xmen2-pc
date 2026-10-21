@@ -6,5 +6,5 @@
 
 long Sys_GetStackPtr(void)
 {
-	return CPU_GetSP() & ((1L << 24) - 1);	/* the 68000's 24 address bits */
+	return xm::frame_mark() & ((1L << 24) - 1);	/* the 68000's 24 address bits */
 }

@@ -36,7 +36,7 @@ long Scaler_BeginPass(void)
 
 	g_ScalerBudget = g_ScalerParams.rowsPerCall;
 	if (!g_ScalerParams.direct) {
-		args = AT68(s32, CPU_GetSP() + 4);
+		args = AT68(s32, xm::frame_mark() + 4);
 		return Scaler_EmitSprites((short)args[0], (short)args[1], (short)args[2], (char)args[3]);
 	}
 	if (g_ScalerParams.tableKey != g_ScalerTableKey) {

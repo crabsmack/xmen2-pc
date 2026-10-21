@@ -51,8 +51,8 @@ void Cerebro_PlayIntro(void)
 	SprInst spr;
 #define SPR	(&spr)
 #else
-	unsigned long a7 = CPU_GetSP();
-	unsigned long fp = xm::sp_reserve(4 + 0x1F0) + 0x1F0;	/* the original's a6 */
+	unsigned long a7 = xm::frame_mark();
+	unsigned long fp = xm::frame_alloc(4 + 0x1F0) + 0x1F0;	/* the original's a6 */
 	BigSprite *BS = AT68(BigSprite, fp - 0x1E8);
 	s16 *buf = AT68(s16, fp - 0x1A6);
 	SprInst *SPR = AT68(SprInst, fp - 0x14);
@@ -67,7 +67,7 @@ void Cerebro_PlayIntro(void)
 	register short frames;	/* the waits after the flights */
 
 #ifndef XMEN2_MPW
-	xm::sp_reserve(28);
+	xm::frame_alloc(28);
 #endif
 	savedTiles = g_VramTileCursor;
 	g_TextState = 1;
@@ -471,6 +471,6 @@ void Cerebro_PlayIntro(void)
 	g_Pad1Latch = 0;
 	g_Pad2Latch = 0;
 #ifndef XMEN2_MPW
-	xm::sp_restore(a7);
+	xm::frame_release(a7);
 #endif
 }

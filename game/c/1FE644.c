@@ -12,11 +12,11 @@ char Snd_ReadDriverByte(long n)
 
 	if (g_SndMute)
 		RETURN_NO_VALUE;
-	sr = CPU_GetSR();
-	CPU_SetSR(sr | 0x0700);
+	sr = plat_sr();
+	plat_set_sr(sr | 0x0700);
 	Z80_BusRequest();
 	b = Z80_RAM(0x1B22 + (unsigned char)n);
 	Z80_BusFree();
-	CPU_SetSR(sr);
+	plat_set_sr(sr);
 	return b;
 }

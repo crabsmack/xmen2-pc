@@ -6,11 +6,11 @@
 
 void Z80_ResetRun(void)
 {
-	unsigned short sr = CPU_GetSR();
+	unsigned short sr = plat_sr();
 
-	CPU_SetSR(sr | 0x0700);
+	plat_set_sr(sr | 0x0700);
 	Z80_RESET = 0;
 	Z80_BUSREQ = 0;
 	Z80_RESET = 0x100;
-	CPU_SetSR(sr);
+	plat_set_sr(sr);
 }
