@@ -188,8 +188,8 @@ def write_globals() -> str:
         "#else",
         "#define GLOBAL(type, name, addr)              /* name = *(type *)$addr */",
         "#define GLOBAL_ARRAY(type, name, n, addr)     /* name = (type *)$addr */",
-        "#define XM_G(type, addr)                      (*(type *)(g_ram_ffff + ((addr) & 0xFFFF)))",
-        "#define XM_GA(type, addr)                     ((type *)(g_ram_ffff + ((addr) & 0xFFFF)))",
+        "#define XM_G(type, addr)                      (*(type *)(XM_RAM_FFFF + ((addr) & 0xFFFF)))",
+        "#define XM_GA(type, addr)                     ((type *)(XM_RAM_FFFF + ((addr) & 0xFFFF)))",
         "#endif",
         "",
     ]

@@ -56,6 +56,17 @@ if(WIN32)
 endif()
 find_package(SDL2 REQUIRED)
 
+# Phase 5: the native runner alone (the Linux package, built in WSL: xmen2check.py native-build):
+# no recompiler, no generated code, no recomp runners. Its sources come from the bridges
+# xmen2check.py writes first (build/bridge/handc.cmake, build/bridge_native).
+option(XMEN2_NATIVE_ONLY "Build only XMen2Native" OFF)
+if(XMEN2_NATIVE_ONLY)
+    set(XMEN2_HANDC_SOURCES "")
+    include("${CMAKE_BINARY_DIR}/bridge/handc.cmake")
+    include("${CMAKE_SOURCE_DIR}/platform/native/native.cmake")
+    return()
+endif()
+
 include("${RECOMP_ROOT}/cmake/GenesisRecompGenerated.cmake")
 genesisrecomp_runner_sources(XMEN2_RUNNER_SOURCES TRACE ${GEN_ENABLE_TRACE})
 
@@ -140,23 +151,8 @@ xmen2_runner(XMen2Stepped 4383 DEFS XMEN2_STEPPED=1 DEPENDS ${XMEN2S_GENERATED_T
             "${CMAKE_SOURCE_DIR}/platform/plat_engine.cpp"
             "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp")
 
-# Phase 5, the native port's runner: XMen2Stepped's sources (the hand-C build, P4 D6: every game
-# function in C, no generated game code) compiled in xmen2_mem.h's NATIVE mode, plus the state
-# exporter game/runtime/export.cpp, whose table build/native/xmen2_export_globals.inc comes from
-# tools/export_table.py (xmen2check.py build runs it first). Its sync rows are the CRCs of the
-# exported 68000 image. `xmen2check.py build --native` reads its objects and link map. Only
-# target-level definitions here: per-source ones would stop /MP (one cl call per file).
-xmen2_runner(XMen2Native 4386 DEFS XMEN2_STEPPED=1 XMEN2_NATIVE=1 DEPENDS ${XMEN2S_GENERATED_TARGET}
-    SOURCES ${XMEN2S_GENERATED} ${XMEN2_HANDC_SOURCES}
-            "${XMEN2_BRIDGE_DIR}/xmen2_bridge.cpp"
-            "${CMAKE_SOURCE_DIR}/game/runtime/handc_rt.cpp"
-            "${CMAKE_SOURCE_DIR}/platform/plat_engine.cpp"
-            "${CMAKE_SOURCE_DIR}/game/runtime/asm_conv.cpp"
-            "${CMAKE_SOURCE_DIR}/game/runtime/export.cpp")
-target_include_directories(XMen2Native PRIVATE "${CMAKE_BINARY_DIR}/native")
-if(MSVC)
-    target_link_options(XMen2Native PRIVATE "/MAP:$<TARGET_FILE_DIR:XMen2Native>/XMen2Native.map")
-endif()
+# Phase 5, the native port's runner: no 68000 (platform/native/native.cmake).
+include("${CMAKE_SOURCE_DIR}/platform/native/native.cmake")
 
 # The same stepped runner with ALL generated code (no hand C): the reference D2/D6 compare the
 # C against (xmen2disasm P4-decomp.md decision 5).

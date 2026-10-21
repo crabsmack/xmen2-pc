@@ -684,8 +684,6 @@ def generate(out: Path, mode: str) -> None:
     L += ["    { 0, 0, nullptr, nullptr, 0, 0, 0, 0, { 0 } }", "};",
           f"extern const int xm_verify_fn_count = {len(tested)};"]
     L += fn_table(protos, wraps)
-    if mode == "stepped":
-        L += native_calls(wraps)
     skip = set(hc)
     if mode == "stepped":
         # Fragments (switch cases and blocks split off a function, AI-script jmp tables) are done

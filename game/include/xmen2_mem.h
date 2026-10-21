@@ -8,14 +8,16 @@
  *   PC   (C++17): inside the recomp runner. Game memory is still the emulated 68000's
  *        (work RAM, ROM; big-endian), because the generated code of the functions not yet
  *        written in C shares it. The types below make plain-looking C read and write it.
- *   NATIVE (C++17, XMEN2_NATIVE; the XMen2Native runner, phase 5): where the native types
- *        land, game state in host structs and pointers off the emulated machine. Today it IS
- *        PC mode (it builds on it and changes nothing yet). XMen2Native is XMen2Stepped plus
- *        game/runtime/export.cpp, which writes the game state out as the 68000 image (work
- *        RAM, VRAM, CRAM, VSRAM) its sync rows are computed from, so the stepped-gen
- *        references still decide equality. A global moved to native storage here keeps its
- *        entry in the export table (tools/export_table.py, from xmen2_globals.h), which then
- *        serializes it from the native storage by its declared type.
+ *   NATIVE (C++17, XMEN2_NATIVE; the XMen2Native runner, phase 5): no 68000 at all. Game
+ *        memory is native storage (game/runtime/native_rt.cpp): the work-RAM arena laid out as
+ *        the 68000's, values in host byte order (mem<T>, below), stored pointers as their 32-bit
+ *        68000 values; ROM data read from the user's ROM image. A call through a stored
+ *        function value runs the C function directly (calln, bridge.py --mode native); the
+ *        hardware is the platform's (platform/xmen2_platform.h, platform/native). The runner
+ *        writes the state out as the 68000 image (game/runtime/export.cpp: work RAM, VRAM,
+ *        CRAM, VSRAM) its sync rows are computed from, so the stepped-gen references still
+ *        decide equality; the export table (tools/export_table.py, from xmen2_globals.h)
+ *        serializes every global by its declared type.
  *
  * Rules for C written against these headers (lint: xmen2check.py lint):
  *   - s8 u8 s16 u16 s32 u32 for every value that lives in game memory: struct fields,
@@ -97,15 +99,26 @@ typedef long (*AnyFn)();
 static_assert(sizeof(long) == 4, "xmen2_mem.h: the C's long is 32 bits");
 
 extern "C" {
+#ifdef XMEN2_NATIVE
+/* NATIVE: game memory is native storage (game/runtime/native_rt.cpp), the work-RAM arena laid out
+   as the 68000's, mapped twice back to back ($00FFxxxx, then the same memory as $FFFFxxxx) */
+extern uint8_t *xm_arena;
+extern uint8_t *xm_arena_ffff;
+#define XM_RAM                 xm_arena
+#define XM_RAM_FFFF            xm_arena_ffff
+#else
 extern uint8_t *g_ram;        /* work RAM as $00FFxxxx (the engine's view) */
 extern uint8_t *g_ram_ffff;   /* the same RAM as $FFFFxxxx */
-extern uint8_t  g_rom[0x400000];
+#define XM_RAM                 g_ram
+#define XM_RAM_FFFF            g_ram_ffff
 uint8_t  m68k_read8(uint32_t addr);
 uint16_t m68k_read16(uint32_t addr);
 uint32_t m68k_read32(uint32_t addr);
 void     m68k_write8(uint32_t addr, uint8_t v);
 void     m68k_write16(uint32_t addr, uint16_t v);
 void     m68k_write32(uint32_t addr, uint32_t v);
+#endif
+extern uint8_t  g_rom[0x400000];
 }
 
 namespace xm {
@@ -119,8 +132,8 @@ inline void *host(uint32_t a)
     uint32_t a24 = a & 0xFFFFFFu;
     if (a24 >= 0xFF0000u) {
         uint32_t top = a >> 24;
-        if (top == 0x00u) return g_ram + (a24 & 0xFFFFu);
-        if (top == 0xFFu) return g_ram_ffff + (a24 & 0xFFFFu);
+        if (top == 0x00u) return XM_RAM + (a24 & 0xFFFFu);
+        if (top == 0xFFu) return XM_RAM_FFFF + (a24 & 0xFFFFu);
     } else if (a == a24 && a24 < 0x400000u) {
         return g_rom + a24;
     }
@@ -132,12 +145,87 @@ inline uint32_t addr(const void *p)
 {
     if (!p) return 0;
     uintptr_t u = (uintptr_t)p;
-    if (u - (uintptr_t)g_ram < 0x10000u)      return 0x00FF0000u + (uint32_t)(u - (uintptr_t)g_ram);
-    if (u - (uintptr_t)g_ram_ffff < 0x10000u) return 0xFFFF0000u + (uint32_t)(u - (uintptr_t)g_ram_ffff);
+    if (u - (uintptr_t)XM_RAM < 0x10000u)      return 0x00FF0000u + (uint32_t)(u - (uintptr_t)XM_RAM);
+    if (u - (uintptr_t)XM_RAM_FFFF < 0x10000u) return 0xFFFF0000u + (uint32_t)(u - (uintptr_t)XM_RAM_FFFF);
     if (u - (uintptr_t)g_rom < 0x400000u)     return (uint32_t)(u - (uintptr_t)g_rom);
     fatal("xm::addr: host pointer %p is not in game memory", p);
 }
 
+#ifdef XMEN2_NATIVE
+/* NATIVE (phase 5 P5, R1 (b)): a scalar in game memory, held in host byte order. Where it is
+   decides how it reads: in the work-RAM arena through its store tag (game/runtime/native_rt.cpp:
+   a value read at the width it was stored is a host load; any other read is assembled from the
+   bytes as the 68000 sees them, so layout-dependent code reads what the original read); in the
+   ROM image as the big-endian bytes it is; in host memory (a C local of a game type) as a host
+   value. Copying one to another goes through the value, so copying a record (a ROM record into
+   RAM, RAM into a local) converts field by field. Bytes (s8, u8) too: a byte store into a word
+   makes that word bytes (its tag), so it stays exact. */
+}  /* namespace xm */
+extern "C" { extern uint8_t xm_tags[0x10000]; }
+namespace xm {
+uint32_t mem_load_slow(uint32_t off, int w);
+void     mem_store_slow(uint32_t off, int w, uint32_t v);
+
+template <class T>
+struct mem {
+    static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4, "mem<T>: 8, 16 or 32 bits");
+    static constexpr uint8_t TAG = sizeof(T) > 1 ? (uint8_t)(sizeof(T) << 4) : 0;
+    uint8_t b[sizeof(T)];
+
+    T get() const
+    {
+        uintptr_t u = (uintptr_t)b;
+        uintptr_t a = u - (uintptr_t)xm_arena;
+        if (a < 0x20000u) {                       /* the arena (both views) */
+            uint32_t off = (uint32_t)a & 0xFFFFu;
+            if (xm_tags[off] == TAG) { T v; memcpy(&v, b, sizeof v); return v; }
+            return (T)mem_load_slow(off, (int)sizeof(T));
+        }
+        if (u - (uintptr_t)g_rom < 0x400000u) {   /* the ROM image: big-endian */
+            uint32_t v = 0;
+            for (size_t i = 0; i < sizeof(T); i++) v = v << 8 | b[i];
+            return (T)v;
+        }
+        T v;                                      /* host memory */
+        memcpy(&v, b, sizeof v);
+        return v;
+    }
+    void set(T v)
+    {
+        uintptr_t u = (uintptr_t)b;
+        uintptr_t a = u - (uintptr_t)xm_arena;
+        if (a < 0x20000u) {
+            uint32_t off = (uint32_t)a & 0xFFFFu;
+            if (xm_tags[off] == TAG) { memcpy(b, &v, sizeof v); return; }
+            mem_store_slow(off, (int)sizeof(T), (uint32_t)v);
+            return;
+        }
+        if (u - (uintptr_t)g_rom < 0x400000u) fatal("a store into the ROM image at $%06X", (unsigned)(u - (uintptr_t)g_rom));
+        memcpy(b, &v, sizeof v);
+    }
+    mem() = default;
+    mem(const mem &o) { set(o.get()); }
+    mem &operator=(const mem &o) { set(o.get()); return *this; }
+    explicit mem(T v) { set(v); }
+    operator T() const { return get(); }
+    mem &operator=(T v) { set(v); return *this; }
+    template <class U> mem &operator+=(U v)  { set((T)(get() + v)); return *this; }
+    template <class U> mem &operator-=(U v)  { set((T)(get() - v)); return *this; }
+    template <class U> mem &operator*=(U v)  { set((T)(get() * v)); return *this; }
+    template <class U> mem &operator/=(U v)  { set((T)(get() / v)); return *this; }
+    template <class U> mem &operator%=(U v)  { set((T)(get() % v)); return *this; }
+    template <class U> mem &operator&=(U v)  { set((T)(get() & v)); return *this; }
+    template <class U> mem &operator|=(U v)  { set((T)(get() | v)); return *this; }
+    template <class U> mem &operator^=(U v)  { set((T)(get() ^ v)); return *this; }
+    template <class U> mem &operator<<=(U v) { set((T)(get() << v)); return *this; }
+    template <class U> mem &operator>>=(U v) { set((T)(get() >> v)); return *this; }
+    mem &operator++() { set((T)(get() + 1)); return *this; }
+    mem &operator--() { set((T)(get() - 1)); return *this; }
+    T operator++(int) { T o = get(); set((T)(o + 1)); return o; }
+    T operator--(int) { T o = get(); set((T)(o - 1)); return o; }
+};
+template <class T> using be = mem<T>;
+#else
 /* A big-endian scalar in game memory: reads and writes like the T it holds. */
 template <class T>
 struct be {
@@ -181,8 +269,9 @@ struct be {
     T operator++(int) { T o = get(); set((T)(o + 1)); return o; }
     T operator--(int) { T o = get(); set((T)(o - 1)); return o; }
 };
+#endif
 
-/* A pointer stored in game memory: the 68000 address, big-endian. */
+/* A pointer stored in game memory: the 68000 address (big-endian; NATIVE: a 32-bit mem<>). */
 template <class T>
 struct bptr {
     be<uint32_t> v;
@@ -230,6 +319,10 @@ template <class A> inline uint32_t slot(A a)
     else if constexpr (std::is_integral<A>::value) return std::is_signed<A>::value ? (uint32_t)(int32_t)a : (uint32_t)a;
     else if constexpr (std::is_same<A, be<int16_t>>::value || std::is_same<A, be<int32_t>>::value) return (uint32_t)(int32_t)a.get();
     else if constexpr (std::is_same<A, be<uint16_t>>::value || std::is_same<A, be<uint32_t>>::value) return (uint32_t)a.get();
+#ifdef XMEN2_NATIVE
+    else if constexpr (std::is_same<A, mem<int8_t>>::value) return (uint32_t)(int32_t)a.get();
+    else if constexpr (std::is_same<A, mem<uint8_t>>::value) return (uint32_t)a.get();
+#endif
     else return a.raw();                                        /* bptr<>, fnp<>: the stored value */
 }
 /* The d0 a 68000 function returned, as the C type the caller expects. */
@@ -270,10 +363,11 @@ void     frame_release(uint32_t mark);
 inline bool in_game_memory(const void *p)
 {
     uintptr_t u = (uintptr_t)p;
-    return u - (uintptr_t)g_ram < 0x10000u || u - (uintptr_t)g_ram_ffff < 0x10000u
+    return u - (uintptr_t)XM_RAM < 0x10000u || u - (uintptr_t)XM_RAM_FFFF < 0x10000u
         || u - (uintptr_t)g_rom < 0x400000u;
 }
 
+#ifndef XMEN2_NATIVE   /* the recomp runners only: NATIVE has no 68000 code to call */
 /* The arguments of one call into 68000 code. A pointer to host memory (a C function's local,
    e.g. a SprInst passed by address) travels on the 68000 stack: copied below A7 before the
    call, copied back after it, A7 restored. Game-memory types go as their bytes (they are the
@@ -336,7 +430,7 @@ template <class... A> inline ret68 call68(uint32_t a, A... args)
     uint32_t s[sizeof...(A) + 1] = { sc.arg(args)... };
     return ret68{ call_slots(a, s, (int)sizeof...(A)) };
 }
-#ifdef XMEN2_NATIVE
+#else  /* XMEN2_NATIVE */
 /* NATIVE (phase 5 P3): a call through a function value stored in game memory runs the C function
    at that value directly, through a thunk typed by its prototype (bridge.py: call_native and its
    table). An argument travels as narg: a value as the slot the original pushed (slot()); a pointer
@@ -406,8 +500,13 @@ inline void *rom(uint32_t a) { return g_rom + a; }
 
 }  /* namespace xm */
 
+#ifdef XMEN2_NATIVE
+typedef xm::mem<int8_t>       s8;
+typedef xm::mem<uint8_t>      u8;
+#else
 typedef int8_t                s8;
 typedef uint8_t               u8;
+#endif
 typedef xm::be<int16_t>       s16;
 typedef xm::be<uint16_t>      u16;
 typedef xm::be<int32_t>       s32;

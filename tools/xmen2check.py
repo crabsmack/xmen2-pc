@@ -136,7 +136,7 @@ def cmd_build(a) -> dict:
     common.ensure_rom()
     snap = snapshot_handc()
     # the bridge between hand-written C and generated code (build/bridge), before cmake reads it
-    for mode, d in (("stepped", "bridge"), ("verify", "bridge_verify")):
+    for mode, d in (("stepped", "bridge"), ("verify", "bridge_verify"), ("native", "bridge_native")):
         r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "bridge.py"), "--out", str(BUILD / d),
                             "--mode", mode, "--src", str(snap)], capture_output=True, text=True)
         if r.returncode:
@@ -687,6 +687,201 @@ def cmd_lint(a) -> dict:
     return {"violations": total, "files": files}
 
 
+# --- phase 5: the package (P8 Windows, P9 Linux) ---------------------------------------
+
+PACKAGE_README = """X-Men 2: Clone Wars, native PC port (from the xmen2disasm decompilation).
+
+Run it with your own copy of the game's cartridge (USA/Europe; it checks the SHA-1
+61409e6cf6065ab67d8952b891d8edcf47777193 and refuses anything else):
+
+    {exe} path\\to\\xmen2.bin
+
+Nothing of the cartridge is in this package: the program reads the graphics, sound data and
+levels from your file each time it starts.
+
+Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
+Game controllers (players 1 and 2): D-pad or left stick; X = A, A = B, B = C, Start;
+LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
+
+Licenses of the parts it is built from: LICENSES/.
+"""
+
+
+def cmd_native_build(a) -> dict:
+    """Phase 5: XMen2Native alone, with this platform's compiler (P9: the Linux build in WSL): the
+    snapshot, the bridges and the export table as `build` makes them, then CMake with
+    XMEN2_NATIVE_ONLY (no recompiler, no generated code, no recomp runners) and the one target."""
+    common.ensure_rom()
+    snap = snapshot_handc()
+    for mode, d in (("stepped", "bridge"), ("native", "bridge_native")):
+        r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "bridge.py"), "--out", str(BUILD / d),
+                            "--mode", mode, "--src", str(snap)], capture_output=True, text=True)
+        if r.returncode:
+            sys.exit(f"bridge.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
+    r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "export_table.py"), "--out", str(BUILD / "native"),
+                        "--src", str(snap)], capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(f"export_table.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
+    BUILD.mkdir(parents=True, exist_ok=True)
+    if not (BUILD / "CMakeCache.txt").exists():
+        args = ["-S", str(common.ROOT), "-B", str(BUILD), "-DXMEN2_NATIVE_ONLY=ON"]
+        args += ["-G", GENERATOR, "-A", "x64"] if sys.platform == "win32" else \
+                ["-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release"]
+        if cmake(*args, logfile=BUILD / "configure.log"):
+            sys.exit(f"configure failed: {BUILD / 'configure.log'}")
+    rc = cmake("--build", str(BUILD), "--config", "Release", "--target", "XMen2Native", "--parallel",
+               logfile=BUILD / "build.log")
+    exe = exe_path(NATIVE_EXE)
+    return {"ok": rc == 0 and exe.is_file(), "exe": str(exe), "log": str(BUILD / "build.log")}
+
+
+def package_linux(a) -> dict:
+    """P9: the Linux package, built and checked in this machine's WSL Ubuntu (P5-port.md R7):
+    `native-build` there (build dir ~/xmen2-native-build), staged here with a README and the
+    licenses (SDL2 is the system's: libsdl2-2.0-0), zipped (the runner keeps its exec bit), scanned
+    for ROM windows, smoke-tested in WSL (600 frames on the ROM; a changed ROM refused), and its
+    TAS trace in WSL as the stepped runners play it (tas_sync: P1's comparison, on Linux)."""
+    import zipfile
+    sys.path.insert(0, str(common.ROOT / "tools"))
+    import harness
+    import romscan
+    common.ensure_rom()
+
+    def wsl_path(p: Path) -> str:
+        s = str(p.resolve()).replace("\\", "/")
+        return f"/mnt/{s[0].lower()}{s[2:]}" if re.match(r"^[A-Za-z]:", s) else s
+
+    def wsl(cmd: str, timeout: int = 3600) -> subprocess.CompletedProcess:
+        return subprocess.run(["wsl", "--", "bash", "-lc", cmd], capture_output=True, text=True,
+                              errors="replace", timeout=timeout)
+
+    root = wsl_path(common.ROOT)
+    r = wsl(f"cd '{root}' && XMEN2_BUILD=$HOME/xmen2-native-build python3 tools/xmen2check.py native-build --json")
+    j = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")), None)
+    if r.returncode or not j or not j.get("ok"):
+        sys.exit(f"WSL native-build failed: {(r.stdout + r.stderr).strip()[-600:]}")
+    stage = BUILD / "package" / "xmen2-native-linux"
+    if stage.exists():
+        shutil.rmtree(stage)
+    (stage / "LICENSES").mkdir(parents=True)
+    c = wsl(f"cp \"$HOME/xmen2-native-build/XMen2Native\" '{wsl_path(stage)}/xmen2' && chmod +x '{wsl_path(stage)}/xmen2'")
+    if c.returncode:
+        sys.exit(f"copying the Linux runner failed: {c.stderr.strip()[-300:]}")
+    readme = PACKAGE_README.format(exe="./xmen2").replace("path\\to\\xmen2.bin", "path/to/xmen2.bin")
+    readme += "\nLinux: needs SDL2 (Debian/Ubuntu: sudo apt install libsdl2-2.0-0).\n"
+    (stage / "README.txt").write_text(readme, encoding="utf-8", newline="\n")
+    engine = common.ENGINE / "runner" / "external"
+    for src, name in ((common.ENGINE / "LICENSE.md", "segagenesisrecomp-LICENSE.md"),
+                      (common.ENGINE / "THIRD-PARTY-LICENSES.md", "segagenesisrecomp-THIRD-PARTY-LICENSES.md"),
+                      (engine / "ymfm" / "LICENSE", "ymfm-LICENSE.txt"),
+                      (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt")):
+        shutil.copy2(src, stage / "LICENSES" / name)
+    files = sorted(p for p in stage.rglob("*") if p.is_file())
+    zpath = BUILD / "package" / "xmen2-native-linux.zip"
+    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+        for p in files:
+            info = zipfile.ZipInfo(p.relative_to(stage).as_posix())
+            info.external_attr = ((0o755 if p.name == "xmen2" else 0o644) | 0o100000) << 16
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, p.read_bytes())
+    rom = common.ROM.read_bytes()
+    index = romscan.rom_index(rom)
+    windows = {p.relative_to(stage).as_posix(): romscan.scan(p.read_bytes(), rom, index) for p in files}
+    nwin = sum(len(v) for v in windows.values())
+    # smoke, in WSL
+    out = BUILD / "package" / "linux-check"
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    bad = out / "not-xmen2.bin"
+    data = bytearray(rom)
+    data[0x200] ^= 0xFF
+    bad.write_bytes(bytes(data))
+    x, rp = f"'{wsl_path(stage)}/xmen2'", f"'{wsl_path(common.ROM)}'"
+    s1 = wsl(f"SDL_AUDIODRIVER=dummy {x} {rp} --benchmark 600", timeout=600)
+    s2 = wsl(f"SDL_AUDIODRIVER=dummy {x} '{wsl_path(bad)}' --benchmark 60", timeout=600)
+    smoke = {"rom": {"exit": s1.returncode, "benchmark": "GENESISRECOMP_BENCHMARK" in s1.stdout},
+             "wrong_rom": {"exit": s2.returncode, "refused": "SHA-1" in s2.stderr}}
+    # the TAS, as `trace --mode native` plays it
+    refs = harness.refs_dir()
+    script = out / "input.input"
+    frames = stepped_script(refs / "tas.input", refs / "tas-recomp-sync", script)
+    sync = out / "sync.csv"
+    t = wsl(f"cd '{wsl_path(out)}' && XMEN2_SYNC_CSV='{wsl_path(sync)}' SDL_AUDIODRIVER=dummy {x} {rp} "
+            f"--benchmark {frames} --input-script '{wsl_path(script)}'", timeout=7200)
+    (out / "runner.log").write_text(t.stderr, encoding="utf-8")
+    ok = (nwin == 0 and smoke["rom"]["exit"] == 0 and smoke["rom"]["benchmark"] and smoke["wrong_rom"]["exit"] == 2
+          and smoke["wrong_rom"]["refused"] and t.returncode == 0 and sync.is_file())
+    return {"ok": ok, "platform": "linux", "zip": str(zpath),
+            "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
+            "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke,
+            "tas_sync": str(sync), "tas_frames": frames, "tas_exit": t.returncode}
+
+
+def cmd_package(a) -> dict:
+    """P8 (Windows) / P9 (Linux): the native runner as a package that runs on the user's ROM and
+    holds nothing ROM-derived. Builds (the build contract), stages the runner, its SDL2 library, a
+    README and the licenses of what it is built from, zips them, scans every packaged file for ROM
+    windows (tools/romscan.py), and smoke-tests the unzipped package: 600 headless frames on the ROM
+    (exit 0), and refusal of a ROM with one byte changed (the SHA-1 check, exit 2)."""
+    import os
+    import tempfile
+    import zipfile
+    sys.path.insert(0, str(common.ROOT / "tools"))
+    import romscan
+    if a.platform == "linux":
+        return package_linux(a)
+    common.ensure_rom()
+    b = cmd_build(argparse.Namespace(native=False, handc=False, json=True))
+    exe = Path(b["native_exe"])
+    if not exe.is_file():
+        sys.exit(f"no native runner at {exe}")
+    engine = common.ENGINE / "runner" / "external"
+    stage = BUILD / "package" / "xmen2-native-windows"
+    if stage.exists():
+        shutil.rmtree(stage)
+    (stage / "LICENSES").mkdir(parents=True)
+    shutil.copy2(exe, stage / "XMen2.exe")
+    shutil.copy2(exe.parent / "SDL2.dll", stage / "SDL2.dll")
+    (stage / "README.txt").write_text(PACKAGE_README.format(exe="XMen2.exe"), encoding="utf-8", newline="\r\n")
+    for src, name in ((common.ENGINE / "LICENSE.md", "segagenesisrecomp-LICENSE.md"),
+                      (common.ENGINE / "THIRD-PARTY-LICENSES.md", "segagenesisrecomp-THIRD-PARTY-LICENSES.md"),
+                      (engine / "SDL2" / "SDL2-2.28.5" / "COPYING.txt", "SDL2-COPYING.txt"),
+                      (engine / "ymfm" / "LICENSE", "ymfm-LICENSE.txt"),
+                      (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt")):
+        shutil.copy2(src, stage / "LICENSES" / name)
+    files = sorted(p for p in stage.rglob("*") if p.is_file())
+    zpath = BUILD / "package" / "xmen2-native-windows.zip"
+    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+        for p in files:
+            z.write(p, p.relative_to(stage).as_posix())
+    rom = common.ROM.read_bytes()
+    index = romscan.rom_index(rom)
+    windows = {p.relative_to(stage).as_posix(): romscan.scan(p.read_bytes(), rom, index) for p in files}
+    nwin = sum(len(v) for v in windows.values())
+    smoke = {}
+    with tempfile.TemporaryDirectory(prefix="xmen2pkg_") as td:
+        with zipfile.ZipFile(zpath) as z:
+            z.extractall(td)
+        run = Path(td) / "XMen2.exe"
+        env = {**os.environ, "SDL_AUDIODRIVER": "dummy"}
+        r = subprocess.run([str(run), str(common.ROM), "--benchmark", "600"], capture_output=True, text=True,
+                           timeout=600, cwd=td, env=env)
+        smoke["rom"] = {"exit": r.returncode, "benchmark": "GENESISRECOMP_BENCHMARK" in r.stdout}
+        bad = Path(td) / "not-xmen2.bin"
+        data = bytearray(rom)
+        data[0x200] ^= 0xFF
+        bad.write_bytes(bytes(data))
+        r = subprocess.run([str(run), str(bad), "--benchmark", "60"], capture_output=True, text=True,
+                           timeout=600, cwd=td, env=env)
+        smoke["wrong_rom"] = {"exit": r.returncode, "refused": "SHA-1" in r.stderr}
+    ok = (nwin == 0 and smoke["rom"]["exit"] == 0 and smoke["rom"]["benchmark"]
+          and smoke["wrong_rom"]["exit"] == 2 and smoke["wrong_rom"]["refused"])
+    return {"ok": ok, "platform": "windows", "zip": str(zpath),
+            "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
+            "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -726,9 +921,15 @@ def main() -> int:
             p.add_argument("--dump-frames", default="", help="dev: dump full state after these frames")
             p.add_argument("--keep-runner", action="store_true",
                            help="keep OUT/runner (the private runner copy) after a pass (XMEN2_KEEP_RUNNER=1)")
+    p = sub.add_parser("package")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--platform", default="windows", choices=["windows", "linux"])
+    p = sub.add_parser("native-build")
+    p.add_argument("--json", action="store_true")
     a = ap.parse_args()
     res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "types": cmd_types,
-           "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify}[a.cmd](a)
+           "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify, "package": cmd_package,
+           "native-build": cmd_native_build}[a.cmd](a)
     if a.cmd == "gen" and not a.json:
         res = {k: v for k, v in res.items() if k != "functions"}
     print(json.dumps(res, indent=None if a.json else 1))

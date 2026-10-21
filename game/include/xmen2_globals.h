@@ -17,8 +17,8 @@
 #else
 #define GLOBAL(type, name, addr)              /* name = *(type *)$addr */
 #define GLOBAL_ARRAY(type, name, n, addr)     /* name = (type *)$addr */
-#define XM_G(type, addr)                      (*(type *)(g_ram_ffff + ((addr) & 0xFFFF)))
-#define XM_GA(type, addr)                     ((type *)(g_ram_ffff + ((addr) & 0xFFFF)))
+#define XM_G(type, addr)                      (*(type *)(XM_RAM_FFFF + ((addr) & 0xFFFF)))
+#define XM_GA(type, addr)                     ((type *)(XM_RAM_FFFF + ((addr) & 0xFFFF)))
 #endif
 
 /* $FFC51A 6 words: AvalonB1 palette-cycle step counters passed by address (AvalonB1_CyclePalettes; AvalonB1_RunScene clears) */

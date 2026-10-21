@@ -85,9 +85,18 @@ uv run tools/replaydump.py D/replay.bin --sync N; uv run tools/syncdiff.py A.ram
 
 ## Phase 5 (native port)
 
-`XMen2Native` (built by `build` with the others) = the hand-C stepped build in `xmen2_mem.h`'s
-NATIVE mode + `game/runtime/export.cpp`: its sync rows are the CRCs of the exported 68000 image
-(table from `xmen2_globals.h` by `tools/export_table.py`). Notes: docs/NOTES.md "Phase 5".
+`XMen2Native` (built by `build` with the others; `platform/native/native.cmake`) is the port: the
+hand C in `xmen2_mem.h`'s NATIVE mode with **no 68000 at all** — game memory in the native arena
+in host byte order (`game/runtime/native_rt.cpp`), calls through stored pointers direct
+(`bridge.py --mode native`), the hardware behind `platform/xmen2_platform.h` (its own machine:
+`platform/native/machine.cpp`; the recomp runners use `platform/plat_engine.cpp`), the host side in
+`platform/native/main.cpp` + `host_sdl.cpp` (SDL2 window, pads, sound). Its sync rows are the CRCs
+of the exported 68000 image (`game/runtime/export.cpp`). With no `--benchmark` it is played:
+`build\Release\XMen2Native.exe game\xmen2.bin`. Notes: docs/NOTES.md "Phase 5".
+```
+uv run tools/xmen2check.py package [--platform linux] --json   # P8/P9: the ROM-free zip, scanned (tools/romscan.py) and smoke-tested
+uv run tools/xmen2check.py native-build --json                 # XMen2Native alone (CMake XMEN2_NATIVE_ONLY): the Linux build
+```
 ```
 uv run tools/xmen2check.py build --native --json   # + per object: what it still needs from the 68000 (COFF), and the link map
 uv run tools/xmen2check.py trace --mode native --run R --input F --replay REFDIR --out D --json [--fb]   # + "exported"
