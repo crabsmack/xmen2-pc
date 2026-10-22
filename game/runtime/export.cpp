@@ -40,6 +40,10 @@ extern "C" {
    (tools/export_table.py; it includes that snapshot's xmen2.h, which comes after every system
    header: on an LP64 host it makes `long` 32 bits, so nothing below says `long`). */
 #include "xmen2_export_globals.inc"
+/* phase 7 R6: with three or more players the game's g_SpriteTable is a table in players 3-4's region
+   (xmen2_players34.h); the 68000 view is the original's, at its declared address */
+#undef g_SpriteTable
+#define g_SpriteTable XM_GA(HwSprite, 0xFFE226)
 
 namespace {
 
