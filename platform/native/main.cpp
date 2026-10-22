@@ -28,6 +28,7 @@
 
 #include "host_sdl.h"
 #include "native.h"
+#include "state.h"
 #include "xmen2_image.h"
 
 extern "C" {
@@ -44,7 +45,7 @@ extern "C" int xm_mem_census(char *buf, int n);
 
 /* ---- SHA-1 (the ROM check) ------------------------------------------------------------------ */
 
-static void sha1(const uint8_t *data, size_t len, uint8_t out[20])
+extern "C" void xm_sha1(const uint8_t *data, size_t len, uint8_t out[20])
 {
     uint32_t h[5] = { 0x67452301u, 0xEFCDAB89u, 0x98BADCFEu, 0x10325476u, 0xC3D2E1F0u };
     std::vector<uint8_t> m(data, data + len);
@@ -86,7 +87,7 @@ static void load_rom(const char *path)
     while ((n = fread(buf, 1, sizeof buf, f)) > 0) rom.insert(rom.end(), buf, buf + n);
     fclose(f);
     uint8_t d[20];
-    sha1(rom.data(), rom.size(), d);
+    xm_sha1(rom.data(), rom.size(), d);
     char hex[41];
     for (int i = 0; i < 20; i++) snprintf(hex + 2 * i, 3, "%02x", d[i]);
     if (strcmp(hex, ROM_SHA1)) {
@@ -179,6 +180,20 @@ static void maybe_dump_sync(uint64_t sync)
    g_TwoPlayerStep at 1 in one-player games too): g_PlayersAlive ($FFC920), g_TwoPlayerStep ($FFC922) */
 static uint64_t s_two_player_frames, s_two_player_step_frames;
 
+/* ---- the state probe (phase 7 M2: --state-probe P:L) and the digest (--digest) -------------------
+ * Every P-th sync point (when L more fit in the run): save, run L sync points (pass 1), restore, save
+ * again, run them again (pass 2: the run goes on from there). probe.csv has both passes' rows, as the
+ * sync rows plus the picture's hash; probe_snap.csv the snapshot saved and the one saved right after
+ * restoring it. Pass 1 is invisible to the rest: no sync row, no picture, no frame end; the counters
+ * come back with the snapshot. --state-skip NAME leaves that section out of every restore. */
+static uint64_t s_probe_every, s_probe_len, s_probe_at;
+static int s_probe_pass;                 /* 0 the run, 1 the first pass after a save, 2 after the restore */
+static const char *s_state_skip;
+static FILE *s_probe_rows, *s_probe_snap, *s_digest;
+static size_t s_state_bytes;
+
+static uint64_t fb_hash(int w, int h);
+
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
@@ -186,18 +201,55 @@ extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
         if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
         if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
     }
-    if (!s_sync && !getenv("XMEN2_SYNC_DUMP")) return;   /* a played run compares nothing */
+    if (s_digest && s_probe_pass != 1)
+        fprintf(s_digest, "%llu,%016llx\n", (unsigned long long)sync, (unsigned long long)machine_digest());
+    bool live = s_probe_pass != 1;
+    if (!s_probe_pass && !s_sync && !getenv("XMEN2_SYNC_DUMP")) return;   /* a played run compares nothing */
     xm_export(&s_image);
+    uint32_t crc[4] = { ram_crc_masked(s_image.ram), crc32_bytes(s_image.vram, sizeof s_image.vram),
+                        crc32_bytes(s_image.cram, sizeof s_image.cram), crc32_bytes(s_image.vsram, sizeof s_image.vsram) };
+    if (s_probe_pass)
+        fprintf(s_probe_rows, "%llu,%d,%llu,%08x,%08x,%08x,%08x,%016llX\n", (unsigned long long)s_probe_at, s_probe_pass,
+                (unsigned long long)sync, crc[0], crc[1], crc[2], crc[3],
+                (unsigned long long)fb_hash(machine_screen_width(), machine_screen_height()));
+    if (!live) return;
     maybe_dump_sync(sync);
     if (!s_sync) return;
     fprintf(s_sync, "%llu,%llu,%08x,%08x,%08x,%08x\n", (unsigned long long)sync, (unsigned long long)frame,
-            ram_crc_masked(s_image.ram), crc32_bytes(s_image.vram, sizeof s_image.vram),
-            crc32_bytes(s_image.cram, sizeof s_image.cram), crc32_bytes(s_image.vsram, sizeof s_image.vsram));
+            crc[0], crc[1], crc[2], crc[3]);
+}
+
+static uint64_t s_benchmark, s_quit_after;
+
+extern "C" void plat_at_sync(uint64_t sync)
+{
+    if (!s_state_bytes) {   /* the snapshot's size, for the counters */
+        Snapshot t;
+        state_save(t);
+        s_state_bytes = t.bytes.size();
+    }
+    if (!s_probe_every || sync % s_probe_every || (s_benchmark && sync + s_probe_len > s_benchmark)) return;
+    static Snapshot saved, resaved;
+    state_save(saved);
+    s_state_bytes = saved.bytes.size();
+    std::string a = state_sha1(saved);
+    s_probe_at = sync;
+    s_probe_pass = 1;
+    for (uint64_t i = 0; i < s_probe_len; i++) machine_tick();
+    state_load(saved, s_state_skip);
+    state_save(resaved);
+    fprintf(s_probe_snap, "%llu,%s,%s\n", (unsigned long long)sync, a.c_str(), state_sha1(resaved).c_str());
+    s_probe_pass = 2;
+    for (uint64_t i = 0; i < s_probe_len; i++) machine_tick();
+    s_probe_pass = 0;
 }
 
 static void report_counters(void)
 {
     if (s_sync) fflush(s_sync);
+    if (s_digest) fflush(s_digest);
+    if (s_probe_rows) fflush(s_probe_rows);
+    if (s_probe_snap) fflush(s_probe_snap);
     char exported[640];
     xm_export_stats(exported, (int)sizeof exported);
     char memory[256];
@@ -210,12 +262,16 @@ static void report_counters(void)
              "\"frame_tick_waits\": %llu%s}", (unsigned long long)s_two_player_frames,
              (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits(),
              more.c_str());
+    /* phase 7: the savestate's sections and size, and how deep the game's fiber stack went */
+    char peak[64];
+    snprintf(peak, sizeof peak, ", \"fiber_stack_peak\": %llu}", (unsigned long long)machine_stack_peak());
+    std::string state = state_sections_json(s_state_bytes) + peak;
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
                     "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
-                    "\"options\": %s, \"enhance\": %s}\n",
+                    "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s}\n",
             (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory,
-            options_effective_json().c_str(), enhance);
+            options_effective_json().c_str(), enhance, state.c_str(), machine_session() ? "true" : "false");
     fflush(stderr);
 }
 
@@ -251,45 +307,55 @@ static uint64_t fb_hash(int w, int h)
 
 static int s_interactive;
 
+/* the sound chips run in the session machine (played runs, netplay, trace --session); only a played
+   run has a device to hear them */
 extern "C" void plat_audio_write(uint32_t stamp, int port, uint8_t v)
 {
-    if (s_interactive) audio_event_push(stamp, (uint8_t)port, v);
+    if (machine_session()) audio_event_push(stamp, (uint8_t)port, v);
 }
 
 extern "C" void plat_frame_audio(uint64_t frame)
 {
-    if (s_interactive) host_audio(frame);
+    if (machine_session()) host_audio(frame);
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }
 
 extern "C" void plat_after_render(void)
 {
+    if (s_probe_pass == 1) return;
     present_after_render(machine_frame_no(), s_interactive != 0, &s_ifb[0][0], FB_W);
 }
 
 /* ---- input script --------------------------------------------------------------------------- */
 
-struct PadSpan { uint16_t pad[2]; uint64_t frames; };
+/* `PADS p1 [p2 [p3 [p4]]]`: phase 7's stage inputs have four pad columns (players 3 and 4: the
+   platform's pads beyond the 68000's two ports, g_pad34) */
+struct PadSpan { uint16_t pad[4]; uint64_t frames; };
 static std::vector<PadSpan> s_script;
+extern "C" uint16_t g_pad34[2];
+uint16_t g_pad34[2];
 
 static void load_script(const char *path)
 {
     FILE *f = fopen(path, "r");
     if (!f) { fprintf(stderr, "[native] cannot open the input script %s\n", path); exit(2); }
     char line[512];
-    uint16_t cur[2] = { 0, 0 };
+    uint16_t cur[4] = { 0, 0, 0, 0 };
     while (fgets(line, sizeof line, f)) {
         char *s = line;
         while (*s == ' ' || *s == '\t') s++;
         if (!*s || *s == '#' || *s == '\n' || *s == '\r') continue;
         char op[16] = "";
-        unsigned a = 0, b = 0;
-        int k = sscanf(s, "%15s %x %x", op, &a, &b);
-        if (!strcmp(op, "PADS") && k >= 2) { cur[0] = (uint16_t)a; cur[1] = (uint16_t)(k >= 3 ? b : 0); continue; }
+        unsigned p[4] = { 0, 0, 0, 0 };
+        int k = sscanf(s, "%15s %x %x %x %x", op, &p[0], &p[1], &p[2], &p[3]);
+        if (!strcmp(op, "PADS") && k >= 2) {
+            for (int i = 0; i < 4; i++) cur[i] = (uint16_t)(i < k - 1 ? p[i] : 0);
+            continue;
+        }
         unsigned long long n = 0;
         if (!strcmp(op, "WAIT") && sscanf(s, "%15s %llu", op, &n) == 2) {
-            s_script.push_back(PadSpan{ { cur[0], cur[1] }, n });
+            s_script.push_back(PadSpan{ { cur[0], cur[1], cur[2], cur[3] }, n });
             continue;
         }
         fprintf(stderr, "[native] input script %s: unsupported line: %s", path, line);
@@ -303,25 +369,25 @@ static uint64_t s_flip;   /* --flip N: player 1's C button inverted in runner fr
 extern "C" void plat_frame_begin(uint64_t frame)
 {
     uint64_t at = 0;
-    uint16_t pad[2] = { 0, 0 };
+    uint16_t pad[4] = { 0, 0, 0, 0 };
     if (s_interactive && s_script.empty()) {
         host_input(pad);
     } else if (!s_script.empty()) {   /* the span covering this frame; after the script, its last pads */
-        pad[0] = s_script.back().pad[0];
-        pad[1] = s_script.back().pad[1];
+        memcpy(pad, s_script.back().pad, sizeof pad);
         for (const PadSpan &p : s_script) {
-            if (frame <= at + p.frames) { pad[0] = p.pad[0]; pad[1] = p.pad[1]; break; }
+            if (frame <= at + p.frames) { memcpy(pad, p.pad, sizeof pad); break; }
             at += p.frames;
         }
     }
     if (s_flip && frame >= s_flip && frame < s_flip + 8) pad[0] ^= GPAD_C;   /* --flip: the latency probe */
     g_machine.bus.pad[0] = pad[0];
     g_machine.bus.pad[1] = pad[1];
+    g_pad34[0] = pad[2];
+    g_pad34[1] = pad[3];
 }
 
 /* ---- frames --------------------------------------------------------------------------------- */
 
-static uint64_t s_benchmark, s_quit_after;
 static const char *s_screenshot;
 static std::chrono::steady_clock::time_point s_t0;
 
@@ -332,7 +398,7 @@ static std::chrono::steady_clock::time_point s_tlast;
 
 extern "C" void plat_frame_repeat(void)
 {
-    if (!s_interactive) return;
+    if (!s_interactive || s_probe_pass == 1) return;
     if (g_opt.high_fps) present_repeat();   /* its period is covered by the frames in between */
     else host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
 }
@@ -358,6 +424,7 @@ static void maybe_shot(uint64_t frame)
 
 extern "C" void plat_frame_end(uint64_t frame)
 {
+    if (s_probe_pass == 1) return;   /* the probe's first pass: nothing is shown or ends */
     maybe_shot(frame);
     if (s_ftimes) {
         auto now = std::chrono::steady_clock::now();
@@ -390,7 +457,9 @@ extern "C" void plat_frame_end(uint64_t frame)
 
 int main(int argc, char **argv)
 {
-    const char *rom = nullptr, *script = nullptr, *present_log = nullptr;
+    const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".";
+    bool session = false;
+    uint64_t seed = 0;
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--benchmark") && i + 1 < argc) s_benchmark = strtoull(argv[++i], nullptr, 10);
@@ -401,6 +470,18 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
         else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);
+        /* phase 7 (P7-multiplayer.md "The contract") */
+        else if (!strcmp(argv[i], "--session") && i + 1 < argc) { session = true; seed = strtoull(argv[++i], nullptr, 10); }
+        else if (!strcmp(argv[i], "--scene") && i + 1 < argc) options_set_first_scene(atoi(argv[++i]));
+        else if (!strcmp(argv[i], "--digest") && i + 1 < argc) digest = argv[++i];
+        else if (!strcmp(argv[i], "--state-probe") && i + 1 < argc) {
+            unsigned long long p = 0, l = 0;
+            if (sscanf(argv[++i], "%llu:%llu", &p, &l) != 2 || !p || !l) { fprintf(stderr, "[native] --state-probe P:L\n"); return 2; }
+            s_probe_every = p;
+            s_probe_len = l;
+        }
+        else if (!strcmp(argv[i], "--probe-out") && i + 1 < argc) probe_out = argv[++i];
+        else if (!strcmp(argv[i], "--state-skip") && i + 1 < argc) s_state_skip = argv[++i];
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
@@ -409,7 +490,30 @@ int main(int argc, char **argv)
     if (!s_benchmark) {   /* played: a window, the pads, the sound */
         if (!host_open("X-Men 2: Clone Wars")) return 3;
         s_interactive = 1;
+    }
+    /* the session machine: asked for, or a played run's, with a seed from the clock (as a console's
+       power-on moment varies) */
+    if (s_interactive && !session) {
+        session = true;
+        seed = (uint64_t)std::chrono::steady_clock::now().time_since_epoch().count();
+    }
+    if (session) {
+        machine_set_session(seed);
         audio_mixer_init();
+    }
+    if (s_state_skip && !s_probe_every) { fprintf(stderr, "[native] --state-skip needs --state-probe\n"); return 2; }
+    if (s_probe_every) {
+        std::string d = probe_out;
+        s_probe_rows = fopen((d + "/probe.csv").c_str(), "w");
+        s_probe_snap = fopen((d + "/probe_snap.csv").c_str(), "w");
+        if (!s_probe_rows || !s_probe_snap) { fprintf(stderr, "[native] cannot write the probe's files in %s\n", probe_out); return 2; }
+        fprintf(s_probe_rows, "at,pass,sync,ram_crc32,vram_crc32,cram_crc32,vsram_crc32,fb_fnv1a64\n");
+        fprintf(s_probe_snap, "at,saved_sha1,resaved_sha1\n");
+    }
+    if (digest) {
+        if (!(s_digest = fopen(digest, "w"))) { fprintf(stderr, "[native] cannot write %s\n", digest); return 2; }
+        setvbuf(s_digest, nullptr, _IOFBF, 1 << 20);
+        fprintf(s_digest, "sync,digest\n");
     }
     if (script) load_script(script);
     present_init(present_log);
@@ -428,9 +532,12 @@ int main(int argc, char **argv)
     if (const char *p = getenv("XMEN2_FRAME_TIMES"); p && *p) {
         if ((s_ftimes = fopen(p, "w"))) fprintf(s_ftimes, "frame,us\n");
     }
+    machine_state_init();
+    state_counters(&s_sync_rows, sizeof s_sync_rows);
+    state_counters(&s_two_player_frames, sizeof s_two_player_frames);
+    state_counters(&s_two_player_step_frames, sizeof s_two_player_step_frames);
     machine_power_on();
     g_machine.bus.pad_type[0] = g_machine.bus.pad_type[1] = 1;
-    xm_entry_point();
-    fprintf(stderr, "[native] the game's entry point returned\n");
+    machine_run();   /* never returns: the game ends the process (the benchmark, a quit, a fatal) */
     return 4;
 }

@@ -271,14 +271,24 @@ def cmd_trace(a) -> dict:
     pads of each sync point's reference frame, from REFDIR = the run's D1 trace) and writes
     sync.csv (phase 4 D2: the two must be equal). native: the same with XMen2Native, whose
     sync rows are computed from its exported 68000 image (phase 5); the JSON adds "exported",
-    the runner's own count of where the image's bytes came from."""
+    the runner's own count of where the image's bytes came from.
+    Phase 7 (P7-multiplayer.md "The contract"): native without --replay plays --input by runner
+    frame, as a played run and a netplay seat do; --session SEED the session machine, --scene N a
+    new game at scene N, --digest OUT/digest.csv, --state-probe P:L OUT/probe.csv and
+    OUT/probe_snap.csv (--state-skip NAME: the negative control); the JSON adds "state" and
+    "session"."""
     import os
     if a.mode not in ("recomp", *STEPPED_MODES):
         sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
-    if a.mode in STEPPED_MODES and not a.replay:
+    if a.mode in STEPPED_MODES and a.mode != "native" and not a.replay:
         sys.exit(f"--mode {a.mode} needs --replay REFDIR (the run's `--mode recomp --sync` trace)")
     if (a.options or a.present_log or a.flip) and a.mode != "native":
         sys.exit("--options, --present-log, --flip: only the native runner has them (phase 6)")
+    p7 = a.session is not None or a.scene is not None or a.digest or a.state_probe or a.state_skip
+    if p7 and a.mode != "native":
+        sys.exit("--session, --scene, --digest, --state-probe, --state-skip: only the native runner has them (phase 7)")
+    if a.state_skip and not a.state_probe:
+        sys.exit("--state-skip needs --state-probe")
     common.ensure_rom()
     src = exe_path(globals()[STEPPED_MODES[a.mode]] if a.mode in STEPPED_MODES else common.EXE_NAME)
     if not src.is_file():
@@ -293,13 +303,18 @@ def cmd_trace(a) -> dict:
     env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy"}
     sync_csv = out / "sync.csv"
     if a.mode in STEPPED_MODES:
-        ref = Path(a.replay).resolve()
-        if not (ref / "sync.csv").is_file():
-            sys.exit(f"{ref} has no sync.csv (a `trace --mode recomp --sync` output)")
         if not a.input:
             sys.exit(f"--mode {a.mode} needs --input (the run's exported .input)")
         script = out / "input.input"
-        frames = stepped_script(Path(a.input), ref, script)
+        if a.replay:
+            ref = Path(a.replay).resolve()
+            if not (ref / "sync.csv").is_file():
+                sys.exit(f"{ref} has no sync.csv (a `trace --mode recomp --sync` output)")
+            frames = stepped_script(Path(a.input), ref, script)
+        else:   # native, phase 7: the input by runner frame (a played run's, a netplay seat's)
+            frames = script_frames(Path(a.input))
+            script.write_text("".join(l for l in Path(a.input).read_text().splitlines(True)
+                                      if not l.strip().upper().startswith("EXIT")), newline="\n")
         if a.frames:
             frames = min(frames, a.frames)
         env.update(XMEN2_SYNC_CSV=str(sync_csv))
@@ -314,6 +329,17 @@ def cmd_trace(a) -> dict:
             cmd += ["--present-log", str(out / "present.csv")]
         if a.flip:   # phase 6 E4: the latency probe
             cmd += ["--flip", str(a.flip)]
+        # phase 7 (P7-multiplayer.md "The contract")
+        if a.session is not None:
+            cmd += ["--session", str(a.session)]
+        if a.scene is not None:
+            cmd += ["--scene", str(a.scene)]
+        if a.digest:
+            cmd += ["--digest", str(out / "digest.csv")]
+        if a.state_probe:
+            cmd += ["--state-probe", a.state_probe, "--probe-out", str(out)]
+        if a.state_skip:
+            cmd += ["--state-skip", a.state_skip]
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -357,6 +383,10 @@ def cmd_trace(a) -> dict:
             if "options" not in c or "enhance" not in c:
                 sys.exit(f"{src.name} reported no options / enhance counters; see {out / 'runner.log'}")
             res["options"], res["enhance"] = c["options"], c["enhance"]
+            # phase 7: the savestate's sections, the session machine, the multiplayer counters
+            for k in ("state", "session", "mp"):
+                if k in c:
+                    res[k] = c[k]
         return drop_runner(a, run_dir, res)
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
     if a.sync:
@@ -995,6 +1025,14 @@ def main() -> int:
                            help="native (phase 6 E4): OUT/present.csv, one row per displayed frame")
             p.add_argument("--flip", type=int, default=0,
                            help="native (phase 6 E4): player 1's C inverted in runner frames N to N+7")
+            p.add_argument("--session", type=int, default=None,
+                           help="native (phase 7): the session machine with this seed (P7 \"Definitions\")")
+            p.add_argument("--scene", type=int, default=None, help="native (phase 7): a new game starts at scene N")
+            p.add_argument("--digest", action="store_true", help="native (phase 7): OUT/digest.csv, the canonical digest")
+            p.add_argument("--state-probe", default="",
+                           help="native (phase 7 M2) P:L: every P-th sync point save, run L, restore, run L again")
+            p.add_argument("--state-skip", default="",
+                           help="native (phase 7 M2): leave this section out of every restore (negative control)")
     p = sub.add_parser("options")
     p.add_argument("--json", action="store_true")
     p = sub.add_parser("package")

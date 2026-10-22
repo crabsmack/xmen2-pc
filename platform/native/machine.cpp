@@ -23,8 +23,16 @@
 extern "C" {
 #include "video/genesis_machine.h"
 #include "video/genesis_dac.h"
+#include "audio/event_queue.h"
+#include "audio/sn76489.h"
+#include "audio/ym2612.h"
+#include "fiber_compat.h"
 }
+#include <stddef.h>
+#include <vector>
+
 #include "native.h"
+#include "state.h"
 
 GenesisMachine g_machine;
 extern "C" unsigned long g_snd_frame;   /* the sound's frame number (chip_trace.c; genesis_vdp.c, mixer.c read it) */
@@ -104,11 +112,11 @@ static uint32_t s_zstamp;        /* audio stamp: frame-relative master clock    
 static uint32_t s_zclk;          /* Z80 time in master clocks                          */
 static int      s_zstate;        /* bit0 reset released, bit1 bus requested            */
 static int      s_zaccess;       /* the game may access the Z80 area (bus granted)     */
+static int      ei_shadow;       /* the instruction after EI: no interrupt yet          */
 
 static void z80_exact_step(uint32_t *zclk, uint32_t target)
 {
     z80 *z = &g_machine.z80;
-    static int ei_shadow;
     while (*zclk < target) {
         s_zstamp = *zclk;
         if (!ei_shadow) {
@@ -153,6 +161,26 @@ static uint32_t s_fm_count, s_fm_start;
 static int      s_fm_ta, s_fm_tal = 1024, s_fm_tac, s_fm_tbl = 256 << 4, s_fm_tbc;
 static uint8_t  s_fm_mode, s_fm_status;
 static uint16_t s_fm_addr;
+/* the sound chips' registers as written (phase 7: the canonical digest has them in every run; the
+   chips themselves run only in the session machine) */
+static uint8_t  s_ym_reg[512], s_ym_sel[2];
+static uint16_t s_psg_reg[8];
+static uint8_t  s_psg_latch;
+
+static void ym_shadow(unsigned port, uint8_t v)
+{
+    if (!(port & 1)) s_ym_sel[port >> 1 & 1] = v;
+    else s_ym_reg[(port >> 1 & 1) << 8 | s_ym_sel[port >> 1 & 1]] = v;
+}
+
+static void psg_shadow(uint8_t v)
+{
+    if (v & 0x80) {
+        s_psg_latch = (uint8_t)(v >> 4 & 7);
+        s_psg_reg[s_psg_latch] = (uint16_t)((s_psg_reg[s_psg_latch] & 0x3F0) | (v & 0x0F));
+    } else
+        s_psg_reg[s_psg_latch] = (uint16_t)((s_psg_reg[s_psg_latch] & 0x0F) | (v & 0x3F) << 4);
+}
 
 static void fm_update(uint32_t t)
 {
@@ -237,11 +265,12 @@ static void z80_bus_write(uint16_t addr, uint8_t val)
     if (addr < 0x6000u) {
         uint8_t port = (uint8_t)(addr & 3);
         ym_write(s_znow, port, val);
+        ym_shadow(port, val);
         plat_audio_write(s_zstamp, port, val);
         return;
     }
     if (addr < 0x6100u) { b->z80_bank = ((b->z80_bank >> 1) | ((val & 1) << 8)) & 0x1FF; return; }
-    if (addr == 0x7F11u) { plat_audio_write(s_zstamp, PLAT_AUDIO_PSG, val); return; }
+    if (addr == 0x7F11u) { psg_shadow(val); plat_audio_write(s_zstamp, PLAT_AUDIO_PSG, val); return; }
     if (addr >= 0x8000u) machine_fatal("the Z80 wrote the 68000 bus through its bank window (not in the game)");
 }
 
@@ -605,22 +634,26 @@ uint16_t plat_vdp_status16(void) { hw_read_guard("the VDP status"); return vdp_s
 uint32_t plat_vdp_status32(void) { uint32_t h = plat_vdp_status16(); return (h << 16) | plat_vdp_status16(); }
 void     plat_vdp_ctrl_write16(uint16_t v) { vdp_ctrl_w(v); }
 void     plat_vdp_ctrl_write32(uint32_t v) { vdp_ctrl_w((uint16_t)(v >> 16)); vdp_ctrl_w((uint16_t)v); }
-/* The V counter. Traced runs have no beam without time: 0. A played run reads the line the beam
-   would be on now, from the wall clock (262 NTSC lines a frame, the counter jumping from $EA back
-   to $E5), so what the original seeds from it (SiberiaB1_InstallHooks: player 1's character at
-   power-on) varies from play to play as on a console. */
+/* The V counter. Traced runs have no beam without time: 0. The session machine (played runs, netplay,
+   `trace --session SEED`; P7-multiplayer.md "Definitions") has a line that is a pure function of the
+   session seed and the runner frame (262 NTSC lines a frame, the counter jumping from $EA back to
+   $E5): what the original seeds from it (SiberiaB1_InstallHooks: player 1's character at power-on)
+   varies with the seed, which a played run takes from the clock, as on a console. */
+static int      s_session;
+static uint64_t s_seed;
+
 static uint8_t vcounter_now(void)
 {
-    if (!plat_realtime()) return 0;
-    double us = (double)std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
-    int line = (int)(fmod(us, 16688.9) / (16688.9 / 262));
+    if (!s_session) return 0;
+    uint64_t x = s_seed * 0x9E3779B97F4A7C15ull + machine_frame_no() * 0xBF58476D1CE4E5B9ull;
+    x ^= x >> 31; x *= 0x94D049BB133111EBull; x ^= x >> 29;
+    int line = (int)(x % 262u);
     return (uint8_t)(line <= 0xEA ? line : line - 6);
 }
 uint8_t  plat_vdp_hv8(void) { hw_read_guard("the H/V counter"); return vcounter_now(); }
 uint16_t plat_vdp_hv16(void) { hw_read_guard("the H/V counter"); return (uint16_t)(vcounter_now() << 8); }
 
-void     plat_psg_write8(uint8_t v) { plat_audio_write(0, PLAT_AUDIO_PSG, v); }
+void     plat_psg_write8(uint8_t v) { psg_shadow(v); plat_audio_write(0, PLAT_AUDIO_PSG, v); }
 
 uint8_t  plat_z80_busreq_read8(void) { hw_read_guard("the Z80 bus grant"); return (uint8_t)(s_zstate == 3 ? 0 : 1); }
 uint16_t plat_z80_busreq_read16(void) { hw_read_guard("the Z80 bus grant"); return (uint16_t)(s_zstate == 3 ? 0 : 0x100); }
@@ -696,23 +729,52 @@ static uint64_t s_frame_tick_waits;   /* phase 6's frame_tick_waits: V-ints take
 static void z80_frame(void);
 static uint64_t s_frame_no, s_sync_no;
 
-/* A played run (no sync rows to keep) gives this V-int the frame it is on the console: the Z80's
-   frame and its sound, and one display period with the picture unchanged (plat_frame_repeat). So
-   two players with the frame-tick wait play at the original's 30 logic frames a second, with the
-   music at its tempo, not at twice the speed. Traced runs keep the stepped runners' machine. */
+/* ======================================================================== */
+/* The game's fiber (phase 7 R2: the host owns the loop)                    */
+
+/* The game runs on a fiber of its own: at each sync point (and a played frame-tick V-int) it yields
+   to the host, which does the host's work (the row, the end of the runner frame, presenting and
+   pacing, the next frame's pads) and resumes it. A snapshot is taken while it is suspended there. */
+enum { YIELD_NONE, YIELD_SYNC, YIELD_REPEAT };
+static fiber_t s_host_fiber, s_game_fiber;
+static int s_yield;
+#define GAME_STACK ((size_t)1 << 20)
+#define STACK_PAINT 0xA5u
+
+static void game_main(void *arg)
+{
+    (void)arg;
+    xm_entry_point();
+    machine_fatal("the game's entry point returned");
+}
+
+static void yield_to_host(int why)
+{
+    s_yield = why;
+    fiber_switch(s_host_fiber);
+}
+
+/* The session machine (played runs, netplay, `trace --session`) gives this V-int the frame it is on
+   the console: the Z80's frame and its sound, and one display period with the picture unchanged (the
+   host's plat_frame_repeat). So two players with the frame-tick wait play at the original's 30 logic
+   frames a second, with the music at its tempo, not at twice the speed. Traced runs keep the stepped
+   runners' machine. */
 extern "C" void plat_wait_vint(void)
 {
     if ((REG(1) & 0x20) && ((s_sr >> 8) & 7u) < 6u) {
         s_frame_tick_waits++;
-        if (plat_realtime()) {
+        if (s_session) {
             z80_frame();
             plat_frame_audio(s_frame_no);
             g_snd_frame++;
-            plat_frame_repeat();
+            yield_to_host(YIELD_REPEAT);
         }
         take_vint();
     }
 }
+
+extern "C" void machine_set_session(uint64_t seed) { s_session = 1; s_seed = seed; }
+extern "C" int machine_session(void) { return s_session; }
 
 extern "C" uint64_t machine_frame_tick_waits(void) { return s_frame_tick_waits; }
 
@@ -772,15 +834,12 @@ static void frame_begin(void)
 }
 
 /* The sync point: VDP_WaitVBlank's entry (bridge.py's native wrapper). In the main program the
-   frame's logic is done: its row, the end of the runner frame, then the next one up to the V-int
-   and the picture it shows. */
+   frame's logic is done: the host takes over (its row, the end of the runner frame, the next one's
+   pads and Z80 frame: machine_run), then the V-int and the picture it shows. */
 extern "C" void plat_sync_point(void)
 {
     if (s_depth) return;
-    s_sync_no++;
-    plat_sync_row(s_sync_no, s_frame_no);
-    plat_frame_end(s_frame_no);
-    frame_begin();
+    yield_to_host(YIELD_SYNC);
     fsync_vint();
     ws_frame_setup();
     if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
@@ -794,6 +853,260 @@ extern "C" void plat_sync_point(void)
 }
 
 extern "C" void machine_render(void) { render_frame(); }
+
+/* ======================================================================== */
+/* The host's loop                                                           */
+
+/* Resume the game until its next sync point (the frame-tick V-ints on the way are the host's
+   repeated display periods). */
+static void run_to_sync(void)
+{
+    for (;;) {
+        fiber_switch(s_game_fiber);
+        if (s_yield == YIELD_SYNC) return;
+        if (s_yield == YIELD_REPEAT) plat_frame_repeat();
+        else machine_fatal("the game's fiber yielded for no reason");
+    }
+}
+
+/* The game is at a sync point: its row and the end of its runner frame. */
+static void sync_end(void)
+{
+    s_sync_no++;
+    plat_sync_row(s_sync_no, s_frame_no);
+    plat_frame_end(s_frame_no);
+}
+
+/* One tick: the next runner frame (its pads and Z80 frame), the game up to its next sync point. */
+extern "C" void machine_tick(void)
+{
+    frame_begin();
+    run_to_sync();
+    sync_end();
+}
+
+static void paint_stack(void)
+{
+    uintptr_t lo, top;
+    if (fiber_stack_range(s_game_fiber, &lo, &top) == 0) memset((void *)lo, STACK_PAINT, (size_t)(top - lo) - 4096u);
+}
+
+/* The deepest the game's stack has been (bytes below its top), from the paint left untouched */
+extern "C" uint64_t machine_stack_peak(void)
+{
+    uintptr_t lo, top;
+    if (fiber_stack_range(s_game_fiber, &lo, &top) != 0) return 0;
+    const uint8_t *p = (const uint8_t *)lo;
+    while ((uintptr_t)p < top && *p == STACK_PAINT) p++;
+    return (uint64_t)(top - (uintptr_t)p);
+}
+
+/* After power-on: the game from its reset entry, on its fiber, the host between its sync points. */
+extern "C" void machine_run(void)
+{
+    s_host_fiber = fiber_convert_thread();
+    s_game_fiber = fiber_create(GAME_STACK, GAME_STACK, game_main, nullptr);
+    if (!s_host_fiber || !s_game_fiber) machine_fatal("cannot make the game's fiber");
+    paint_stack();
+    run_to_sync();
+    for (;;) {
+        sync_end();
+        plat_at_sync(s_sync_no);
+        frame_begin();
+        run_to_sync();
+    }
+}
+
+/* ======================================================================== */
+/* Savestates (phase 7 R2; state.cpp): this file's sections                  */
+
+/* the game's fiber: its stack and context */
+static size_t fiber_save(uint8_t *dst, size_t cap)
+{
+    return dst ? fiber_snapshot_save(s_game_fiber, dst, cap) : fiber_snapshot_bound(s_game_fiber);
+}
+
+static int fiber_load(const uint8_t *src, size_t len) { return fiber_snapshot_load(s_game_fiber, src, len) == 0; }
+
+/* the machine (VDP, bus, Z80) with its host pointers scrubbed: the bytes are the state alone */
+#define SCRUB(field) memset(dst + offsetof(GenesisMachine, field), 0, sizeof(((GenesisMachine *)0)->field))
+static size_t gm_save(uint8_t *dst, size_t cap)
+{
+    if (!dst) return sizeof g_machine;
+    if (cap < sizeof g_machine) return 0;
+    memcpy(dst, &g_machine, sizeof g_machine);
+    SCRUB(vdp.bus_read); SCRUB(vdp.bus_read_user); SCRUB(vdp.colour_updated); SCRUB(vdp.colour_updated_user);
+    SCRUB(bus.vdp);
+    SCRUB(z80.read_byte); SCRUB(z80.write_byte); SCRUB(z80.port_in); SCRUB(z80.port_out); SCRUB(z80.userdata);
+    return sizeof g_machine;
+}
+#undef SCRUB
+
+static int gm_load(const uint8_t *src, size_t len)
+{
+    if (len != sizeof g_machine) return 0;
+    GVDP_BusReadWord br = g_machine.vdp.bus_read;
+    void *bru = g_machine.vdp.bus_read_user;
+    GVDP_ColourUpdated cu = g_machine.vdp.colour_updated;
+    void *cuu = g_machine.vdp.colour_updated_user;
+    GVDP *vdp = g_machine.bus.vdp;
+    z80 zk = g_machine.z80;
+    memcpy(&g_machine, src, sizeof g_machine);
+    g_machine.vdp.bus_read = br; g_machine.vdp.bus_read_user = bru;
+    g_machine.vdp.colour_updated = cu; g_machine.vdp.colour_updated_user = cuu;
+    g_machine.bus.vdp = vdp;
+    g_machine.z80.read_byte = zk.read_byte; g_machine.z80.write_byte = zk.write_byte;
+    g_machine.z80.port_in = zk.port_in; g_machine.z80.port_out = zk.port_out;
+    g_machine.z80.userdata = zk.userdata;
+    return 1;
+}
+
+/* the sound chips, the event queue between them and the machine (the session machine only: elsewhere
+   they are not driven). Each part prefixed by its length. */
+static size_t sound_save(uint8_t *dst, size_t cap)
+{
+    if (!s_session) return 0;
+    size_t parts[3] = { ym2612_rb_save(nullptr, 0), psg_rb_save(nullptr, 0), audio_event_rb_save(nullptr, 0) };
+    size_t need = 3 * sizeof(uint32_t) + parts[0] + parts[1] + parts[2];
+    if (!dst) return need;
+    if (cap < need) return 0;
+    uint8_t *o = dst;
+    for (int i = 0; i < 3; i++) {
+        uint32_t n = (uint32_t)parts[i];
+        memcpy(o, &n, sizeof n);
+        o += sizeof n;
+        size_t w = i == 0 ? ym2612_rb_save(o, n) : i == 1 ? psg_rb_save(o, n) : audio_event_rb_save(o, n);
+        if (w != n) return 0;
+        o += n;
+    }
+    return need;
+}
+
+static int sound_load(const uint8_t *src, size_t len)
+{
+    if (!s_session) return len == 0;
+    const uint8_t *i = src, *end = src + len;
+    for (int k = 0; k < 3; k++) {
+        uint32_t n;
+        if ((size_t)(end - i) < sizeof n) return 0;
+        memcpy(&n, i, sizeof n);
+        i += sizeof n;
+        if ((size_t)(end - i) < n) return 0;
+        int ok = k == 0 ? ym2612_rb_load(i, n) : k == 1 ? psg_rb_load(i, n) : audio_event_rb_load(i, n);
+        if (!ok) return 0;
+        i += n;
+    }
+    return i == end;
+}
+
+static void machine_after_load(void)
+{
+    for (unsigned c = 0; c < GVDP_CRAM_ENTRIES; c++) colour_cb(nullptr, c, g_machine.vdp.cram[c]);
+}
+
+/* The sections, in the snapshot's order: the fiber first (state.cpp's table is in registration
+   order; native_rt.cpp's "arena" and widescreen.cpp's part of "platform" register after this). */
+extern "C" void machine_state_init(void)
+{
+    state_section_custom("fiber", fiber_save, fiber_load);
+    xm_mem_state_init();                                   /* "arena" */
+    state_section_custom("machine", gm_save, gm_load);
+    /* the platform layer's statics: the VDP ports' latches and DMA, the Z80's clock and bus lines, the
+       YM2612 timers and the chips' registers, the pads, the interrupt state, the frame numbers */
+    STATE_VAR("platform", s_znow); STATE_VAR("platform", s_zstamp); STATE_VAR("platform", s_zclk);
+    STATE_VAR("platform", s_zstate); STATE_VAR("platform", s_zaccess); STATE_VAR("platform", ei_shadow);
+    STATE_VAR("platform", s_fm_count); STATE_VAR("platform", s_fm_start); STATE_VAR("platform", s_fm_ta);
+    STATE_VAR("platform", s_fm_tal); STATE_VAR("platform", s_fm_tac); STATE_VAR("platform", s_fm_tbl);
+    STATE_VAR("platform", s_fm_tbc); STATE_VAR("platform", s_fm_mode); STATE_VAR("platform", s_fm_status);
+    STATE_VAR("platform", s_fm_addr); STATE_VAR("platform", s_ym_reg); STATE_VAR("platform", s_ym_sel);
+    STATE_VAR("platform", s_psg_reg); STATE_VAR("platform", s_psg_latch);
+    STATE_VAR("platform", s_pending); STATE_VAR("platform", s_addr_latch); STATE_VAR("platform", s_cached_write);
+    STATE_VAR("platform", s_dma_length); STATE_VAR("platform", s_dma_type); STATE_VAR("platform", s_dmafill);
+    STATE_VAR("platform", s_dma_src); STATE_VAR("platform", s_fifo); STATE_VAR("platform", s_fifo_idx);
+    STATE_VAR("platform", s_fs_vblank); STATE_VAR("platform", s_fs_reads);
+    STATE_VAR("platform", s_io_reg); STATE_VAR("platform", s_pad_state); STATE_VAR("platform", s_pad_counter);
+    STATE_VAR("platform", s_pad_timeout);
+    STATE_VAR("platform", s_sr); STATE_VAR("platform", s_depth);
+    STATE_VAR("platform", s_frame_no); STATE_VAR("platform", s_sync_no); STATE_VAR("platform", g_snd_frame);
+    ws_state_init();                                       /* widescreen's screen state: "platform" too */
+    state_section_custom("sound", sound_save, sound_load);
+    state_counters(&s_frame_tick_waits, sizeof s_frame_tick_waits);
+    state_after_load(machine_after_load);
+}
+
+/* ======================================================================== */
+/* The canonical digest (P7-multiplayer.md "Definitions")                    */
+
+/* The same bytes on every compiler: the 68000's view of work RAM, the VDP's memories as the sync rows
+   take them, Z80 RAM, and a fixed list of machine fields, each at a fixed width, little-endian. Not
+   in it: host pointers, padding, and what only the renderer changes (the sprite flags). */
+namespace {
+struct Canon {
+    std::vector<uint8_t> b;
+    void u(uint64_t v, int width) { for (int i = 0; i < width; i++) b.push_back((uint8_t)(v >> (8 * i))); }
+    void raw(const void *p, size_t n) { const uint8_t *q = (const uint8_t *)p; b.insert(b.end(), q, q + n); }
+};
+}
+
+static uint64_t hash64(const uint8_t *p, size_t n, uint64_t h)
+{
+    size_t i = 0;
+    for (; i + 8 <= n; i += 8) {
+        uint64_t w;
+        memcpy(&w, p + i, 8);
+        h = (h ^ w) * 0x100000001B3ull;
+        h ^= h >> 29;
+    }
+    for (; i < n; i++) h = (h ^ p[i]) * 0x100000001B3ull;
+    return h;
+}
+
+extern "C" uint64_t machine_digest(void)
+{
+    static uint8_t ram[0x10000];
+    static Canon c;
+    c.b.clear();
+    xm_ram_image(ram);
+    c.raw(ram, sizeof ram);
+    const GVDP *v = &g_machine.vdp;
+    c.raw(v->vram, sizeof v->vram);
+    for (unsigned i = 0; i < GVDP_CRAM_ENTRIES; i++) c.u(v->cram[i] & 0x0EEE, 2);
+    for (unsigned i = 0; i < GVDP_VSRAM_ENTRIES; i++) c.u(v->vsram[i] & 0x7FF, 2);
+    c.raw(v->reg, sizeof v->reg);
+    c.u(v->code, 1); c.u(v->address, 2);
+    c.u(s_pending, 1); c.u(s_addr_latch, 2); c.u((uint32_t)s_cached_write, 4); c.u(s_dma_length, 4);
+    c.u((uint32_t)s_dma_type, 1); c.u((uint32_t)s_dmafill, 1); c.u(s_dma_src, 4);
+    for (int i = 0; i < 4; i++) c.u(s_fifo[i], 2);
+    c.u((uint32_t)s_fifo_idx, 1); c.u((uint32_t)s_fs_vblank, 1);
+    const GenesisBus *b = &g_machine.bus;
+    c.raw(b->z80_ram, sizeof b->z80_ram);
+    c.u(b->z80_bank, 4); c.u(b->z80_busreq, 1); c.u(b->z80_reset_off, 1);
+    const z80 *z = &g_machine.z80;
+    c.u((uint32_t)z->cyc, 4);
+    c.u(z->pc, 2); c.u(z->sp, 2); c.u(z->ix, 2); c.u(z->iy, 2); c.u(z->mem_ptr, 2);
+    c.u(z->a, 1); c.u(z->b, 1); c.u(z->c, 1); c.u(z->d, 1); c.u(z->e, 1); c.u(z->h, 1); c.u(z->l, 1);
+    c.u(z->a_, 1); c.u(z->b_, 1); c.u(z->c_, 1); c.u(z->d_, 1); c.u(z->e_, 1); c.u(z->h_, 1); c.u(z->l_, 1);
+    c.u(z->f_, 1); c.u(z->i, 1); c.u(z->r, 1);
+    c.u((unsigned)z->sf << 7 | (unsigned)z->zf << 6 | (unsigned)z->yf << 5 | (unsigned)z->hf << 4 |
+        (unsigned)z->xf << 3 | (unsigned)z->pf << 2 | (unsigned)z->nf << 1 | (unsigned)z->cf, 1);
+    c.u(z->iff_delay, 1); c.u(z->interrupt_mode, 1); c.u(z->int_data, 1);
+    c.u((unsigned)z->iff1 << 4 | (unsigned)z->iff2 << 3 | (unsigned)z->halted << 2 |
+        (unsigned)z->int_pending << 1 | (unsigned)z->nmi_pending, 1);
+    c.u((uint32_t)ei_shadow, 1);
+    c.u(s_znow, 4); c.u(s_zstamp, 4); c.u(s_zclk, 4); c.u((uint32_t)s_zstate, 1); c.u((uint32_t)s_zaccess, 1);
+    c.u(s_fm_count, 4); c.u(s_fm_start, 4); c.u((uint32_t)s_fm_ta, 4); c.u((uint32_t)s_fm_tal, 4);
+    c.u((uint32_t)s_fm_tac, 4); c.u((uint32_t)s_fm_tbl, 4); c.u((uint32_t)s_fm_tbc, 4);
+    c.u(s_fm_mode, 1); c.u(s_fm_status, 1); c.u(s_fm_addr, 2);
+    c.raw(s_ym_reg, sizeof s_ym_reg); c.raw(s_ym_sel, sizeof s_ym_sel);
+    for (int i = 0; i < 8; i++) c.u(s_psg_reg[i], 2);
+    c.u(s_psg_latch, 1);
+    c.raw(s_io_reg, sizeof s_io_reg); c.raw(s_pad_state, sizeof s_pad_state);
+    c.raw(s_pad_counter, sizeof s_pad_counter); c.raw(s_pad_timeout, sizeof s_pad_timeout);
+    c.u(b->pad[0], 2); c.u(b->pad[1], 2);
+    c.u(s_sr, 2); c.u(s_frame_no, 8);
+    ws_digest_fields(&c.b);
+    return hash64(c.b.data(), c.b.size(), 0xCBF29CE484222325ull);
+}
 
 /* Power-on, then frame 1 up to the game's first instruction. */
 extern "C" void machine_power_on(void)

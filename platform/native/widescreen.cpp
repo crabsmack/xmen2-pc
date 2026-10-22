@@ -19,8 +19,9 @@ extern "C" {
 #include "video/genesis_machine.h"
 }
 #include "native.h"
+#include "state.h"
 
-#define WS_MARGIN 40            /* px per side: 320 + 2 x 40 = 400 */
+#define WS_MARGIN 40           /* px per side: 320 + 2 x 40 = 400 */
 static int s_margin = -1;        /* XMEN2_WS_MARGIN=n: another margin, for diagnosing (0: the 4:3 view, checked) */
 
 static int ws_margin(void)
@@ -444,4 +445,32 @@ std::string ws_counters_json(void)
              (unsigned long long)s_sprites_wrapped, (unsigned long long)s_hud_misplaced,
              s_first_error.c_str(), s_first_lost.c_str());
     return std::string(b) + s_screens_json + "}}";
+}
+
+/* ---- savestates (phase 7 R2, state.cpp) -------------------------------------------------------- */
+
+/* What the game's view depends on besides its memory: a Cerebro screen running, the 16:9 view and
+   an F10 request for the next screen. The screen cache is derived (rebuilt after a load); the
+   counters are the host's. */
+static void ws_after_load(void) { s_cache_idx = -1000; }
+
+void ws_state_init(void)
+{
+    STATE_VAR("platform", s_cerebro);
+    STATE_VAR("platform", g_opt.widescreen);
+    STATE_VAR("platform", s_pending); STATE_VAR("platform", s_pending_idx); STATE_VAR("platform", s_pending_cerebro);
+    state_counters(&s_gameplay_frames, sizeof s_gameplay_frames);
+    state_counters(&s_terrain_checks, sizeof s_terrain_checks);
+    state_counters(&s_terrain_errors, sizeof s_terrain_errors);
+    state_counters(&s_sprites_lost, sizeof s_sprites_lost);
+    state_counters(&s_sprites_wrapped, sizeof s_sprites_wrapped);
+    state_counters(&s_hud_misplaced, sizeof s_hud_misplaced);
+    state_after_load(ws_after_load);
+}
+
+void ws_digest_fields(std::vector<uint8_t> *out)
+{
+    out->push_back((uint8_t)s_cerebro);
+    out->push_back((uint8_t)g_opt.widescreen);
+    out->push_back((uint8_t)(s_pending + 1));
 }

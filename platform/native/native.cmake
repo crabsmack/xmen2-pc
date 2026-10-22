@@ -19,6 +19,9 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/present.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/game_entry.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/host_sdl.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/state.cpp"
+    # the game's fiber (phase 7 R2): the engine's snapshottable fibers on vendored minicoro
+    "${RUNNER_ROOT}/fiber_compat.c"
     "${RUNNER_ROOT}/video/genesis_vdp.c"
     "${RUNNER_ROOT}/external/superzazu/z80.c"
     # the sound chips and their mixer (played runs only)
@@ -53,10 +56,16 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # the game's arithmetic wraps as the 68000's does, and its memory is reached through
     # reinterpreting casts of game-memory types: no optimisation may assume otherwise
     target_compile_options(XMen2Native PRIVATE -fwrapv -fno-strict-aliasing -fno-delete-null-pointer-checks)
+    # the game's fiber: no shadow stacks (its switch replaces the stack pointer), and page-by-page
+    # probes of big frames so one never steps over the stack's guard (fiber_compat.h)
+    target_compile_options(XMen2Native PRIVATE -fstack-clash-protection)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+        target_compile_options(XMen2Native PRIVATE -fcf-protection=none)
+    endif()
 endif()
 if(MSVC)
     target_compile_options(XMen2Native PRIVATE /W3 /WX- /utf-8 /wd4102 /wd4996)
-    target_link_options(XMen2Native PRIVATE "/MAP:$<TARGET_FILE_DIR:XMen2Native>/XMen2Native.map")
+    target_link_options(XMen2Native PRIVATE "/MAP:$<TARGET_FILE_DIR:XMen2Native>/XMen2Native.map" "/CETCOMPAT:NO")
     add_custom_command(TARGET XMen2Native POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${RUNNER_ROOT}/external/SDL2/SDL2-2.28.5/lib/x64/SDL2.dll" "$<TARGET_FILE_DIR:XMen2Native>"

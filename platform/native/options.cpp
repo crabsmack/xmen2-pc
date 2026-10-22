@@ -184,8 +184,14 @@ void options_toggle_widescreen(void) { ws_request_toggle(); }
 
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
+/* --scene N (phase 7's stage inputs, `trace --scene`) or XMEN2_DEBUG_SCENE=n: a new game starts at
+   scene n */
+static int s_first_scene = -1;
+void options_set_first_scene(int scene) { s_first_scene = scene; }
+
 extern "C" int plat_debug_first_scene(int scene)
 {
+    if (s_first_scene >= 0) return s_first_scene;
     const char *e = getenv("XMEN2_DEBUG_SCENE");
     return e && *e ? atoi(e) : scene;
 }

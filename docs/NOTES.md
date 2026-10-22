@@ -980,6 +980,65 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   failed draws in a row. Checked only that it opens and draws on direct3d11: the monitor change
   itself has not been re-tried. If it freezes again, stderr's `[native] renderer:` line says which
   renderer it had.
+
+## Phase 7: online play and four players
+
+Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phases/P7-multiplayer.md`
+(approved 2026-10-21). Checked by `uv run tools/phase.py 7` there.
+
+### M2: the game on a fiber, savestates (2026-10-21)
+
+- **The host owns the loop** (`platform/native/machine.cpp`). The game runs on a fiber of its own
+  (the engine's `runner/fiber_compat.c`: minicoro in assembly mode, a fixed 1 MB stack under a 64 KB
+  guard, the Windows TIB stack fields switched; `/CETCOMPAT:NO` on MSVC, `-fcf-protection=none
+  -fstack-clash-protection` on GCC). `plat_sync_point` yields to the host; the host does the row, the
+  end of the runner frame (present, benchmark), the next frame's pads and Z80 frame (`machine_tick`),
+  then resumes the game, which takes the V-int and renders. A session machine's frame-tick V-int
+  (`plat_wait_vint`) yields too, so the host shows the repeated display period. No trace changed:
+  TAS 51,209 rows and framebuffers, `scenario-options-menu` 6,070, `scenario-two-player` 4,914, equal
+  to the runner before the change.
+- **Fiber stack**: the deepest the game went (painted stack) is 7-8 KB (TAS 8,328 bytes, options menu
+  7,160): the game's C has no deep recursion; 1 MB is ample.
+- **Sections** (`platform/native/state.cpp`, registered by each module): `fiber` (its context and live
+  stack, `fiber_snapshot_save`), `arena` (work RAM in native storage, the store tags, the stack
+  region's mark, the bridge's d0), `machine` (`g_machine`: VDP memories and registers, the bus with
+  Z80 RAM and pads, the Z80; host pointers zeroed in the saved bytes, kept on load), `platform` (the
+  machine's statics: VDP port latches and DMA, the Z80's clock and bus lines, the YM2612 timers and
+  the chips' register shadows, I/O and pads' protocol state, the interrupt state, the frame numbers,
+  the sound frame; widescreen's Cerebro flag, the 16:9 option and an F10 request), `sound` (ymfm,
+  the PSG and the event queue, `*_rb_save`: only in the session machine, where they run). Derived
+  state is rebuilt after a load (the ARGB palette from CRAM, widescreen's screen cache). The
+  options are configuration, not state (constant within a run except F10, whose request is in
+  `platform`). About 225 KB a snapshot (TAS: 225,454 bytes; 225,643 with the sound).
+- **Counters** (the trace's measurements: sync rows, two-player frames, frame-tick waits, the `ws`
+  counters) are not state: a snapshot carries them besides the sections, outside its hash, and a
+  restore puts them back, so a probe's first pass (or a rollback's replay) is counted once.
+- **The probe** (`--state-probe P:L`, main.cpp `plat_at_sync`): every P-th sync point with L more in
+  the run: save, L ticks (pass 1: no row, no frame end, no presentation), restore, save again (the
+  SHA-1 of both in `probe_snap.csv`), L ticks again (pass 2: the run goes on). Both passes' rows with
+  the picture's hash in `probe.csv`. Results: `scenario-options-menu` 20 save points and
+  `scenario-two-player` 16, both passes equal and the resaved snapshot equal at every one, and the
+  live `sync.csv` equal to the run without the probe; TAS in the session machine with 16:9 (played
+  by runner frame, 57,465 frames): 191 save points, all exact.
+- **Negative control** (`--state-skip NAME`, same TAS run): every section is caught. `fiber`: 75
+  resaved snapshots differ, 2 save points with different passes (sync 20,101: RAM); `arena`: all 191
+  (every CRC and the picture); `machine`: all 191 snapshots, 112 passes (VRAM, the picture);
+  `platform`: the frame numbers stay at pass 1's end, so the run ends 11,460 frames early;
+  `sound`: all 191 snapshots (it never changes the game: 0 passes differ).
+- **The session machine** (`--session SEED`; played runs take a seed from the clock): each
+  frame-tick V-int gets its Z80 frame and sound, the sound chips run (headless too: the mixer drains
+  each frame, nothing is heard), and the V counter is a pure function of the seed and the runner
+  frame (`vcounter_now`, a splitmix of both). Before, a played run read the line from the wall
+  clock. Traced runs without `--session` are the stepped runners' machine as before (V counter 0).
+- **The canonical digest** (`--digest`, `machine_digest`): the 68000 view of work RAM (all 64 KB),
+  VRAM, CRAM and VSRAM masked as the rows take them, Z80 RAM, and a fixed field list written at fixed
+  widths, little-endian (VDP registers, address and code, the port latches and DMA; Z80 registers
+  with the flags packed, its cycle count's low 32 bits (MSVC's `unsigned long` is 4 bytes, GCC's 8),
+  the Z80 clock and bus lines; the YM2612 timers and register shadows (512 bytes), the PSG's; I/O and
+  pads; SR and the runner frame; widescreen's three). Not in it: host pointers, padding, the sprite
+  flags the renderer sets. A word-wise FNV-1a-style 64-bit hash.
+- Input scripts take up to four pad columns (`PADS p1 p2 p3 p4`); pads 3 and 4 are `g_pad34`.
+- `--scene N` (as `XMEN2_DEBUG_SCENE=N`): a new game starts at scene N.
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

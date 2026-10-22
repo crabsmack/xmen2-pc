@@ -3,6 +3,7 @@
 #ifndef XMEN2_NATIVE_H
 #define XMEN2_NATIVE_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "xmen2_options.h"
@@ -13,6 +14,7 @@ void        options_init(int *argc, char **argv);   /* options.cpp: --options, x
 void        options_toggle_high_fps(void);          /* played: F9 */
 void        options_toggle_widescreen(void);        /* played: F10 (from the next screen) */
 void        options_set_widescreen(int on);
+void        options_set_first_scene(int scene);     /* --scene N: a new game starts there */
 void        ws_request_toggle(void);                /* widescreen.cpp */
 void        present_reset(void);                    /* present.cpp: high_fps turned on again */
 void        present_repeat(void);                   /* present.cpp: a played frame-tick V-int's period */
@@ -24,6 +26,8 @@ bool        present_logging(void);
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
 void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
 std::string present_counters_json(void);
+#include <vector>
+void        ws_digest_fields(std::vector<uint8_t> *out);   /* widescreen.cpp: its part of the canonical digest */
 extern "C" {
 #endif
 
@@ -44,6 +48,16 @@ void xm_vint_handler(void);              /* Irq_VBlankVector: the level-6 vector
 
 /* the machine (machine.cpp) */
 void     machine_power_on(void);         /* power-on, then runner frame 1 begins */
+void     machine_run(void);              /* the game on its fiber, the host between its sync points; never returns */
+void     machine_tick(void);             /* the host: one more runner frame, to the game's next sync point */
+void     machine_state_init(void);       /* register the snapshot's sections (state.cpp) */
+uint64_t machine_digest(void);           /* the canonical digest of the state now (P7 "Definitions") */
+uint64_t machine_stack_peak(void);       /* the game fiber's deepest stack use, bytes */
+void     machine_set_session(uint64_t seed);   /* the session machine (P7 "Definitions") */
+int      machine_session(void);
+void     xm_mem_state_init(void);        /* native_rt.cpp: the "arena" section */
+void     ws_state_init(void);            /* widescreen.cpp: its statics in "platform" */
+void     xm_sha1(const uint8_t *data, size_t len, uint8_t out[20]);   /* main.cpp */
 uint64_t machine_frame_no(void);
 int      machine_screen_width(void);
 int      machine_screen_height(void);
@@ -59,6 +73,7 @@ void plat_frame_end(uint64_t frame);     /* it ends (at its sync point): its pic
 int  plat_realtime(void);                /* a played run (a window, paced): nothing is traced */
 void plat_frame_repeat(void);            /* played: one more display period of the same picture */
 void plat_sync_row(uint64_t sync, uint64_t frame);   /* a sync point: its row, from the export */
+void plat_at_sync(uint64_t sync);        /* the host loop at a sync point, before the next frame (the probe) */
 
 /* widescreen.cpp (phase 6): the renderer's margins before a frame is rendered, the checks after */
 void ws_frame_setup(void);

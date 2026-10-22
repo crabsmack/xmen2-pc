@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "state.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -192,4 +194,15 @@ extern "C" void xm_native_mem_init(void)
     xm_arena_ffff = a + 0x10000;
     memset(xm_arena, 0, 0x10000);
     xm::s_sp = ((uint32_t)g_rom[0] << 24) | ((uint32_t)g_rom[1] << 16) | ((uint32_t)g_rom[2] << 8) | g_rom[3];
+}
+
+/* Savestates (phase 7 R2, platform/native/state.cpp): the game's memory is the "arena" section: work
+   RAM in its native storage, the store tags that say how each byte is held, the stack region's mark
+   and d0 of stored-pointer calls. */
+extern "C" void xm_mem_state_init(void)
+{
+    state_section_range("arena", xm_arena, 0x10000);
+    state_section_range("arena", xm_tags, sizeof xm_tags);
+    state_section_range("arena", &xm::s_sp, sizeof xm::s_sp);
+    state_section_range("arena", &xm::g_d0, sizeof xm::g_d0);
 }
