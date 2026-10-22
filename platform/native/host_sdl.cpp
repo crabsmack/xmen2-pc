@@ -161,8 +161,30 @@ void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, in
     if (s) SDL_FreeSurface(s);
 }
 
+/* XMEN2_WAV=path (dev, for recordings): the generated sound as a WAV (the engine's bit-exact tap,
+   223,721 Hz stereo, from the first frame with sound), headless too: with no window, an audio device
+   opened for it (SDL_AUDIODRIVER=dummy plays nothing) */
+static void wav_stop(void) { audio_wav_stop(); }
+
+static void wav_maybe_start(void)
+{
+    static bool tried;
+    if (tried) return;
+    tried = true;
+    const char *path = getenv("XMEN2_WAV");
+    if (!path || !*path) return;
+    if (!s_audio) {
+        SDL_SetMainReady();
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) s_audio = audio_init((int)GENESIS_PSG_SAMPLE_RATE_NTSC) == 0;
+        if (s_audio) audio_set_playback_enabled(1);
+    }
+    if (s_audio && audio_wav_start(path) == 0) atexit(wav_stop);
+    else fprintf(stderr, "[native] XMEN2_WAV: no audio device or can't write %s\n", path);
+}
+
 void host_audio(uint64_t frame, bool mute)
 {
+    wav_maybe_start();
     /* the chips' writes of the Z80's frame (stamped in master clocks from its start), mixed, to
        the device (as the engine's sim step: GENESIS_SIM_WALL_FRAME_MASTER_CYCLES); muted (a
        rollback's replay of frames already heard), the chips still run */
