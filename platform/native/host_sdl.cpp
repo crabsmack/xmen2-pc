@@ -36,6 +36,8 @@ static SDL_Texture *s_tex;
 static SDL_GameController *s_pad[4];   /* players 1-4 (3-4: phase 7, `players` 3 or 4) */
 static uint64_t s_next;          /* performance-counter time of the next frame */
 static double s_period;          /* counter ticks per frame */
+static bool s_at_started;        /* high_fps: the present clock has started */
+static double s_at_base;         /* high_fps: performance-counter ticks at t_us 0 */
 static int s_audio;
 static bool s_rebuild;           /* the renderer's device was reset: make it again before drawing */
 static int s_draw_fails;         /* failed draws in a row */
@@ -193,13 +195,11 @@ static void draw(const uint32_t *fb, int stride, int w, int h)
    frame); a frame more than 4 NTSC frames late moves the clock instead of hurrying. */
 void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us)
 {
-    static bool started;
-    static double base;   /* performance-counter ticks at t_us 0 */
     double f = (double)SDL_GetPerformanceFrequency();
     double now = (double)SDL_GetPerformanceCounter();
-    if (!started) { base = now - t_us * f / 1e6; started = true; }
-    double due = base + t_us * f / 1e6;
-    if (now > due + 4 * s_period) base += now - due;
+    if (!s_at_started) { s_at_base = now - t_us * f / 1e6; s_at_started = true; }
+    double due = s_at_base + t_us * f / 1e6;
+    if (now > due + 4 * s_period) s_at_base += now - due;
     while ((now = (double)SDL_GetPerformanceCounter()) < due) {
         double left_ms = (due - now) * 1000.0 / f;
         if (left_ms > 2.0) SDL_Delay((Uint32)(left_ms - 1.5));
@@ -219,4 +219,13 @@ void host_present(const uint32_t *fb, int stride, int w, int h)
         double left_ms = (double)(s_next - now) * 1000.0 / (double)SDL_GetPerformanceFrequency();
         if (left_ms > 2.0) SDL_Delay((Uint32)(left_ms - 1.5));
     }
+}
+
+/* netplay (phase 7): the scheduler held a frame (its timesync pacing, its wait for a remote input);
+   the clocks move by the hold, so it slows this seat instead of being made up on the next frames */
+void host_slip(double us)
+{
+    double ticks = us * (double)SDL_GetPerformanceFrequency() / 1e6;
+    s_next += (uint64_t)ticks;
+    s_at_base += ticks;
 }

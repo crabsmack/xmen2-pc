@@ -1227,6 +1227,13 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   scheduler's stall-before-invent grace (polls that admit nothing for ~31 ms, no replays, a 2 ms tick):
   1-24 of 3,512 per seat with the session alone; RBE_RB_INVENT_GRACE_MS=0 (invent at once) is worse
   (11-122, rollbacks up to 11 ticks). phase.py's 11 sessions at once made it 38/3,510; it runs 4 at a time.
+  The cause was the loop's pacing: it asked for a frame right after showing the one before and slept
+  after the tick, so the scheduler's holds (timesync's <=6 ms shaves on the seat that runs ahead)
+  vanished into the sleep, the ahead seat never slowed, and kept so little cushion that a lost packet
+  meant a grace hold (w-clone 71 late on seat 0, 2 on seat 1). Now the seat waits for the frame's
+  time, then asks, and a hold moves the clock (the played window's too: host_slip): alone, w-clone
+  0-1 of 2,508 per seat (was 3-28) and w-sentinels 0-1 of 4,433 (was 17-41), no rollbacks left
+  under `mid` (the seats line up inside the 83 ms delay; om-bad's 120 ms still rolls back).
 - **R4, the cost of keeping the byte matches** (35 game files so far, the first batches): 444 lines
   added, 8 changed (`git diff --stat`), all in `#if defined(XMEN2_NATIVE)` blocks, most
   `if (g_opt.players > 2) { ... }` next to the original line they extend, the logic in

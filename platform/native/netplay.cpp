@@ -51,6 +51,7 @@ extern "C" {
 uint16_t main_local_pad(uint64_t frame, int col);
 void     main_np_pads(const uint16_t rows[4]);
 void     main_np_quiet(bool on);
+void     main_np_slip(double us);
 void     main_np_write_rows(uint64_t upto);
 
 #define NP_PAD_MASK 0x0FFFu
@@ -545,27 +546,43 @@ void netplay_run(uint64_t frames)
     if (!rnet_rb_driver_start(s_drv, &cfg, &host)) np_fail("the rollback driver didn't start");
 
     /* Pacing: live frames on the NTSC clock, as a played window presents them (a played seat waits in
-       its present instead); a stall of more than 4 periods moves the clock. A frame shown more than
-       a period after the one before (more than two periods between them) is late: a visible hitch,
-       one per stall however long. */
+       its present instead): the seat waits for a frame's time, then asks the scheduler for it. When
+       the scheduler holds the frame (its timesync pacing slows the seat that runs ahead; its grace
+       waits for a remote input before inventing it), the clock moves by the hold: the seat is slowed,
+       as the scheduler means, instead of making the hold up on the next frames and keeping its lead
+       (2026-10-22: the ahead seat then waited out a grace at most lost packets, 71 late frames of
+       2,510 against the other seat's 2). A stall of more than 4 periods moves the clock as well. A
+       frame shown more than a period after the one before (more than two periods between them) is
+       late: a visible hitch, one per stall however long. */
     const bool paced_here = !plat_realtime();
 #ifdef _WIN32
     timeBeginPeriod(1);   /* 1 ms waits (the default timer turns a 1 ms wait into 15.6 ms: a hitch) */
 #endif
     double prev = 0, next = 0;
+    double held = 0;   /* when the scheduler began holding this frame (0: it hasn't) */
     bool quiescing = false;
     /* XMEN2_NP_LATE=1 (diagnosing late frames): each one's gap, and what the loop did since the frame
-       before: polls that admitted nothing, replay ticks, the time in poll_admit, the tick, the sleep */
+       before: polls that admitted nothing, replay ticks, the time in poll_admit, the tick, the hold */
     static const bool dbg_late = getenv("XMEN2_NP_LATE") != nullptr;
     uint32_t d_waits = 0, d_replay0 = 0;
-    double d_admit = 0, d_tick = 0, d_sleep = 0;
+    double d_admit = 0, d_tick = 0;
     for (;;) {
         ice_pump_signals();
         rnet_session_pump(s_session);
-        double a0 = dbg_late ? now_us() : 0;
+        double a0 = now_us();
+        if (paced_here && next && a0 < next) {   /* not the frame's time yet */
+            (void)rnet_session_wait_recv(s_session, next - a0 > 1500 ? 1 : 0);
+            continue;
+        }
         RNetRbAdmit a = rnet_rb_driver_poll_admit(s_drv);
         if (dbg_late) d_admit += now_us() - a0;
         if (a == RNET_RB_ADMIT_LIVE) {
+            double hold = held ? a0 - held : 0;
+            held = 0;
+            if (hold > 0 && next) {
+                if (paced_here) next += hold;
+                else main_np_slip(hold);
+            }
             double k0 = dbg_late ? now_us() : 0;
             machine_tick();
             rnet_rb_driver_finish_frame(s_drv);
@@ -575,30 +592,24 @@ void netplay_run(uint64_t frames)
             if (!next) next = t;
             next += NP_PERIOD_US;
             if (t > next + 4 * NP_PERIOD_US) next = t;   /* a long stall moves the clock */
-            double s0 = t;
-            if (paced_here && t < next) {
-                std::this_thread::sleep_for(std::chrono::microseconds((long long)(next - t)));
-                t = now_us();
-            }
             if (!frames || tick <= frames) {
                 s_frames++;
                 if (prev && t > prev + 2 * NP_PERIOD_US) {
                     s_late++;
                     if (dbg_late)
                         fprintf(stderr, "[netplay] late tick %llu: gap %.1f ms; since the frame before %u empty polls, "
-                                "%u replay ticks, admit %.1f ms, tick %.1f ms, sleep %.1f ms\n", (unsigned long long)tick,
+                                "%u replay ticks, admit %.1f ms, tick %.1f ms, hold %.1f ms\n", (unsigned long long)tick,
                                 (t - prev) / 1000, d_waits, s_replay_ticks - d_replay0, d_admit / 1000, d_tick / 1000,
-                                (t - s0) / 1000 + d_sleep / 1000);
+                                hold / 1000);
                 }
             }
             prev = t;
             d_waits = 0;
             d_replay0 = s_replay_ticks;
-            d_admit = d_sleep = 0;
+            d_admit = 0;
         } else {
-            double w0 = dbg_late ? now_us() : 0;
+            if (!held) held = a0;
             (void)rnet_session_wait_recv(s_session, 1);
-            if (dbg_late) d_sleep += now_us() - w0;
             d_waits++;
         }
         if (!frames) continue;

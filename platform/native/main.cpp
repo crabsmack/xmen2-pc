@@ -372,6 +372,7 @@ extern "C" void plat_frame_audio(uint64_t frame)
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }
+void main_np_slip(double us) { if (s_interactive) host_slip(us); }   /* netplay.cpp: the scheduler held a frame */
 
 extern "C" void plat_after_render(void)
 {
