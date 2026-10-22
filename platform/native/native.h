@@ -15,6 +15,14 @@ void        options_toggle_high_fps(void);          /* played: F9 */
 void        options_toggle_widescreen(void);        /* played: F10 (from the next screen) */
 void        options_set_widescreen(int on);
 void        options_set_first_scene(int scene);     /* --scene N: a new game starts there */
+int         options_first_scene(void);              /* -1: none */
+std::string options_game_text(void);                /* netplay (R10): the game-changing options, k=v,... */
+bool        options_adopt_game(const std::string &text);   /* a guest takes the host's */
+/* netplay.cpp (phase 7 R1): rollback netplay of the release runner */
+bool        netplay_arg(int argc, char **argv, int *i);      /* --netplay ... options; true when it took one */
+bool        netplay_enabled(void);
+void        netplay_run(uint64_t frames);           /* never returns: the netplay loop (frames: 0 = played) */
+void        netplay_print_json(void);               /* --netplay --json */
 void        ws_request_toggle(void);                /* widescreen.cpp */
 void        present_reset(void);                    /* present.cpp: high_fps turned on again */
 void        present_repeat(void);                   /* present.cpp: a played frame-tick V-int's period */
@@ -49,12 +57,17 @@ void xm_vint_handler(void);              /* Irq_VBlankVector: the level-6 vector
 /* the machine (machine.cpp) */
 void     machine_power_on(void);         /* power-on, then runner frame 1 begins */
 void     machine_run(void);              /* the game on its fiber, the host between its sync points; never returns */
+void     machine_start(void);            /* the game's fiber, made (netplay runs the ticks itself) */
+void     machine_set_render(int on);     /* 0: ticks render no frame (a rollback's replay) */
 void     machine_tick(void);             /* the host: one more runner frame, to the game's next sync point */
 void     machine_state_init(void);       /* register the snapshot's sections (state.cpp) */
 uint64_t machine_digest(void);           /* the canonical digest of the state now (P7 "Definitions") */
+void     machine_digest_parts(uint64_t out[3]);   /* the last digest's partitions: work RAM, the VDP, the rest */
 uint64_t machine_stack_peak(void);       /* the game fiber's deepest stack use, bytes */
 void     machine_set_session(uint64_t seed);   /* the session machine (P7 "Definitions") */
 int      machine_session(void);
+uint64_t machine_session_seed(void);
+void     machine_audio_init(void);        /* the sound chips' mixer (the session machine runs them) */
 void     xm_mem_state_init(void);        /* native_rt.cpp: the "arena" section */
 void     ws_state_init(void);            /* widescreen.cpp: its statics in "platform" */
 void     xm_sha1(const uint8_t *data, size_t len, uint8_t out[20]);   /* main.cpp */

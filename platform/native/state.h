@@ -21,6 +21,8 @@ void        state_load(const Snapshot &snap, const char *skip);   /* skip: a sec
 int         state_has_section(const char *name);
 std::string state_sections_json(size_t bytes);    /* {"sections": [...], "bytes": n  (unterminated: the caller adds fields) */
 std::string state_sha1(const Snapshot &snap);
+void        state_serialize(const Snapshot &snap, std::vector<uint8_t> &out);   /* one blob */
+bool        state_deserialize(const uint8_t *p, size_t n, Snapshot &snap);
 extern "C" {
 #endif
 

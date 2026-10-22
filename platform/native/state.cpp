@@ -172,6 +172,43 @@ std::string state_sections_json(size_t bytes)
     return o + b;
 }
 
+/* ---- one blob (netplay's snapshot ring stores blobs): counts, spans, counters, the sections ---- */
+
+void state_serialize(const Snapshot &snap, std::vector<uint8_t> &out)
+{
+    uint64_t head[2] = { snap.spans.size(), snap.counters.size() };
+    out.resize(sizeof head + snap.spans.size() * 16 + snap.counters.size() + snap.bytes.size());
+    uint8_t *o = out.data();
+    memcpy(o, head, sizeof head); o += sizeof head;
+    for (const auto &sp : snap.spans) {
+        uint64_t v[2] = { sp.first, sp.second };
+        memcpy(o, v, 16); o += 16;
+    }
+    memcpy(o, snap.counters.data(), snap.counters.size()); o += snap.counters.size();
+    memcpy(o, snap.bytes.data(), snap.bytes.size());
+}
+
+bool state_deserialize(const uint8_t *p, size_t n, Snapshot &snap)
+{
+    uint64_t head[2];
+    if (n < sizeof head) return false;
+    memcpy(head, p, sizeof head);
+    size_t fixed = sizeof head + head[0] * 16 + head[1];
+    if (head[0] > 64 || fixed > n) return false;
+    const uint8_t *i = p + sizeof head;
+    snap.spans.resize(head[0]);
+    for (auto &sp : snap.spans) {
+        uint64_t v[2];
+        memcpy(v, i, 16); i += 16;
+        sp = { (size_t)v[0], (size_t)v[1] };
+    }
+    snap.counters.assign(i, i + head[1]); i += head[1];
+    snap.bytes.assign(i, p + n);
+    for (const auto &sp : snap.spans)
+        if (sp.first + sp.second > snap.bytes.size()) return false;
+    return true;
+}
+
 /* ---- SHA-1 (snapshot identity in probe_snap.csv) ------------------------------------------------ */
 
 std::string state_sha1(const Snapshot &snap)

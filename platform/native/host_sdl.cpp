@@ -157,14 +157,15 @@ void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, in
     if (s) SDL_FreeSurface(s);
 }
 
-void host_audio(uint64_t frame)
+void host_audio(uint64_t frame, bool mute)
 {
     /* the chips' writes of the Z80's frame (stamped in master clocks from its start), mixed, to
-       the device (as the engine's sim step: GENESIS_SIM_WALL_FRAME_MASTER_CYCLES) */
+       the device (as the engine's sim step: GENESIS_SIM_WALL_FRAME_MASTER_CYCLES); muted (a
+       rollback's replay of frames already heard), the chips still run */
     static int16_t fm[8192 * 2], psg[16384];
     size_t fm_n = 0, psg_n = 0;
     audio_mixer_drain(895780u, fm, 8192, &fm_n, psg, sizeof psg / sizeof psg[0], &psg_n);
-    if (s_audio) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
+    if (s_audio && !mute) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
 }
 
 static void draw(const uint32_t *fb, int stride, int w, int h)

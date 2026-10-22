@@ -24,6 +24,7 @@ extern "C" {
 #include "video/genesis_machine.h"
 #include "video/genesis_dac.h"
 #include "audio/event_queue.h"
+#include "audio/mixer.h"
 #include "audio/sn76489.h"
 #include "audio/ym2612.h"
 #include "fiber_compat.h"
@@ -775,6 +776,8 @@ extern "C" void plat_wait_vint(void)
 
 extern "C" void machine_set_session(uint64_t seed) { s_session = 1; s_seed = seed; }
 extern "C" int machine_session(void) { return s_session; }
+extern "C" uint64_t machine_session_seed(void) { return s_seed; }
+extern "C" void machine_audio_init(void) { audio_mixer_init(); }
 
 extern "C" uint64_t machine_frame_tick_waits(void) { return s_frame_tick_waits; }
 
@@ -807,7 +810,10 @@ static void render_frame(void)
 static void z80_frame(void)
 {
     const uint32_t F = LINES * MPL;
-    for (int i = 0; i < LINES; i++) input_refresh();
+    /* runner frame 1's Z80 frame is the power-on's: the pads are plugged in after it (main.cpp sets
+       their 6-button type), so their protocol's timeout doesn't run there */
+    if (s_frame_no > 1 || s_sync_no > 0)
+        for (int i = 0; i < LINES; i++) input_refresh();
     if (s_zstate == 1) {
         z80_exact_irq(1);
         z80_exact_step(&s_zclk, s_zclk + MPL);
@@ -836,12 +842,18 @@ static void frame_begin(void)
 /* The sync point: VDP_WaitVBlank's entry (bridge.py's native wrapper). In the main program the
    frame's logic is done: the host takes over (its row, the end of the runner frame, the next one's
    pads and Z80 frame: machine_run), then the V-int and the picture it shows. */
+static int s_no_render;   /* a rollback's replay: nobody sees its frames (machine_set_render) */
+
 extern "C" void plat_sync_point(void)
 {
     if (s_depth) return;
     yield_to_host(YIELD_SYNC);
     fsync_vint();
     ws_frame_setup();
+    if (s_no_render) {   /* the renderer changes nothing the game reads (the status shows no sprite flags) */
+        ws_frame_check();
+        return;
+    }
     if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
         auto r0 = std::chrono::steady_clock::now();
         render_frame();
@@ -853,6 +865,7 @@ extern "C" void plat_sync_point(void)
 }
 
 extern "C" void machine_render(void) { render_frame(); }
+extern "C" void machine_set_render(int on) { s_no_render = !on; }
 
 /* ======================================================================== */
 /* The host's loop                                                           */
@@ -901,19 +914,23 @@ extern "C" uint64_t machine_stack_peak(void)
     return (uint64_t)(top - (uintptr_t)p);
 }
 
-/* After power-on: the game from its reset entry, on its fiber, the host between its sync points. */
-extern "C" void machine_run(void)
+/* After power-on: the game's fiber, made but not run (its first tick starts the reset entry). */
+extern "C" void machine_start(void)
 {
     s_host_fiber = fiber_convert_thread();
     s_game_fiber = fiber_create(GAME_STACK, GAME_STACK, game_main, nullptr);
     if (!s_host_fiber || !s_game_fiber) machine_fatal("cannot make the game's fiber");
     paint_stack();
-    run_to_sync();
+}
+
+/* The game from its reset entry, on its fiber, the host between its sync points: tick after tick
+   (runner frame 1 begins right after power-on, its pads before the game's first instruction). */
+extern "C" void machine_run(void)
+{
+    machine_start();
     for (;;) {
-        sync_end();
+        machine_tick();
         plat_at_sync(s_sync_no);
-        frame_begin();
-        run_to_sync();
     }
 }
 
@@ -1061,6 +1078,10 @@ static uint64_t hash64(const uint8_t *p, size_t n, uint64_t h)
     return h;
 }
 
+static uint64_t s_digest_parts[3];   /* the last digest's partitions: work RAM, the VDP, the rest */
+
+extern "C" void machine_digest_parts(uint64_t out[3]) { memcpy(out, s_digest_parts, sizeof s_digest_parts); }
+
 extern "C" uint64_t machine_digest(void)
 {
     static uint8_t ram[0x10000];
@@ -1068,6 +1089,7 @@ extern "C" uint64_t machine_digest(void)
     c.b.clear();
     xm_ram_image(ram);
     c.raw(ram, sizeof ram);
+    size_t vdp_at = c.b.size();
     const GVDP *v = &g_machine.vdp;
     c.raw(v->vram, sizeof v->vram);
     for (unsigned i = 0; i < GVDP_CRAM_ENTRIES; i++) c.u(v->cram[i] & 0x0EEE, 2);
@@ -1078,6 +1100,7 @@ extern "C" uint64_t machine_digest(void)
     c.u((uint32_t)s_dma_type, 1); c.u((uint32_t)s_dmafill, 1); c.u(s_dma_src, 4);
     for (int i = 0; i < 4; i++) c.u(s_fifo[i], 2);
     c.u((uint32_t)s_fifo_idx, 1); c.u((uint32_t)s_fs_vblank, 1);
+    size_t rest_at = c.b.size();
     const GenesisBus *b = &g_machine.bus;
     c.raw(b->z80_ram, sizeof b->z80_ram);
     c.u(b->z80_bank, 4); c.u(b->z80_busreq, 1); c.u(b->z80_reset_off, 1);
@@ -1105,10 +1128,13 @@ extern "C" uint64_t machine_digest(void)
     c.u(b->pad[0], 2); c.u(b->pad[1], 2);
     c.u(s_sr, 2); c.u(s_frame_no, 8);
     ws_digest_fields(&c.b);
+    s_digest_parts[0] = hash64(c.b.data(), vdp_at, 0xCBF29CE484222325ull);
+    s_digest_parts[1] = hash64(c.b.data() + vdp_at, rest_at - vdp_at, 0xCBF29CE484222325ull);
+    s_digest_parts[2] = hash64(c.b.data() + rest_at, c.b.size() - rest_at, 0xCBF29CE484222325ull);
     return hash64(c.b.data(), c.b.size(), 0xCBF29CE484222325ull);
 }
 
-/* Power-on, then frame 1 up to the game's first instruction. */
+/* Power-on (the first tick begins runner frame 1). */
 extern "C" void machine_power_on(void)
 {
     memset(&g_machine, 0, sizeof g_machine);
@@ -1138,7 +1164,6 @@ extern "C" void machine_power_on(void)
     memset(g_machine.vdp.reg, 0, sizeof g_machine.vdp.reg);
     g_machine.vdp.code = 0; g_machine.vdp.address = 0;
     s_sr = 0x2704;
-    frame_begin();
 }
 
 extern "C" uint64_t machine_frame_no(void) { return s_frame_no; }

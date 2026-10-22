@@ -194,6 +194,13 @@ static size_t s_state_bytes;
 
 static uint64_t fb_hash(int w, int h);
 
+/* Netplay (netplay.cpp): a tick may run again (a rollback's replay), so a seat's rows and digests
+   are kept by sync point, each the last run's, and written when the session ends (the timeline
+   every seat agreed on); replays are quiet (nothing shown, heard or ended). */
+static bool s_np_buffer, s_np_quiet;
+static std::vector<std::string> s_np_rows, s_np_digests;
+static bool quiet(void) { return s_probe_pass == 1 || s_np_quiet; }
+
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
@@ -201,8 +208,15 @@ extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
         if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
         if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
     }
-    if (s_digest && s_probe_pass != 1)
-        fprintf(s_digest, "%llu,%016llx\n", (unsigned long long)sync, (unsigned long long)machine_digest());
+    char line[96];
+    if (s_digest && s_probe_pass != 1) {
+        snprintf(line, sizeof line, "%llu,%016llx\n", (unsigned long long)sync, (unsigned long long)machine_digest());
+        if (s_np_buffer) {
+            if (s_np_digests.size() <= sync) s_np_digests.resize(sync + 1);
+            s_np_digests[sync] = line;
+        } else
+            fputs(line, s_digest);
+    }
     bool live = s_probe_pass != 1;
     if (!s_probe_pass && !s_sync && !getenv("XMEN2_SYNC_DUMP")) return;   /* a played run compares nothing */
     xm_export(&s_image);
@@ -213,10 +227,27 @@ extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
                 (unsigned long long)sync, crc[0], crc[1], crc[2], crc[3],
                 (unsigned long long)fb_hash(machine_screen_width(), machine_screen_height()));
     if (!live) return;
-    maybe_dump_sync(sync);
+    if (!s_np_buffer) maybe_dump_sync(sync);
     if (!s_sync) return;
-    fprintf(s_sync, "%llu,%llu,%08x,%08x,%08x,%08x\n", (unsigned long long)sync, (unsigned long long)frame,
-            crc[0], crc[1], crc[2], crc[3]);
+    snprintf(line, sizeof line, "%llu,%llu,%08x,%08x,%08x,%08x\n", (unsigned long long)sync, (unsigned long long)frame,
+             crc[0], crc[1], crc[2], crc[3]);
+    if (s_np_buffer) {
+        if (s_np_rows.size() <= sync) s_np_rows.resize(sync + 1);
+        s_np_rows[sync] = line;
+    } else
+        fputs(line, s_sync);
+}
+
+/* netplay.cpp's hooks */
+void main_np_begin(void) { s_np_buffer = true; }
+void main_np_quiet(bool on) { s_np_quiet = on; }
+void main_np_write_rows(uint64_t upto)   /* the rows and digests of sync points 1..upto */
+{
+    for (uint64_t s = 1; s <= upto; s++) {
+        if (s_sync && s < s_np_rows.size()) fputs(s_np_rows[s].c_str(), s_sync);
+        if (s_digest && s < s_np_digests.size()) fputs(s_np_digests[s].c_str(), s_digest);
+    }
+    s_np_buffer = false;
 }
 
 static uint64_t s_benchmark, s_quit_after;
@@ -316,14 +347,14 @@ extern "C" void plat_audio_write(uint32_t stamp, int port, uint8_t v)
 
 extern "C" void plat_frame_audio(uint64_t frame)
 {
-    if (machine_session()) host_audio(frame);
+    if (machine_session()) host_audio(frame, quiet());   /* quiet: the chips run, nothing is heard */
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }
 
 extern "C" void plat_after_render(void)
 {
-    if (s_probe_pass == 1) return;
+    if (quiet()) return;
     present_after_render(machine_frame_no(), s_interactive != 0, &s_ifb[0][0], FB_W);
 }
 
@@ -366,19 +397,36 @@ static void load_script(const char *path)
 
 static uint64_t s_flip;   /* --flip N: player 1's C button inverted in runner frames N to N+7 (phase 6 E4) */
 
-extern "C" void plat_frame_begin(uint64_t frame)
+/* the script's pads of a runner frame (the span covering it; after the script, its last pads) */
+static void script_pads(uint64_t frame, uint16_t pad[4])
 {
     uint64_t at = 0;
-    uint16_t pad[4] = { 0, 0, 0, 0 };
-    if (s_interactive && s_script.empty()) {
-        host_input(pad);
-    } else if (!s_script.empty()) {   /* the span covering this frame; after the script, its last pads */
-        memcpy(pad, s_script.back().pad, sizeof pad);
-        for (const PadSpan &p : s_script) {
-            if (frame <= at + p.frames) { memcpy(pad, p.pad, sizeof pad); break; }
-            at += p.frames;
-        }
+    memcpy(pad, s_script.back().pad, 4 * sizeof pad[0]);
+    for (const PadSpan &p : s_script) {
+        if (frame <= at + p.frames) { memcpy(pad, p.pad, 4 * sizeof pad[0]); break; }
+        at += p.frames;
     }
+}
+
+/* Netplay: a seat's own pad for a runner frame, column `col` of its script, or (played) the
+   keyboard and first controller; the published rows of every seat for the frame being run. */
+static bool s_np_pads;
+static uint16_t s_np_pad[4];
+uint16_t main_local_pad(uint64_t frame, int col)
+{
+    uint16_t pad[4] = { 0, 0, 0, 0 };
+    if (!s_script.empty()) script_pads(frame, pad);
+    else if (s_interactive) host_input(pad);
+    return pad[col & 3];
+}
+void main_np_pads(const uint16_t rows[4]) { s_np_pads = true; memcpy(s_np_pad, rows, sizeof s_np_pad); }
+
+extern "C" void plat_frame_begin(uint64_t frame)
+{
+    uint16_t pad[4] = { 0, 0, 0, 0 };
+    if (s_np_pads) memcpy(pad, s_np_pad, sizeof pad);
+    else if (s_interactive && s_script.empty()) host_input(pad);
+    else if (!s_script.empty()) script_pads(frame, pad);
     if (s_flip && frame >= s_flip && frame < s_flip + 8) pad[0] ^= GPAD_C;   /* --flip: the latency probe */
     g_machine.bus.pad[0] = pad[0];
     g_machine.bus.pad[1] = pad[1];
@@ -398,7 +446,7 @@ static std::chrono::steady_clock::time_point s_tlast;
 
 extern "C" void plat_frame_repeat(void)
 {
-    if (!s_interactive || s_probe_pass == 1) return;
+    if (!s_interactive || quiet()) return;
     if (g_opt.high_fps) present_repeat();   /* its period is covered by the frames in between */
     else host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
 }
@@ -424,7 +472,7 @@ static void maybe_shot(uint64_t frame)
 
 extern "C" void plat_frame_end(uint64_t frame)
 {
-    if (s_probe_pass == 1) return;   /* the probe's first pass: nothing is shown or ends */
+    if (quiet()) return;   /* the probe's first pass, a rollback's replay: nothing is shown or ends */
     maybe_shot(frame);
     if (s_ftimes) {
         auto now = std::chrono::steady_clock::now();
@@ -482,6 +530,7 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(argv[i], "--probe-out") && i + 1 < argc) probe_out = argv[++i];
         else if (!strcmp(argv[i], "--state-skip") && i + 1 < argc) s_state_skip = argv[++i];
+        else if (netplay_arg(argc, argv, &i)) {}   /* --netplay ... (netplay.cpp) */
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
@@ -538,6 +587,12 @@ int main(int argc, char **argv)
     state_counters(&s_two_player_step_frames, sizeof s_two_player_step_frames);
     machine_power_on();
     g_machine.bus.pad_type[0] = g_machine.bus.pad_type[1] = 1;
+    if (netplay_enabled()) {   /* phase 7: the netplay loop runs the ticks; it ends the session itself */
+        uint64_t frames = s_benchmark;
+        s_benchmark = 0;
+        main_np_begin();
+        netplay_run(frames);
+    }
     machine_run();   /* never returns: the game ends the process (the benchmark, a quit, a fatal) */
     return 4;
 }

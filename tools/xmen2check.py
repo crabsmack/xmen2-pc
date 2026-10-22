@@ -796,6 +796,29 @@ def cmd_native_build(a) -> dict:
     return {"ok": rc == 0 and exe.is_file(), "exe": str(exe), "log": str(BUILD / "build.log")}
 
 
+def wsl_path(p: Path) -> str:
+    s = str(p.resolve()).replace("\\", "/")
+    return f"/mnt/{s[0].lower()}{s[2:]}" if re.match(r"^[A-Za-z]:", s) else s
+
+
+def wsl_run(cmd: str, timeout: int = 3600) -> subprocess.CompletedProcess:
+    return subprocess.run(["wsl", "--", "bash", "-lc", cmd], capture_output=True, text=True,
+                          errors="replace", timeout=timeout)
+
+
+def linux_native_build() -> str:
+    """`native-build` in this machine's WSL Ubuntu (P9), build dir ~/xmen2-native-build/<hash of the
+    tree> (one per source tree); returns that directory (holding XMen2Native)."""
+    import hashlib
+    root = wsl_path(common.ROOT)
+    bdir = "$HOME/xmen2-native-build/" + hashlib.sha1(root.encode()).hexdigest()[:10]
+    r = wsl_run(f"cd '{root}' && XMEN2_BUILD={bdir} python3 tools/xmen2check.py native-build --json")
+    j = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")), None)
+    if r.returncode or not j or not j.get("ok"):
+        sys.exit(f"WSL native-build failed: {(r.stdout + r.stderr).strip()[-600:]}")
+    return bdir
+
+
 def package_linux(a) -> dict:
     """P9: the Linux package, built and checked in this machine's WSL Ubuntu (P5-port.md R7):
     `native-build` there (build dir ~/xmen2-native-build/<hash of the tree>), staged here with a README and the
@@ -807,22 +830,8 @@ def package_linux(a) -> dict:
     import harness
     import romscan
     common.ensure_rom()
-
-    def wsl_path(p: Path) -> str:
-        s = str(p.resolve()).replace("\\", "/")
-        return f"/mnt/{s[0].lower()}{s[2:]}" if re.match(r"^[A-Za-z]:", s) else s
-
-    def wsl(cmd: str, timeout: int = 3600) -> subprocess.CompletedProcess:
-        return subprocess.run(["wsl", "--", "bash", "-lc", cmd], capture_output=True, text=True,
-                              errors="replace", timeout=timeout)
-
-    import hashlib
-    root = wsl_path(common.ROOT)
-    bdir = "$HOME/xmen2-native-build/" + hashlib.sha1(root.encode()).hexdigest()[:10]   # one per source tree
-    r = wsl(f"cd '{root}' && XMEN2_BUILD={bdir} python3 tools/xmen2check.py native-build --json")
-    j = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")), None)
-    if r.returncode or not j or not j.get("ok"):
-        sys.exit(f"WSL native-build failed: {(r.stdout + r.stderr).strip()[-600:]}")
+    wsl = wsl_run
+    bdir = linux_native_build()
     stage = BUILD / "package" / "xmen2-native-linux"
     if stage.exists():
         shutil.rmtree(stage)
@@ -881,6 +890,142 @@ def package_linux(a) -> dict:
             "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
             "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke,
             "tas_sync": str(sync), "tas_frames": frames, "tas_exit": t.returncode, "options": opts}
+
+
+def free_udp_ports(n: int) -> list[int]:
+    import socket
+    socks, ports = [], []
+    for _ in range(n):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.bind(("0.0.0.0", 0))
+        socks.append(s)
+        ports.append(s.getsockname()[1])
+    for s in socks:
+        s.close()
+    return ports
+
+
+def parse_kv(text: str) -> dict[str, str]:
+    return dict(kv.split("=", 1) for kv in text.split(",") if "=" in kv)
+
+
+def cmd_netplay(a) -> dict:
+    """Phase 7 (P7-multiplayer.md "The contract"): N processes of the release runner on loopback (or a
+    Windows/WSL pair), seat i playing pad column i+1 of --input, seat 0 hosting (--options, --session
+    and --scene are the host's: the guests take them from the session's seal, R10; --seat-options
+    I:K=V,... is seat I's own command line). Each seat writes OUT/seat<i>/sync.csv and digest.csv (its
+    final timeline) and its seat.json; the link simulator (RNET_SIM_*) runs on every seat's receive
+    path. Prints {"ok", "seats": [...], "link", "transport"}."""
+    import concurrent.futures
+    import os
+    import platform
+    import time
+    if a.seats < 2 or a.seats > 4:
+        sys.exit("--seats: 2 to 4")
+    transport = a.transport or ("lan" if a.seats == 2 else "hub")
+    if transport == "lan" and a.seats != 2:
+        sys.exit("--transport lan: two seats (hub for more)")
+    common.ensure_rom()
+    src = exe_path(NATIVE_EXE)
+    if not src.is_file():
+        sys.exit(f"no Release runner at {src}: run `xmen2check.py build`")
+    out = Path(a.out).resolve()
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    script = out / "input.input"
+    script.write_text("".join(l for l in Path(a.input).read_text().splitlines(True)
+                              if not l.strip().upper().startswith("EXIT")), newline="\n")
+    frames = script_frames(script)
+    linux = {int(x) for x in a.linux_seats.split(",") if x.strip()} if a.linux_seats else set()
+    own: dict[int, str] = {}
+    for so in a.seat_options or []:
+        i, kv = so.split(":", 1)
+        own[int(i)] = kv
+    link = parse_kv(a.link) if a.link else {}
+    ports = free_udp_ports(a.seats)
+    wsl_ip = gateway = None
+    linux_dir = None
+    if linux:
+        linux_dir = linux_native_build()
+        r = wsl_run("hostname -I; ip route show default")
+        words = r.stdout.split()
+        wsl_ip = words[0] if words else None
+        gateway = words[words.index("via") + 1] if "via" in words else None
+        if not wsl_ip or not gateway:
+            sys.exit(f"cannot find WSL's address: {r.stdout!r}")
+
+    def addr(i: int, seen_from_linux: bool) -> str:
+        if i in linux:
+            return f"{'127.0.0.1' if seen_from_linux else wsl_ip}:{ports[i]}"
+        return f"{gateway if seen_from_linux and linux else '127.0.0.1'}:{ports[i]}"
+
+    def seat_cmd(i: int) -> tuple[list[str], dict, Path]:
+        d = out / f"seat{i}"
+        d.mkdir()
+        on_linux = i in linux
+        args = ["--benchmark", str(frames), "--netplay", transport, "--seat", str(i), "--seats", str(a.seats),
+                "--bind", f"{'0.0.0.0' if linux else '127.0.0.1'}:{ports[i]}"]
+        if i:
+            args += ["--peer", addr(0, on_linux)]
+        elif transport == "lan":   # the host dials its guest too: a first packet out opens the path back
+            args += ["--peer", addr(1, on_linux)]
+        opts = []
+        if i == 0:
+            opts += [a.options] if a.options else []
+            args += (["--session", str(a.session)] if a.session is not None else []) + \
+                    (["--scene", str(a.scene)] if a.scene is not None else [])
+        if i in own:
+            opts.append(own[i])
+        if opts:
+            args += ["--options", ",".join(opts)]
+        env = {"SDL_AUDIODRIVER": "dummy", "GENESIS_NO_LAUNCHER": "1"}
+        for k, e in (("latency", "RNET_SIM_LATENCY_MS"), ("jitter", "RNET_SIM_JITTER_MS"), ("loss", "RNET_SIM_LOSS_PCT")):
+            if k in link:
+                env[e] = link[k]
+        if "seed" in link:
+            env["RNET_SIM_SEED"] = str(int(link["seed"]) + i)
+        if on_linux:
+            p = lambda q: wsl_path(q)   # noqa: E731
+            env["XMEN2_SYNC_CSV"] = p(d / "sync.csv")
+            args += ["--input-script", p(script), "--digest", p(d / "digest.csv"), "--netplay-json", p(d / "seat.json")]
+            envs = " ".join(f"{k}='{v}'" for k, v in env.items())
+            sh = f"cd '{p(d)}' && {envs} \"{linux_dir}/XMen2Native\" '{p(common.ROM)}' " + " ".join(f"'{x}'" for x in args)
+            return ["wsl", "--", "bash", "-lc", sh], dict(os.environ), d
+        run_dir = d / "runner"
+        run_dir.mkdir()
+        copy_runner(src, run_dir)
+        env["XMEN2_SYNC_CSV"] = str(d / "sync.csv")
+        args += ["--input-script", str(script), "--digest", str(d / "digest.csv"), "--netplay-json", str(d / "seat.json")]
+        return [str(run_dir / src.name), str(common.ROM), *args], {**os.environ, **env}, d
+
+    log(f"netplay: {a.seats} seats, {transport}, {frames} frames, link {a.link or 'clean'}")
+    procs = []
+    for i in range(a.seats):
+        cmd, env, d = seat_cmd(i)
+        lf = open(d / "runner.log", "w", encoding="utf-8", errors="replace")
+        procs.append((i, subprocess.Popen(cmd, cwd=d, env=env, stdout=subprocess.PIPE, stderr=lf, text=True), d, lf))
+    deadline = time.time() + a.timeout
+    seats = []
+    for i, p, d, lf in procs:
+        try:
+            p.wait(timeout=max(1, deadline - time.time()))
+        except subprocess.TimeoutExpired:
+            p.kill()   # this process only (by its handle)
+            p.wait()
+        lf.close()
+        j = {}
+        if (d / "seat.json").is_file():
+            j = json.loads((d / "seat.json").read_text())
+        seats.append({"seat": i, "os": "linux" if i in linux else platform.system().lower(), "exit": p.returncode,
+                      "sync_csv": str(d / "sync.csv"), "digest_csv": str(d / "digest.csv"),
+                      "options": j.get("options"), "rollbacks": j.get("rollbacks"), "max_rollback": j.get("max_rollback"),
+                      "late_frames": j.get("late_frames"), "frames": j.get("frames"), "episodes": j.get("episodes"),
+                      "replayed_ticks": j.get("replayed_ticks"), "log": str(d / "runner.log")})
+        if p.returncode == 0 and not a.keep_runner:
+            shutil.rmtree(d / "runner", ignore_errors=True)
+    return {"ok": all(s["exit"] == 0 for s in seats), "seats": seats, "frames": frames,
+            "link": link, "transport": transport}
 
 
 def runner_options(cmd: list[str], cwd: Path | None = None) -> dict:
@@ -1035,6 +1180,20 @@ def main() -> int:
                            help="native (phase 7 M2): leave this section out of every restore (negative control)")
     p = sub.add_parser("options")
     p.add_argument("--json", action="store_true")
+    p = sub.add_parser("netplay")   # phase 7 (P7-multiplayer.md "The contract")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--seats", type=int, required=True)
+    p.add_argument("--input", required=True, help="the pads by runner frame: seat i plays column i+1")
+    p.add_argument("--scene", type=int, default=None)
+    p.add_argument("--session", type=int, default=None)
+    p.add_argument("--options", default="", help="the host's options (sealed into the session)")
+    p.add_argument("--seat-options", action="append", help="I:K=V,...: seat I's own command line")
+    p.add_argument("--link", default="", help="latency=L,jitter=J,loss=P,seed=S (the link simulator)")
+    p.add_argument("--transport", default="", choices=["", "lan", "hub", "ice"])
+    p.add_argument("--linux-seats", default="", help="seats run in WSL (the Linux build)")
+    p.add_argument("--out", required=True)
+    p.add_argument("--timeout", type=int, default=3600)
+    p.add_argument("--keep-runner", action="store_true")
     p = sub.add_parser("package")
     p.add_argument("--json", action="store_true")
     p.add_argument("--platform", default="windows", choices=["windows", "linux"])
@@ -1043,7 +1202,7 @@ def main() -> int:
     a = ap.parse_args()
     res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "types": cmd_types,
            "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify, "package": cmd_package,
-           "native-build": cmd_native_build, "options": cmd_options}[a.cmd](a)
+           "native-build": cmd_native_build, "options": cmd_options, "netplay": cmd_netplay}[a.cmd](a)
     if a.cmd == "gen" and not a.json:
         res = {k: v for k, v in res.items() if k != "functions"}
     print(json.dumps(res, indent=None if a.json else 1))

@@ -1039,6 +1039,67 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   flags the renderer sets. A word-wise FNV-1a-style 64-bit hash.
 - Input scripts take up to four pad columns (`PADS p1 p2 p3 p4`); pads 3 and 4 are `g_pad34`.
 - `--scene N` (as `XMEN2_DEBUG_SCENE=N`): a new game starts at scene N.
+- `phase.py 7` (snapshot at be76044): **M2 passes**: 76/76 corpus runs restore exactly (rows, frames,
+  snapshots), the negative control catches 5/5 sections.
+
+### M3: two players online (2026-10-22)
+
+- **The glue** (`platform/native/netplay.cpp`): `recomp-net` (session, LAN / LAN hub, the rollback
+  episode driver) and `rbengine` (the snapshot ring) linked into XMen2Native (native.cmake adds both
+  subdirectories; ICE's libjuice comes from recomp-net's pinned FetchContent, on Windows and in
+  WSL). XMen2Native's own `RNetRbHost`: snapshots are state.cpp's (a blob per tick in the ring,
+  depth 64, every tick), a tick is `machine_tick`, INLINE replays (see the costs below), digests are the canonical digest folded to 32 bits (partitions: RAM, VDP, the
+  rest), pads 12-bit active high. Tick t = runner frame t+1; the snapshot keyed t = the state at sync
+  point t (key 0: right after power-on, the fiber made but not run: `machine_start`, and runner frame
+  1 now begins in the first tick rather than in `machine_power_on`; frame 1's Z80 frame skips the
+  pads' timeout refresh as before, when the 6-button type was set after it: no trace changed).
+- **Rows of the final timeline**: a seat keeps each sync point's row and digest, overwritten when a
+  replay runs it again, and writes them at the end (`main_np_write_rows`). Replays are quiet (no
+  present, no frame end, the chips run but nothing is queued to the device).
+- **The input delay** is the session's (`rnet_session_committed_delay`), which the session changes
+  at run time (DELAY_SYNC): a seat samples its script at tick t + D + 1 (the session plays a sample
+  taken at sim tick t at t + D; ticks 0..D-1 are neutral). First runs sampled at the configured D and
+  desynced at sync 2,951 on `mid` (both seats equal, both off the offline run): the scheduler had
+  raised the session's D. D starts at 5 (the driver's rollback floor: it raises any lower D to 5)
+  and the scheduler's auto-delay is off (`RBE_RB_AUTO_DELAY=0` unless set): on `mid` it ratcheted D
+  to 9 (150 ms of input lag) and no prediction was ever corrected. With D fixed, a link slower than
+  83 ms is predicted and rolled back.
+- **Pacing and late frames** (headless harness seats; a played seat is paced by its window): live
+  frames on the NTSC clock, a stall over 4 periods moves the clock; a frame is late when it comes
+  more than one period after the one before (two periods between them: a visible hitch). The first
+  version counted lateness against an absolute schedule and slept with Windows' default 15.6 ms timer:
+  the host seat carried 11-16 s of the scheduler's time-sync debt over the session (paid as short
+  admission stalls), and every 1 ms wait became a hitch (986 late of 8,346 on `mid`).
+  `timeBeginPeriod(1)` and the absolute clock: 10 and 2.
+- **R10, the seal**: before tick 0 the host sends its configuration as a pre-match state transfer
+  (`RNET_STATE_OP_SRAM`, the engine's SRAM barrier): the game options but high_fps, the session seed
+  and the start scene (`xmen2-native-netplay-1;full_rate_2p=...;seed=1;scene=-1`); a guest adopts it
+  (options.cpp `options_adopt_game`; an option or value it lacks refuses the match) and the driver's
+  mod-set handshake then checks every seat runs that text (a different one refuses), and it is the
+  identity's content fingerprint. F10 is refused in a session; F9 stays local.
+- **The end** (the harness): a seat runs until it is 60 ticks past the input's end with every
+  remote seat's input tip 30 past it and no correction open, then asks for the coordinated stop
+  (`rnet_rb_driver_request_quiesce`: the match drains), writes its rows through the input's end and
+  leaves. (Ending on the digest watermark left a seat 10 ticks short: the peer leaves first.)
+- **`xmen2check.py netplay`** (the contract): N private runner copies (or the WSL build for
+  `--linux-seats`), UDP ports picked free, seat 0 hosting (`--options`, `--session`, `--scene` only
+  on its command line: the guests get them from the seal), `RNET_SIM_*` per seat (the seed + seat),
+  each seat's `seat.json` (effective options, replays, the longest, late frames, frames, episodes).
+  A Windows/WSL pair: WSL's address and its gateway (NAT mode); the 2-seat host dials its guest too,
+  so its first packet opens the firewall's path back.
+- **Results** (`scenario-options-menu`, 8,346 runner frames by runner frame, session 1; against the
+  offline `trace --session 1 --digest`): `clean` 0 desyncs, host rows equal, 0 replays; `mid` 0
+  desyncs, rows equal, late 10/2; `bad` 0 desyncs, rows equal, 6 replays (1 tick each); sealed (the
+  host's `full_rate_2p=1,widescreen=16:9,lives=inf`, seat 1's own `high_fps=144,widescreen=0`): 0
+  desyncs, seat 1 ran `widescreen=16:9` with `high_fps=144`; **Windows (MSVC) host against a Linux
+  (WSL, GCC 15) seat under `mid`: 0 desyncs, host rows equal**: the canonical digest is the same on
+  both compilers.
+- **Costs** (`bad`, with `phase.py` loading the machine): a snapshot save (state.cpp's copy, its blob,
+  the ring's store) 114 us; a replayed tick 2.9 ms with the frame rendered, 1.5 ms (max 2.4) without:
+  a replay renders nothing (`machine_set_render(0)` between resim_begin and resim_end; the renderer
+  changes nothing the game reads, the status never shows sprite flags), the probe's first pass still
+  renders (it compares pictures). Under `bad` the corrections were 14-15 one-tick replays; late frames
+  13-14% there (no criterion: R7's `mid` is the bound).
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

@@ -180,14 +180,50 @@ void options_toggle_high_fps(void)
     present_reset();
 }
 
-void options_toggle_widescreen(void) { ws_request_toggle(); }
+/* online the 16:9 view is the host's (R10: it changes what activates and the camera's limits) */
+void options_toggle_widescreen(void)
+{
+    if (netplay_enabled()) { fprintf(stderr, "[native] F10: the 16:9 view is the host's in a netplay session\n"); return; }
+    ws_request_toggle();
+}
 
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
+
+/* Netplay (phase 7 R10): the options that change the game are the host's, sealed into the session;
+   each player keeps the presentation ones (high_fps). The text is `k=v,...` in table order. */
+static bool presentation_only(const OptDef &d) { return !strcmp(d.name, "high_fps"); }
+
+std::string options_game_text(void)
+{
+    std::string o;
+    for (const OptDef &d : s_defs)
+        if (!presentation_only(d)) o += (o.empty() ? "" : ",") + std::string(d.name) + "=" + d.value;
+    return o;
+}
+
+/* The host's text: refused (false) when it names an option this build lacks, a value it can't take
+   or a presentation option */
+bool options_adopt_game(const std::string &text)
+{
+    for (size_t p = 0; p < text.size(); ) {
+        size_t c = text.find(',', p);
+        if (c == std::string::npos) c = text.size();
+        std::string kv = text.substr(p, c - p);
+        p = c + 1;
+        size_t eq = kv.find('=');
+        OptDef *d = eq == std::string::npos ? nullptr : find(kv.substr(0, eq));
+        if (!d || presentation_only(*d) || !valid(*d, kv.substr(eq + 1))) return false;
+        d->value = kv.substr(eq + 1);
+    }
+    apply();
+    return true;
+}
 
 /* --scene N (phase 7's stage inputs, `trace --scene`) or XMEN2_DEBUG_SCENE=n: a new game starts at
    scene n */
 static int s_first_scene = -1;
 void options_set_first_scene(int scene) { s_first_scene = scene; }
+int options_first_scene(void) { return s_first_scene; }
 
 extern "C" int plat_debug_first_scene(int scene)
 {

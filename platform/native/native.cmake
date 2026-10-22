@@ -52,6 +52,26 @@ target_include_directories(XMen2Native PRIVATE
     "${CMAKE_SOURCE_DIR}/platform/native"
     "${CMAKE_BINARY_DIR}/native")
 target_link_libraries(XMen2Native PRIVATE SDL2::SDL2)
+
+# Phase 7 (P7-multiplayer.md R1): rollback netplay through the engine's libraries, linked directly
+# (recomp-net: sessions, transports, the rollback driver; rbengine: the snapshot ring), with
+# XMen2Native's own host table (platform/native/netplay.cpp). ICE (R8) needs libjuice, which
+# recomp-net fetches (a pinned, hashed release) when the engine has no copy.
+option(XMEN2_NETPLAY_ICE "Netplay over ICE (libjuice)" ON)
+set(RNET_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(RNET_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(RNET_BUILD_MODULE OFF CACHE BOOL "" FORCE)
+set(RBE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(RNET_ENABLE_ICE ${XMEN2_NETPLAY_ICE} CACHE BOOL "" FORCE)
+if(NOT TARGET recomp_net)
+    add_subdirectory("${RECOMP_ROOT}/external/recomp-net" "${CMAKE_BINARY_DIR}/recomp-net" EXCLUDE_FROM_ALL)
+endif()
+if(NOT TARGET retcomm_rbengine)
+    add_subdirectory("${RECOMP_ROOT}/external/rbengine" "${CMAKE_BINARY_DIR}/rbengine" EXCLUDE_FROM_ALL)
+endif()
+target_sources(XMen2Native PRIVATE "${CMAKE_SOURCE_DIR}/platform/native/netplay.cpp")
+target_link_libraries(XMen2Native PRIVATE recomp_net retcomm_rbengine)
+
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # the game's arithmetic wraps as the 68000's does, and its memory is reached through
     # reinterpreting casts of game-memory types: no optimisation may assume otherwise
