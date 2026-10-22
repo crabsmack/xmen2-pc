@@ -13,7 +13,8 @@
  * nothing is drawn.
  * Hand-written 68000, called each frame through a function pointer (Level_LoadMaps).
  * NATIVE, 16:9 (phase 6 R7, WS the view's margin): always the whole plane (64 columns), and the
- * drawn x kept from WS left of the camera to 184 - WS behind it, so the wide view stays drawn. */
+ * drawn x kept from WS left of the camera to 184 - WS behind it, so the wide view stays drawn
+ * (R8: WS is two margins, for the render camera's shift). */
 #include "xmen2.h"
 
 void Map_StreamColumns(void)
@@ -59,6 +60,11 @@ void Map_StreamColumns(void)
 			limit >>= 3;
 			if (n > limit)
 				n = limit;
+#if defined(XMEN2_NATIVE)
+			if (n < 0)	/* R8: a map narrower than the plane (SpaceA1, 480 px) under the original
+					   camera's range: past its end, nothing to draw (the original never got here) */
+				n = 0;
+#endif
 			vramCol &= 0x3F;
 			while (n-- != 0) {
 				if (!g_MapDrawOff)

@@ -10,14 +10,14 @@
 short Boulder_StatePiecesFall(Boulder *self)
 {
 	register BoulderPiece *p = self->piece;
-	register char gone = 1;
-	register short right = g_CameraX + VIEW_R(320);
+	register char gone = 1;		/* "on the screen" keeps a piece alive: the game's bound (ACT_, phase 6 R8) */
+	register short right = g_CameraX + ACT_R(320);
 	register short bottom = g_CameraY + 224;
 	register Seg *seg;
 	register short i;
 
 	for (i = 0; i < 3; i++, p++) {
-		if (p->x >> 2 >= VIEW_L(g_CameraX) && p->x >> 2 <= right && p->y >> 2 >= g_CameraY
+		if (p->x >> 2 >= ACT_L(g_CameraX) && p->x >> 2 <= right && p->y >> 2 >= g_CameraY
 				&& p->y >> 2 <= bottom) {
 			gone = 0;
 			if (p->layer) {

@@ -113,6 +113,7 @@ void plat_at_sync(uint64_t sync);        /* the host loop at a sync point, befor
 void ws_frame_setup(void);
 void ws_frame_check(void);
 void ws_mask_line(int row, uint32_t *argb, int width);   /* the bars (R6) on one rendered row */
+int  ws_render_shift(void);   /* R8: px the render camera moves the frame being rendered (sprites drawn by the host follow) */
 
 /* present.cpp / main.cpp / machine.cpp (phase 6 R4) */
 void machine_render(void);                  /* render the frame from the VDP's state now */

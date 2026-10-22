@@ -7,9 +7,10 @@
  * self: the boulder. */
 #include "xmen2.h"
 
-/* Is o's body box, grown by m on each side, off the screen? */
+/* Is o's body box, grown by m on each side, off the screen? (The game's bound, ACT_, phase 6 R8:
+   drawing uploads the frame's tiles, the upload cache is the game's; 40 px reach into the margins.) */
 #define OFF_SCREEN(o, m) \
-	((o)->boxLeft - (m) - g_CameraX > VIEW_R(320) || (o)->boxRight + (m) - g_CameraX < VIEW_L(0) \
+	((o)->boxLeft - (m) - g_CameraX > ACT_R(320) || (o)->boxRight + (m) - g_CameraX < ACT_L(0) \
 	 || (o)->boxTop - (m) - g_CameraY > 224 || (o)->boxBottom + (m) - g_CameraY < 0)
 
 void Boulder_Draw(Boulder *self)

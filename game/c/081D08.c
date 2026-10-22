@@ -19,7 +19,8 @@ void CloneA2_FrameHook(void)
 		zones = (CamZone *)CODEPTR(Tbl_CloneA2CameraZones);
 		qx = zones[g_CloneA2Zone].quakeX;
 		qy = zones[g_CloneA2Zone].quakeY;
-		if (qx && qy && qx > VIEW_L(g_CameraX) && qx < g_CameraX + VIEW_R(320) && qy > g_CameraY && qy < g_CameraY + 224)
+		/* the game's bound (ACT_, phase 6 R8): the quake moves the camera */
+		if (qx && qy && qx > ACT_L(g_CameraX) && qx < g_CameraX + ACT_R(320) && qy > g_CameraY && qy < g_CameraY + 224)
 			CloneA2_StartQuake();
 	}
 	if (!g_PalFadeActive && !g_CloneA2PalOff)

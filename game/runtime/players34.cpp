@@ -335,14 +335,14 @@ extern "C" void P34_HudSprites(void)
 		P34_Enter(k);
 		plat_p34_hud(k, p->health, p->charge, g_P2HasMeter, g_FrameCounter);
 		if (k == 3) {
-			hud_sprite(0x132, 0xF, (short)0xA7D0, VIEW_L(0xA5 + 0x40));
+			hud_sprite(0x132, 0xF, (short)0xA7D0, HUD_L(0xA5 + 0x40));
 			if (g_P2HasMeter)
-				hud_sprite(0x133, 7, (short)0xA7E0, VIEW_L(0x8F + 0x40));
+				hud_sprite(0x133, 7, (short)0xA7E0, HUD_L(0x8F + 0x40));
 			else
-				hud_sprite(0x133, 3, (short)0xA7E4, VIEW_L(0x97 + 0x40));
+				hud_sprite(0x133, 3, (short)0xA7E4, HUD_L(0x97 + 0x40));
 		} else {
-			hud_sprite(0x132, 0xF, (short)0xA7D0, VIEW_R(0x17A - 0x40));
-			hud_sprite(0x133, g_P2HasMeter ? 7 : 3, (short)0xA7E0, VIEW_R(0x1A1 - 0x40));
+			hud_sprite(0x132, 0xF, (short)0xA7D0, HUD_R(0x17A - 0x40));
+			hud_sprite(0x133, g_P2HasMeter ? 7 : 3, (short)0xA7E0, HUD_R(0x1A1 - 0x40));
 		}
 		P34_Leave(k);
 	}

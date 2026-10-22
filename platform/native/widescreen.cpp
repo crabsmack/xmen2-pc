@@ -98,20 +98,83 @@ static void screen_now(void)
         fprintf(stderr, "[ws] frame %llu screen %d %s\n", (unsigned long long)machine_frame_no(), idx, s_cache_id.c_str());
 }
 
-/* The game's native branches: the view's margin per side (0 = the original 4:3) */
-extern "C" int plat_ws_view(void)
+/* the wide view's margin per side on the running screen (0 = the original 4:3) */
+static int view_margin(void)
 {
     if (!g_opt.widescreen) return 0;
     screen_now();
     return s_cache_wide ? ws_margin() : 0;
 }
 
-/* the activation margin (R6: objects activate across the wide view) */
-extern "C" int plat_ws_act(void) { return plat_ws_view(); }
+/* ---- R8's render camera ------------------------------------------------------------------------
+   With the view presentation only, the game's camera keeps its 4:3 limits, so at a level's edge the
+   400 px centred on it would show past the level. The renderer's window instead starts at
+   rx = clamp(camera - m, L, R - 400), [L, R) the x the level shows: the camera's range widened by the
+   320-px view, within the FG map. In mid-level rx is camera - m; at an edge the 80 px go to the open
+   side. A level narrower than 400 px is centred, with bars past its ends. The shift rx - (camera - m)
+   is what the window moves; the streamer keeps a margin more drawn for it (plat_ws_view).
+   The FG map's edges are in its own x, g_FgScrollX (Siberia's FG scrolls apart from the camera: its
+   16-block map is the 512-px plane, which repeats), and count unless the map is the plane's width:
+   that one wraps in it, as the 4:3 view's own scrolling shows (2026-10-22: the camera against the
+   map's width barred Siberia's right 40 px on every frame). */
+static int s_shift;           /* the shift of the frame being rendered (ws_frame_setup) */
+static int s_rx_l, s_rx_r;    /* the level's showable [L, R) at that frame (bars) */
+
+static int shift_max(int m)   /* the streamer keeps at most 92 px a side drawn (Map_StreamColumns' 184) */
+{
+    int k = 92 - m;
+    return k < 0 ? 0 : k < m ? k : m;
+}
+
+static int shift_for(int cam, int m, int *L_out, int *R_out)
+{
+    int lo = s16at(0xFFC770), hi = s16at(0xFFC772), mapw = s16at(0xFFC792) * 32;   /* g_CamMinX, g_CamMaxX, g_FgMapW */
+    int L = lo < 0 ? 0 : lo, R = hi + 320;
+    int r16 = g_machine.vdp.reg[16] & 3, planew = (r16 == 3 ? 128 : r16 == 1 ? 64 : 32) * 8;
+    if (mapw > 0 && mapw != planew) {   /* the map in camera x: its x 0 is where g_FgScrollX puts it now */
+        int l0 = cam - s16at(0xFFC73E);
+        if (L < l0) L = l0;
+        if (R > l0 + mapw) R = l0 + mapw;
+    }
+    if (L_out) { *L_out = L; *R_out = R; }
+    if (!m || g_opt.widescreen_gameplay || !m8(0xFFC79E)) return 0;   /* R6: the camera keeps the view inside */
+    int base = cam - m, w = 320 + 2 * m, rx;
+    if (R - L >= w) rx = base < L ? L : base > R - w ? R - w : base;
+    else rx = (L + R) / 2 - w / 2;
+    int s = rx - base, k = shift_max(m);
+    return s < -k ? -k : s > k ? k : s;
+}
+
+/* The game's native branches (xmen2_options.h) */
+extern "C" int plat_ws_view(void)
+{
+    int m = view_margin();
+    if (!m || g_opt.widescreen_gameplay) return m;
+    return m + shift_max(m);
+}
+extern "C" int plat_ws_left(void)
+{
+    int m = view_margin();
+    return m ? m - shift_for(s16at(0xFFCD72), m, nullptr, nullptr) : 0;   /* g_CameraX */
+}
+extern "C" int plat_ws_right(void)
+{
+    int m = view_margin();
+    return m ? m + shift_for(s16at(0xFFCD72), m, nullptr, nullptr) : 0;
+}
+
+/* the gameplay margin (R6: objects activate across the wide view; 0 under R8, presentation only) */
+extern "C" int plat_ws_act(void) { return g_opt.widescreen_gameplay ? view_margin() : 0; }
+
+/* the HUD's margin: the view's on each side. The HUD is written at the start of a logic frame, before
+   the camera moves, so it can't know the frame's shift; the render camera leaves its sprites instead
+   (shift_vram), and they stay at the screen's edges. */
+extern "C" int plat_ws_hud(void) { return view_margin(); }
 
 /* ---- counters ------------------------------------------------------------------------------- */
 
-static uint64_t s_gameplay_frames, s_terrain_checks, s_terrain_errors, s_sprites_lost, s_sprites_wrapped, s_hud_misplaced;
+static uint64_t s_gameplay_frames, s_terrain_checks, s_terrain_errors, s_sprites_lost, s_sprites_wrapped, s_hud_misplaced,
+                s_bars_unneeded;
 static std::string s_screens_json;   /* "id": "mode" pairs, in the order first seen */
 static std::string s_first_error, s_first_lost;
 
@@ -161,7 +224,7 @@ static const bool s_check_all = getenv("XMEN2_WS_CHECK_ALL") && *getenv("XMEN2_W
 
 /* One plane: every cell the view shows (per line: its horizontal scroll, the vertical scroll),
    against the map tile the streamer put there. */
-static void check_plane(const GVDP *v, bool plane_a, int margin, int bar_l, int bar_r)
+static void check_plane(const GVDP *v, bool plane_a, int left, int right, int bar_l, int bar_r)
 {
     PlaneMap pm;
     int sx, sy, adjx, adjy;
@@ -170,14 +233,14 @@ static void check_plane(const GVDP *v, bool plane_a, int margin, int bar_l, int 
         pm = { m32(0xFFC77C) & 0xFFFFFFu, m32(0xFFC75A) & 0xFFFFFFu, m32(0xFFC78E) & 0xFFFFFFu,
                s16at(0xFFC792), s16at(0xFFC788), m16(0xFFC796) };
         sx = s16at(0xFFC736); sy = s16at(0xFFC734); adjx = s16at(0xFFC72E); adjy = s16at(0xFFC72C);
-        narrow = m8(0xFFEE10) && !margin; wrapx = wrapy = false;
+        narrow = m8(0xFFEE10) && !left && !right; wrapx = wrapy = false;
     } else {
         if (!m8(0xFFC79C)) return;   /* no BG map */
         pm = { m32(0xFFC778) & 0xFFFFFFu, m32(0xFFC774) & 0xFFFFFFu, m32(0xFFC78A) & 0xFFFFFFu,
                s16at(0xFFC786), s16at(0xFFC784), m16(0xFFC794) };
         sx = s16at(0xFFC732); sy = s16at(0xFFC730); adjx = s16at(0xFFC72A); adjy = s16at(0xFFC728);
         wrapx = m8(0xFFC74C) != 0; wrapy = m8(0xFFC74A) != 0;
-        narrow = !wrapx && m8(0xFFEE12) && !margin;   /* g_BgNarrow */
+        narrow = !wrapx && m8(0xFFEE12) && !left && !right;   /* g_BgNarrow */
     }
     if (!pm.map || !pm.defs || !pm.rows || pm.w <= 0 || pm.h <= 0) return;
     const uint8_t *reg = v->reg;
@@ -196,9 +259,9 @@ static void check_plane(const GVDP *v, bool plane_a, int margin, int bar_l, int 
         int hidx = hmode == 0 ? 0 : hmode == 2 ? (y & ~7) : y;
         int hs = vram16(v, hbase + (uint32_t)hidx * 4u + (plane_a ? 0u : 2u)) & 0x3FF;
         bool win_v = wdown ? y >= wy : y < wy;
-        for (int x = -margin + bar_l; x < 320 + margin - bar_r; x++) {
+        for (int x = -left + bar_l; x < 320 + right - bar_r; x++) {
             if (x == 0 && !s_check_all) x = 320;   /* E5: the wide columns (the 320 between are the original's) */
-            if (x >= 320 + margin - bar_r) break;
+            if (x >= 320 + right - bar_r) break;
             if (plane_a && x >= 0 && x < 320 && (win_v || (wright ? x >= wx : x < wx))) continue;   /* the window plane */
             int xc = x < 0 ? 0 : x >= 320 ? 319 : x;
             int vs = vcol ? v->vsram[((xc >> 4) * 2 + (plane_a ? 0 : 1)) % 40] : v->vsram[plane_a ? 0 : 1];
@@ -234,12 +297,15 @@ static void check_plane(const GVDP *v, bool plane_a, int margin, int bar_l, int 
 
 /* ---- sprites and the HUD -------------------------------------------------------------------- */
 
-static void check_sprites(int margin)
+static bool hud_attr(uint16_t attr);
+
+/* left, right: the drawn window's margins this frame (R8: they differ at a level's edge) */
+static void check_sprites(int left, int right)
 {
     static const uint16_t p1_attr[] = { 0xA7E8, 0xA7F8, 0xA7FC }, p2_attr[] = { 0xA7D0, 0xA7E0, 0xA7D4 };
     static const int p1_x[] = { 0xA5, 0x8F, 0x97 }, p2_x[] = { 0x17A, 0x1A1, 0x16D, 0x191 };
     bool hud_bad = false;
-    int i = 0;
+    int i = 0, hm = plat_ws_hud();   /* the HUD: the view's margin, the render camera leaves it */
     for (int n = 0; n < 80; n++) {
         uint32_t e = 0xFFE226u + 8u * (uint32_t)i;
         int x = s16at(e + 6);
@@ -248,10 +314,15 @@ static void check_sprites(int margin)
            bits the VDP reads, so the VDP can't show it there. wrapped: the x word lies outside
            0-511 and the 9 bits would put it inside the wide view (a ghost the renderer hides:
            ws_hide_wrapped) */
+        /* R8: the VDP reads the word the render camera shifted (shift_vram), so x is taken in its
+           coordinates, where the window is the unshifted one */
         uint8_t size = m8(e + 2);
+        int sh = hud_attr(attr) ? 0 : (right - left) / 2;
+        x -= sh;
         int x9 = x & 0x1FF, y9 = s16at(e) & 0x1FF, w = ((size >> 2) + 1) * 8, h = ((size & 3) + 1) * 8;
-        if (x != x9 && x + w > 128 - margin && x < 448 + margin) s_sprites_lost++;
-        if (x != x9 && x9 + w > 128 - margin && x9 < 448 + margin && y9 + h > 128 && y9 < 128 + 224) {
+        int vl = 128 - left + sh, vr = 448 + right - sh;
+        if (x != x9 && x + w > vl && x < vr) s_sprites_lost++;
+        if (x != x9 && x9 + w > vl && x9 < vr && y9 + h > 128 && y9 < 128 + 224) {
             s_sprites_wrapped++;
             if (s_first_lost.empty()) {
                 char b[160];
@@ -264,8 +335,8 @@ static void check_sprites(int margin)
             bool p1 = false, p2 = false, ok = false;
             for (uint16_t a : p1_attr) p1 |= attr == a;
             for (uint16_t a : p2_attr) p2 |= attr == a;
-            if (p1) for (int h : p1_x) ok |= x == h - margin;
-            if (p2) for (int h : p2_x) ok |= x == h + margin;
+            if (p1) for (int h : p1_x) ok |= x == h - hm;
+            if (p2) for (int h : p2_x) ok |= x == h + hm;
             if ((p1 || p2) && !ok) hud_bad = true;
         }
         int link = m8(e + 3) & 0x7F;
@@ -294,25 +365,26 @@ static bool hud_attr(uint16_t attr)
     return false;
 }
 
-static void bars_now(int m)
+/* m: the view's margin; shift: the render camera's (R8; 0 under R6, where the camera itself keeps
+   the view inside the level). The window starts at rx = camera - m + shift. */
+static void bars_now(int m, int shift)
 {
     s_bar_l = s_bar_r = 0;
     s_nhud = 0;
     if (!m || !m8(0xFFC79E)) return;   /* no FG map: nothing to bar against */
-    int cam = s16at(0xFFCD72), lo = s16at(0xFFC770), hi = s16at(0xFFC772);
-    int mapw = s16at(0xFFC792) * 32;
-    int l = lo - (cam - m), r = (cam + 320 + m) - (hi + 320);
-    if (-(cam - m) > l) l = -(cam - m);
-    if (mapw > 0 && (cam + 320 + m) - mapw > r) r = (cam + 320 + m) - mapw;
-    s_bar_l = l < 0 ? 0 : l > m ? m : l;
-    s_bar_r = r < 0 ? 0 : r > m ? m : r;
+    int cam = s16at(0xFFCD72), L, R;
+    shift_for(cam, m, &L, &R);
+    s_rx_l = L; s_rx_r = R;
+    int rx = cam - m + shift, l = L - rx, r = rx + 320 + 2 * m - R;
+    s_bar_l = l < 0 ? 0 : l > m - shift ? m - shift : l;   /* never over the game's own 320 px */
+    s_bar_r = r < 0 ? 0 : r > m + shift ? m + shift : r;
     if (!s_bar_l && !s_bar_r) return;
     int i = 0;
     for (int n = 0; n < 80; n++) {
         uint32_t e = 0xFFE226u + 8u * (uint32_t)i;
         uint8_t size = m8(e + 2);
         if (hud_attr(m16(e + 4)) && s_nhud < 8) {
-            int x = s16at(e + 6) - 128 + m, y = s16at(e) - 128;
+            int x = s16at(e + 6) - 128 + m, y = s16at(e) - 128;   /* unshifted (shift_vram) */
             s_hud[s_nhud++] = { x, y, x + ((size >> 2) + 1) * 8, y + ((size & 3) + 1) * 8 };
         }
         int link = m8(e + 3) & 0x7F;
@@ -336,18 +408,31 @@ extern "C" void ws_mask_line(int row, uint32_t *argb, int width)
     }
 }
 
-/* ---- wrapped sprites ------------------------------------------------------------------------ */
+/* ---- the render camera and wrapped sprites, in VRAM while a frame is rendered ---------------- */
 
-/* A sprite whose x word is outside 0-511 is off screen where the game put it; the VDP reads 9 bits,
-   which put it 512 px away, and in the wide view that can be inside the picture (in 4:3 it never
-   was). For a wide frame those entries of the sprite table in VRAM get y 0 (above the screen) while
-   it is rendered, and their y back after. */
-static uint16_t s_hidden_at[80], s_hidden_y[80];
-static int s_nhidden;
+/* R8's shift is applied to what the VDP renders, not to the game: for the frames of one logic frame
+   every horizontal scroll word (planes A and B, all 256 lines) shows the window moved by the shift,
+   and every sprite of the table in VRAM but the HUD's moves by it; after them, the words go back. The window plane
+   is the screen's and stays. present.cpp's frames in between take the shifted words as they are, so
+   the shift is interpolated with the camera.
+   A sprite whose x word is outside 0-511 (before or after the shift) is off screen where the game put
+   it; the VDP reads 9 bits, which put it 512 px away, and in the wide view that can be inside the
+   picture (in 4:3 it never was). Those entries get y 0 (above the screen) while it is rendered. */
+static uint16_t s_spr_at[80], s_spr_y[80], s_spr_x[80];
+static int s_nspr, s_shifted;
+static uint8_t s_hscroll[0x400];
+static uint32_t s_hscroll_at;
 
-static void hide_wrapped(int m)
+static void put16(GVDP *v, uint32_t a, uint16_t w)
 {
-    s_nhidden = 0;
+    v->vram[(uint16_t)a] = (uint8_t)(w >> 8);
+    v->vram[(uint16_t)(a + 1)] = (uint8_t)w;
+}
+
+static void shift_vram(int m, int shift)
+{
+    s_nspr = 0;
+    s_shift = shift;
     if (!m) return;
     GVDP *v = &g_machine.vdp;
     uint32_t sat = (uint32_t)(v->reg[5] & 0x7F) << 9;
@@ -355,26 +440,44 @@ static void hide_wrapped(int m)
     for (int n = 0; n < 80; n++) {
         uint16_t e = (uint16_t)(sat + (uint32_t)link * 8u);
         uint16_t x = vram16(v, e + 6u);
-        if (x & 0xFE00) {
-            s_hidden_at[s_nhidden] = e;
-            s_hidden_y[s_nhidden++] = vram16(v, e);
-            v->vram[e] = 0;
-            v->vram[(uint16_t)(e + 1)] = 0;
+        /* the game's 16-bit word, shifted: one outside 0-511 before the shift can be inside after */
+        int xs = (int16_t)x - (hud_attr(vram16(v, e + 4u)) ? 0 : shift);   /* the HUD stays at the screen's edges */
+        if (xs != (int)x || xs < 0 || xs > 0x1FF) {
+            s_spr_at[s_nspr] = e;
+            s_spr_y[s_nspr] = vram16(v, e);
+            s_spr_x[s_nspr++] = x;
+            if (xs < 0 || xs > 0x1FF) put16(v, e, 0);
+            else put16(v, e + 6u, (uint16_t)xs);
         }
         link = v->vram[(uint16_t)(e + 3)] & 0x7F;
         if (!link || link >= 80) break;
     }
+    if (!shift) return;
+    s_shifted = 1;
+    s_hscroll_at = (uint32_t)(v->reg[13] & 0x3F) << 10;
+    for (int i = 0; i < 0x400; i++) s_hscroll[i] = v->vram[(uint16_t)(s_hscroll_at + (uint32_t)i)];
+    for (int i = 0; i < 0x400; i += 2) {   /* plane x = screen x - scroll: the window at +shift */
+        uint16_t w = vram16(v, s_hscroll_at + (uint32_t)i);
+        put16(v, s_hscroll_at + (uint32_t)i, (uint16_t)((w & 0xFC00) | ((w - shift) & 0x3FF)));
+    }
 }
 
-static void unhide_wrapped(void)
+static void unshift_vram(void)
 {
     GVDP *v = &g_machine.vdp;
-    for (int k = 0; k < s_nhidden; k++) {
-        v->vram[s_hidden_at[k]] = (uint8_t)(s_hidden_y[k] >> 8);
-        v->vram[(uint16_t)(s_hidden_at[k] + 1)] = (uint8_t)s_hidden_y[k];
+    for (int k = 0; k < s_nspr; k++) {
+        put16(v, s_spr_at[k], s_spr_y[k]);
+        put16(v, s_spr_at[k] + 6u, s_spr_x[k]);
     }
-    s_nhidden = 0;
+    s_nspr = 0;
+    if (s_shifted)
+        for (int i = 0; i < 0x400; i++) v->vram[(uint16_t)(s_hscroll_at + (uint32_t)i)] = s_hscroll[i];
+    s_shifted = 0;
+    s_shift = 0;
 }
+
+/* players.cpp's sprites past the hardware's 80 (phase 7) are drawn by the host: they move with it */
+int ws_render_shift(void) { return s_shift; }
 
 /* ---- per frame ------------------------------------------------------------------------------ */
 
@@ -388,7 +491,7 @@ void ws_request_toggle(void)
     s_pending_cerebro = s_cerebro;
 }
 
-/* Before the frame is rendered: the renderer's margins for this screen, and its bars. */
+/* Before the frame is rendered: the renderer's margins for this screen, the render camera, its bars. */
 extern "C" void ws_frame_setup(void)
 {
     if (s_pending >= 0 && (s16at(0xFFCC64) != s_pending_idx || s_cerebro != s_pending_cerebro)) {
@@ -412,37 +515,47 @@ extern "C" void ws_frame_setup(void)
     /* a wider line shows more sprites than the VDP's 20 a line; the native machine's status
        never shows the overflow flag, so this is the picture only */
     gvdp_set_unlimited_sprites(1);
-    int m = plat_ws_view();
+    int m = view_margin();
+    int shift = m && m8(0xFFC79E) ? shift_for(s16at(0xFFCD72), m, nullptr, nullptr) : 0;
+    static const int cam_every = getenv("XMEN2_WS_CAM") ? atoi(getenv("XMEN2_WS_CAM")) : 0;   /* diagnosing */
+    if (cam_every > 0 && machine_frame_no() % (uint64_t)cam_every == 0)
+        fprintf(stderr, "[ws] frame %llu cam %d limits %d..%d targets %d..%d fgmap %dx%d scroll %d adj %d stream %d shift %d bars %d,%d\n",
+                (unsigned long long)machine_frame_no(), s16at(0xFFCD72), s16at(0xFFC770), s16at(0xFFC772),
+                s16at(0xFFC768), s16at(0xFFC76A), s16at(0xFFC792), s16at(0xFFC788), s16at(0xFFC73E),
+                s16at(0xFFC72E), s16at(0xFFC736), shift, s_bar_l, s_bar_r);
     gvdp_set_ws_extra(m);
-    bars_now(m);
-    hide_wrapped(m);
+    bars_now(m, shift);
+    shift_vram(m, shift);
 }
 
 /* After it: the measurements, on gameplay frames (g_InLevelLoop, no fade). */
 extern "C" void ws_frame_check(void)
 {
+    if (s_nspr || s_shifted) unshift_vram();
     if (!g_opt.widescreen) return;
-    unhide_wrapped();
     note_screen();
     if (!m8(0xFFC942) || m8(0xFFC7FE)) return;
     s_gameplay_frames++;
-    int margin = plat_ws_view();
+    int left = plat_ws_left(), right = plat_ws_right();
     if (s_cache_wide) {   /* a 4:3 screen has no wide columns (and its planes aren't a level's map) */
-        check_plane(&g_machine.vdp, true, margin, s_bar_l, s_bar_r);
-        check_plane(&g_machine.vdp, false, margin, s_bar_l, s_bar_r);
+        check_plane(&g_machine.vdp, true, left, right, s_bar_l, s_bar_r);
+        check_plane(&g_machine.vdp, false, left, right, s_bar_l, s_bar_r);
+        /* R8: a bar where the level shows 400 px or more is one the render camera should have avoided */
+        if ((s_bar_l || s_bar_r) && !g_opt.widescreen_gameplay && s_rx_r - s_rx_l >= 320 + left + right)
+            s_bars_unneeded++;
     }
-    check_sprites(margin);
+    check_sprites(left, right);
 }
 
 std::string ws_counters_json(void)
 {
     char b[1024];
     snprintf(b, sizeof b, "{\"gameplay_frames\": %llu, \"terrain_checks\": %llu, \"terrain_errors\": %llu, "
-             "\"sprites_lost\": %llu, \"sprites_wrapped\": %llu, \"hud_misplaced\": %llu, "
+             "\"sprites_lost\": %llu, \"sprites_wrapped\": %llu, \"hud_misplaced\": %llu, \"bars_unneeded\": %llu, "
              "\"first_terrain_error\": \"%s\", \"first_sprite_wrapped\": \"%s\", \"screens\": {",
              (unsigned long long)s_gameplay_frames, (unsigned long long)s_terrain_checks,
              (unsigned long long)s_terrain_errors, (unsigned long long)s_sprites_lost,
-             (unsigned long long)s_sprites_wrapped, (unsigned long long)s_hud_misplaced,
+             (unsigned long long)s_sprites_wrapped, (unsigned long long)s_hud_misplaced, (unsigned long long)s_bars_unneeded,
              s_first_error.c_str(), s_first_lost.c_str());
     return std::string(b) + s_screens_json + "}}";
 }
@@ -465,6 +578,7 @@ void ws_state_init(void)
     state_counters(&s_sprites_lost, sizeof s_sprites_lost);
     state_counters(&s_sprites_wrapped, sizeof s_sprites_wrapped);
     state_counters(&s_hud_misplaced, sizeof s_hud_misplaced);
+    state_counters(&s_bars_unneeded, sizeof s_bars_unneeded);
     state_after_load(ws_after_load);
 }
 

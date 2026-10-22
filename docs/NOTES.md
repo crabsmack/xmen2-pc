@@ -885,6 +885,84 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   AvalonA2 Falling_Room is a 320-px shaft: barred on both sides, so nothing to check. 4:3 screens
   are not terrain-checked at all (no wide columns; their planes aren't a level's map).
 
+### R8: the 16:9 view presentation only (2026-10-22)
+
+The user's ruling (xmen2disasm P6-enhance.md R8): `widescreen=16:9` alone changes only the picture,
+and is the default; `widescreen_gameplay=1` is R6's mode as above.
+- **What the game sees** (`platform/native/widescreen.cpp`, `xmen2_options.h`): `plat_ws_act()`
+  (ACT_L/ACT_R, and now CAM_LO/CAM_HI too) is the margin only with `widescreen_gameplay`, else 0,
+  so activation windows and camera limits are the original's. `plat_ws_left()`/`plat_ws_right()`
+  (VIEW_L/VIEW_R) are the drawn window's sides this frame; `plat_ws_view()` (WS) is how far the
+  streamer keeps the planes drawn: the margin, or under R8 two (80 px: Map_StreamColumns keeps the
+  drawn x 24 px wide, `184 - 2 * WS`, and the plane holds 512 of the 480 needed). `plat_ws_hud()`
+  (new HUD_L/HUD_R in `Level_FrameLoop` and `players34.cpp`) is the view's margin.
+- **The render camera**: the window starts at `clamp(camera - 40, L, R - 400)`; `[L, R)` = the
+  camera's limits widened by 320 px, within the FG map. Applied to what the VDP renders, not to the
+  game: `ws_frame_setup` shifts every horizontal scroll word (A and B, all 256 lines) and every
+  sprite x of the VRAM table but the HUD's, `ws_frame_check` puts them back. present.cpp's
+  in-between frames lerp the shifted words, so the shift interpolates with the camera. Players 3-4's
+  sprites, drawn by the host, follow `ws_render_shift()` (their panels don't).
+- **The HUD is written before the camera moves** (`Level_FrameLoop` draws it first, right after
+  `Spr_BeginFrame`), so placing it by the frame's shift was one frame late: 170 of the TAS's
+  51,179 gameplay frames had it misplaced. It keeps the view's margin and the render shift skips
+  its sprites (by tile attribute, the same set `bars_now` keeps above the bars).
+- **Siberia's FG map is 16x8 blocks, the 512-px plane, and scrolls apart from the camera**
+  (`g_FgScrollX` 49-484 while `g_CameraX` runs 1,000-1,900; limits 0..8000). The bars compared the
+  camera with the map's width, so R6's mode barred Siberia's right 40 px on every frame (the
+  terrain check skips barred columns, so nothing counted it). The map's edges are now taken in
+  its own x (`camera - g_FgScrollX` is where its x 0 is), and only for a map that isn't exactly the
+  plane's width (that one wraps, as in 4:3). Both modes show Siberia full width now.
+- **Sprite x under the shift**: the game's 16-bit x word, shifted, can come inside 0-511 from
+  outside it (attract demos: 2,292 `sprites_lost` before), so the shift takes the signed word and
+  hides only what is outside 0-511 after it; `sprites_lost` reads x the same way (the contract's
+  definition, noted in the doc).
+- **The game's state** (`--game-rows`, `main.cpp` `k_view_ram`): work RAM less the stack area and
+  the ranges below, CRAM, VSRAM, VRAM less planes A, B and the sprite table. Each range was found
+  by dumping the first differing sync point (`XMEN2_SYNC_DUMP`) of a presentation run against the
+  4:3 run:
+  - `$FFE21A-$FFE225`: `g_SprWritePtr`, `g_SprIndex`, `g_SprLast` (TAS sync 13: 13 vs 32 sprites).
+  - `$FFE226-$FFE4AD`: `g_SpriteTable` and its stop slot 80 (walker CloneA1, sync 1045: the
+    wide view filled the table to the stop).
+  - `$FFC732`/`$FFC736`: `g_BgStreamX`/`g_FgStreamX`, the streamer's drawn x (80 px further left).
+  - `$FFE98E-$FFE99B`: `g_BeamFlicker*` (idle sync 7735: `g_BeamFlickerSpr[3]`, the slot of
+    Cyclops's beam splice).
+  - `$FFC620-$FFC627`: `g_HoloFlicker*`, the hologram's splice of the same kind (walker,
+    SentinelsA1, sync 295: `g_HoloFlickerLinks`).
+  With those, the game's state equals the 4:3 run's at every sync point of all 76 corpus runs
+  (TAS: 51,209), and differs from sync 1 with `widescreen_gameplay=1` (the control).
+- **Screen tests that decide the game** (the "drawn" VIEW_ sites above, read again for what else
+  their branch does; the walker runs found the first two): under R8 they take the game's bound,
+  `ACT_L`/`ACT_R` (in R6's mode the same value as VIEW_, so nothing changes there):
+  - `Gambit_UpdateCard` (1CF432): a card more than 50 px off screen is freed; the native branch
+    frees by the game's bound before the drawn test (walker BaniMaza/Space, sync 457:
+    `g_GambitCards[0].kind` -1 in 4:3, still flying wide).
+  - `Boulder_StateBounce` (05B65A): the camera shake picked by "on screen".
+  - `Boulder_StatePiecesFall` (05B98C): pieces on screen keep the boulder alive (and draw
+    `Rand_Next`).
+  - `CloneA2_FrameHook` (081D08): the quake starts when its point is on screen (it moves the camera).
+  - `Boulder_Draw` (05BD92) and `XPlayer_Draw` (1F1A2E): their box test (40 px around the body)
+    guards `Spr_Draw` / `Spr_UploadFrame18`, which upload the frame's tiles and set the instance's
+    upload cache (`uploaded`, flags bit 5), and XPlayer's `sparkTimer`. With the drawn window a
+    boulder in a margin left `uploaded` set where 4:3 didn't (walker BaniMaza, syncs 621-4185,
+    down to stale bytes in the last level's object pool), so the whole test takes the game's
+    bound; the 40 px still reach into the margins. Every other upload runs whatever the position
+    (the emitters clip the pieces).
+  The others only choose sprites (sprite-table writes, `Spr_*` emitters) or, as RetractFloor_Draw's
+  `return`, stop emitting.
+- **Map_StreamColumns past a narrow map** (15F1F8): SpaceA1's FG map is 480 px (15 blocks), under
+  the plane; with the original camera range (up to 160) and the streamer's 80 px the right branch
+  got a negative limit (`g_FgMapExtraW` = (60 - 64) * 8) and its `while (n-- != 0)` ran ~65,000
+  columns: an access violation at its first frames. Native: `n` at least 0. R6's narrowed camera
+  never reached it.
+- **Results** (2026-10-22): the corpus, 76 runs in each mode: presentation's game state equals the
+  4:3 run's at every sync point, 0 terrain errors, 0 lost sprites, 0 misplaced HUD frames, 0
+  unneeded bars; gameplay mode the same counters. `tools/ws_warp.py --all --game-state` (every
+  stage, 30,000 walker frames each): the game state equal in all 22, and the counters 0 but the
+  three stages known to fail the terrain check in 4:3 too (AvalonA3, SavageA4, CloneA5), in both
+  modes. Diagnosing: `--game-rows` with `XMEN2_GAME_DUMP=n,...` (+ `XMEN2_DUMP_DIR`) writes the
+  state as compared at those sync points; `XMEN2_WS_CAM=n` prints the camera, its limits, the FG
+  map and the shift every n frames.
+
 ### E4: high frame rate (2026-10-21)
 
 - **Timing** (R4: no added latency): `platform/native/present.cpp`. Runner frame k's picture R_k

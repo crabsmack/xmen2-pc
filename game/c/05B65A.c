@@ -13,9 +13,10 @@
  * self: the boulder. Returns self->flags & 8. */
 #include "xmen2.h"
 
-/* Is o's body box, grown by m on each side, off the screen? */
+/* Is o's body box, grown by m on each side, off the screen? (It picks the shake: the game's
+   bound, ACT_, not the drawn window's; phase 6 R8.) */
 #define OFF_SCREEN(o, m) \
-	((o)->boxLeft - (m) - g_CameraX > VIEW_R(320) || (o)->boxRight + (m) - g_CameraX < VIEW_L(0) \
+	((o)->boxLeft - (m) - g_CameraX > ACT_R(320) || (o)->boxRight + (m) - g_CameraX < ACT_L(0) \
 	 || (o)->boxTop - (m) - g_CameraY > 224 || (o)->boxBottom + (m) - g_CameraY < 0)
 
 short Boulder_StateBounce(register Boulder *self)

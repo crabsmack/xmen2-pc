@@ -282,8 +282,8 @@ def cmd_trace(a) -> dict:
         sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
     if a.mode in STEPPED_MODES and a.mode != "native" and not a.replay:
         sys.exit(f"--mode {a.mode} needs --replay REFDIR (the run's `--mode recomp --sync` trace)")
-    if (a.options or a.present_log or a.flip or a.flip_scan) and a.mode != "native":
-        sys.exit("--options, --present-log, --flip, --flip-scan: only the native runner has them (phase 6)")
+    if (a.options or a.present_log or a.flip or a.flip_scan or a.game_rows) and a.mode != "native":
+        sys.exit("--options, --present-log, --flip, --flip-scan, --game-rows: only the native runner has them (phase 6)")
     if a.flip_scan and not a.present_log:
         sys.exit("--flip-scan needs --present-log")
     p7 = a.session is not None or a.scene is not None or a.digest or a.state_probe or a.state_skip
@@ -333,6 +333,8 @@ def cmd_trace(a) -> dict:
             cmd += ["--flip", str(a.flip)]
         if a.flip_scan:   # phase 6 E4: every probe of a span in one run, OUT/flip_scan.csv
             cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)]
+        if a.game_rows:   # phase 6 R8: OUT/game.csv, the game's state less the picture's
+            cmd += ["--game-rows", str(out / "game.csv")]
         # phase 7 (P7-multiplayer.md "The contract")
         if a.session is not None:
             cmd += ["--session", str(a.session)]
@@ -752,8 +754,11 @@ A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc:
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
-    widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3)
-    players=4           three or four players (players=3 or 4; the original: 2): players 3
+    widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
+                        plays as in 4:3, so enemies still appear at the old screen edge
+    widescreen_gameplay=1  with widescreen: enemies wake and appear across the wide view, and
+                        the camera keeps the wide view inside the stage (changes the game)
+    players=4          three or four players (players=3 or 4; the original: 2): players 3
                         and 4 join and choose at the player select as player 2 does, have
                         their own panels, and the camera keeps everyone in view; their
                         characters' music parts play on a second sound machine
@@ -774,7 +779,8 @@ screen).  {exe} --options --json lists them.
 
 Online (rollback netplay, two to four players, each on their own machine with their own
 cartridge file). The host (seat 0) chooses the options that change the game (players,
-widescreen, full_rate_2p, the cheats) and every seat plays with them; high_fps is each seat's own.
+widescreen, widescreen_gameplay, full_rate_2p, the cheats) and every seat plays with them;
+high_fps is each seat's own.
     host:   {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options players=2
     others: {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
 lan / direct IP: every seat reaches the host's address (a forwarded UDP port across the
@@ -1204,6 +1210,9 @@ def main() -> int:
             p.add_argument("--flip-scan", default="",
                            help="native (phase 6 E4) LO:HI:L: before each runner frame N in [LO, HI) save, run "
                                 "N..N+L with --flip N into OUT/flip_scan.csv, restore (with --present-log)")
+            p.add_argument("--game-rows", action="store_true",
+                           help="native (phase 6 R8): OUT/game.csv, the game's state at each sync point less "
+                                "what only the picture depends on")
             p.add_argument("--session", type=int, default=None,
                            help="native (phase 7): the session machine with this seed (P7 \"Definitions\")")
             p.add_argument("--scene", type=int, default=None, help="native (phase 7): a new game starts at scene N")

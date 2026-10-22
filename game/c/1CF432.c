@@ -29,6 +29,14 @@ void Gambit_UpdateCard(register Gambit *self, register GambitCard *card)
 	register short x = card->x >> 8;
 	register short y = card->y >> 8;
 
+#if defined(XMEN2_NATIVE)
+	/* phase 6 R8: what frees a card is the game's bound (the original 320 px, or R6's margin), not
+	   the drawn window's, which the presentation-only view widens */
+	if (!(x >= ACT_L(g_CameraX) - 50 && x <= g_CameraX + ACT_R(0x140) + 50 && y >= g_CameraY - 50 && y <= bottom + 50)) {
+		card->kind = -1;
+		return;
+	}
+#endif
 	if (x >= VIEW_L(g_CameraX) && x <= right && y >= g_CameraY && y <= bottom) {
 		register unsigned char size;
 		short halfW, halfH, pal;

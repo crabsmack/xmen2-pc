@@ -16,7 +16,9 @@ void XPlayer_Draw(register XPlayer *self)
 	short frame;
 
 	spr = &self->spr;
-	if (self->boxLeft - 40 - g_CameraX <= VIEW_R(320) && self->boxRight + 40 - g_CameraX >= VIEW_L(0)
+	/* the game's bound (ACT_, phase 6 R8): the spark's timer and the frame's upload are the game's;
+	   the box's 40 px reach into the margins */
+	if (self->boxLeft - 40 - g_CameraX <= ACT_R(320) && self->boxRight + 40 - g_CameraX >= ACT_L(0)
 	    && self->boxTop - 40 - g_CameraY <= 224 && self->boxBottom + 40 - g_CameraY >= 0) {
 		if (self->sparkTimer) {
 			self->sparkTimer -= g_TwoPlayerStep + 1;

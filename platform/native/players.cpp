@@ -187,6 +187,8 @@ static void draw_entry(const uint8_t *e, int k, const GVDP *v, const GVDPSpriteL
     int y = (int)((e[0] << 8 | e[1]) & 0x1FF) - 128, size = e[2];
     uint16_t attr = (uint16_t)(e[4] << 8 | e[5]);
     int x = (int)((e[6] << 8 | e[7]) & 0x1FF) - 128;
+    if (!(k && (attr & 0x7FF) >= 0x7D0 && (attr & 0x7FF) < 0x7E8))   /* R8: a panel stays at the screen's edge */
+        x -= ws_render_shift();
     int w = ((size >> 2) & 3) + 1, h = (size & 3) + 1;
     int row = layer->line - y;
     if (row < 0 || row >= h * 8) return;
@@ -396,7 +398,7 @@ void players_sync_row(void)
                 fprintf(stderr, " p%d %d,%d h%d", p, (int)((int32_t)obj_be(p, 8, 4) >> 8), (int)((int32_t)obj_be(p, 12, 4) >> 8), alive(p));
             fprintf(stderr, "\n");
         }
-        int m = plat_ws_view();
+        int ml = plat_ws_left(), mr = plat_ws_right();   /* the drawn window (R8: its sides differ at an edge) */
         uint64_t n = 0;
         bool hud_ok = true;
         for (int p = 1; p <= 4; p++) {
@@ -427,7 +429,7 @@ void players_sync_row(void)
                 fprintf(stderr, " end@%d\n", end_idx);
             }
             int x = (int)((int32_t)obj_be(p, 8, 4) >> 8), y = (int)((int32_t)obj_be(p, 12, 4) >> 8);
-            if (x < cam_x - m || x >= cam_x + VIEW_W + m || y < cam_y || y >= cam_y + VIEW_H) C.off_view[p - 1]++;
+            if (x < cam_x - ml || x >= cam_x + VIEW_W + mr || y < cam_y || y >= cam_y + VIEW_H) C.off_view[p - 1]++;
             if (!hud_panel(p)) {
                 hud_ok = false;
                 static const char *hdbg = getenv("XMEN2_MP_HUD");   /* diagnosing hud_missing: which panel, when */

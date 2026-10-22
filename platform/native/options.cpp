@@ -22,7 +22,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0 };
 
 struct OptDef {
     const char *name;
@@ -35,7 +35,9 @@ static OptDef s_defs[] = {
     { "full_rate_2p", { "0", "1", nullptr }, "two players at the full 60 Hz (R3)", "0" },
     { "high_fps", { "0", "120", "144", "165", "240", nullptr },
       "display rate in Hz with frames interpolated between logic frames, 0 = off (R4)", "0" },
-    { "widescreen", { "0", "16:9", nullptr }, "16:9 view in levels, 0 = off (R5-R7)", "0" },
+    { "widescreen", { "0", "16:9", nullptr }, "16:9 view in levels, 0 = off (R5-R8)", "0" },
+    { "widescreen_gameplay", { "0", "1", nullptr },
+      "with widescreen: objects activate across the wide view and the camera keeps it inside the level (R6); 0 = the view is presentation only, the game plays as in 4:3 (R8)", "0" },
     /* cheats (the user, 2026-10-21; not phase-6 criteria) */
     { "lives", { "0", "inf", "1", "5", "20", "99", nullptr },
       "cheat: lives at a new game (any 1-99; 0 = the original's 9), inf = lives are never spent", "0" },
@@ -124,6 +126,7 @@ static void apply(void)
     g_opt.full_rate_2p = find("full_rate_2p")->value == "1";
     g_opt.high_fps = atoi(find("high_fps")->value.c_str());
     g_opt.widescreen = find("widescreen")->value == "16:9";
+    g_opt.widescreen_gameplay = find("widescreen_gameplay")->value == "1";
     const std::string &l = find("lives")->value;
     g_opt.lives = l == "inf" ? -1 : atoi(l.c_str());
     g_opt.magneto = find("magneto")->value == "1";
@@ -183,7 +186,9 @@ void options_toggle_high_fps(void)
     present_reset();
 }
 
-/* online the 16:9 view is the host's (R10: it changes what activates and the camera's limits) */
+/* online the 16:9 view is the host's (R10: with widescreen_gameplay it changes what activates and the
+   camera's limits; presentation only, it still changes the sprite table and the planes the canonical
+   digest compares, R8) */
 void options_toggle_widescreen(void)
 {
     if (netplay_enabled()) { fprintf(stderr, "[native] F10: the 16:9 view is the host's in a netplay session\n"); return; }

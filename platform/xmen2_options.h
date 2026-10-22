@@ -17,14 +17,22 @@ typedef struct XmOptions {
     int start_char;     /* cheat: player 1's character at power-on, 1 + g_P1CharIndex (0: at random) */
     int magneto_flight; /* tweak: Magneto moves left/right at his walking speed while hovering */
     int players;        /* phase 7 R7: players at once, 2 (the original), 3 or 4 */
+    int widescreen_gameplay;   /* R6/R8: with widescreen, objects activate across the wide view and the
+                                  camera keeps it inside the level (0: the 16:9 view is presentation only) */
 } XmOptions;
 
 extern XmOptions g_opt;
 
-/* widescreen (platform/native/widescreen.cpp): the wide view's margin per side in px on the
-   running screen (0: a 4:3 screen, or the option off), and the activation margin (R6) */
+/* widescreen (platform/native/widescreen.cpp), on the running screen (all 0 on a 4:3 screen, or
+   with the option off): how far past the 320-px view the game keeps the planes drawn, per side
+   (the streamer; R8's render camera can move the window by up to a margin, so presentation keeps
+   two); the drawn window's margins left and right of the 320 px this frame (VIEW_L/VIEW_R, the
+   HUD); and the gameplay margin of R6, for what activates and the camera's limits (0 under R8) */
 int plat_ws_view(void);
+int plat_ws_left(void);
+int plat_ws_right(void);
 int plat_ws_act(void);
+int plat_ws_hud(void);   /* the HUD's margin per side: the view's, whatever the render camera does */
 void plat_ws_cerebro(int on);   /* Cerebro_Run: a Cerebro screen is running (4:3, R5) */
 
 /* high frame rate (platform/native/present.cpp): the sprites written from now on are owner's (a
