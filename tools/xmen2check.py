@@ -892,6 +892,8 @@ def cmd_package(a) -> dict:
     common.ensure_rom()
     b = cmd_build(argparse.Namespace(native=False, handc=False, json=True))
     exe = Path(b["native_exe"])
+    if not b["ok"]:   # never zip a stale runner over a failed build
+        sys.exit(f"the build failed, see {b['log']}")
     if not exe.is_file():
         sys.exit(f"no native runner at {exe}")
     engine = common.ENGINE / "runner" / "external"
@@ -999,7 +1001,9 @@ def main() -> int:
     if a.cmd == "gen" and not a.json:
         res = {k: v for k, v in res.items() if k != "functions"}
     print(json.dumps(res, indent=None if a.json else 1))
-    return 0
+    # a failed build is a failed command (a link over a running runner exited 0 and left the old
+    # exe: 2026-10-21); the other commands' "ok" is a result their callers grade
+    return 1 if a.cmd in ("build", "native-build") and res.get("ok") is False else 0
 
 
 if __name__ == "__main__":
