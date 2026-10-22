@@ -18,3 +18,9 @@ Phase-5 criterion P8: the user played the native Windows package (`xmen2-native-
 all off, no `xmen2.ini`) on Windows, a quick test, and said it looks good.
 
 port-verified: 2026-10-21
+
+Phase-6 criterion E6: the user played the native port with the enhancement options (widescreen
+16:9, high_fps, full_rate_2p) since XMen2Recomp 9300fd8 (the Cyclops sprite fix) and said, asked in
+the session on 2026-10-22, that it all plays well.
+
+enhancements-verified: 2026-10-22
