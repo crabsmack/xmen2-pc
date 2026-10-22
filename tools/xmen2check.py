@@ -722,6 +722,8 @@ Enhancements, each off unless you turn it on:
 Cheats, also off unless you turn them on:
     lives=inf           lives are never spent (or lives=N: start a new game with N, 1-99)
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
+    start_char=magneto  the character you start Siberia with (beast, cyclops, gambit,
+                        nightcrawler, psylocke, wolverine, magneto; the original: at random)
 on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
 or in xmen2.ini next to the program:
     [options]

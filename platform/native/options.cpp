@@ -22,11 +22,11 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0 };
 
 struct OptDef {
     const char *name;
-    const char *values[8];   /* the first is the default (off); null-terminated */
+    const char *values[10];   /* the first is the default (off); null-terminated */
     const char *what;
     std::string value;
 };
@@ -40,6 +40,8 @@ static OptDef s_defs[] = {
     { "lives", { "0", "inf", "1", "5", "20", "99", nullptr },
       "cheat: lives at a new game (any 1-99; 0 = the original's 9), inf = lives are never spent", "0" },
     { "magneto", { "0", "1", nullptr }, "cheat: Magneto selectable from the start, 0 = from Bani Maza", "0" },
+    { "start_char", { "0", "beast", "cyclops", "gambit", "nightcrawler", "psylocke", "wolverine", "magneto", nullptr },
+      "cheat: player 1's character in Siberia at power-on, 0 = at random (the original)", "0" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path;
@@ -120,6 +122,10 @@ static void apply(void)
     const std::string &l = find("lives")->value;
     g_opt.lives = l == "inf" ? -1 : atoi(l.c_str());
     g_opt.magneto = find("magneto")->value == "1";
+    const OptDef *sc = find("start_char");
+    g_opt.start_char = 0;
+    for (int i = 1; sc->values[i]; i++)   /* the values after "0" in g_P1CharIndex's order */
+        if (sc->value == sc->values[i]) g_opt.start_char = i;
 }
 
 static std::string json_str(const std::string &s)

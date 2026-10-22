@@ -14,6 +14,7 @@
  * model (genesis_vdp.c), the Z80 core (superzazu) and the sound chips are the engine's.
  */
 #include <chrono>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -604,8 +605,20 @@ uint16_t plat_vdp_status16(void) { hw_read_guard("the VDP status"); return vdp_s
 uint32_t plat_vdp_status32(void) { uint32_t h = plat_vdp_status16(); return (h << 16) | plat_vdp_status16(); }
 void     plat_vdp_ctrl_write16(uint16_t v) { vdp_ctrl_w(v); }
 void     plat_vdp_ctrl_write32(uint32_t v) { vdp_ctrl_w((uint16_t)(v >> 16)); vdp_ctrl_w((uint16_t)v); }
-uint8_t  plat_vdp_hv8(void) { hw_read_guard("the H/V counter"); return 0; }    /* no beam without time */
-uint16_t plat_vdp_hv16(void) { hw_read_guard("the H/V counter"); return 0; }
+/* The V counter. Traced runs have no beam without time: 0. A played run reads the line the beam
+   would be on now, from the wall clock (262 NTSC lines a frame, the counter jumping from $EA back
+   to $E5), so what the original seeds from it (SiberiaB1_InstallHooks: player 1's character at
+   power-on) varies from play to play as on a console. */
+static uint8_t vcounter_now(void)
+{
+    if (!plat_realtime()) return 0;
+    double us = (double)std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    int line = (int)(fmod(us, 16688.9) / (16688.9 / 262));
+    return (uint8_t)(line <= 0xEA ? line : line - 6);
+}
+uint8_t  plat_vdp_hv8(void) { hw_read_guard("the H/V counter"); return vcounter_now(); }
+uint16_t plat_vdp_hv16(void) { hw_read_guard("the H/V counter"); return (uint16_t)(vcounter_now() << 8); }
 
 void     plat_psg_write8(uint8_t v) { plat_audio_write(0, PLAT_AUDIO_PSG, v); }
 

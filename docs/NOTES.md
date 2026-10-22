@@ -948,6 +948,17 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   the original from the Bani Maza briefing (`g_ScnCerebroBaniMaza <= g_SceneIndex`). Checked: the
   select shows Magneto, LIVES 9 with `inf` and 2 with `lives=3` (8 originally), and Magneto plays
   Sentinels. A death with `inf` was not played through.
+- `start_char` (`beast` .. `magneto`, g_P1CharIndex's order): player 1's character when
+  Player1_StartLife (006242) would pick one at random: at power-on and at each new game the game
+  starts in SiberiaB1 with no player 1 (the power-on demo, 1200 frames, until Start), and
+  SiberiaB1_InstallHooks seeds Rand_Next from the V counter + g_AttractDemoNum before it. A native
+  `case 6` gives Magneto, whom the original never picks there; without `magneto=1` the selects
+  before Bani Maza still have six portraits (a player who was Magneto gets another at random).
+- **The V counter in played runs** (machine.cpp `vcounter_now`): the native machine returned 0 (no
+  beam without time), so the seed was only g_AttractDemoNum and the power-on character the same
+  every time. Played runs now read the line the beam would be on from the wall clock (traced runs
+  keep 0, so every trace is unchanged): four played starts gave Cyclops, Wolverine, Wolverine,
+  Nightcrawler. It is the only V-counter read in the game.
 - `--handover` (played runs): an input script's frames, then the pads. With XMEN2_DEBUG_SCENE=1 and
   a script that presses Start through the briefing, Right (Cyclops) and Start twice, it drops the
   player into Sentinels as Cyclops.
