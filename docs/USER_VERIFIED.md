@@ -12,3 +12,9 @@ the Sentinel escape was not investigated. The D2/D6 traces still need a re-run o
 engine (docs/NOTES.md "The D8 playtest build").
 
 handc-verified: 2026-10-17
+
+Phase-5 criterion P8: the user played the native Windows package (`xmen2-native-windows.zip`,
+`XMen2.exe xmen2.bin`, built 2026-10-21 from XMen2Recomp 3b8503a or later, enhancement options
+all off, no `xmen2.ini`) on Windows, a quick test, and said it looks good.
+
+port-verified: 2026-10-21
