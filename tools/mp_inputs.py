@@ -12,7 +12,8 @@ all four players are in play (the briefing's pages, the select's joins and confi
 the SiberiaB1 opening, where players join with Start); later ones would pause the game. The input is
 those presses, then from the frame all four are in, --play frames of each pad walking right with the
 attacks and jumps of ws_warp.py's walker (or one of two other patterns), each pad on its own phase or
-all four in step; the one kept is the one that meets M4's shares, else whose worst-off player does best
+all four in step; the one kept is the one that meets M4's shares (run with players 4 and with players 3,
+as M4 runs it), else whose worst-off player does best
 (and on a stage where none does, the longest of a few shorter plays that does: SHORTER). --check runs
 the inputs written
 and prints each one's `mp` counters.
@@ -79,12 +80,12 @@ def presses(until: int, order=(0, 1, 2, 3)) -> list[list[int]]:
 BOOT_ORDER = (0, 2, 3, 1)
 
 
-def run(inp: Path, scene: int | None, frames: int, log: bool) -> tuple[int, str]:
+def run(inp: Path, scene: int | None, frames: int, log: bool, players: int = 4) -> tuple[int, str]:
     env = {**os.environ, "SDL_AUDIODRIVER": "dummy"}
     if log:
         env["XMEN2_MP_LOG"] = "1"
     cmd = [str(exe()), str(common.ROM), "--benchmark", str(frames), "--input-script", str(inp),
-           "--session", "1", "--options", "players=4"]
+           "--session", "1", "--options", f"players={players}"]
     if scene is not None:
         cmd += ["--scene", str(scene)]
     r = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=3600)
@@ -118,8 +119,8 @@ def make(name: str, scene: int | None, play: int, out: Path) -> str:
             mp = counters(path, scene)
             if not mp:
                 continue
-            gp = mp["gameplay_frames"] or 1
-            worst = min(min(mp["in_play"][p], mp["drawn"][p] * 2) - 100 * mp["off_view"][p] for p in range(4)) / gp
+            worst = min(min(m["in_play"][p], m["drawn"][p] * 2) - 100 * m["off_view"][p]
+                        for n, m in mp.items() for p in range(n)) / (min(m["gameplay_frames"] for m in mp.values()) or 1)
             if best is None or (meets(mp), worst) > (meets(best[3]), best[0]):
                 best = (worst, f"{pname}/{step}, {length} frames of play", frames, mp)
         if meets(best[3]) if best else False:
@@ -128,9 +129,10 @@ def make(name: str, scene: int | None, play: int, out: Path) -> str:
         return f"{name}: no pattern ran"
     write_input(path, best[2])
     mp = best[3]
-    ip = ", ".join(f"{v / (mp['gameplay_frames'] or 1):.0%}" for v in mp["in_play"])
+    ip = "; ".join(f"players {n} " + ", ".join(f"{v / (m['gameplay_frames'] or 1):.0%}" for v in m["in_play"][:n])
+                   for n, m in mp.items())
     return (f"{name}: {path.name} written ({best[1]}{'' if meets(mp) else '; short of M4'}): presses to {cut},"
-            f" all four in at {allin}, {len(best[2])} frames; in play {ip}; off view {mp['off_view']}")
+            f" all four in at {allin}, {len(best[2])} frames; in play {ip}; off view {mp[4]['off_view']}")
 
 
 # A player who dies stays out until the stage ends (Player1/2_StartLife bring one back on Start only in
@@ -139,30 +141,39 @@ def make(name: str, scene: int | None, play: int, out: Path) -> str:
 SHORTER = (2000, 1400, 900)
 
 
-def meets(mp: dict) -> bool:
-    gp = mp["gameplay_frames"]
-    return bool(gp) and mp["hud_missing"] == 0 and mp["sprites_dropped"] == 0 and all(
-        mp["in_play"][p] >= 0.5 * gp and mp["drawn"][p] >= 0.5 * mp["in_play"][p]
-        and mp["off_view"][p] <= 0.01 * mp["in_play"][p] for p in range(4))
+def meets(mps: dict[int, dict]) -> bool:
+    """M4's shares, for every player of each run (players 4 and 3: phase.py runs the input with both)."""
+    return all(bool(mp["gameplay_frames"]) and mp["hud_missing"] == 0 and mp["sprites_dropped"] == 0 and all(
+        mp["in_play"][p] >= 0.5 * mp["gameplay_frames"] and mp["drawn"][p] >= 0.5 * mp["in_play"][p]
+        and mp["off_view"][p] <= 0.01 * mp["in_play"][p] for p in range(n)) for n, mp in mps.items())
 
 
-def counters(path: Path, scene: int | None) -> dict | None:
+PLAYERS = (4, 3)   # the runs M4 makes of each input
+
+
+def counters(path: Path, scene: int | None) -> dict[int, dict] | None:
+    """The input's `mp` counters with players 4 and with players 3 (None: a run failed)."""
     n = sum(int(m.group(1)) for m in re.finditer(r"^WAIT (\d+)", path.read_text(), re.M))
-    rc, err = run(path, scene, n, False)
-    m = re.search(r"\[xmen2\] counters (\{.*\})", err)
-    return json.loads(m.group(1)).get("mp") if m and rc == 0 else None
+    out = {}
+    for players in PLAYERS:
+        rc, err = run(path, scene, n, False, players)
+        m = re.search(r"\[xmen2\] counters (\{.*\})", err)
+        if not m or rc:
+            return None
+        out[players] = json.loads(m.group(1)).get("mp")
+    return out
 
 
 def check(name: str, scene: int | None, out: Path) -> str:
     path = out / ("boot.input" if scene is None else f"scene{scene}.input")
     if not path.is_file():
         return f"{name}: no {path.name}"
-    n = sum(int(m.group(1)) for m in re.finditer(r"^WAIT (\d+)", path.read_text(), re.M))
-    rc, err = run(path, scene, n, False)
-    m = re.search(r"\[xmen2\] counters (\{.*\})", err)
-    mp = json.loads(m.group(1)).get("mp") if m else None
-    return f"{name}: exit {rc} " + (json.dumps({k: mp[k] for k in ("gameplay_frames", "in_play", "drawn", "off_view",
-                                                                  "hud_missing", "sprites_dropped")}) if mp else err[-200:])
+    mps = counters(path, scene)
+    if not mps:
+        return f"{name}: a run failed"
+    keys = ("gameplay_frames", "in_play", "drawn", "off_view", "hud_missing", "sprites_dropped")
+    return f"{name}: meets M4 {meets(mps)}; " + "; ".join(
+        f"players {n} " + json.dumps({k: mp[k] for k in keys}) for n, mp in mps.items())
 
 
 def main() -> int:

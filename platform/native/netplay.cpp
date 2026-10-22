@@ -554,29 +554,52 @@ void netplay_run(uint64_t frames)
 #endif
     double prev = 0, next = 0;
     bool quiescing = false;
+    /* XMEN2_NP_LATE=1 (diagnosing late frames): each one's gap, and what the loop did since the frame
+       before: polls that admitted nothing, replay ticks, the time in poll_admit, the tick, the sleep */
+    static const bool dbg_late = getenv("XMEN2_NP_LATE") != nullptr;
+    uint32_t d_waits = 0, d_replay0 = 0;
+    double d_admit = 0, d_tick = 0, d_sleep = 0;
     for (;;) {
         ice_pump_signals();
         rnet_session_pump(s_session);
+        double a0 = dbg_late ? now_us() : 0;
         RNetRbAdmit a = rnet_rb_driver_poll_admit(s_drv);
+        if (dbg_late) d_admit += now_us() - a0;
         if (a == RNET_RB_ADMIT_LIVE) {
+            double k0 = dbg_late ? now_us() : 0;
             machine_tick();
             rnet_rb_driver_finish_frame(s_drv);
             uint64_t tick = rnet_rb_driver_sim_tick(s_drv);
             double t = now_us();
+            if (dbg_late) d_tick = t - k0;
             if (!next) next = t;
             next += NP_PERIOD_US;
             if (t > next + 4 * NP_PERIOD_US) next = t;   /* a long stall moves the clock */
+            double s0 = t;
             if (paced_here && t < next) {
                 std::this_thread::sleep_for(std::chrono::microseconds((long long)(next - t)));
                 t = now_us();
             }
             if (!frames || tick <= frames) {
                 s_frames++;
-                if (prev && t > prev + 2 * NP_PERIOD_US) s_late++;
+                if (prev && t > prev + 2 * NP_PERIOD_US) {
+                    s_late++;
+                    if (dbg_late)
+                        fprintf(stderr, "[netplay] late tick %llu: gap %.1f ms; since the frame before %u empty polls, "
+                                "%u replay ticks, admit %.1f ms, tick %.1f ms, sleep %.1f ms\n", (unsigned long long)tick,
+                                (t - prev) / 1000, d_waits, s_replay_ticks - d_replay0, d_admit / 1000, d_tick / 1000,
+                                (t - s0) / 1000 + d_sleep / 1000);
+                }
             }
             prev = t;
+            d_waits = 0;
+            d_replay0 = s_replay_ticks;
+            d_admit = d_sleep = 0;
         } else {
+            double w0 = dbg_late ? now_us() : 0;
             (void)rnet_session_wait_recv(s_session, 1);
+            if (dbg_late) d_sleep += now_us() - w0;
+            d_waits++;
         }
         if (!frames) continue;
         /* The end (the harness's sessions): the seat's rows through `frames` are final once it has run

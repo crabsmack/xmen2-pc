@@ -428,7 +428,13 @@ void players_sync_row(void)
             }
             int x = (int)((int32_t)obj_be(p, 8, 4) >> 8), y = (int)((int32_t)obj_be(p, 12, 4) >> 8);
             if (x < cam_x - m || x >= cam_x + VIEW_W + m || y < cam_y || y >= cam_y + VIEW_H) C.off_view[p - 1]++;
-            if (!hud_panel(p)) hud_ok = false;
+            if (!hud_panel(p)) {
+                hud_ok = false;
+                static const char *hdbg = getenv("XMEN2_MP_HUD");   /* diagnosing hud_missing: which panel, when */
+                if (hdbg && xm_ram_peek8(0xC94C))
+                    fprintf(stderr, "[mp] frame %llu: player %d's HUD panel missing (scene %d)\n",
+                            (unsigned long long)machine_frame_no(), p, (int)(int16_t)ram_be(0xCC64, 2));
+            }
         }
         if (n > C.players_max) C.players_max = n;
         if (!hud_ok && xm_ram_peek8(0xC94C)) C.hud_missing++;

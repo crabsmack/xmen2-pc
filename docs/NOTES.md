@@ -1211,11 +1211,22 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   worst-off player does best). A dead player stays out until the stage ends, so where enemies kill
   players early the full 3,000 frames of play can't keep everyone in: there the longest of 2,000 / 1,400
   / 900 frames that does (avalonA3, banimazaA2, savageA4, space, spaceA1: 1,400-2,000; cloneA2: 900).
-  With players 4, 20 of 23 meet every bound. Not met: boot (SiberiaB1: player 1 in play 44%, every
-  player 3-4% off view: feet below the view's bottom in the snow), avalon (AvalonB1's opening pan:
+  A candidate is judged by both runs M4 makes of it, players 4 and players 3 (the enemies play
+  differently with three: avalonA4, spaceA1 and clone made for four left one player under 50% with
+  three; remade, 2026-10-22: 62-83% in play with both). 20 of 23 meet every bound with both. Not met:
+  boot (SiberiaB1: player 1 in play 44%, every
+  player 3-4% off view: feet below the view's bottom in the snow; hud_missing 106: 102 are the
+  original's own, player 1's panel absent in frames 300-401 of the opening as with `players` 2, and 4
+  are join frames, the HUD being drawn before the pads are read), avalon (AvalonB1's opening pan:
   191 frames off view for players 1-2, the same 191 with `players` 2, the original), cloneA5 (Brood
   kills players 1-2 in under 500 frames: 35% in play; its attacks aim at players 1-2 by name).
-  docs/QUESTIONS.md asks about the first two.
+  xmen2disasm docs/QUESTIONS.md asks about all three. Diagnostics: XMEN2_MP_HUD=1 prints each frame a
+  player's panel is missing.
+- **Late frames online** (M3: at most 1% of a seat's frames under `mid`): XMEN2_NP_LATE=1 prints each
+  late frame's gap and what the loop did before it. On w-clone they are one-period holds by the
+  scheduler's stall-before-invent grace (polls that admit nothing for ~31 ms, no replays, a 2 ms tick):
+  1-24 of 3,512 per seat with the session alone; RBE_RB_INVENT_GRACE_MS=0 (invent at once) is worse
+  (11-122, rollbacks up to 11 ticks). phase.py's 11 sessions at once made it 38/3,510; it runs 4 at a time.
 - **R4, the cost of keeping the byte matches** (35 game files so far, the first batches): 444 lines
   added, 8 changed (`git diff --stat`), all in `#if defined(XMEN2_NATIVE)` blocks, most
   `if (g_opt.players > 2) { ... }` next to the original line they extend, the logic in
