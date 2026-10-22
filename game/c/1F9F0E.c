@@ -51,7 +51,19 @@ void Collide_ObjVsList(register Actor *att, ListNode *node)
 		    && !body->hitCooldown && Obj_FindHitPoint(body, att, pts, x, y, &hx, &hy)) {
 			if (att->flags & 0x10)
 				return;
+#if defined(XMEN2_NATIVE)
+			{	/* phase 7: a hit by or on a player 3-4 runs in that player's context */
+				register int k = P34_Index(att) ? P34_Index(att) : P34_Index(body);
+
+				if (k)
+					P34_Enter(k);
+				(*att->cls->method[7])(att, body, att->hitType, att->attack, hx, hy);	/* Attack */
+				if (k)
+					P34_Leave(k);
+			}
+#else
 			(*att->cls->method[7])(att, body, att->hitType, att->attack, hx, hy);	/* Attack */
+#endif
 			if (att->flags & 0x10)
 				return;
 		}

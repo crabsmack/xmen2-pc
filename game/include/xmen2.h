@@ -7,4 +7,5 @@
 #include "xmen2_globals.h"
 #include "xmen2_data.h"
 #include "xmen2_funcs.h"
+#include "xmen2_players34.h"
 #endif

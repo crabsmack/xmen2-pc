@@ -24,6 +24,11 @@ void XPlayer_Init(register XPlayer *self, long x, long y, Placement *place)
 	self->index = index;
 	(*CLASS(Tbl_XPlayer_vtable)->parent->method[3])(self, x, y, place);	/* ACTOR Init */
 	self->flags &= ~0x4000;
+#if defined(XMEN2_NATIVE)
+	if (P34_Index(self))	/* phase 7: players 3 and 4 have their own slots (Obj_AllocPool) */
+		self->index = (u8)g_P34ObjIndex[P34_Index(self) - 3];
+	else
+#endif
 	self->index = self == &g_Player1 ? 0 : 1;
 	self->playerFlags = 0x2000;
 	if (self == &g_Player1)

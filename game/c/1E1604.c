@@ -164,8 +164,15 @@ void Cyclops_DrawBeam(Cyclops *self, CyclopsBeam *beam)
 			y += oy;
 			x += ox;
 			if (x > VIEW_L(-0x20) && x < VIEW_R(0x140) && y > -0x20 && y < 0xE0) {
+#if defined(XMEN2_NATIVE)
+				if (spr->link == SPR_STOP) {	/* phase 7: the raised stop; the piece left out counted */
+					plat_spr_dropped(1);
+					break;
+				}
+#else
 				if (spr->link == 0x50)
 					break;
+#endif
 				g_SprIndex = spr->link;
 				spr++;
 				g_SprWritePtr = spr;
@@ -186,7 +193,7 @@ void Cyclops_DrawBeam(Cyclops *self, CyclopsBeam *beam)
 	}
 	beam->count2 = (u8)n;
 	g_BeamFlickerSpr[3] = spr->link;
-	if (spr->link != 0x50) {
+	if (spr->link != SPR_STOP) {	/* 80 (phase 7: raised, xmen2_mem.h) */
 		g_SprIndex = spr->link;
 		spr++;
 		g_SprWritePtr = spr;
@@ -197,4 +204,7 @@ void Cyclops_DrawBeam(Cyclops *self, CyclopsBeam *beam)
 	}
 	g_BeamFlickerNew[3] = 0xFF;
 	g_BeamFlickerPending = 0xFF;
+#if defined(XMEN2_NATIVE)
+	g_P34BeamTable = g_P34Active;	/* phase 7: whose table the slots are (Cyclops_BeamVBlankFlicker) */
+#endif
 }

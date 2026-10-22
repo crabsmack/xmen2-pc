@@ -24,8 +24,16 @@ void Spr_EmitStreamClip(SprInst *spr, long x, long y, short tile)
 #if defined(XMEN2_NATIVE)
 	plat_spr_anchor(spr, x, y);	/* phase 6 R4: the pieces written next are spr's, at its anchor */
 #endif
+#if defined(XMEN2_NATIVE)
+	if (g_SprIndex >= SPR_STOP) {	/* phase 7: the raised stop; what it leaves out is counted */
+		if ((s8)spr->uploaded >= 0)
+			plat_spr_dropped((u8)def->frame[spr->uploaded].pieceCount);
+		return;
+	}
+#else
 	if (g_SprIndex >= 80)
 		return;
+#endif
 	if ((s8)spr->uploaded < 0)
 		return;
 	hw = g_SprWritePtr;
@@ -61,8 +69,15 @@ void Spr_EmitStreamClip(SprInst *spr, long x, long y, short tile)
 			hw->size = (u8)size;
 			hw->attr = a;
 			hw->x = sx;
+#if defined(XMEN2_NATIVE)
+			if (hw->link == SPR_STOP) {	/* phase 7: the raised stop; the pieces after it counted */
+				plat_spr_dropped((u8)f->pieceCount - 1 - n);
+				break;
+			}
+#else
 			if (hw->link == 0x50)
 				break;
+#endif
 		}
 		t = a + TBL(Tbl_SprTilesStreamClip)[size];
 	}

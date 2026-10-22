@@ -52,6 +52,10 @@ void Cam_Init(Camera *self)
 		alive++;
 	if (IS_ALIVE(&g_Player2))
 		alive++;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2 && (alive += P34_AliveCount()) > 2)	/* phase 7: players 3-4: the group */
+		alive = 2;
+#endif
 	switch (alive) {
 	case 0:
 	case 1:

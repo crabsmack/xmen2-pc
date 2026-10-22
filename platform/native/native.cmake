@@ -20,6 +20,11 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/game_entry.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/host_sdl.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/state.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/players.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/sound2.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/snd2_chips.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/snd2_psg.c"
+    "${CMAKE_SOURCE_DIR}/game/runtime/players34.cpp"
     # the game's fiber (phase 7 R2): the engine's snapshottable fibers on vendored minicoro
     "${RUNNER_ROOT}/fiber_compat.c"
     "${RUNNER_ROOT}/video/genesis_vdp.c"

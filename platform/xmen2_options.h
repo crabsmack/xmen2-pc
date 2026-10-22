@@ -16,6 +16,7 @@ typedef struct XmOptions {
     int magneto;        /* cheat: Magneto selectable from the start (the original: from Bani Maza) */
     int start_char;     /* cheat: player 1's character at power-on, 1 + g_P1CharIndex (0: at random) */
     int magneto_flight; /* tweak: Magneto moves left/right at his walking speed while hovering */
+    int players;        /* phase 7 R7: players at once, 2 (the original), 3 or 4 */
 } XmOptions;
 
 extern XmOptions g_opt;
@@ -37,6 +38,17 @@ void plat_spr_anchor(const void *spr, long x, long y);
 /* development tests (options.cpp): XMEN2_DEBUG_SCENE=n makes scene n the first one of a new game
    (Game_ResetPlayers); without it, `scene` (the original) */
 int plat_debug_first_scene(int scene);
+
+/* four players (phase 7, platform/native/players.cpp): player k's (3, 4) code runs from now on (0: no
+   more), for its sprites' tiles and the VRAM it writes; and players 3-4's pads from the host */
+void plat_p34_enter(int k);
+unsigned short plat_pad34(int k);
+/* ... a DMA (68000 source, VRAM destination, bytes) into player 2's VRAM areas while a player 3-4's code
+   runs: copied into that player's own tiles now (1), else 0 (the VDP's); and the player's HUD tiles
+   (R6a: its panel from the ROM's art, its health and meter strips as HUD_UpdateHealthBars draws them) */
+int  plat_p34_dma(unsigned long src, unsigned short dest, unsigned short len);
+void plat_spr_dropped(int n);   /* sprite pieces the stop (SPR_STOP) left out: the mp counters */
+void plat_p34_hud(int k, short health, short charge, int hasMeter, unsigned short frame);
 
 #ifdef __cplusplus
 }

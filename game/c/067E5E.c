@@ -15,6 +15,32 @@ short CursorInput_StatePoll(BoxInputActor *self)
 	register char busy = g_P1Slot->busy || g_P2Slot->busy;
 	register BigSprite *slot = self->slot;
 
+#if defined(XMEN2_NATIVE)
+	if (P34_SlotX(slot)) {	/* phase 7: players 3 and 4, their own pads; a press moves once */
+		register PlayerX *x = P34_SlotX(slot);
+
+		if (!slot->confirmed && !busy) {
+			if (x->padPressed & 0x80) {
+				self->slot->busy = 1;
+				SET_STATE(self, CursorInput_Confirm);
+				return self->flags & 8;
+			}
+			if (x->padLatch & 0xC) {
+				register short dir = x->padLatch & 0xC;
+
+				self->slot->busy = 1;
+				x->padLatch &= ~0xC;
+				if (dir & 4)
+					SET_STATE(self, CursorInput_MoveLeft);
+				else
+					SET_STATE(self, CursorInput_MoveRight);
+				return self->flags & 8;
+			}
+		}
+		SET_STATE(self, CursorInput_StatePoll);
+		return self->flags & 8;
+	}
+#endif
 	if (!slot->confirmed && !busy) {
 		if (slot->player == 1) {
 			if (g_Pad1Pressed & 0x80) {

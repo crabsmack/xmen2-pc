@@ -94,6 +94,22 @@ void PlayerSelect_Run(void)
 				g_P2CharIndex = (s8)((unsigned short)Rand_Next() % 6);
 			while (g_P1CharIndex == g_P2CharIndex);
 		}
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2) {	/* phase 7: players 3 and 4 the same, unlike everyone else */
+			register short k, j;
+
+			for (k = 0; k < P34_COUNT; k++)
+				if (g_PX[k].charIndex == 6) {
+					do {
+						g_PX[k].charIndex = (s8)((unsigned short)Rand_Next() % 6);
+						for (j = 0; j < P34_COUNT; j++)
+							if (j != k && g_PX[j].charIndex == g_PX[k].charIndex)
+								break;
+					} while (g_PX[k].charIndex == g_P1CharIndex || g_PX[k].charIndex == g_P2CharIndex
+						|| j < P34_COUNT);
+				}
+		}
+#endif
 	}
 	g_SelectCount = table->x;
 	table++;
@@ -149,6 +165,35 @@ void PlayerSelect_Run(void)
 		g_TextRow = 0x16;
 		Cerebro_PrintText(STR(Str_PressStart, "PRESS START"), 3);
 	}
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: players 3 and 4: a slot and a cursor each (players 1's and 2's box
+					   colours), no portrait; "PRESS START" two rows up */
+		register short k;
+		register BigSprite *s;
+
+		for (k = 0; k < P34_COUNT; k++) {
+			s = &g_P34Slot[k];
+			s->player = (u8)(3 + k);
+			s->charIndex = g_PX[k].charIndex;
+			s->savedChar = -1;
+			s->frameSpr = (u8)(7 + k);
+			s->busy = 0;
+			s->hidden = 0;
+			s->confirmed = 0;
+			s->big = 0;
+			s->changing = 0;
+			s->moveDelay = 0;
+			PlayerSelect_PlaceCursor(s);
+			o = (Actor *)(*CLASS(Tbl_BoxInputActor_vtable)->method[2])(0, CLASS(Tbl_BoxInputActor_vtable), 0, 0, s);
+			if (g_PX[k].lives || g_PX[k].charIndex != -1) {
+				g_TextCol = k ? 0x18 : 5;
+				g_TextRow = 0x14;
+				Cerebro_PrintText(STR(Str_PressStart, "PRESS START"), 2 + k);
+			}
+		}
+		g_P34SelectOn = 1;
+	}
+#endif
 	g_InLevelLoop = 1;
 	ClassList_InitAll();
 	do {
@@ -246,6 +291,10 @@ void PlayerSelect_Run(void)
 				g_SprWritePtr->attr = g_P2Lives % 10 + '0' - 0x20 + 0x6680;
 				g_SprWritePtr->x = sx + 0x80;
 			}
+#if defined(XMEN2_NATIVE)
+			if (g_opt.players > 2)
+				P34_SelectLives();	/* phase 7: players 3 and 4's, 16 px above */
+#endif
 			Spr_EndFrame();
 			g_DmaFlushReq = 1;
 			PlayerSelect_CheckDone();
@@ -326,6 +375,27 @@ void PlayerSelect_Run(void)
 		g_P2CharIndex = -1;
 		break;
 	}
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: players 3 and 4 the same */
+		register short k;
+		register XPlayer *p;
+
+		for (k = 0; k < P34_COUNT; k++) {
+			p = PLAYER34(3 + k);
+			if (g_PX[k].charIndex != g_P34Slot[k].charIndex) {
+				if (g_PX[k].charIndex == -1)
+					g_PX[k].health = 0x700;
+				g_PX[k].charIndex = g_P34Slot[k].charIndex;
+			}
+			p->flags = 0xC000;
+			if (!(p->cls = P34_ClassOf(g_PX[k].charIndex))) {
+				p->flags = 0;
+				g_PX[k].charIndex = -1;
+			}
+		}
+		g_P34SelectOn = 0;
+	}
+#endif
 #ifndef XMEN2_MPW
 	xm::frame_release(a7);
 #endif

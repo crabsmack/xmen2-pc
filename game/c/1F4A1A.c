@@ -11,10 +11,19 @@ Actor *Obj_FindFreeSlot(void)
 	unsigned short k = g_ObjCount - 2;
 	Actor *o;
 
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2)	/* phase 7: the entry past the table is player 3 (Obj_AllocPool): not a free object */
+		k--;
+#endif
 	do {
 		o = *p++;
-		if (o->flags == 0)
+		if (o->flags == 0) {
+#if defined(XMEN2_NATIVE)
+			if (g_opt.players > 2)
+				P34_TagNew(o);	/* phase 7: made by a player 3-4's code: its */
+#endif
 			return o;
+		}
 	} while (k-- != 0);
 	return 0;
 }

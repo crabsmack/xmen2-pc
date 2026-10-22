@@ -176,6 +176,10 @@ void Cerebro_Run(void)
 		g_P2CharIndex = c2;
 		g_Player1.flags = 0;
 		g_Player2.flags = 0;
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2)
+			P34_BeforeSelect();	/* phase 7: players 3 and 4 the same */
+#endif
 		PlayerSelect_Run();
 		Snd_StopAll();
 	}
@@ -188,6 +192,8 @@ void Cerebro_Run(void)
 	g_Player1.health = g_P1Health;
 	g_Player2.health = g_P2Health;
 #if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2)
+		P34_AfterCerebro();
 	plat_ws_cerebro(0);
 #endif
 }

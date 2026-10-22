@@ -17,6 +17,14 @@ void Cyclops_BeamVBlankFlicker(void)
 {
 	short last;
 
+#if defined(XMEN2_NATIVE)
+	/* phase 7: the beam in a player 3-4's own table, or past the hardware's 80 slots (the raised
+	   stop): not in VRAM's attribute table, so it isn't relinked there (both lists show) */
+	if (g_P34BeamTable || (g_BeamFlickerPending ? g_BeamFlickerNew[2] : g_BeamFlickerCur[2]) >= 80) {
+		g_BeamFlickerOn = 0;
+		return;
+	}
+#endif
 	if (g_VBlankFrameDone && g_BeamFlickerPending) {
 		g_BeamFlickerCur[0] = g_BeamFlickerNew[0];
 		g_BeamFlickerCur[1] = g_BeamFlickerNew[1];

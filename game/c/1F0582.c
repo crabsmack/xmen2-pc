@@ -25,6 +25,34 @@ char XPlayer_TetherToPartner(XPlayer *self)
 	px = partner->x;
 	py = partner->y;
 	was = 0;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: against the group: within $11A px of the farthest other player
+					   in x, and in y of the lowest (above it) or the highest (below it) */
+		XPlayer *o[3];
+		register int n = P34_OthersAlive(self, o), i;
+		XPlayer *lo = 0, *hi = 0, *up = 0, *down = 0;
+
+		if (!n)
+			return 0;
+		for (i = 0; i < n; i++) {
+			if (!lo || o[i]->x < lo->x) lo = o[i];
+			if (!hi || o[i]->x > hi->x) hi = o[i];
+			if (!up || o[i]->y < up->y) up = o[i];
+			if (!down || o[i]->y > down->y) down = o[i];
+		}
+		px = x < hi->x - 0x11A00 ? hi->x : x > lo->x + 0x11A00 ? lo->x : x;
+		if (y < down->y - 0xE000) {
+			partner = down;
+			py = down->y;
+		} else if (y > up->y + 0xE000) {
+			partner = up;
+			py = up->y;
+		} else {
+			partner = o[0];
+			py = y;
+		}
+	} else
+#endif
 	if (!IS_ALIVE(partner))
 		return 0;
 	was = self->playerFlags & 0x3C000;

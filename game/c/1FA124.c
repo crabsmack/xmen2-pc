@@ -52,6 +52,11 @@ void Level_FrameLoop(void)
 		if (IS_ALIVE(&g_Player2))
 			++g_PlayersAlive;
 #if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2) {	/* phase 7 (R9): players 3 and 4 count, the count kept to the original's 0-2 */
+			g_PlayersAlive = g_PlayersAlive + P34_AliveCount();
+			if (g_PlayersAlive > 2)
+				g_PlayersAlive = 2;
+		}
 		/* phase 6 R3 (full_rate_2p): two players on the one-player stepping, so no frame-tick
 		   wait below and every counter steps by 1 (PlayerSelect_Run inherits the 0) */
 		g_TwoPlayerStep = g_PlayersAlive == 2 && !g_opt.full_rate_2p;
@@ -59,6 +64,10 @@ void Level_FrameLoop(void)
 		g_TwoPlayerStep = g_PlayersAlive == 2;
 #endif
 		Spr_BeginFrame();
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2)
+			P34_SprBeginFrame();	/* phase 7: players 3-4's own sprite tables */
+#endif
 		if (g_HudOn) {
 			if (g_HudDirty)
 				HUD_UpdateHealthBars();
@@ -87,7 +96,11 @@ void Level_FrameLoop(void)
 					HUD_SPRITE(0x148, 0xC, 0xA7D4, VIEW_R(0x191));
 				}
 			}
-			if (g_SprIndex == 0x51)
+#if defined(XMEN2_NATIVE)
+			if (g_opt.players > 2)
+				P34_HudSprites();	/* phase 7: players 3 and 4's panels */
+#endif
+			if (g_SprIndex == SPR_START)	/* $51 (phase 7: raised, xmen2_mem.h) */
 				HUD_SPRITE(0x1C, 0, 0, 0x1C);
 		} else
 			HUD_SPRITE(0x1C, 0, 0, 0x1C);
@@ -168,8 +181,17 @@ void Level_FrameLoop(void)
 #endif
 		(*g_DrawHook)();
 		Spr_EndFrame();
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2)
+			P34_SprEndFrame();
+#endif
 		g_DmaFlushReq = 1;
+#if defined(XMEN2_NATIVE)
+		if ((g_Pad1Pressed & 0x80 || g_Pad2Pressed & 0x80 || (g_opt.players > 2 && P34_StartPressed()))
+		    && !g_PalFadeActive && !g_SceneExitTimer)	/* phase 7: and players 3 and 4's */
+#else
 		if ((g_Pad1Pressed & 0x80 || g_Pad2Pressed & 0x80) && !g_PalFadeActive && !g_SceneExitTimer)
+#endif
 			(*g_Pause)(0);
 		if (g_SceneIndexSet)
 			return;

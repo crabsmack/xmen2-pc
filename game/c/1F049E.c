@@ -12,6 +12,14 @@ char XPlayer_PushingTetherEdge(XPlayer *self)
 	XPlayer *partner;
 
 	partner = self == &g_Player1 ? &g_Player2 : &g_Player1;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: held by the group, when there is one */
+		XPlayer *o[3];
+
+		if (!P34_OthersAlive(self, o))
+			return 0;
+	} else
+#endif
 	if (!IS_ALIVE(partner))
 		return 0;
 	if (self->playerFlags & 0x8000)

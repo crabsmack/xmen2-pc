@@ -17,14 +17,14 @@ short Teleporter_StateWait(Teleporter *self)
 	long i;
 	XPlayer *p;
 
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2)) && (char)Player_ClimbState(p)) {
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p)) && (char)Player_ClimbState(p)) {
 			SET_STATE(self, Teleporter_StateWait);
 			return self->flags & 8;
 		}
 	}
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2))
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p))
 		    && left <= p->boxRight && right >= p->boxLeft && top <= p->boxBottom
 		    && bottom >= p->boxTop && !(p->flags & 0x1000)) {
 			self->flags6 |= 0x1000;

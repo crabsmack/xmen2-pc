@@ -28,6 +28,24 @@ short CursorInput_Confirm(BoxInputActor *self)
 	g_TextWinLeft = 5;
 	g_TextWinBottom = 0x16;
 	g_TextWinRight = 0x22;
+#if defined(XMEN2_NATIVE)
+	if (P34_SlotX(slot)) {	/* phase 7: players 3 and 4: "SELECTED" two rows up, their own lives */
+		if (slot->charIndex != -1) {
+			slot->confirmed = 1;
+			g_TextCol = slot->player == 3 ? 5 : 0x18;
+			g_TextRow = 0x14;
+			Cerebro_PrintText(slot->player == 3 ? STR(Str_Selected_06824E, "SELECTED   ") : STR(Str_Selected, "   SELECTED"),
+				slot->player - 3);
+		} else if (P34_SlotX(slot)->lives) {
+			if ((n = PlayerSelect_FirstFreeChar()) != -1) {
+				LOSE_LIFE(P34_SlotX(slot)->lives);
+				slot->changing = 1;
+				slot->savedChar = n;
+			}
+		}
+		P34_SlotChanged(slot);
+	} else
+#endif
 	if (slot->player == 1) {
 		if (g_P1Slot->charIndex != -1) {
 			slot->confirmed = 1;

@@ -25,6 +25,12 @@ void Cam_TrackBoth(Camera *self)
 			hook(c);
 		return;
 	}
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2)	/* phase 7: the extents of the group in play */
+		P34_Extents(&x1, &x2, &y1, &y2);
+	else
+#endif
+	{
 	if (g_Player1.x < g_Player2.x) {
 		x1 = g_Player1.x >> 8;
 		x2 = g_Player2.x >> 8;
@@ -38,6 +44,7 @@ void Cam_TrackBoth(Camera *self)
 	} else {
 		y1 = g_Player2.y >> 8;
 		y2 = g_Player1.y >> 8;
+	}
 	}
 	cx = (x1 + x2) >> 1;
 	if (!(c->camFlags & 1))

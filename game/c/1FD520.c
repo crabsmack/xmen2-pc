@@ -39,8 +39,15 @@ short Scaler_EmitSprites(short x, short y, short pal, char prio)
 				unsigned short slot = (u8)g_SprWritePtr->link;
 				HwSprite *s;
 
+#if defined(XMEN2_NATIVE)
+				if (slot == SPR_STOP) {	/* phase 7: the raised stop; the piece it leaves out counted */
+					plat_spr_dropped(1);
+					return -1;
+				}
+#else
 				if (slot == 0x50)
 					return -1;
+#endif
 				g_SprIndex = slot;
 				s = &g_SpriteTable[slot];
 				g_SprWritePtr = s;

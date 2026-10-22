@@ -32,6 +32,9 @@ void CloneA5_CamUpdate(register Camera *cam)
 			g_Player2.x -= g_BroodScrollStep << 8;
 			Obj_UpdateBoxes(&g_Player2);
 		}
+#if defined(XMEN2_NATIVE)
+		P34_ScrollPush(g_BroodScrollStep, g_CameraX + 0x140);	/* phase 7: players 3-4 with the arena */
+#endif
 	}
 	(*cam->track)(cam);
 	if ((ease = cam->ease) != 0)

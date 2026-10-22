@@ -17,6 +17,12 @@ void VDP_QueueDma(void *src, long dest, long len)
 	unsigned long end;
 	short n;	/* the entry's length in bytes */
 
+#if defined(XMEN2_NATIVE)
+	/* phase 7: a player 3-4's upload into player 2's VRAM areas (its character, its HUD) is its own
+	   tiles' (the platform copies it now; they are shown from there) */
+	if (g_P34Active && plat_p34_dma(from, (unsigned short)dest, (unsigned short)len))
+		return;
+#endif
 	if (!(g_VdpReg1 & 0x40)) {
 		VDP_DmaToVram(from, dest, len);
 		return;

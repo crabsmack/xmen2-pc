@@ -36,6 +36,11 @@ void XClone_CamArenaUpdate(Camera *cam)
 	deadRight = cam->deadRight;
 	deadTop = cam->deadTop;
 	deadBottom = cam->deadBottom;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2 && P34_Extents(&x1, &x2, &y1, &y2))	/* phase 7: the group in play */
+		;
+	else
+#endif
 	if (IS_ALIVE(&g_Player1) && IS_ALIVE(&g_Player2)) {
 		x1 = MIN(g_Player1.x, g_Player2.x) >> 8;
 		y1 = MIN(g_Player1.y, g_Player2.y) >> 8;

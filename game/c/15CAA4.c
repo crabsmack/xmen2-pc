@@ -8,6 +8,23 @@
 void Pause_Check(void)
 {
 	g_PauseCheatPtr = 0;
+#if defined(XMEN2_NATIVE)
+	/* phase 7: players 3 and 4 the same (a dead one comes back on Start: P34_StartLife) */
+	if (g_SpriteTable[0].link && !g_PalFadeActive
+	    && (g_Player1.health > 0 || g_Player2.health > 0 || P34_AnyHealth())) {
+		register int k = P34_StartPressed();
+
+		if ((g_Pad1Pressed & 0x80) && g_Player1.health <= 0) {
+			if (g_P1Lives)
+				Player1_StartLife();
+		} else if ((g_Pad2Pressed & 0x80) && g_Player2.health <= 0) {
+			if (g_P2Lives)
+				Player2_StartLife();
+		} else if (k && PLAYER34(k)->health <= 0) {
+			if (g_PX[k - 3].lives)
+				P34_StartLife(k);
+		} else {
+#else
 	if (g_SpriteTable[0].link && !g_PalFadeActive && (g_Player1.health > 0 || g_Player2.health > 0)) {
 		if ((g_Pad1Pressed & 0x80) && g_Player1.health <= 0) {
 			if (g_P1Lives)
@@ -16,6 +33,7 @@ void Pause_Check(void)
 			if (g_P2Lives)
 				Player2_StartLife();
 		} else {
+#endif
 			g_PauseExit = 0;
 			g_Paused = 1;
 			g_Pad1Latch = g_Pad1Latch & ~0x80;

@@ -58,6 +58,27 @@ void Players_PlaceAtStart(register long x, register long y, long x2, long y2)
 		g_Player2.flags = 0;
 		g_Player2.health = 0;
 	}
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: players 3 and 4 the same, 60 and 90 px right of player 1 */
+		register short k;
+		register XPlayer *p;
+
+		for (k = 3; k <= 2 + P34_COUNT; k++) {
+			p = PLAYER34(k);
+			if (g_PX[k - 3].health) {
+				P34_Enter(k);
+				(*p->cls->method[3])(p, x + 30 * (k - 1) << 8, y << 8, 0);	/* +$12 Init */
+				p->health = MAX(0x700, g_P2Health);	/* player k's, in player 2's place */
+				(*p->cls->method[14])(p);					/* +$3E Activate */
+				p->pad = 1;
+				P34_Leave(k);
+			} else {
+				p->flags = 0;
+				p->health = 0;
+			}
+		}
+	}
+#endif
 	g_HudDirty = 1;
 	if (hostile)
 		Player2_MakeHostile();

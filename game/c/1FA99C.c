@@ -6,8 +6,8 @@
 
 void Spr_BeginFrame(void)
 {
-	if (g_SprLast != 0x51)
+	if (g_SprLast != SPR_START)		/* SPR_START: $51 (phase 7: raised, xmen2_mem.h) */
 		g_SpriteTable[g_SprLast].link = g_SprLast + 1;
-	g_SprIndex = 0x51;
-	g_SprWritePtr = g_SpriteTable + 0x51;
+	g_SprIndex = SPR_START;
+	g_SprWritePtr = g_SpriteTable + SPR_START;
 }

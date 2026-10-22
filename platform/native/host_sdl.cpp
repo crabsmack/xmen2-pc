@@ -33,7 +33,7 @@ extern "C" {
 static SDL_Window *s_win;
 static SDL_Renderer *s_ren;
 static SDL_Texture *s_tex;
-static SDL_GameController *s_pad[2];
+static SDL_GameController *s_pad[4];   /* players 1-4 (3-4: phase 7, `players` 3 or 4) */
 static uint64_t s_next;          /* performance-counter time of the next frame */
 static double s_period;          /* counter ticks per frame */
 static int s_audio;
@@ -74,7 +74,7 @@ int host_open(const char *title)
                              224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
     if (!make_renderer()) return 0;
-    for (int i = 0, n = 0; i < SDL_NumJoysticks() && n < 2; i++)
+    for (int i = 0, n = 0; i < SDL_NumJoysticks() && n < 4; i++)
         if (SDL_IsGameController(i) && (s_pad[n] = SDL_GameControllerOpen(i))) n++;
     s_audio = audio_init((int)GENESIS_PSG_SAMPLE_RATE_NTSC) == 0;
     if (s_audio) audio_set_playback_enabled(1);
@@ -124,7 +124,7 @@ static uint16_t controller_pad(SDL_GameController *c)
     return p;
 }
 
-void host_input(uint16_t pads[2])
+void host_input(uint16_t pads[4])
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -142,12 +142,14 @@ void host_input(uint16_t pads[2])
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
         if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
         if (e.type == SDL_CONTROLLERDEVICEADDED) {
-            for (int n = 0; n < 2; n++)
+            for (int n = 0; n < 4; n++)
                 if (!s_pad[n]) { s_pad[n] = SDL_GameControllerOpen(e.cdevice.which); break; }
         }
     }
     pads[0] = (uint16_t)(keyboard_pad() | controller_pad(s_pad[0]));
     pads[1] = controller_pad(s_pad[1]);
+    pads[2] = controller_pad(s_pad[2]);
+    pads[3] = controller_pad(s_pad[3]);
 }
 
 void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, int h)
@@ -165,6 +167,7 @@ void host_audio(uint64_t frame, bool mute)
     static int16_t fm[8192 * 2], psg[16384];
     size_t fm_n = 0, psg_n = 0;
     audio_mixer_drain(895780u, fm, 8192, &fm_n, psg, sizeof psg / sizeof psg[0], &psg_n);
+    snd2_mix(fm, fm_n, psg, psg_n, mute);   /* phase 7 R9: players 3-4's parts */
     if (s_audio && !mute) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
 }
 

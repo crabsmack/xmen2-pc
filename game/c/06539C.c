@@ -8,6 +8,24 @@
 
 void PlayerSelect_CheckDone(void)
 {
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: every player with a character has confirmed it, and one has */
+		register short k;
+		register char done = (g_P1Slot->charIndex == -1 || g_P1Slot->confirmed)
+			&& (g_P2Slot->charIndex == -1 || g_P2Slot->confirmed);
+		register char any = g_P1Slot->confirmed || g_P2Slot->confirmed;
+
+		for (k = 0; k < P34_COUNT; k++) {
+			if (g_P34Slot[k].charIndex != -1 && !g_P34Slot[k].confirmed)
+				done = 0;
+			if (g_P34Slot[k].confirmed)
+				any = 1;
+		}
+		if (!g_SceneExitTimer && done && any)
+			g_SceneExitTimer = 2;
+		return;
+	}
+#endif
 	if (!g_SceneExitTimer) {
 		if (g_P2Slot->charIndex == -1 && g_P1Slot->confirmed)
 			g_SceneExitTimer = 2;

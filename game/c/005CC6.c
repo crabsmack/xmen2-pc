@@ -66,12 +66,25 @@ void Game_SceneLoop(void)
 				g_Player2.flags = 0;
 			}
 		}
+#if defined(XMEN2_NATIVE)
+		/* phase 7: players 3 and 4 the same; one of them standing counts as one of the two */
+		char p34Health = 0;
+		char p34Up = g_opt.players > 2 ? P34_AfterScene(&p34Health) : 0;
+
+		if (!g_SceneIndexSet) {
+			if (!p1Out || !p2Out || p34Up) {
+				++g_SceneIndex;
+				if (g_ScnCredits < g_SceneIndex)
+					Game_ResetPlayers();
+			} else if (g_P1Health || g_P2Health || p34Health) {
+#else
 		if (!g_SceneIndexSet) {
 			if (!p1Out || !p2Out) {
 				++g_SceneIndex;
 				if (g_ScnCredits < g_SceneIndex)
 					Game_ResetPlayers();
 			} else if (g_P1Health || g_P2Health) {
+#endif
 				g_ResumeSceneIndex = g_SceneIndex;
 				g_SceneIndex = g_ScnPlayerSelect;
 			} else

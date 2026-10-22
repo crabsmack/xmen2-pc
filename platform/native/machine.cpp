@@ -53,11 +53,14 @@ extern "C" unsigned long g_snd_frame;   /* the sound's frame number (chip_trace.
 /* ======================================================================== */
 /* Game memory as the bus sees it (DMA sources, the Z80's bank window)      */
 
+extern "C" uint8_t xm_region[0x10000];   /* phase 7 R5: players 3-4's region, $FExxxx, big-endian */
+
 static uint8_t mem_peek8(uint32_t a)
 {
     a &= 0xFFFFFFu;
     if (a < 0x400000u) return g_rom[a];
     if (a >= 0xFF0000u) return xm_ram_peek8(a & 0xFFFFu);
+    if (a >= 0xFE0000u) return xm_region[a & 0xFFFFu];
     return 0xFF;
 }
 
@@ -66,7 +69,7 @@ static uint16_t mem_peek16(uint32_t a)
     a &= 0xFFFFFFu;
     if (a >= 0xA00000u && a < 0xA20000u)   /* I/O area: the Z80 window reads RAM (exact_sched.c dma_68k) */
         return (uint16_t)((xm_ram_peek8(a & 0xFFFFu) << 8) | xm_ram_peek8((a + 1) & 0xFFFFu));
-    if (a < 0x400000u || a >= 0xFF0000u) return (uint16_t)((mem_peek8(a) << 8) | mem_peek8(a + 1));
+    if (a < 0x400000u || a >= 0xFE0000u) return (uint16_t)((mem_peek8(a) << 8) | mem_peek8(a + 1));
     return 0xFFFF;
 }
 
@@ -85,6 +88,7 @@ static void colour_cb(void *u, unsigned idx, uint16_t bgr9)
 }
 
 static uint16_t vdp_bus_read(void *u, uint32_t a) { (void)u; return mem_peek16(a); }
+extern "C" uint16_t machine_peek16(uint32_t a) { return mem_peek16(a); }   /* the 68000 bus, as a DMA reads it */
 
 static uint8_t z80_bus_read(uint16_t addr);
 static void    z80_bus_write(uint16_t addr, uint8_t val);
@@ -335,7 +339,9 @@ static void vdp_bus_w(uint16_t data)
     s_fifo[s_fifo_idx] = data;
     s_fifo_idx = (s_fifo_idx + 1) & 3;
     switch (v->code & 0x0F) {
-    case 0x01: gvdp_store_vram_word(v, v->address, data); break;
+    case 0x01:   /* phase 7: a player 3-4's write into player 2's areas is its own tiles' (players.cpp) */
+        if (!players_vram_write(v->address, data)) gvdp_store_vram_word(v, v->address, data);
+        break;
     case 0x03: gvdp_store_cram(v, v->address, data);      break;
     case 0x05: gvdp_store_vsram(v, v->address, data);     break;
     default: break;
@@ -675,7 +681,11 @@ uint8_t plat_z80_ram_read8(uint32_t off)
 void plat_z80_ram_write8(uint32_t off, uint8_t v)
 {
     if (!s_zaccess) return;
-    if ((off & 0x6000) == 0x0000 || (off & 0x6000) == 0x2000) { g_machine.bus.z80_ram[off & 0x1FFF] = v; return; }
+    if ((off & 0x6000) == 0x0000 || (off & 0x6000) == 0x2000) {
+        g_machine.bus.z80_ram[off & 0x1FFF] = v;
+        snd2_ring_write(g_machine.bus.z80_ram, off & 0x1FFF, v);   /* phase 7 R9: the music commands */
+        return;
+    }
     machine_fatal("a YM2612 or bank write by the game (not in the game)");
 }
 
@@ -827,6 +837,7 @@ static void z80_frame(void)
     if (k == 0) k = 1;
     s_fm_count = s_fm_start = s_fm_start + k * FM_SAMPLE - F;
     s_zclk -= F;
+    snd2_frame();   /* phase 7 R9: the second sound machine's frame (players 3-4 in the game) */
 }
 
 /* A runner frame begins: the host's input for it, the Z80's frame. */
@@ -854,17 +865,24 @@ extern "C" void plat_sync_point(void)
         ws_frame_check();
         return;
     }
+    players_frame_setup();   /* phase 7: three or more players' sprites past the hardware's 80 */
     if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
         auto r0 = std::chrono::steady_clock::now();
         render_frame();
         present_note_render(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - r0).count());
     } else
         render_frame();
+    players_frame_restore();
     plat_after_render();
     ws_frame_check();
 }
 
-extern "C" void machine_render(void) { render_frame(); }
+extern "C" void machine_render(void)
+{
+    players_frame_setup();
+    render_frame();
+    players_frame_restore();
+}
 extern "C" void machine_set_render(int on) { s_no_render = !on; }
 
 /* ======================================================================== */
@@ -1128,6 +1146,10 @@ extern "C" uint64_t machine_digest(void)
     c.u(b->pad[0], 2); c.u(b->pad[1], 2);
     c.u(s_sr, 2); c.u(s_frame_no, 8);
     ws_digest_fields(&c.b);
+    if (g_opt.players > 2) {
+        c.raw(xm_region, 0x2000);   /* phase 7 R5: players 3-4's region (XM_REGION_USED) */
+        snd2_digest_fields(&c.b);   /* R9: the second sound machine */
+    }
     s_digest_parts[0] = hash64(c.b.data(), vdp_at, 0xCBF29CE484222325ull);
     s_digest_parts[1] = hash64(c.b.data() + vdp_at, rest_at - vdp_at, 0xCBF29CE484222325ull);
     s_digest_parts[2] = hash64(c.b.data() + rest_at, c.b.size() - rest_at, 0xCBF29CE484222325ull);

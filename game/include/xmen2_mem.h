@@ -106,6 +106,13 @@ extern uint8_t *xm_arena;
 extern uint8_t *xm_arena_ffff;
 #define XM_RAM                 xm_arena
 #define XM_RAM_FFFF            xm_arena_ffff
+/* Phase 7 (xmen2disasm docs/phases/P7-multiplayer.md R5): players 3 and 4 live in a region of their
+   own outside the 68000's 64 KB, used only with three or more players. Its values are big-endian
+   (as the 68000 would hold them, so byte-wise code reads what it would there), and its addresses
+   are $00FExxxx, which the game never forms itself. xmen2_players34.h lays it out. */
+extern uint8_t xm_region[0x10000];
+#define XM_REGION_BASE         0x00FE0000u
+#define XM_REGION_USED         0x2000u   /* what the layout uses: in snapshots and the digest */
 #else
 extern uint8_t *g_ram;        /* work RAM as $00FFxxxx (the engine's view) */
 extern uint8_t *g_ram_ffff;   /* the same RAM as $FFFFxxxx */
@@ -137,6 +144,11 @@ inline void *host(uint32_t a)
     } else if (a == a24 && a24 < 0x400000u) {
         return g_rom + a24;
     }
+#ifdef XMEN2_NATIVE
+    else if (a - XM_REGION_BASE < 0x10000u) {
+        return xm_region + (a - XM_REGION_BASE);
+    }
+#endif
     fatal("xm::host: $%08X is not a work-RAM or ROM address", (unsigned)a);
 }
 
@@ -148,6 +160,9 @@ inline uint32_t addr(const void *p)
     if (u - (uintptr_t)XM_RAM < 0x10000u)      return 0x00FF0000u + (uint32_t)(u - (uintptr_t)XM_RAM);
     if (u - (uintptr_t)XM_RAM_FFFF < 0x10000u) return 0xFFFF0000u + (uint32_t)(u - (uintptr_t)XM_RAM_FFFF);
     if (u - (uintptr_t)g_rom < 0x400000u)     return (uint32_t)(u - (uintptr_t)g_rom);
+#ifdef XMEN2_NATIVE
+    if (u - (uintptr_t)xm_region < 0x10000u)  return XM_REGION_BASE + (uint32_t)(u - (uintptr_t)xm_region);
+#endif
     fatal("xm::addr: host pointer %p is not in game memory", p);
 }
 
@@ -181,7 +196,8 @@ struct mem {
             if (xm_tags[off] == TAG) { T v; memcpy(&v, b, sizeof v); return v; }
             return (T)mem_load_slow(off, (int)sizeof(T));
         }
-        if (u - (uintptr_t)g_rom < 0x400000u) {   /* the ROM image: big-endian */
+        if (u - (uintptr_t)g_rom < 0x400000u || u - (uintptr_t)xm_region < 0x10000u) {
+            /* the ROM image, and players 3-4's region (phase 7 R5): big-endian */
             uint32_t v = 0;
             for (size_t i = 0; i < sizeof(T); i++) v = v << 8 | b[i];
             return (T)v;
@@ -204,6 +220,11 @@ struct mem {
             uint32_t off = (uint32_t)a & 0xFFFFu;
             if (xm_tags[off] == TAG) { memcpy(b, &v, sizeof v); return; }
             mem_store_slow(off, (int)sizeof(T), (uint32_t)v);
+            return;
+        }
+        if (u - (uintptr_t)xm_region < 0x10000u) {   /* players 3-4's region: big-endian */
+            uint32_t x = (uint32_t)v;
+            for (size_t i = sizeof(T); i--; ) { b[i] = (uint8_t)x; x >>= 8; }
             return;
         }
         if (u - (uintptr_t)g_rom < 0x400000u) fatal("a store into the ROM image at $%06X", (unsigned)(u - (uintptr_t)g_rom));
@@ -371,7 +392,11 @@ inline bool in_game_memory(const void *p)
 {
     uintptr_t u = (uintptr_t)p;
     return u - (uintptr_t)XM_RAM < 0x10000u || u - (uintptr_t)XM_RAM_FFFF < 0x10000u
-        || u - (uintptr_t)g_rom < 0x400000u;
+        || u - (uintptr_t)g_rom < 0x400000u
+#ifdef XMEN2_NATIVE
+        || u - (uintptr_t)xm_region < 0x10000u
+#endif
+        ;
 }
 
 #ifndef XMEN2_NATIVE   /* the recomp runners only: NATIVE has no 68000 code to call */
@@ -598,6 +623,20 @@ static inline short ws_cam_hi(short lo, short hi)
 #define ACT_R(v)               (v)
 #define CAM_LO(lo, hi)         (lo)
 #define CAM_HI(lo, hi)         (hi)
+#endif
+
+/* Phase 7 (P7-multiplayer.md R6: "the game's 80-sprite stop raised in native branches"): SPR_STOP is
+   the sprite table's stop (its sentinel slot, which links to itself) and SPR_START the slot a frame's
+   list starts from (the one after it). The original's 80 and $51; NATIVE with three or more players,
+   160 and 161 for the main table (then in players 3-4's region: xmen2_players34.h; the hardware gets
+   its first 80 and the platform draws the rest), 80 and $51 still for a player 3-4's own table. In MPW
+   and PC the original, token for token. */
+#if defined(XMEN2_NATIVE)
+#define SPR_STOP               ((short)(g_opt.players > 2 && !g_P34Active ? 160 : 80))
+#define SPR_START              ((short)(SPR_STOP + 1))
+#else
+#define SPR_STOP               80
+#define SPR_START              0x51
 #endif
 
 /* The cheat options (NATIVE, platform/native/options.cpp `lives`): START_LIVES is each player's

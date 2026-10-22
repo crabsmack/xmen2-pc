@@ -13,6 +13,14 @@ void XPlayer_StateRejoin(XPlayer *self)
 	unsigned short held;
 
 	partner = self == &g_Player1 ? &g_Player2 : &g_Player1;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: at the first other player in play */
+		XPlayer *o[3];
+
+		if (P34_OthersAlive(self, o))
+			partner = o[0];
+	}
+#endif
 	self->flags6 &= ~0x80;
 	if (XPlayer_CanRejoinAt(self, partner)) {
 		self->safeX = partner->safeX;

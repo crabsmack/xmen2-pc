@@ -13,6 +13,10 @@ XPlayer *Player_Nearest(Actor *self)
 
 	x = self->x;
 	y = self->y;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2)	/* phase 7: the nearest of the group in play (on ties the later; none: player 2) */
+		return P34_Nearest(x, y) ? P34_Nearest(x, y) : &g_Player2;
+#endif
 	if (!IS_ALIVE(&g_Player1))
 		return &g_Player2;
 	if (!IS_ALIVE(&g_Player2))

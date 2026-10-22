@@ -9,11 +9,11 @@ void Spr_InitLinks(void)
 {
 	register short i;
 
-	for (i = 0; i < 80; i++)
+	for (i = 0; i < SPR_STOP; i++)		/* SPR_STOP, SPR_START: 80, $51 (phase 7: raised, xmen2_mem.h) */
 		g_SpriteTable[i].link = i + 1;
-	g_SpriteTable[80].link = 80;
-	g_SpriteTable[81].link = 0;
+	g_SpriteTable[SPR_STOP].link = SPR_STOP;
+	g_SpriteTable[SPR_START].link = 0;
 	g_SprUnusedE224 = 0;
-	g_SprLast = 0x51;
+	g_SprLast = SPR_START;
 	g_SprUnusedE220 = 0;
 }

@@ -37,11 +37,21 @@ void Spr_EmitFlicker(Actor *obj, u8 *tiles, SprInst *base, char flicker, unsigne
 	f = SPR_FRAME(def = (SprDef *)spr->def, frame);
 	off = f->pieces;
 	{
+#if defined(XMEN2_NATIVE)
+		short avail = SPR_STOP - g_SprIndex;	/* phase 7: the raised stop; what it leaves out counted */
+
+		count = f->pieceCount;
+		if (avail < count) {
+			plat_spr_dropped(count - (avail > 0 ? avail : 0));
+			count = avail;
+		}
+#else
 		short avail = 80 - g_SprIndex;
 
 		count = f->pieceCount;
 		if (avail < count)
 			count = avail;
+#endif
 	}
 	if (count <= 0)
 		return;

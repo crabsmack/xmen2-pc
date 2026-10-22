@@ -18,6 +18,16 @@ short CursorInput_MoveRight(BoxInputActor *self)
 			slot->changing = 1;
 			slot->savedChar = n;
 		}
+#if defined(XMEN2_NATIVE)
+	} else if (P34_SlotX(slot)) {	/* phase 7: players 3 and 4, their own lives */
+		if (P34_SlotX(slot)->lives) {
+			if ((n = PlayerSelect_FirstFreeChar()) != -1) {
+				LOSE_LIFE(P34_SlotX(slot)->lives);
+				slot->changing = 1;
+				slot->savedChar = n;
+			}
+		}
+#endif
 	} else if (slot->player == 1) {
 		if (g_P1Lives) {
 			if ((n = PlayerSelect_FirstFreeChar()) != -1) {
@@ -33,6 +43,10 @@ short CursorInput_MoveRight(BoxInputActor *self)
 			slot->savedChar = n;
 		}
 	}
+#if defined(XMEN2_NATIVE)
+	if (P34_SlotX(slot))
+		P34_SlotChanged(slot);	/* no portrait to fly: the change is the slot's now */
+#endif
 	if (!slot->changing)
 		slot->busy = 0;
 	SET_STATE(self, CursorInput_StatePoll);

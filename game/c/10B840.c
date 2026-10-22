@@ -36,9 +36,16 @@ void SpaceA1_CamUpdate(register Camera *cam)
 				g_Player1.health = 0;
 			if (IS_ALIVE(&g_Player2))
 				g_Player2.health = 0;
+#if defined(XMEN2_NATIVE)
+			P34_KillAll();	/* phase 7: players 3-4 fall with the lift too */
+#endif
 			Scene_EndAfter(30);
 		}
 	}
 	(*cam->apply)(cam);
 	g_CamActive = IS_ALIVE(&g_Player1) || IS_ALIVE(&g_Player2) || g_BgLockToObj;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2 && P34_AliveCount())
+		g_CamActive = 1;
+#endif
 }

@@ -742,13 +742,17 @@ Nothing of the cartridge is in this package: the program reads the graphics, sou
 levels from your file each time it starts.
 
 Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
-Game controllers (players 1 and 2): D-pad or left stick; X = A, A = B, B = C, Start;
-LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
+Game controllers (players 1-4, in the order they are plugged in): D-pad or left stick; X = A,
+A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
 
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
     widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3)
+    players=4           three or four players (players=3 or 4; the original: 2): players 3
+                        and 4 join and choose at the player select as player 2 does, have
+                        their own panels, and the camera keeps everyone in view; their
+                        characters' music parts play on a second sound machine
 Cheats, also off unless you turn them on:
     lives=inf           lives are never spent (or lives=N: start a new game with N, 1-99)
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
@@ -763,6 +767,16 @@ or in xmen2.ini next to the program:
     widescreen=16:9
 While playing: F9 turns the in-between frames on and off, F10 the 16:9 view (from the next
 screen).  {exe} --options --json lists them.
+
+Online (rollback netplay, two to four players, each on their own machine with their own
+cartridge file). The host (seat 0) chooses the options that change the game (players,
+widescreen, full_rate_2p, the cheats) and every seat plays with them; high_fps is each seat's own.
+    host:   {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options players=2
+    others: {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
+lan / direct IP: every seat reaches the host's address (a forwarded UDP port across the
+internet).  hub: the host relays the others' traffic (3-4 seats).  ice: NAT traversal through a
+public STUN server, the seats swapping their connection details as files (--ice-signal-dir DIR,
+a shared folder).  --input-delay D (frames, default 5).  {exe} --netplay --json lists them.
 
 Licenses of the parts it is built from: LICENSES/.
 """

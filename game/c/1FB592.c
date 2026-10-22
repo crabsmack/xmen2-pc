@@ -68,8 +68,15 @@ char Spr_EmitPreLinked(SprInst *spr, long x, long y, short tile)
 			continue;
 		}
 		i = (u8)g_SprWritePtr->link;
+#if defined(XMEN2_NATIVE)
+		if (i == SPR_STOP) {	/* phase 7: the raised stop; the piece it leaves out counted */
+			plat_spr_dropped(1);
+			return -1;
+		}
+#else
 		if (i == 0x50)
 			return -1;
+#endif
 		g_SprIndex = i;
 		hw = g_SpriteTable + i;
 		g_SprWritePtr = hw;

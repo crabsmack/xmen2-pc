@@ -31,12 +31,27 @@ void Spr_EmitPre(SprInst *spr, long x, long y, short tile)
 #endif
 	if ((s8)spr->uploaded < 0)
 		return;
+#if defined(XMEN2_NATIVE)
+	/* phase 7: the raised stop (SPR_STOP) needs plain compares (the original's bytes hold to 127);
+	   the pieces the stop leaves out are counted (the mp counters' sprites_dropped) */
+	f = &def->frame[spr->uploaded];
+	count = SPR_STOP - g_SprIndex;
+	if (count <= 0) {
+		plat_spr_dropped((u8)f->pieceCount);
+		return;
+	}
+	if (count > (u8)f->pieceCount)
+		count = (u8)f->pieceCount;
+	else
+		plat_spr_dropped((u8)f->pieceCount - count);
+#else
 	count = 80 - g_SprIndex;
 	if (count <= 0)
 		return;
 	f = &def->frame[spr->uploaded];
 	if ((s8)count > f->pieceCount)
 		count = (u8)f->pieceCount;
+#endif
 	hw = g_SprWritePtr;
 	hflip = vflip = 0;
 	base = tile | (short)((unsigned long)x >> 19 & 0x1FFF) | ((u8)flags & 7) << 13;
@@ -49,7 +64,11 @@ void Spr_EmitPre(SprInst *spr, long x, long y, short tile)
 		base |= 0x1000;
 	}
 	p = (SprPiecePre *)((u8 *)def + (u16)f->pieces);
+#if defined(XMEN2_NATIVE)
+	for (n = 0; n < count; n++, p++) {	/* Spr_EmitPre_Piece */
+#else
 	for (n = 0; (s8)n < (s8)count; n++, p++) {	/* Spr_EmitPre_Piece */
+#endif
 		a = p->tile | ((base & 0xF800) ^ (p->attr & 0x1800));
 		size = p->attr & 0xF;
 		sx = p->x;

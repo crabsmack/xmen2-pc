@@ -204,6 +204,7 @@ static bool quiet(void) { return s_probe_pass == 1 || s_np_quiet; }
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
+    players_sync_row();   /* phase 7: the mp counters */
     if (xm_ram_peek8(0xC942)) {   /* g_InLevelLoop: a pass of Level_FrameLoop / PlayerSelect_Run */
         if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
         if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
@@ -300,9 +301,10 @@ static void report_counters(void)
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
                     "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
-                    "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s}\n",
+                    "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s}\n",
             (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory,
-            options_effective_json().c_str(), enhance, state.c_str(), machine_session() ? "true" : "false");
+            options_effective_json().c_str(), enhance, state.c_str(), machine_session() ? "true" : "false",
+            players_counters_json().c_str());
     fflush(stderr);
 }
 
@@ -416,7 +418,7 @@ uint16_t main_local_pad(uint64_t frame, int col)
 {
     uint16_t pad[4] = { 0, 0, 0, 0 };
     if (!s_script.empty()) script_pads(frame, pad);
-    else if (s_interactive) host_input(pad);
+    else if (s_interactive) { host_input(pad); return pad[0]; }
     return pad[col & 3];
 }
 void main_np_pads(const uint16_t rows[4]) { s_np_pads = true; memcpy(s_np_pad, rows, sizeof s_np_pad); }
@@ -582,6 +584,9 @@ int main(int argc, char **argv)
         if ((s_ftimes = fopen(p, "w"))) fprintf(s_ftimes, "frame,us\n");
     }
     machine_state_init();
+    players_state_init();
+    snd2_state_init();
+    players_video_init();
     state_counters(&s_sync_rows, sizeof s_sync_rows);
     state_counters(&s_two_player_frames, sizeof s_two_player_frames);
     state_counters(&s_two_player_step_frames, sizeof s_two_player_step_frames);

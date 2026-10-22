@@ -1113,6 +1113,117 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
 - **The LAN hub**, four seats (seat 0 relays, `rnet_session_start_lan_hub`), `scenario-options-menu`
   under `mid` (pads 3-4 unused until `players`): 0 desyncs on all four seats, the host's rows, late
   45/8/1/2 of 8,346.
+
+### M4: four players (2026-10-22, first batches)
+
+- **`players`** (options.cpp: 2, 3, 4; default 2; sealed online, R10). With 2 no four-player code runs
+  (every branch is `g_opt.players > 2`).
+- **R5, the region** (xmen2_mem.h `xm_region`, 64 KB at the addresses $00FExxxx the game never forms):
+  big-endian storage (the `mem<T>` path the ROM image takes, writable), so byte-wise code reads it as
+  the 68000 would; `xm::host`/`addr`/`in_game_memory` know it, a DMA reads it (machine.cpp). Layout in
+  `game/include/xmen2_players34.h`: players 3-4's objects ($F0 bytes), their `PlayerX` (player 2's
+  per-player globals, field for field), the select slots, their sprite tables, the owner tags. In the
+  snapshot (section `players34`, the 8 KB used) and the digest with three or more players.
+- **Players 3-4 run the game's own player code as player 2** (`game/runtime/players34.cpp`): their
+  objects have pad 1 and aren't `g_Player1`, so every `self == &g_Player1 ? <1's> : <2's>` choice
+  takes player 2's side, and while their code runs (`P34_Enter`/`P34_Leave` around their timer
+  (Timer_RunAll), their draw (DrawList_DrawAll), a hit by or on them (Collide_ObjVsList), their Init
+  and Activate) player 2's globals hold theirs: the pads, the character, the meter, the VRAM area,
+  carried health and lives, the start record, the splash, the sprite table's index, write pointer and
+  last. Swapped both ways, nested Enters of the same player only count. That spares the 107 files
+  that read `!self->pad ? g_Pad1X : g_Pad2X` and every `g_P2VramTile`/`HasMeter` choice.
+  Objects made while their code runs (shots, cards: Obj_FindFreeSlot) are tagged theirs and run and
+  draw in their context too.
+- **Lifecycle**: pads 3-4 read with 1-2 in the V-int in the game's format (6-button: plat_pad34) and
+  edged in Pad_Update; Game_ResetPlayers, Cerebro_Run (character from class, health back),
+  Game_SceneLoop (health carried, a life spent or out; one of them standing counts), the player
+  select (their slots and cursors: Start to join (a life), Left/Right among free characters, Start to
+  confirm; the change applies at once (no portrait to fly: P34_SlotChanged); "PRESS START"/"SELECTED"
+  two rows above players 1-2's; LIVES text; the unique-character rule over four (FREE_CHAR); the end
+  when every player with a character confirmed), Players_PlaceAtStart (60 and 90 px right of player
+  1), Pause_Check (their Start joins in SiberiaB1's opening, else pauses: a dead player waits for the
+  next select everywhere else, as players 1-2 do), the development switch's start at a stage with no
+  select before it (SentinelsB2, after SentinelsA1): Game_ResetPlayers runs the select first and resumes
+  the stage, as after a death (names: neither the stage nor the scene before it a "CerebroScreen"), the
+  object table (two slots past the pool's: no level loop sees them; Obj_FindFreeSlot's
+  kept one-past-the-end read would have taken player 3's object: stopped at the pool with players 3-4),
+  XPlayer_Init's index, Level_FrameLoop's count (all four, clamped to the original's 0-2: R9) and Start.
+- **The group** (R7): the camera's two-player track takes the extents of everyone in play
+  (Cam_TrackBoth), its one-player target falls back to a player 3-4 (Cam_FollowPlayer), Cam_Init counts
+  them; the tether holds each player within $11A px of the farthest other in x and $E0 of the lowest /
+  highest in y (XPlayer_TetherToPartner), PushingTetherEdge / DeathDone (the scene ends when nobody else
+  is in play) / StateRejoin (at another player in play); enemies' Player_Nearest / NearestLive (71
+  callers) take the nearest of the four. Enemies hurt them through the generic hit lists (no change:
+  XPlayer_Activate lists any player). About 80 enemy files still test players 1-2 by name (see R4).
+  The stage cameras with their own tracking do the same: XClone_CamArenaUpdate (the clone arenas) and
+  SavageA4_CamUpdate take the group's extents (P34_Extents), SpaceA1_CamUpdate stays active while a
+  player 3-4 is (and its lift's crash takes their health too), CloneA5_CamUpdate pushes them with
+  Brood's arena scroll (P34_ScrollPush). CloneA2's teleporter (Teleporter_StateWait/Teleport/Hold/
+  Arrive) sends and holds all of them; the loops over the players go through GROUP_N / GROUP_P
+  (xmen2_players34.h: the original's `i < 2` loop and its `i == 0 ? (p = &g_Player1) : (p =
+  &g_Player2)` token for token in MPW/PC, players 1-4 natively).
+- **R6, video** (platform/native/players.cpp): in a player 3-4 context `g_SpriteTable` is that
+  player's own 82-entry table in the region (a macro switch in xmen2_players34.h; with g_SprIndex,
+  g_SprWritePtr, g_SprLast swapped), so their sprites never take players 1-2's 80, and nothing is
+  dropped for them; the game's own sprite code fills it (Spr_InitLinks/BeginFrame/EndFrame run in
+  their context each frame). A DMA (VDP_QueueDma: copied at once) or VRAM port write in their context
+  into player 2's character area or HUD area ($FA00-$FCFF) goes to their own tiles (`s_chr`, `s_hud`:
+  snapshot section `p34video`). The VDP model's host-sprite hook draws their tables after the hardware
+  sprites (so behind them), each tile from their own tiles or VRAM, palette and priority as the SAT's.
+- **R6a, the HUD**: players 3-4's panels beside players 1 and 2's (64 px in): player 3's made from
+  player 1's art (Art_HUDTiles), player 4's from player 2's, the old digit's columns cleared and "3" /
+  "4" drawn from the game's 1-bit font (Art_RegionFont) at twice its size in the panel's light colour
+  with a dark outline; health and meter strips as HUD_UpdateHealthBars draws them (Art_HUDTiles2/3),
+  every frame (plat_p34_hud).
+- **R6, the raised stop**: with three or more players the main sprite table moves to the region
+  (P34_SPR_MAIN, 160 entries) and the game's stop is SPR_STOP = 160 (xmen2_mem.h; 80 in players 3-4's
+  own tables and with one or two players, the original); every emitter compares against it and counts
+  what it leaves out (plat_spr_dropped: `sprites_dropped`). The VDP gets the main table's first 80 as
+  the hardware's (links past 79 cut to 0 around each render: players_frame_setup / restore) and the host
+  draws entries 80 and on with players 3-4's tables.
+- **R9, the second sound machine** (platform/native/sound2.cpp): its own Z80 with the GEMS driver
+  (copied from the ROM as Z80_LoadDriver does), YM2612 timers as machine.cpp's, and its own YM2612 and
+  PSG (the engine's chip wrappers compiled a second time under snd2_ names: snd2_chips.cpp,
+  snd2_psg.c). It hears the first machine's commands at the ring: machine.cpp hands every Z80 RAM byte
+  the game writes to snd2_ring_write, which parses the bytes the write index ($36) moves past ($FF, the
+  command, its arguments). It takes Snd_Init's addresses, play / stop of the songs with dispatchers
+  ($27, $25, $48, and $5E/$5F, which start $64), stop all, pause, resume and the variables, with $B/$C
+  = players 3's and 4's voices (P34_MusicVoice) and $A = 2; no sound effects. Every track slot whose song
+  isn't a part song is muted (+6 bit 1) whenever the driver writes the slot, so only the parts sound.
+  It runs while a player 3 or 4 is in the game (their character set; g_P34InPlay once the region is
+  set up), started then with the driver, the init, the variables and the song playing (late, if the
+  song began before), stopped when none is. On the first machine $A counts players 3-4 too, at most 2
+  (Music_SetPlayerParams: P34_MusicCount). Key-ons (YM $28 with operators; a PSG channel's volume from
+  silent) are counted by the song of the track owning the voice (the pools at $1772 / $179D / $17B3:
+  +3 the track). Measured on the stage inputs (players 4): $27 685 part key-ons, $25 1,457, $48 911,
+  $64 643 (CloneA1) and 138 (CloneA2), 0 base key-ons on all; with pads 3-4 emptied `frames` is 0 on
+  every input. The host adds its samples to the first machine's (snd2_mix, saturating). Snapshot
+  section `snd2` (the machine as one struct, its queued chip writes, the chips), and with three or more
+  players in the canonical digest (snd2_digest_fields).
+- **The mp counters** read the game's state as the 68000 sees it (objects' flags and positions, the
+  camera, the sprite table, players 3-4's tables in the region); `drawn` from the draw list's owner
+  marks (players 1-2) or a non-HUD entry in their table (3-4); `hud_missing` only while the HUD is on
+  (g_HudOn); `XMEN2_MP_LOG=1` logs scene / level-loop / in-play changes by frame.
+- **Stage inputs** (`tools/mp_inputs.py`, game/mp_inputs/): a probe presses each pad's Start in turn
+  (boot.input: pads 3-4 before 2, as SiberiaB1's opening ends when player 2 joins) and reads the log;
+  the input keeps the presses up to the select's end, then plays (three patterns, each with the pads
+  on their own phases or all four in step; the one meeting M4's shares kept, else the one whose
+  worst-off player does best). A dead player stays out until the stage ends, so where enemies kill
+  players early the full 3,000 frames of play can't keep everyone in: there the longest of 2,000 / 1,400
+  / 900 frames that does (avalonA3, banimazaA2, savageA4, space, spaceA1: 1,400-2,000; cloneA2: 900).
+  With players 4, 20 of 23 meet every bound. Not met: boot (SiberiaB1: player 1 in play 44%, every
+  player 3-4% off view: feet below the view's bottom in the snow), avalon (AvalonB1's opening pan:
+  191 frames off view for players 1-2, the same 191 with `players` 2, the original), cloneA5 (Brood
+  kills players 1-2 in under 500 frames: 35% in play; its attacks aim at players 1-2 by name).
+  docs/QUESTIONS.md asks about the first two.
+- **R4, the cost of keeping the byte matches** (35 game files so far, the first batches): 444 lines
+  added, 8 changed (`git diff --stat`), all in `#if defined(XMEN2_NATIVE)` blocks, most
+  `if (g_opt.players > 2) { ... }` next to the original line they extend, the logic in
+  game/runtime/players34.cpp (~500 lines of C++: the context swap, the select's and the game loop's
+  helpers, the group, the sprite frame and HUD) so most branches are 2-6 lines. Macros: FREE_CHAR in the
+  three free-character files (the original condition token for token in MPW/PC), the g_SpriteTable
+  switch (a header). Readable: each branch says what players 3-4 add, the original stays untouched
+  above or below it. The MPW gate checks every one still byte-matches.
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

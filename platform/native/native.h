@@ -36,6 +36,20 @@ void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, in
 std::string present_counters_json(void);
 #include <vector>
 void        ws_digest_fields(std::vector<uint8_t> *out);   /* widescreen.cpp: its part of the canonical digest */
+/* players.cpp (phase 7: four players on the platform side, the mp counters) */
+void        players_spr_owner(const void *owner, int idx);
+void        players_spr_dropped(int n);
+void        players_sync_row(void);
+void        players_state_init(void);
+int         players_p34_running(void);
+std::string players_counters_json(void);
+bool        players_vram_write(uint16_t a, uint16_t w);   /* a player 3-4's VRAM port write, into its tiles */
+void        players_video_init(void);
+void        players_frame_setup(void);   /* before a frame is rendered: VRAM's sprite chain ended at 80 */
+void        players_frame_restore(void);
+/* sound2.cpp (phase 7 R9: the second sound machine, players 3-4's music parts) */
+void        snd2_digest_fields(std::vector<uint8_t> *out);
+std::string snd2_counters_json(void);
 extern "C" {
 #endif
 
@@ -59,6 +73,7 @@ void     machine_power_on(void);         /* power-on, then runner frame 1 begins
 void     machine_run(void);              /* the game on its fiber, the host between its sync points; never returns */
 void     machine_start(void);            /* the game's fiber, made (netplay runs the ticks itself) */
 void     machine_set_render(int on);     /* 0: ticks render no frame (a rollback's replay) */
+uint16_t machine_peek16(uint32_t a);     /* a word of the 68000 bus (ROM, work RAM, players 3-4's region) */
 void     machine_tick(void);             /* the host: one more runner frame, to the game's next sync point */
 void     machine_state_init(void);       /* register the snapshot's sections (state.cpp) */
 uint64_t machine_digest(void);           /* the canonical digest of the state now (P7 "Definitions") */
@@ -75,6 +90,10 @@ uint64_t machine_frame_no(void);
 int      machine_screen_width(void);
 int      machine_screen_height(void);
 uint64_t machine_frame_tick_waits(void); /* V-ints taken by IRQ_WAIT (plat_wait_vint), outside a sync point */
+void     snd2_ring_write(const uint8_t *ram, uint32_t off, uint8_t v);   /* sound2.cpp: the game wrote Z80 RAM */
+void     snd2_frame(void);                /* ... the first machine's Z80 frame is done: the second's */
+void     snd2_mix(int16_t *fm, size_t fm_n, int16_t *psg, size_t psg_n, int mute);   /* host_audio */
+void     snd2_state_init(void);
 
 /* the host side (main.cpp), called by the machine */
 #define PLAT_AUDIO_PSG 4                 /* audio/event_queue.h AUDIO_PORT_PSG; 0-3 the YM2612's ports */

@@ -20,8 +20,18 @@ void Timer_RunAll(void)
 			g_TimerCurrent = t;
 #if defined(XMEN2_NATIVE)
 			plat_spr_owner(t);	/* phase 6 R4: the sprites it writes are this timer's */
-#endif
+			{	/* phase 7: a player 3-4's timer (its frame) runs in its context */
+				register int k = P34_Index(arg);
+
+				if (k)
+					P34_Enter(k);
+				(*func)(arg, t);
+				if (k)
+					P34_Leave(k);
+			}
+#else
 			(*func)(arg, t);
+#endif
 		}
 	}
 	for (t = g_TimerList; t; t = t->next) {

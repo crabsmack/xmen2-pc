@@ -12,8 +12,8 @@ short Teleporter_StateHold(Teleporter *self)
 	long i;
 	XPlayer *p;
 
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2)))
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p)))
 			STOP_MOVING(p);
 	}
 	if (self->countdown == 0) {

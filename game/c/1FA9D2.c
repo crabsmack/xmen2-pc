@@ -6,7 +6,7 @@
 
 void Spr_EndFrame(void)
 {
-	g_SprIndex = g_SprIndex == 80 ? 79 : g_SprIndex;
+	g_SprIndex = g_SprIndex == SPR_STOP ? SPR_STOP - 1 : g_SprIndex;	/* 80 (phase 7: raised, xmen2_mem.h) */
 	g_SpriteTable[g_SprIndex].link = 0;
 	g_SprLast = g_SprIndex;
 }

@@ -205,4 +205,7 @@ extern "C" void xm_mem_state_init(void)
     state_section_range("arena", xm_tags, sizeof xm_tags);
     state_section_range("arena", &xm::s_sp, sizeof xm::s_sp);
     state_section_range("arena", &xm::g_d0, sizeof xm::g_d0);
+    /* phase 7 R5: players 3-4's region (the part xmen2_players34.h lays out: XM_REGION_USED) */
+    extern uint8_t xm_region[0x10000];
+    state_section_range("players34", xm_region, 0x2000);
 }

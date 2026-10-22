@@ -33,8 +33,8 @@ short Teleporter_StateTeleport(register Teleporter *self)
 	lockY = 0;
 	nx = (rx + dx) << 8;
 	ny = (ry + dy) << 8;
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2))) {
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p))) {
 			Obj_Detach(p);
 			p->x = nx;
 			if (p == &g_Player2) {
@@ -44,6 +44,10 @@ short Teleporter_StateTeleport(register Teleporter *self)
 					off = -off;
 				p->x += off;
 			}
+#if defined(XMEN2_NATIVE)
+			else if (P34_Index(p))	/* phase 7: players 3-4 further along, as player 2 is */
+				p->x += (dx < 0 ? -0x1000L : 0x1000L) * (P34_Index(p) - 1);
+#endif
 			p->y = ny;
 			STOP_MOVING(p);
 			p->hitCooldown = 0x3C;

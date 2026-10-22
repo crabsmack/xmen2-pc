@@ -59,6 +59,7 @@ static std::vector<Mark> s_marks;
 
 extern "C" void plat_spr_owner(const void *owner)
 {
+    players_spr_owner(owner, s16at(0xFFE21E));   /* phase 7: the mp counters' `drawn` */
     if (!g_opt.high_fps) return;
     int i = s16at(0xFFE21E);
     s_marks.push_back({ (uintptr_t)owner, i == 0x51 ? -1 : i, 0, 0, 0 });
