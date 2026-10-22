@@ -600,4 +600,15 @@ static inline short ws_cam_hi(short lo, short hi)
 #define CAM_HI(lo, hi)         (hi)
 #endif
 
+/* The cheat options (NATIVE, platform/native/options.cpp `lives`): START_LIVES is each player's
+   lives at a new game (the original's 9, or the option's count), LOSE_LIFE(g_P1Lives) spends one
+   (never with lives=inf). In MPW and PC the original, token for token. */
+#if defined(XMEN2_NATIVE)
+#define START_LIVES            ((short)(g_opt.lives > 0 ? g_opt.lives : 9))
+#define LOSE_LIFE(v)           do { if (g_opt.lives >= 0) --(v); } while (0)
+#else
+#define START_LIVES            9
+#define LOSE_LIFE(v)           --(v)
+#endif
+
 #endif /* XMEN2_MEM_H */

@@ -12,6 +12,8 @@ typedef struct XmOptions {
     int full_rate_2p;   /* R3: two players on the one-player stepping, no frame-tick wait */
     int high_fps;       /* R4: display rate in Hz (0 = off) */
     int widescreen;     /* R5-R7: 1 = 16:9 */
+    int lives;          /* cheat: lives at a new game (0 = the original's 9), -1 = never spent */
+    int magneto;        /* cheat: Magneto selectable from the start (the original: from Bani Maza) */
 } XmOptions;
 
 extern XmOptions g_opt;

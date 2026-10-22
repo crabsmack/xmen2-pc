@@ -46,7 +46,7 @@ void Game_SceneLoop(void)
 		p2Out = g_P2Health > 0 ? 0 : 1;
 		if (p1Out && g_P1CharIndex != -1) {
 			if (g_P1Lives) {
-				--g_P1Lives;
+				LOSE_LIFE(g_P1Lives);
 				g_P1Health = 0x700;
 			} else {
 				g_P1Health = 0;
@@ -57,7 +57,7 @@ void Game_SceneLoop(void)
 		}
 		if (p2Out && g_P2CharIndex != -1) {
 			if (g_P2Lives) {
-				--g_P2Lives;
+				LOSE_LIFE(g_P2Lives);
 				g_P2Health = 0x700;
 			} else {
 				g_P2Health = 0;

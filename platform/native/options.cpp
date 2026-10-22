@@ -22,11 +22,11 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0 };
 
 struct OptDef {
     const char *name;
-    const char *values[6];   /* the first is the default (off); null-terminated */
+    const char *values[8];   /* the first is the default (off); null-terminated */
     const char *what;
     std::string value;
 };
@@ -36,6 +36,10 @@ static OptDef s_defs[] = {
     { "high_fps", { "0", "120", "144", "165", "240", nullptr },
       "display rate in Hz with frames interpolated between logic frames, 0 = off (R4)", "0" },
     { "widescreen", { "0", "16:9", nullptr }, "16:9 view in levels, 0 = off (R5-R7)", "0" },
+    /* cheats (the user, 2026-10-21; not phase-6 criteria) */
+    { "lives", { "0", "inf", "1", "5", "20", "99", nullptr },
+      "cheat: lives at a new game (any 1-99; 0 = the original's 9), inf = lives are never spent", "0" },
+    { "magneto", { "0", "1", nullptr }, "cheat: Magneto selectable from the start, 0 = from Bani Maza", "0" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path;
@@ -48,16 +52,16 @@ static OptDef *find(const std::string &k)
     return nullptr;
 }
 
-/* high_fps takes any rate from 61 to 1000 Hz besides the listed ones */
+/* high_fps takes any rate from 61 to 1000 Hz besides the listed ones, lives any count 1-99 */
 static bool valid(const OptDef &d, const std::string &v)
 {
     for (int i = 0; d.values[i]; i++)
         if (v == d.values[i]) return true;
-    if (!strcmp(d.name, "high_fps")) {
-        char *e;
-        long hz = strtol(v.c_str(), &e, 10);
-        return !v.empty() && !*e && hz >= 61 && hz <= 1000;
-    }
+    char *e;
+    long n = strtol(v.c_str(), &e, 10);
+    if (v.empty() || *e) return false;
+    if (!strcmp(d.name, "high_fps")) return n >= 61 && n <= 1000;
+    if (!strcmp(d.name, "lives")) return n >= 1 && n <= 99;   /* the select screen shows 2 digits */
     return false;
 }
 
@@ -113,6 +117,9 @@ static void apply(void)
     g_opt.full_rate_2p = find("full_rate_2p")->value == "1";
     g_opt.high_fps = atoi(find("high_fps")->value.c_str());
     g_opt.widescreen = find("widescreen")->value == "16:9";
+    const std::string &l = find("lives")->value;
+    g_opt.lives = l == "inf" ? -1 : atoi(l.c_str());
+    g_opt.magneto = find("magneto")->value == "1";
 }
 
 static std::string json_str(const std::string &s)

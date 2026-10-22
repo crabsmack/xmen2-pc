@@ -1,7 +1,8 @@
 /* PlayerSelect_Run - the player select screen, until the players have confirmed their
  * characters; then the players take them.
  *
- * Six portraits (Tbl_PlayerSelectSlots6) before the Magneto stage, seven after it (Slots7: a
+ * Six portraits (Tbl_PlayerSelectSlots6) before the Magneto stage, seven after it or with the
+ * native magneto option (Slots7: a
  * count, then the frames' positions); with six, a player who was Magneto gets another random
  * character (Rand_Next % 6) that the other player doesn't have. One select slot per player
  * (BigSprite, on this frame; g_SceneVar3B28 / 3B2C): its character (g_P1CharIndex / g_P2CharIndex,
@@ -75,7 +76,11 @@ void PlayerSelect_Run(void)
 #endif
 	g_P1Slot = SLOT1;
 	g_P2Slot = SLOT2;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.magneto || g_ScnCerebroBaniMaza <= g_SceneIndex)	/* the magneto option: from the start */
+#else
 	if (g_ScnCerebroBaniMaza <= g_SceneIndex)
+#endif
 		table = (SelectPos *)CODEPTR(Tbl_PlayerSelectSlots7);
 	else {
 		table = (SelectPos *)CODEPTR(Tbl_PlayerSelectSlots6);

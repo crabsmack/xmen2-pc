@@ -936,6 +936,22 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   for the 16:9 view on or off from the next screen (the camera, the streamer and what activates
   follow it, so it starts with a scene). The window opens 16:9 when widescreen is on at start.
 
+### Cheat options (2026-10-21, the user's request; not phase-6 criteria)
+- `lives`: `0` (the original: 9 each at a new game, Game_ResetPlayers), `1`-`99` (the start count;
+  the select screen shows two digits), `inf` (never spent). The game has no continues: a player
+  spends a life at each select of a character (PlayerSelect_* 067FCA/068078/068126, the join
+  006242/0062E4) and Game_SceneLoop (005CC6) spends one for a player out of a stage with a
+  character, else the game is over. Native-only macros in xmen2_mem.h: `START_LIVES` at the two
+  starts, `LOSE_LIFE(g_P1Lives)` at the 12 decrements (MPW/PC: `9`, `--(v)`; 3034/3034 matches
+  kept). The game's own cheat code (15C42A) still sets 99.
+- `magneto=1`: PlayerSelect_Run uses Tbl_PlayerSelectSlots7 (seven portraits) from the start;
+  the original from the Bani Maza briefing (`g_ScnCerebroBaniMaza <= g_SceneIndex`). Checked: the
+  select shows Magneto, LIVES 9 with `inf` and 2 with `lives=3` (8 originally), and Magneto plays
+  Sentinels. A death with `inf` was not played through.
+- `--handover` (played runs): an input script's frames, then the pads. With XMEN2_DEBUG_SCENE=1 and
+  a script that presses Start through the briefing, Right (Cyclops) and Start twice, it drops the
+  player into Sentinels as Cyclops.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

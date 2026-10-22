@@ -36,7 +36,7 @@ short CursorInput_Confirm(BoxInputActor *self)
 			Cerebro_PrintText(STR(Str_Selected_06824E, "SELECTED   "), 0);
 		} else if (g_P1Lives) {
 			if ((n = PlayerSelect_FirstFreeChar()) != -1) {
-				--g_P1Lives;
+				LOSE_LIFE(g_P1Lives);
 				slot->changing = 1;
 				slot->savedChar = n;
 			}
@@ -48,7 +48,7 @@ short CursorInput_Confirm(BoxInputActor *self)
 		Cerebro_PrintText(STR(Str_Selected, "   SELECTED"), 1);
 	} else if (g_P2Lives) {
 		if ((n = PlayerSelect_FirstFreeChar()) != -1) {
-			--g_P2Lives;
+			LOSE_LIFE(g_P2Lives);
 			slot->changing = 1;
 			slot->savedChar = n;
 		}

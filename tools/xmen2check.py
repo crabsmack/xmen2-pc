@@ -719,6 +719,9 @@ Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
     widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3)
+Cheats, also off unless you turn them on:
+    lives=inf           lives are never spent (or lives=N: start a new game with N, 1-99)
+    magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
 on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
 or in xmen2.ini next to the program:
     [options]

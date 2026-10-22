@@ -42,6 +42,6 @@ char Player1_StartLife(void)
 		break;
 	}
 	g_P1CharIndex = me;
-	--g_P1Lives;
+	LOSE_LIFE(g_P1Lives);
 	return 1;
 }

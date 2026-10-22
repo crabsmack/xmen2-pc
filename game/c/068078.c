@@ -21,14 +21,14 @@ short CursorInput_MoveRight(BoxInputActor *self)
 	} else if (slot->player == 1) {
 		if (g_P1Lives) {
 			if ((n = PlayerSelect_FirstFreeChar()) != -1) {
-				--g_P1Lives;
+				LOSE_LIFE(g_P1Lives);
 				slot->changing = 1;
 				slot->savedChar = n;
 			}
 		}
 	} else if (g_P2Lives) {
 		if ((n = PlayerSelect_FirstFreeChar()) != -1) {
-			--g_P2Lives;
+			LOSE_LIFE(g_P2Lives);
 			slot->changing = 1;
 			slot->savedChar = n;
 		}
