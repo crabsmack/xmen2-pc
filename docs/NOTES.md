@@ -972,7 +972,14 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   the hover (the original); on, 2.76 px/frame right and left with the same bob (y equal frame for
   frame); an air shot fired at full speed slows him to 0.44 px/frame over its 15 frames, then he
   accelerates again; the bolt flies. Gate passes (TAS 6000 sync points equal, verify 0 mismatches).
-  Not played by hand yet; landing, walls and the two-player tether while hover-moving not tested.
+  The user played it ("magneto fly feels good"); landing, walls and the two-player tether while
+  flying were not tested on purpose.
+- **Native window across monitors** (81acd93): moving the game to another monitor froze and garbled
+  the picture while the game and music ran on (SDL 2.28's default Direct3D 9 renderer loses its
+  device). The renderer is now direct3d11 on Windows, rebuilt on SDL_RENDER_DEVICE_RESET or 30
+  failed draws in a row. Checked only that it opens and draws on direct3d11: the monitor change
+  itself has not been re-tried. If it freezes again, stderr's `[native] renderer:` line says which
+  renderer it had.
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

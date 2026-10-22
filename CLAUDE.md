@@ -107,7 +107,11 @@ XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the 
 ```
 
 Harness (NOTES.md "Phase 5 harness"). `XMEN2_REFS` = the phase-4 `build/phase_traces` (inputs and
-D1 REFDIRs; today `../xmen2disasm/build/phase_traces`). The
+D1 REFDIRs; today `../xmen2disasm/build/phase_traces`, harness.py's default with
+`XMEN2_DISASM=../xmen2disasm`; the phase4-decomp worktree path is gone, 2026-10-22). A fresh
+worktree here: `git submodule update --init --recursive segagenesisrecomp` only (recursing into
+xmen2disasm fetches emu/gpgx from GitHub and fails offline; nothing here needs it), and
+`XMEN2_ROM=../xmen2disasm/xmen2.bin`; its first gate run builds everything (~5 min). The
 runners are reproducible (CMakeLists `XMEN2_REPRODUCIBLE`, /Brepro): same sources, same SHA-1, so
 stepped-gen reference rows are cached by runner hash in `.git/xmen2-cache` (all worktrees).
 ```
