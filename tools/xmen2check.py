@@ -724,6 +724,9 @@ Cheats, also off unless you turn them on:
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
     start_char=magneto  the character you start Siberia with (beast, cyclops, gambit,
                         nightcrawler, psylocke, wolverine, magneto; the original: at random)
+Gameplay tweaks, off unless you turn them on:
+    magneto_hover=1     Magneto moves left and right while hovering, at his walking speed
+                        (the original: he can only turn)
 on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
 or in xmen2.ini next to the program:
     [options]

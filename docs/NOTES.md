@@ -959,6 +959,20 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   every time. Played runs now read the line the beam would be on from the wall clock (traced runs
   keep 0, so every trace is unchanged): four played starts gave Cyclops, Wolverine, Wolverine,
   Nightcrawler. It is the only V-counter read in the game.
+
+### Gameplay tweaks (2026-10-22, the user's balance prototype; not phase-6 criteria)
+- `magneto_hover=1`: hovering (air A, Tbl_MagnetoAnim) with Left/Right held, Magneto_AirSteer
+  (1CDB32) runs Magneto_HoverDamp(0, 1) (the bob and the facing, no x stop) and then
+  XPlayer_SteerFacing with his walking speed and acceleration (walkMaxVx 706 = 2.76 px/frame,
+  walkAccel 80: 9 frames to full speed; the opposite direction zeroes vx at once, as air
+  steering does). Let go, the original damping brakes him (-vx/8 a frame, stop under $40). The
+  hover stays unlimited, vertical stays the bob, and air shots still damp him (StateAirShot /
+  StateAirShotEnd, untouched). Native-only branch: 1CDB32 still byte-matches.
+- Checked (start_char=magneto, Siberia, headless): option off, x stays put while Right is held in
+  the hover (the original); on, 2.76 px/frame right and left with the same bob (y equal frame for
+  frame); an air shot fired at full speed slows him to 0.44 px/frame over its 15 frames, then he
+  accelerates again; the bolt flies. Gate passes (TAS 6000 sync points equal, verify 0 mismatches).
+  Not played by hand yet; landing, walls and the two-player tether while hover-moving not tested.
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

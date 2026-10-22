@@ -22,7 +22,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0 };
 
 struct OptDef {
     const char *name;
@@ -42,6 +42,9 @@ static OptDef s_defs[] = {
     { "magneto", { "0", "1", nullptr }, "cheat: Magneto selectable from the start, 0 = from Bani Maza", "0" },
     { "start_char", { "0", "beast", "cyclops", "gambit", "nightcrawler", "psylocke", "wolverine", "magneto", nullptr },
       "cheat: player 1's character in Siberia at power-on, 0 = at random (the original)", "0" },
+    /* gameplay tweaks (the user, 2026-10-22; a balance prototype, not a phase-6 criterion) */
+    { "magneto_hover", { "0", "1", nullptr },
+      "tweak: Magneto moves left/right at his walking speed while hovering, 0 = he only turns (the original)", "0" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path;
@@ -126,6 +129,7 @@ static void apply(void)
     g_opt.start_char = 0;
     for (int i = 1; sc->values[i]; i++)   /* the values after "0" in g_P1CharIndex's order */
         if (sc->value == sc->values[i]) g_opt.start_char = i;
+    g_opt.magneto_hover = find("magneto_hover")->value == "1";
 }
 
 static std::string json_str(const std::string &s)

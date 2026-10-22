@@ -7,7 +7,10 @@
  * Falling: no animation; gravity 70 with Down held, the normal gravity with C held or when moving
  * down, else the released-jump gravity; releasing Left/Right sets the coasting speed the way he
  * moves; once countdown has run out Left/Right steer (XPlayer_SteerFacing with the air speed and
- * acceleration); then the frame for the speed (SetAirFrame, slot +$7E). */
+ * acceleration); then the frame for the speed (SetAirFrame, slot +$7E).
+ * Native magneto_hover option: hovering with Left/Right held, he also moves that way at his walking
+ * speed and acceleration (XPlayer_SteerFacing after the damping, which keeps the bob); let go, the
+ * damping brakes him as in the original. */
 #include "xmen2.h"
 
 void Magneto_AirSteer(Magneto *self)
@@ -22,6 +25,15 @@ void Magneto_AirSteer(Magneto *self)
 		Obj_SetAnim(self, CODEPTR(Tbl_MagnetoAnim));
 	}
 	if (self->anim == CODEPTR(Tbl_MagnetoAnim)) {
+#if defined(XMEN2_NATIVE)
+		if (g_opt.magneto_hover
+		    && (!self->pad ? g_Pad1Held & g_PadMaskLeftRight : g_Pad2Held & g_PadMaskLeftRight)) {
+			Magneto_HoverDamp(self, 0, 1);
+			XPlayer_SteerFacing((XPlayer *)self, self->charRec->walkMaxVx, self->charRec->walkAccel,
+					    !self->pad ? g_Pad1Held & g_PadMaskRight : g_Pad2Held & g_PadMaskRight);
+			return;
+		}
+#endif
 		Magneto_HoverDamp(self, 1, 1);
 		return;
 	}
