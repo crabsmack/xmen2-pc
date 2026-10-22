@@ -25,6 +25,10 @@ void plat_ws_cerebro(int on);   /* Cerebro_Run: a Cerebro screen is running (4:3
 /* high frame rate (platform/native/present.cpp): the sprites written from now on are owner's (a
    draw-list node's object, a timer, a scene hook), for matching them between frames (R4) */
 void plat_spr_owner(const void *owner);
+/* ... and the pieces an emitter writes from now on are sprite instance spr's, drawn at (x, y) in
+   hardware sprite coordinates: each instance moves by its anchor's step, whatever its frame of
+   animation does to the pieces */
+void plat_spr_anchor(const void *spr, long x, long y);
 
 /* development tests (options.cpp): XMEN2_DEBUG_SCENE=n makes scene n the first one of a new game
    (Game_ResetPlayers); without it, `scene` (the original) */

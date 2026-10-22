@@ -905,13 +905,27 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   timer (Timer_RunAll), and in Level_FrameLoop the scene's frame hook, the hits, the camera, the
   scroll and palette hooks and the draw hook; in PlayerSelect_Run its hooks, the portrait frames
   and the lives. The platform reads `g_SprIndex` at each mark; slots fill in order from 0, so
-  each slot has its owner and its piece number. A sprite's step: its own (the same owner and
-  piece, the same size), else its owner's (the median of the owner's own steps: a frame of
-  animation that changes the pieces moves with its object). A sprite written outside every owner
-  (the pause screen's text) is matched with the same slot, tile and size in R_(k-1).
+  each slot has its owner. The six sprite emitters (Spr_EmitPre/Stream, their Clip and Linked
+  forms: 1FB592, 1FB75A, 1FB8A2, 1FBA0C, 1FBB5E, 1FBCCE) also announce the sprite instance whose
+  pieces they write and its anchor (`plat_spr_anchor(spr, x, y)`, hardware coordinates; the linked
+  raw-tile emitter gets x, y without the $80 and adds it). A sprite's step is its instance's anchor
+  step, so a frame of animation that rearranges the pieces changes in place, as at 60 Hz; a shot
+  that travels by animation frames at a fixed anchor (the Sentinels drones' laser) advances at
+  60 Hz too. Pieces written by no emitter move with their owner, by the one step that lines up most
+  of its pieces with R_(k-1)'s (the same size and tile word, else the same size; at least a third
+  of them, of equal steps the shortest). A sprite written outside every owner (the pause screen's
+  text) is matched with the same slot, tile and size in R_(k-1).
+- **The playtest (2026-10-21) found the first matching wrong**: it paired each piece with the
+  owner's piece of the same index and size, so when an animation frame changed, a piece slid from
+  a different body part up to 48 px away: ghost limbs to the left and right of an idling Cyclops,
+  and part of him gone in his charged blast (its dashes, which the game swaps between two places
+  28 px apart every frame, also slid back and forth). Rigid steps per owner fixed the ghosts but
+  left a whole-body animation change (the logo's tumbling figure) without a step: 91.8% on the TAS;
+  the anchors give 99.3%. Repro: `XMEN2_DEBUG_SCENE=1`, Cyclops (Right at the select), idle, then A
+  held 90 frames; `XMEN2_PRESENT_SHOTS=FROM-TO` + `XMEN2_DUMP_DIR` write the in-between frames.
 - **Measured** on the TAS at 144 Hz: whole frames equal P7's (`--fb`) and at the 60 Hz times,
-  96.2% of the non-HUD sprites on gameplay frames interpolated, render p99 1.6-1.8 ms (the 4:3
-  render ~1.1 ms). `--present-log` writes `present.csv`; `--flip N` inverts player 1's C in
+  99.3% of the non-HUD sprites on gameplay frames interpolated (96.2% with the first matching),
+  render p99 0.76 ms in that trace (1.2 ms in phase.py's run, alongside other work). `--present-log` writes `present.csv`; `--flip N` inverts player 1's C in
   runner frames N to N+7. The `present` counters add `unmatched` (no owner, new piece, size,
   snap) and the fallback matches, for diagnosing.
 - **The latency probes** don't see the flip on most of the native TAS (queued in xmen2disasm

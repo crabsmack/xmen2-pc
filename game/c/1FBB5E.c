@@ -21,6 +21,9 @@ void Spr_EmitStreamClip(SprInst *spr, long x, long y, short tile)
 	short n, base, t, a, size, sx, sy;
 	char hflip, vflip;
 
+#if defined(XMEN2_NATIVE)
+	plat_spr_anchor(spr, x, y);	/* phase 6 R4: the pieces written next are spr's, at its anchor */
+#endif
 	if (g_SprIndex >= 80)
 		return;
 	if ((s8)spr->uploaded < 0)
