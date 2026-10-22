@@ -961,7 +961,7 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   Nightcrawler. It is the only V-counter read in the game.
 
 ### Gameplay tweaks (2026-10-22, the user's balance prototype; not phase-6 criteria)
-- `magneto_hover=1`: hovering (air A, Tbl_MagnetoAnim) with Left/Right held, Magneto_AirSteer
+- `magneto_flight=1`: hovering (air A, Tbl_MagnetoAnim) with Left/Right held, Magneto_AirSteer
   (1CDB32) runs Magneto_HoverDamp(0, 1) (the bob and the facing, no x stop) and then
   XPlayer_SteerFacing with his walking speed and acceleration (walkMaxVx 706 = 2.76 px/frame,
   walkAccel 80: 9 frames to full speed; the opposite direction zeroes vx at once, as air

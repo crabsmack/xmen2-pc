@@ -15,7 +15,7 @@ typedef struct XmOptions {
     int lives;          /* cheat: lives at a new game (0 = the original's 9), -1 = never spent */
     int magneto;        /* cheat: Magneto selectable from the start (the original: from Bani Maza) */
     int start_char;     /* cheat: player 1's character at power-on, 1 + g_P1CharIndex (0: at random) */
-    int magneto_hover;  /* tweak: Magneto moves left/right at his walking speed while hovering */
+    int magneto_flight; /* tweak: Magneto moves left/right at his walking speed while hovering */
 } XmOptions;
 
 extern XmOptions g_opt;
