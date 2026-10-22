@@ -8,6 +8,10 @@
  *   LB = X, Y = Y, RB = Z, Back = Mode.  Esc or closing the window quits.
  * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
  * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen).
+ * The renderer is Direct3D 11 on Windows where it can be (SDL's default, Direct3D 9, loses its
+ * device when the window moves to another monitor or the displays change, and the picture froze
+ * while the game and its music went on); a device reset or 30 failed draws in a row rebuild the
+ * renderer and its texture.
  */
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
@@ -33,6 +37,31 @@ static SDL_GameController *s_pad[2];
 static uint64_t s_next;          /* performance-counter time of the next frame */
 static double s_period;          /* counter ticks per frame */
 static int s_audio;
+static bool s_rebuild;           /* the renderer's device was reset: make it again before drawing */
+static int s_draw_fails;         /* failed draws in a row */
+
+/* the renderer and the frame's texture, (re)made; 0 when there is none */
+static int make_renderer(void)
+{
+    if (s_tex) { SDL_DestroyTexture(s_tex); s_tex = nullptr; }
+    if (s_ren) { SDL_DestroyRenderer(s_ren); s_ren = nullptr; }
+#ifdef _WIN32
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
+    s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "");
+#endif
+    if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
+    if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, 0);
+    if (!s_ren) { fprintf(stderr, "[native] SDL renderer: %s\n", SDL_GetError()); return 0; }
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+    s_tex = SDL_CreateTexture(s_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 480);
+    if (!s_tex) { fprintf(stderr, "[native] SDL texture: %s\n", SDL_GetError()); return 0; }
+    SDL_RendererInfo info;
+    if (SDL_GetRendererInfo(s_ren, &info) == 0) fprintf(stderr, "[native] renderer: %s\n", info.name);
+    s_rebuild = false;
+    s_draw_fails = 0;
+    return 1;
+}
 
 int host_open(const char *title)
 {
@@ -44,11 +73,7 @@ int host_open(const char *title)
     s_win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (g_opt.widescreen ? 400 : 320) * 3,
                              224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
-    s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
-    if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, 0);
-    if (!s_ren) { fprintf(stderr, "[native] SDL renderer: %s\n", SDL_GetError()); return 0; }
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-    s_tex = SDL_CreateTexture(s_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 480);
+    if (!make_renderer()) return 0;
     for (int i = 0, n = 0; i < SDL_NumJoysticks() && n < 2; i++)
         if (SDL_IsGameController(i) && (s_pad[n] = SDL_GameControllerOpen(i))) n++;
     s_audio = audio_init((int)GENESIS_PSG_SAMPLE_RATE_NTSC) == 0;
@@ -115,6 +140,7 @@ void host_input(uint16_t pads[2])
         /* phase 6 R1: the two presentation options */
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
+        if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
         if (e.type == SDL_CONTROLLERDEVICEADDED) {
             for (int n = 0; n < 2; n++)
                 if (!s_pad[n]) { s_pad[n] = SDL_GameControllerOpen(e.cdevice.which); break; }
@@ -143,17 +169,20 @@ void host_audio(uint64_t frame)
 
 static void draw(const uint32_t *fb, int stride, int w, int h)
 {
+    if ((s_rebuild || s_draw_fails >= 30) && !make_renderer()) return;
+    if (!s_ren || !s_tex) return;
     SDL_Rect src = { 0, 0, w, h };
-    SDL_UpdateTexture(s_tex, &src, fb, stride * 4);
+    int bad = SDL_UpdateTexture(s_tex, &src, fb, stride * 4) != 0;
     int ww, wh;
-    SDL_GetRendererOutputSize(s_ren, &ww, &wh);
+    if (SDL_GetRendererOutputSize(s_ren, &ww, &wh) != 0 || ww <= 0 || wh <= 0) { s_draw_fails++; return; }
     double sx = (double)ww / w, sy = (double)wh / (h * 1.0);
     double s = sx < sy ? sx : sy;
     SDL_Rect dst = { (int)((ww - w * s) / 2), (int)((wh - h * s) / 2), (int)(w * s), (int)(h * s) };
     SDL_SetRenderDrawColor(s_ren, 0, 0, 0, 255);
     SDL_RenderClear(s_ren);
-    SDL_RenderCopy(s_ren, s_tex, &src, &dst);
+    bad |= SDL_RenderCopy(s_ren, s_tex, &src, &dst) != 0;
     SDL_RenderPresent(s_ren);
+    s_draw_fails = bad ? s_draw_fails + 1 : 0;
 }
 
 /* high_fps (phase 6 R4): the picture waits for its time on the present clock (us since the first
