@@ -10,7 +10,6 @@
  *   --benchmark N        play N runner frames headless, then print GENESISRECOMP_BENCHMARK {json}
  *   --quit-after N       (played) quit after N frames; --screenshot F: the last frame as a BMP first
  *   --input-script F     the pads per runner frame: `PADS p1 p2` (hex GPAD_* masks), `WAIT n`
- *   --handover           (played) after the script's frames, the keyboard and controllers play on
  *   --hash-frames K      [FBHASH] frame=f w=W h=H hash=0x... every K runner frames (FNV-1a-64 of
  *                        the framebuffer's active region, as main.c framebuf_active_hash)
  *   --fresh-evidence     accepted (nothing is written beside the runner)
@@ -300,21 +299,12 @@ static void load_script(const char *path)
 }
 
 static uint64_t s_flip;   /* --flip N: player 1's C button inverted in runner frames N to N+7 (phase 6 E4) */
-static int s_handover;    /* --handover (played): the script's frames, then the pads (a test setup to play on from) */
-
-static uint64_t script_frames_total(void)
-{
-    uint64_t n = 0;
-    for (const PadSpan &p : s_script) n += p.frames;
-    return n;
-}
 
 extern "C" void plat_frame_begin(uint64_t frame)
 {
     uint64_t at = 0;
     uint16_t pad[2] = { 0, 0 };
-    static uint64_t handover_at = s_handover ? script_frames_total() : 0;
-    if (s_interactive && (s_script.empty() || (s_handover && frame > handover_at))) {
+    if (s_interactive && s_script.empty()) {
         host_input(pad);
     } else if (!s_script.empty()) {   /* the span covering this frame; after the script, its last pads */
         pad[0] = s_script.back().pad[0];
@@ -411,7 +401,6 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
         else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);
-        else if (!strcmp(argv[i], "--handover")) s_handover = 1;
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }

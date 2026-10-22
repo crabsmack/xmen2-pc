@@ -959,10 +959,6 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   every time. Played runs now read the line the beam would be on from the wall clock (traced runs
   keep 0, so every trace is unchanged): four played starts gave Cyclops, Wolverine, Wolverine,
   Nightcrawler. It is the only V-counter read in the game.
-- `--handover` (played runs): an input script's frames, then the pads. With XMEN2_DEBUG_SCENE=1 and
-  a script that presses Start through the briefing, Right (Cyclops) and Start twice, it drops the
-  player into Sentinels as Cyclops.
-
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only
