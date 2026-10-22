@@ -884,12 +884,15 @@ def package_linux(a) -> dict:
     (out / "runner.log").write_text(t.stderr, encoding="utf-8")
     o = wsl(f"{x} --options --json", timeout=120)
     opts = next((json.loads(l) for l in reversed(o.stdout.splitlines()) if l.startswith("{")), None)
+    n = wsl(f"{x} --netplay --json", timeout=120)
+    netplay = next((json.loads(l) for l in reversed(n.stdout.splitlines()) if l.startswith("{")), None)
     ok = (nwin == 0 and smoke["rom"]["exit"] == 0 and smoke["rom"]["benchmark"] and smoke["wrong_rom"]["exit"] == 2
           and smoke["wrong_rom"]["refused"] and t.returncode == 0 and sync.is_file())
     return {"ok": ok, "platform": "linux", "zip": str(zpath),
             "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
             "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke,
-            "tas_sync": str(sync), "tas_frames": frames, "tas_exit": t.returncode, "options": opts}
+            "tas_sync": str(sync), "tas_frames": frames, "tas_exit": t.returncode, "options": opts,
+            "netplay": netplay if n.returncode == 0 else None}
 
 
 def free_udp_ports(n: int) -> list[int]:
@@ -966,7 +969,9 @@ def cmd_netplay(a) -> dict:
         on_linux = i in linux
         args = ["--benchmark", str(frames), "--netplay", transport, "--seat", str(i), "--seats", str(a.seats),
                 "--bind", f"{'0.0.0.0' if linux else '127.0.0.1'}:{ports[i]}"]
-        if i:
+        if transport == "ice":   # signals through files (no lobby, R8); the addresses come from ICE
+            args += ["--ice-signal-dir", wsl_path(out) if on_linux else str(out)]
+        elif i:
             args += ["--peer", addr(0, on_linux)]
         elif transport == "lan":   # the host dials its guest too: a first packet out opens the path back
             args += ["--peer", addr(1, on_linux)]
@@ -1035,6 +1040,13 @@ def runner_options(cmd: list[str], cwd: Path | None = None) -> dict:
     if r.returncode or not j or "options" not in j:
         sys.exit(f"{cmd[-1]} --options --json failed ({r.returncode}): {(r.stdout + r.stderr).strip()[-300:]}")
     return j
+
+
+def runner_netplay(cmd: list[str], cwd: Path | None = None) -> dict | None:
+    """The runner's own `--netplay --json` (phase 7): its transports and seats; None if it has none."""
+    r = subprocess.run([*cmd, "--netplay", "--json"], capture_output=True, text=True, timeout=120, cwd=cwd)
+    j = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")), None)
+    return j if r.returncode == 0 and j and "transports" in j else None
 
 
 def cmd_options(a) -> dict:
@@ -1123,7 +1135,8 @@ def cmd_package(a) -> dict:
     return {"ok": ok, "platform": "windows", "zip": str(zpath),
             "files": [p.relative_to(stage).as_posix() for p in files], "rom_windows": nwin,
             "rom_window_hits": {k: v for k, v in windows.items() if v}, "smoke": smoke,
-            "options": runner_options([str(stage / "XMen2.exe")])}
+            "options": runner_options([str(stage / "XMen2.exe")]),
+            "netplay": runner_netplay([str(stage / "XMen2.exe")])}
 
 
 def main() -> int:

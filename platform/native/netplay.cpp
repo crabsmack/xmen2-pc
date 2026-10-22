@@ -40,6 +40,7 @@
 
 extern "C" {
 #include "recomp_net/config.h"
+#include "recomp_net/ice.h"
 #include "recomp_net/rb_driver.h"
 #include "recomp_net/session.h"
 #include "retcomm_rbengine/mono_ms.h"
@@ -180,6 +181,64 @@ static void sample_local(rnet_u32 tick, RNetInputSample *out, void *ctx)
 }
 
 static void session_publish(rnet_u32, const RNetInputSample *, int, void *) {}
+
+/* ---- ICE signalling without a lobby (R8: no lobby server): files in --ice-signal-dir, seat i writing
+   sig<i>.txt and reading its peer's; one signal a line, "type flag text" (the engine's
+   ice_manual_signaling example) ------------------------------------------------------------------------ */
+
+static FILE *s_sig_out;
+static long s_sig_in_at;
+
+static void ice_on_signal(const RNetSignal *msg, void *ctx)
+{
+    (void)ctx;
+    if (!s_sig_out || !msg) return;
+    std::string t;   /* an SDP is several lines: they travel as \n, a backslash as \\ */
+    for (const char *p = msg->text; *p; p++) {
+        if (*p == '\n') t += "\\n";
+        else if (*p == '\\') t += "\\\\";
+        else if (*p != '\r') t += *p;
+    }
+    fprintf(s_sig_out, "%d %u %s\n", (int)msg->type, (unsigned)msg->flag, t.c_str());
+    fflush(s_sig_out);
+}
+
+static void ice_pump_signals(void)
+{
+    if (N.transport != "ice" || !s_session) return;
+    std::string path = N.sig_dir + "/sig" + std::to_string(1 - N.seat) + ".txt";
+    FILE *f = fopen(path.c_str(), "rb");
+    if (!f) return;
+    if (fseek(f, s_sig_in_at, SEEK_SET) == 0) {
+        char line[2200];
+        while (fgets(line, sizeof line, f)) {
+            size_t n = strlen(line);
+            if (!n || line[n - 1] != '\n') break;   /* a line still being written: next time */
+            while (n && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
+            char *a = strchr(line, ' '), *b = a ? strchr(a + 1, ' ') : nullptr;
+            if (!b) continue;
+            *a = *b = 0;
+            RNetSignal sig;
+            memset(&sig, 0, sizeof sig);
+            int type = atoi(line);   /* the peer's own (local) SDP and candidates are our remote ones */
+            if (type == RNET_SIGNAL_LOCAL_SDP) type = RNET_SIGNAL_REMOTE_SDP;
+            else if (type == RNET_SIGNAL_LOCAL_CANDIDATE) type = RNET_SIGNAL_REMOTE_CANDIDATE;
+            sig.type = (RNetSignalType)type;
+            sig.flag = (rnet_u8)strtoul(a + 1, nullptr, 10);
+            sig.peer_slot = 0xFF;
+            std::string t;
+            for (const char *p = b + 1; *p; p++) {
+                if (*p == '\\' && p[1] == 'n') { t += '\n'; p++; }
+                else if (*p == '\\' && p[1] == '\\') { t += '\\'; p++; }
+                else t += *p;
+            }
+            snprintf(sig.text, sizeof sig.text, "%s", t.c_str());
+            rnet_session_push_signal(s_session, &sig);
+            s_sig_in_at = ftell(f);
+        }
+    }
+    fclose(f);
+}
 
 /* ---- the rollback host table ----------------------------------------------------------------------- */
 
@@ -336,6 +395,7 @@ static void seal_exchange(void)
     bool sent = false;
     double t0 = now_us();
     for (;;) {
+        ice_pump_signals();
         rnet_session_pump(s_session);
         if (rnet_session_is_running(s_session)) {
             if (N.seat == 0 && !sent) {
@@ -389,16 +449,26 @@ static void start_transport(void)
         rc = N.seat == 0 ? rnet_session_start_lan_hub(s_session, N.bind.c_str())
                          : rnet_session_start_lan(s_session, N.bind.c_str(), N.peer.c_str());
     else if (N.transport == "lan")
-        rc = rnet_session_start_lan(s_session, N.bind.c_str(), N.seat == 0 ? nullptr : N.peer.c_str());
-    else
-        rc = -1;   /* ice: netplay_ice.cpp (M5) */
+        rc = rnet_session_start_lan(s_session, N.bind.c_str(), N.peer.empty() ? nullptr : N.peer.c_str());
+    else {
+#if defined(RNET_ENABLE_ICE)
+        if (N.seats != 2 || N.sig_dir.empty()) np_fail("ice: two seats and --ice-signal-dir DIR");
+        RNetIceConfig ice;
+        rnet_ice_config_init_defaults(&ice);   /* a public STUN server (R8) */
+        ice.controlling = (rnet_u8)(N.seat == 0);
+        rc = rnet_session_start_ice(s_session, &ice);
+#else
+        rc = -1;
+#endif
+    }
     if (rc != 0) np_fail("the transport didn't start");
 }
 
 void netplay_run(uint64_t frames)
 {
     if (N.seats < 2 || N.seats > 4 || N.seat < 0 || N.seat >= N.seats) np_fail("--seat I --seats N: 0 <= I < N, 2 <= N <= 4");
-    if (N.bind.empty() || (N.seat && N.peer.empty())) np_fail("--bind HOST:PORT (and --peer HOST:PORT for a guest)");
+    if (N.transport != "ice" && (N.bind.empty() || (N.seat && N.peer.empty())))
+        np_fail("--bind HOST:PORT (and --peer HOST:PORT for a guest)");
     machine_start();
     if (!machine_session()) {   /* a guest takes the host's seed with the seal; the chips run anyway */
         machine_set_session(0);
@@ -415,6 +485,11 @@ void netplay_run(uint64_t frames)
     memset(&vt, 0, sizeof vt);
     vt.sample_local = sample_local;
     vt.publish = session_publish;
+    if (N.transport == "ice") {
+        std::string p = N.sig_dir + "/sig" + std::to_string(N.seat) + ".txt";
+        if (!(s_sig_out = fopen(p.c_str(), "ab"))) np_fail("cannot write the ICE signals");
+        vt.on_signal = ice_on_signal;
+    }
     s_session = rnet_session_create(&rc, &vt);
     if (!s_session) np_fail("cannot make the session");
     start_transport();
@@ -480,6 +555,7 @@ void netplay_run(uint64_t frames)
     double prev = 0, next = 0;
     bool quiescing = false;
     for (;;) {
+        ice_pump_signals();
         rnet_session_pump(s_session);
         RNetRbAdmit a = rnet_rb_driver_poll_admit(s_drv);
         if (a == RNET_RB_ADMIT_LIVE) {

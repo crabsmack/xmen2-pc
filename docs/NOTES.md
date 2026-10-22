@@ -1100,6 +1100,19 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   changes nothing the game reads, the status never shows sprite flags), the probe's first pass still
   renders (it compares pictures). Under `bad` the corrections were 14-15 one-tick replays; late frames
   13-14% there (no criterion: R7's `mid` is the bound).
+
+### M5's transports (2026-10-22)
+
+- **ICE** (R8: libjuice, the default public STUN server `stun.l.google.com`, no lobby): the two seats
+  exchange their signals through files (`--ice-signal-dir`: seat i appends `sig<i>.txt`, "type flag
+  text" a line, as the engine's `ice_manual_signaling` example; an SDP's lines travel as `\n`). The
+  peer's LOCAL_SDP / LOCAL_CANDIDATE are pushed as REMOTE_SDP / REMOTE_CANDIDATE (the agent takes only
+  those: the first try pushed them unchanged and seat 1 never answered). On loopback ICE picked a host
+  candidate (an IPv6 address of this machine). `scenario-options-menu` under `clean`: 0 desyncs, the
+  offline rows.
+- **The LAN hub**, four seats (seat 0 relays, `rnet_session_start_lan_hub`), `scenario-options-menu`
+  under `mid` (pads 3-4 unused until `players`): 0 desyncs on all four seats, the host's rows, late
+  45/8/1/2 of 8,346.
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only
