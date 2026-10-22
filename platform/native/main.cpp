@@ -199,7 +199,15 @@ static uint64_t fb_hash(int w, int h);
    every seat agreed on); replays are quiet (nothing shown, heard or ended). */
 static bool s_np_buffer, s_np_quiet;
 static std::vector<std::string> s_np_rows, s_np_digests;
-static bool quiet(void) { return s_probe_pass == 1 || s_np_quiet; }
+
+/* The latency probe (phase 6 E4). --flip N: player 1's C button inverted in runner frames N to N+7.
+   --flip-scan LO:HI:L (with --present-log, high_fps off): before each runner frame N in [LO, HI),
+   save, run frames N to N+L with that flip (what `--flip N --frames N+L` runs from there), restore
+   and go on unflipped. The flipped frames' present rows go to flip_scan.csv (flip,sync,... as
+   present.csv); like the probe's first pass they show, hear, end and count nothing. */
+static uint64_t s_flip, s_scan_lo, s_scan_hi, s_scan_len, s_scan_flip;
+static FILE *s_scan_out;
+static bool quiet(void) { return s_probe_pass == 1 || s_np_quiet || s_scan_flip; }
 
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
@@ -209,6 +217,7 @@ extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
         if (xm_ram_peek8(0xC920) == 2) s_two_player_frames++;
         if (xm_ram_peek8(0xC922)) s_two_player_step_frames++;
     }
+    if (s_scan_flip) return;
     char line[96];
     if (s_digest && s_probe_pass != 1) {
         snprintf(line, sizeof line, "%llu,%016llx\n", (unsigned long long)sync, (unsigned long long)machine_digest());
@@ -259,6 +268,16 @@ extern "C" void plat_at_sync(uint64_t sync)
         Snapshot t;
         state_save(t);
         s_state_bytes = t.bytes.size();
+    }
+    if (uint64_t n = machine_frame_no() + 1; s_scan_hi && !s_scan_flip && n >= s_scan_lo && n < s_scan_hi) {
+        static Snapshot at;
+        state_save(at);
+        s_flip = s_scan_flip = n;
+        present_scan(s_scan_out, n);
+        for (uint64_t i = 0; i <= s_scan_len; i++) machine_tick();
+        present_scan(nullptr, 0);
+        s_flip = s_scan_flip = 0;
+        state_load(at, nullptr);
     }
     if (!s_probe_every || sync % s_probe_every || (s_benchmark && sync + s_probe_len > s_benchmark)) return;
     static Snapshot saved, resaved;
@@ -397,8 +416,6 @@ static void load_script(const char *path)
     fclose(f);
 }
 
-static uint64_t s_flip;   /* --flip N: player 1's C button inverted in runner frames N to N+7 (phase 6 E4) */
-
 /* the script's pads of a runner frame (the span covering it; after the script, its last pads) */
 static void script_pads(uint64_t frame, uint16_t pad[4])
 {
@@ -474,6 +491,10 @@ static void maybe_shot(uint64_t frame)
 
 extern "C" void plat_frame_end(uint64_t frame)
 {
+    if (s_scan_flip) {   /* --flip-scan's flipped frames: their present rows only */
+        present_whole(frame, &s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height(), false);
+        return;
+    }
     if (quiet()) return;   /* the probe's first pass, a rollback's replay: nothing is shown or ends */
     maybe_shot(frame);
     if (s_ftimes) {
@@ -520,6 +541,16 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
         else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);
+        else if (!strcmp(argv[i], "--flip-scan") && i + 1 < argc) {
+            unsigned long long lo = 0, hi = 0, l = 0;
+            if (sscanf(argv[++i], "%llu:%llu:%llu", &lo, &hi, &l) != 3 || !lo || hi <= lo || !l) {
+                fprintf(stderr, "[native] --flip-scan LO:HI:L\n");
+                return 2;
+            }
+            s_scan_lo = lo;
+            s_scan_hi = hi;
+            s_scan_len = l;
+        }
         /* phase 7 (P7-multiplayer.md "The contract") */
         else if (!strcmp(argv[i], "--session") && i + 1 < argc) { session = true; seed = strtoull(argv[++i], nullptr, 10); }
         else if (!strcmp(argv[i], "--scene") && i + 1 < argc) options_set_first_scene(atoi(argv[++i]));
@@ -568,6 +599,19 @@ int main(int argc, char **argv)
     }
     if (script) load_script(script);
     present_init(present_log);
+    if (s_scan_hi) {
+        if (!present_log || g_opt.high_fps || s_flip || s_probe_every || netplay_enabled()) {
+            fprintf(stderr, "[native] --flip-scan needs --present-log, high_fps off, and no --flip, --state-probe or --netplay\n");
+            return 2;
+        }
+        std::string d = probe_out;
+        if (!(s_scan_out = fopen((d + "/flip_scan.csv").c_str(), "w"))) {
+            fprintf(stderr, "[native] cannot write flip_scan.csv in %s\n", probe_out);
+            return 2;
+        }
+        setvbuf(s_scan_out, nullptr, _IOFBF, 1 << 20);
+        fprintf(s_scan_out, "flip,sync,t_us,whole,gameplay,fb_fnv1a64\n");
+    }
     crc_init();
     if (const char *sl = getenv("XMEN2_STACK_LOW"); sl && *sl) s_stack_low = (uint32_t)strtoul(sl, nullptr, 0);
     if (const char *p = getenv("XMEN2_SYNC_CSV"); p && *p) {

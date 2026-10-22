@@ -9,6 +9,7 @@
 #include "xmen2_options.h"
 
 #ifdef __cplusplus
+#include <stdio.h>
 #include <string>
 void        options_init(int *argc, char **argv);   /* options.cpp: --options, xmen2.ini */
 void        options_toggle_high_fps(void);          /* played: F9 */
@@ -31,6 +32,7 @@ std::string ws_counters_json(void);                 /* widescreen.cpp: the `ws` 
 /* present.cpp (phase 6 R4): the present clock and log, high_fps's in-between frames */
 void        present_init(const char *log_path);
 bool        present_logging(void);
+void        present_scan(FILE *f, uint64_t flip);   /* --flip-scan: a flipped pass's rows (null: the log's) */
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
 void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
 std::string present_counters_json(void);

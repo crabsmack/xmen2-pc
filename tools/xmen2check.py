@@ -282,8 +282,10 @@ def cmd_trace(a) -> dict:
         sys.exit(f"--mode {a.mode}: not implemented (recomp, {', '.join(STEPPED_MODES)})")
     if a.mode in STEPPED_MODES and a.mode != "native" and not a.replay:
         sys.exit(f"--mode {a.mode} needs --replay REFDIR (the run's `--mode recomp --sync` trace)")
-    if (a.options or a.present_log or a.flip) and a.mode != "native":
-        sys.exit("--options, --present-log, --flip: only the native runner has them (phase 6)")
+    if (a.options or a.present_log or a.flip or a.flip_scan) and a.mode != "native":
+        sys.exit("--options, --present-log, --flip, --flip-scan: only the native runner has them (phase 6)")
+    if a.flip_scan and not a.present_log:
+        sys.exit("--flip-scan needs --present-log")
     p7 = a.session is not None or a.scene is not None or a.digest or a.state_probe or a.state_skip
     if p7 and a.mode != "native":
         sys.exit("--session, --scene, --digest, --state-probe, --state-skip: only the native runner has them (phase 7)")
@@ -329,6 +331,8 @@ def cmd_trace(a) -> dict:
             cmd += ["--present-log", str(out / "present.csv")]
         if a.flip:   # phase 6 E4: the latency probe
             cmd += ["--flip", str(a.flip)]
+        if a.flip_scan:   # phase 6 E4: every probe of a span in one run, OUT/flip_scan.csv
+            cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)]
         # phase 7 (P7-multiplayer.md "The contract")
         if a.session is not None:
             cmd += ["--session", str(a.session)]
@@ -1197,6 +1201,9 @@ def main() -> int:
                            help="native (phase 6 E4): OUT/present.csv, one row per displayed frame")
             p.add_argument("--flip", type=int, default=0,
                            help="native (phase 6 E4): player 1's C inverted in runner frames N to N+7")
+            p.add_argument("--flip-scan", default="",
+                           help="native (phase 6 E4) LO:HI:L: before each runner frame N in [LO, HI) save, run "
+                                "N..N+L with --flip N into OUT/flip_scan.csv, restore (with --present-log)")
             p.add_argument("--session", type=int, default=None,
                            help="native (phase 7): the session machine with this seed (P7 \"Definitions\")")
             p.add_argument("--scene", type=int, default=None, help="native (phase 7): a new game starts at scene N")

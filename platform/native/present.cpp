@@ -160,8 +160,20 @@ static uint64_t s_frames, s_whole, s_sprites, s_matched, s_unmatched[5], s_fallb
 static std::vector<uint32_t> s_render_us;
 static bool s_gameplay;     /* the frame being led up to is a gameplay frame */
 
+/* --flip-scan (main.cpp): a flipped pass's rows go to its file, after the flip's frame, and count
+   for nothing */
+static FILE *s_scan;
+static uint64_t s_scan_flip;
+
+void present_scan(FILE *f, uint64_t flip)
+{
+    s_scan = f;
+    s_scan_flip = flip;
+}
+
 extern "C" void present_note_render(double us)
 {
+    if (s_scan) return;
     if (g_opt.high_fps || s_log) s_render_us.push_back((uint32_t)(us < 0 ? 0 : us));
 }
 
@@ -177,6 +189,11 @@ static uint64_t fnv(const uint32_t *fb, int stride, int w, int h)
 
 static void log_row(uint64_t sync, double t, bool whole, bool gameplay, uint64_t hash)
 {
+    if (s_scan) {
+        fprintf(s_scan, "%llu,%llu,%.1f,%d,%d,%016llX\n", (unsigned long long)s_scan_flip, (unsigned long long)sync, t,
+                whole ? 1 : 0, gameplay ? 1 : 0, (unsigned long long)hash);
+        return;
+    }
     s_frames++;
     s_whole += whole;
     if (s_log)
