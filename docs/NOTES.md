@@ -1234,6 +1234,15 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   time, then asks, and a hold moves the clock (the played window's too: host_slip): alone, w-clone
   0-1 of 2,508 per seat (was 3-28) and w-sentinels 0-1 of 4,433 (was 17-41), no rollbacks left
   under `mid` (the seats line up inside the 83 ms delay; om-bad's 120 ms still rolls back).
+- **Recording a capture** (video with sound, for showing the port): a headless run of a stage input
+  (`--benchmark N --input-script game/mp_inputs/sceneS.input --scene S --session 1 --options ...`)
+  with `XMEN2_SHOTS=first,...,last` + `XMEN2_DUMP_DIR` (fNNNNNN.bmp per runner frame) and
+  `XMEN2_WAV=out.wav` (223,721 Hz stereo from runner frame 1, so frame F starts at
+  (F-1)/59.9227 s), `SDL_AUDIODRIVER=dummy`. Then ffmpeg: `-framerate 59.9227 -start_number F -i
+  f%06d.bmp -ss (F-1)/59.9227 -i out.wav`, `scale=iw*3:ih*3:flags=neighbor`, audio
+  `aresample=48000:resampler=soxr`. With `full_rate_2p=1` the picture is 60 Hz (two or more players
+  are 30 Hz in the original). scene20.input frames 1300-2500 with `players=4,widescreen=16:9` shows
+  all four apart in the wide view (2026-10-22).
 - **R4, the cost of keeping the byte matches** (35 game files so far, the first batches): 444 lines
   added, 8 changed (`git diff --stat`), all in `#if defined(XMEN2_NATIVE)` blocks, most
   `if (g_opt.players > 2) { ... }` next to the original line they extend, the logic in
