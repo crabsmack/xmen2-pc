@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "native.h"
 
@@ -186,33 +188,42 @@ void options_toggle_high_fps(void)
     present_reset();
 }
 
-/* online the 16:9 view is the host's (R10: with widescreen_gameplay it changes what activates and the
-   camera's limits; presentation only, it still changes the sprite table and the planes the canonical
-   digest compares, R8) */
+/* Online the 16:9 view is the host's with widescreen_gameplay (R10: it changes what activates and the
+   camera's limits); presentation only it is each seat's own (phase 7 R12) and F10 works */
 void options_toggle_widescreen(void)
 {
-    if (netplay_enabled()) { fprintf(stderr, "[native] F10: the 16:9 view is the host's in a netplay session\n"); return; }
+    if (netplay_enabled() && g_opt.widescreen_gameplay) {
+        fprintf(stderr, "[native] F10: the 16:9 view is the host's in a netplay session with widescreen_gameplay=1\n");
+        return;
+    }
     ws_request_toggle();
 }
 
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
-/* Netplay (phase 7 R10): the options that change the game are the host's, sealed into the session;
-   each player keeps the presentation ones (high_fps). The text is `k=v,...` in table order. */
-static bool presentation_only(const OptDef &d) { return !strcmp(d.name, "high_fps"); }
+/* Netplay (phase 7 R10, R12): the options that change the game are the host's, sealed into the
+   session; each player keeps the presentation ones: high_fps, and widescreen unless the sealed
+   widescreen_gameplay is 1. The text is `k=v,...` in table order. */
+static bool presentation_only(const OptDef &d, bool ws_gameplay)
+{
+    return !strcmp(d.name, "high_fps") || (!strcmp(d.name, "widescreen") && !ws_gameplay);
+}
 
 std::string options_game_text(void)
 {
+    bool ws_gameplay = find("widescreen_gameplay")->value == "1";
     std::string o;
     for (const OptDef &d : s_defs)
-        if (!presentation_only(d)) o += (o.empty() ? "" : ",") + std::string(d.name) + "=" + d.value;
+        if (!presentation_only(d, ws_gameplay)) o += (o.empty() ? "" : ",") + std::string(d.name) + "=" + d.value;
     return o;
 }
 
-/* The host's text: refused (false) when it names an option this build lacks, a value it can't take
-   or a presentation option */
+/* The host's text: refused (false), changing nothing, when it names an option this build lacks, a
+   value it can't take or a presentation option */
 bool options_adopt_game(const std::string &text)
 {
+    std::vector<std::pair<OptDef *, std::string>> kvs;
+    bool ws_gameplay = false;
     for (size_t p = 0; p < text.size(); ) {
         size_t c = text.find(',', p);
         if (c == std::string::npos) c = text.size();
@@ -220,9 +231,13 @@ bool options_adopt_game(const std::string &text)
         p = c + 1;
         size_t eq = kv.find('=');
         OptDef *d = eq == std::string::npos ? nullptr : find(kv.substr(0, eq));
-        if (!d || presentation_only(*d) || !valid(*d, kv.substr(eq + 1))) return false;
-        d->value = kv.substr(eq + 1);
+        if (!d || !valid(*d, kv.substr(eq + 1))) return false;
+        kvs.emplace_back(d, kv.substr(eq + 1));
+        if (!strcmp(d->name, "widescreen_gameplay")) ws_gameplay = kvs.back().second == "1";
     }
+    for (const auto &kv : kvs)
+        if (presentation_only(*kv.first, ws_gameplay)) return false;
+    for (const auto &kv : kvs) kv.first->value = kv.second;
     apply();
     return true;
 }

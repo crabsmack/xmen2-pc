@@ -79,6 +79,7 @@ uint16_t machine_peek16(uint32_t a);     /* a word of the 68000 bus (ROM, work R
 void     machine_tick(void);             /* the host: one more runner frame, to the game's next sync point */
 void     machine_state_init(void);       /* register the snapshot's sections (state.cpp) */
 uint64_t machine_digest(void);           /* the canonical digest of the state now (P7 "Definitions") */
+void     machine_mask_picture(uint8_t *ram, uint8_t *vram);   /* zero what only the picture depends on (R8, P7 R12) */
 void     machine_digest_parts(uint64_t out[3]);   /* the last digest's partitions: work RAM, the VDP, the rest */
 uint64_t machine_stack_peak(void);       /* the game fiber's deepest stack use, bytes */
 void     machine_set_session(uint64_t seed);   /* the session machine (P7 "Definitions") */

@@ -779,8 +779,9 @@ screen).  {exe} --options --json lists them.
 
 Online (rollback netplay, two to four players, each on their own machine with their own
 cartridge file). The host (seat 0) chooses the options that change the game (players,
-widescreen, widescreen_gameplay, full_rate_2p, the cheats) and every seat plays with them;
-high_fps is each seat's own.
+widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays with them;
+high_fps and the 16:9 view are each seat's own (F9 and F10 work), except that with the
+host's widescreen_gameplay=1 the view is the host's too.
     host:   {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options players=2
     others: {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
 lan / direct IP: every seat reaches the host's address (a forwarded UDP port across the
@@ -940,7 +941,7 @@ def cmd_netplay(a) -> dict:
     """Phase 7 (P7-multiplayer.md "The contract"): N processes of the release runner on loopback (or a
     Windows/WSL pair), seat i playing pad column i+1 of --input, seat 0 hosting (--options, --session
     and --scene are the host's: the guests take them from the session's seal, R10; --seat-options
-    I:K=V,... is seat I's own command line). Each seat writes OUT/seat<i>/sync.csv and digest.csv (its
+    I:K=V,... is seat I's own command line; --seat-f10 I:TICK,... presses a seat's F10, R12). Each seat writes OUT/seat<i>/sync.csv and digest.csv (its
     final timeline) and its seat.json; the link simulator (RNET_SIM_*) runs on every seat's receive
     path. Prints {"ok", "seats": [...], "link", "transport"}."""
     import concurrent.futures
@@ -1014,6 +1015,8 @@ def cmd_netplay(a) -> dict:
                 env[e] = link[k]
         if "seed" in link:
             env["RNET_SIM_SEED"] = str(int(link["seed"]) + i)
+        if a.seat_f10:
+            env["XMEN2_NP_F10"] = a.seat_f10
         if on_linux:
             p = lambda q: wsl_path(q)   # noqa: E731
             env["XMEN2_SYNC_CSV"] = p(d / "sync.csv")
@@ -1231,6 +1234,7 @@ def main() -> int:
     p.add_argument("--session", type=int, default=None)
     p.add_argument("--options", default="", help="the host's options (sealed into the session)")
     p.add_argument("--seat-options", action="append", help="I:K=V,...: seat I's own command line")
+    p.add_argument("--seat-f10", default="", help="I:TICK,...: seat I presses F10 before that live tick (R12)")
     p.add_argument("--link", default="", help="latency=L,jitter=J,loss=P,seed=S (the link simulator)")
     p.add_argument("--transport", default="", choices=["", "lan", "hub", "ice"])
     p.add_argument("--linux-seats", default="", help="seats run in WSL (the Linux build)")

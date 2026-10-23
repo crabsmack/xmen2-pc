@@ -153,21 +153,8 @@ static uint32_t ram_crc_masked(const uint8_t *ram)
 
 /* Phase 6 R8 (--game-rows FILE): the game's state at each sync point, less what only the picture
    depends on, so a run with the 16:9 view presentation only can be compared with the 4:3 run.
-   `sync,game_crc32`: work RAM (the stack area masked as the sync rows) less the ranges below, CRAM,
-   VSRAM, and VRAM less the planes A and B and the sprite table (the widened streamer and sprite
-   culls write them). Each range is RAM the view changes that nothing deciding the game reads; the
-   comparison itself checks that: a masked range that fed the game would show in the rest. */
-static const struct { uint32_t lo, hi; } k_view_ram[] = {
-    { 0xE21A, 0xE226 },   /* the sprite table's fill state: g_SprWritePtr, g_SprIndex, g_SprLast (+2 unused words) */
-    { 0xE226, 0xE4AE },   /* g_SpriteTable: 80 entries and the stop slot, DMA'd to VRAM each V-blank */
-    { 0xC732, 0xC734 },   /* g_BgStreamX: the x the streamer has drawn plane B to */
-    { 0xC736, 0xC738 },   /* g_FgStreamX: the same for plane A */
-    { 0xC620, 0xC628 },   /* g_HoloFlicker*: the hologram's flicker, the same kind of sprite-slot
-                             splice (Hologram_VBlankFlicker) */
-    { 0xE98E, 0xE99C },   /* g_BeamFlicker*: Cyclops's beam flicker, sprite-table slots whose links the
-                             V-blank rewrites in VRAM (Cyclops_BeamVBlankFlicker); slot numbers move
-                             with the sprites the wide view adds */
-};
+   `sync,game_crc32`: work RAM (the stack area masked as the sync rows) less the picture's state
+   (machine_mask_picture), CRAM, VSRAM and VRAM. */
 static FILE *s_game_rows;
 
 static uint32_t game_crc(const XmImage *im, uint64_t sync)
@@ -176,15 +163,8 @@ static uint32_t game_crc(const XmImage *im, uint64_t sync)
     memcpy(ram, im->ram, sizeof ram);
     uint32_t lo = s_stack_low & 0xFFFFu, hi = XMEN2_STACK_TOP & 0xFFFFu;
     if ((s_stack_low & 0xFF0000u) == 0xFF0000u && hi > lo) memset(ram + lo, 0, hi - lo);
-    for (const auto &r : k_view_ram) memset(ram + r.lo, 0, r.hi - r.lo);
     memcpy(vram, im->vram, sizeof vram);
-    const uint8_t *reg = g_machine.vdp.reg;
-    uint32_t wt = (reg[16] & 3) == 3 ? 128 : (reg[16] & 3) == 1 ? 64 : 32;
-    uint32_t ht = ((reg[16] >> 4) & 3) == 3 ? 128 : ((reg[16] >> 4) & 3) == 1 ? 64 : 32;
-    uint32_t a = (uint32_t)(reg[2] & 0x38) << 10, b = (uint32_t)(reg[4] & 0x07) << 13, sat = (uint32_t)(reg[5] & 0x7F) << 9;
-    for (uint32_t base : { a, b })
-        for (uint32_t i = 0; i < wt * ht * 2; i++) vram[(base + i) & 0xFFFF] = 0;
-    for (uint32_t i = 0; i < 80 * 8; i++) vram[(sat + i) & 0xFFFF] = 0;
+    machine_mask_picture(ram, vram);
     if (const char *list = getenv("XMEN2_GAME_DUMP"), *dir = getenv("XMEN2_DUMP_DIR"); list && dir) {   /* diagnosing: the state as compared */
         for (const char *q = list; *q; ) {
             char *e;

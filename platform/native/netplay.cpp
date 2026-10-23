@@ -9,10 +9,12 @@
  * A tick is a runner frame: tick t is runner frame t+1 (machine_tick: its pads, its Z80 frame, the
  * game to its next sync point), and the snapshot keyed t is the state before it (at sync point t;
  * key 0 right after power-on). Seat i plays pad i+1 (seats 2 and 3: g_pad34). Every seat runs the
- * session machine with the host's seed. Seat 0 hosts: its game options (R10: all but high_fps), the
- * seed and the start scene are sealed into the session before tick 0 (a pre-match state transfer,
- * then checked by the driver's mod-set handshake: a seat with another set refuses the match); each
- * seat keeps its own high_fps. In-game toggles that change the game (F10) are refused online.
+ * session machine with the host's seed. Seat 0 hosts: its game options (R10, R12: all but high_fps,
+ * and widescreen unless widescreen_gameplay is 1), the seed and the start scene are sealed into the
+ * session before tick 0 (a pre-match state transfer, then checked by the driver's mod-set handshake:
+ * a seat with another set refuses the match); each seat keeps its own high_fps and presentation-only
+ * 16:9 view (the canonical digest leaves the picture's state out). F10 is refused online only with
+ * widescreen_gameplay=1.
  *
  * A replay (INLINE: inside poll_admit) is quiet: the ticks run, rows and digests are rewritten (a
  * seat's sync.csv and digest.csv are its final timeline, written when the session ends), nothing is
@@ -56,7 +58,7 @@ void     main_np_write_rows(uint64_t upto);
 
 #define NP_PAD_MASK 0x0FFFu
 #define NP_PERIOD_US 16688.9   /* NTSC: 262 lines of 3420 master clocks at 53.693175 MHz */
-#define NP_VERSION "xmen2-native-netplay-1"
+#define NP_VERSION "xmen2-native-netplay-2"   /* 2: the digest without the picture's state (R12) */
 
 /* The input delay D is 5 ticks (83 ms), the rollback driver's own floor, and stays there: the
    scheduler's auto-delay (which would grow D with the link's latency, to 150 ms on the `mid`
@@ -564,6 +566,8 @@ void netplay_run(uint64_t frames)
     /* XMEN2_NP_LATE=1 (diagnosing late frames): each one's gap, and what the loop did since the frame
        before: polls that admitted nothing, replay ticks, the time in poll_admit, the tick, the hold */
     static const bool dbg_late = getenv("XMEN2_NP_LATE") != nullptr;
+    /* XMEN2_NP_F10=SEAT:TICK,... (testing R12 headless): that seat presses F10 before that live tick */
+    const char *f10 = getenv("XMEN2_NP_F10");
     uint32_t d_waits = 0, d_replay0 = 0;
     double d_admit = 0, d_tick = 0;
     for (;;) {
@@ -584,6 +588,15 @@ void netplay_run(uint64_t frames)
                 else main_np_slip(hold);
             }
             double k0 = dbg_late ? now_us() : 0;
+            for (const char *q = f10; q && *q; ) {
+                char *e;
+                long seat = strtol(q, &e, 10), at = *e == ':' ? strtol(e + 1, &e, 10) : -1;
+                if (seat == N.seat && at == (long)rnet_rb_driver_sim_tick(s_drv)) {
+                    fprintf(stderr, "[netplay] F10 before tick %ld\n", at);
+                    options_toggle_widescreen();
+                }
+                q = *e ? e + 1 : e;
+            }
             machine_tick();
             rnet_rb_driver_finish_frame(s_drv);
             uint64_t tick = rnet_rb_driver_sim_tick(s_drv);

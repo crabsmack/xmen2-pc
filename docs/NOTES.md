@@ -1329,6 +1329,39 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   three free-character files (the original condition token for token in MPW/PC), the g_SpriteTable
   switch (a header). Readable: each branch says what players 3-4 add, the original stays untouched
   above or below it. The MPW gate checks every one still byte-matches.
+
+### R12: each seat's own 16:9 view (2026-10-23)
+
+The user's ruling R12 (P7-multiplayer.md) follows phase 6's R8 and R10's note: online, a
+presentation-only `widescreen` is each seat's own, like `high_fps`, and F10 works; with the host's
+`widescreen_gameplay=1` it is sealed as before and F10 is refused.
+- **The seal** (options.cpp): `options_game_text` leaves `widescreen` out unless
+  `widescreen_gameplay=1`; `options_adopt_game` reads the text's `widescreen_gameplay` before it
+  classes the rest, and refuses a text with a presentation option without changing anything. A
+  guest's own view survives adopting the seal. Netplay version 2 (`NP_VERSION`): the digest changed.
+- **The digest** (machine.cpp `machine_mask_picture`, `mask_picture_p34`): R8's `--game-rows`
+  masks, now shared, plus what the first measurement found the view moves:
+  - the VDP data port's address, last word and FIFO, which hold where the last write went (the
+    widened streamer writes more; at frame 2 of `scenario-options-menu`);
+  - with three or more players, the players 3-4 region's sprite tables (`P34_SPR_TABLE(3/4)`,
+    `P34_SPR_MAIN`) and each `g_PX` fill state (sprite x 40 px apart: the margin);
+  - the view and its F10 request (`ws_digest_fields`: only `s_cerebro` now).
+  Measured with the session machine (`trace --session 1 --digest`), the view 0 against 16:9:
+  digests equal at every sync point on `scenario-options-menu` (8,346) and all 23 stage inputs
+  with `players=4`. Control: with `widescreen_gameplay=1` 8,346 of 8,346 differ (from sync 1).
+- **F10 online** (widescreen.cpp): the request (`s_pending`) is in the snapshot, so a rollback's
+  load would forget a press after the save point. Online and seat-owned, the seat's latest request
+  is kept outside the snapshot (`s_seat_*`) and put back after every load; it stays until the
+  view is what it asks (a replay crossing the screen change makes the change again). Offline the
+  old behaviour, unchanged (cleared when applied). `XMEN2_NP_F10=SEAT:TICK,...`
+  (`netplay --seat-f10`) presses it headless; `XMEN2_WS_DBG=1` logs each load's view and request.
+- Sessions (`scenario-options-menu`, two seats, against the offline digests of the host's options):
+  host `full_rate_2p=1,widescreen=16:9,lives=inf`, seat 1 `high_fps=144,widescreen=0` under
+  `mid`: 0 desyncs, seat 1 plays 4:3. The same with `widescreen_gameplay=1`: seat 1 takes the
+  host's 16:9, 0 desyncs. Host `widescreen=16:9` under `bad` with seat 1 (own 4:3) pressing F10
+  before tick 600: its view turns 16:9 at the next screen (frame 1203), 7 rollbacks after it keep
+  the request, 0 desyncs.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

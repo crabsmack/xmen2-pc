@@ -1100,24 +1100,65 @@ static uint64_t s_digest_parts[3];   /* the last digest's partitions: work RAM, 
 
 extern "C" void machine_digest_parts(uint64_t out[3]) { memcpy(out, s_digest_parts, sizeof s_digest_parts); }
 
+/* What only the picture depends on (phase 6 R8; phase 7 R12: a seat's own 16:9 view): the work RAM
+   below, and VRAM's planes A and B and sprite table (the widened streamer and sprite culls write
+   them). Each range is RAM the view changes that nothing deciding the game reads; comparing the rest
+   checks that: a masked range that fed the game would show there (R8's --game-rows, P7's digests). */
+static const struct { uint32_t lo, hi; } k_view_ram[] = {
+    { 0xE21A, 0xE226 },   /* the sprite table's fill state: g_SprWritePtr, g_SprIndex, g_SprLast (+2 unused words) */
+    { 0xE226, 0xE4AE },   /* g_SpriteTable: 80 entries and the stop slot, DMA'd to VRAM each V-blank */
+    { 0xC732, 0xC734 },   /* g_BgStreamX: the x the streamer has drawn plane B to */
+    { 0xC736, 0xC738 },   /* g_FgStreamX: the same for plane A */
+    { 0xC620, 0xC628 },   /* g_HoloFlicker*: the hologram's flicker, the same kind of sprite-slot
+                             splice (Hologram_VBlankFlicker) */
+    { 0xE98E, 0xE99C },   /* g_BeamFlicker*: Cyclops's beam flicker, sprite-table slots whose links the
+                             V-blank rewrites in VRAM (Cyclops_BeamVBlankFlicker); slot numbers move
+                             with the sprites the wide view adds */
+};
+
+extern "C" void machine_mask_picture(uint8_t *ram, uint8_t *vram)
+{
+    for (const auto &r : k_view_ram) memset(ram + r.lo, 0, r.hi - r.lo);
+    const uint8_t *reg = g_machine.vdp.reg;
+    uint32_t wt = (reg[16] & 3) == 3 ? 128 : (reg[16] & 3) == 1 ? 64 : 32;
+    uint32_t ht = ((reg[16] >> 4) & 3) == 3 ? 128 : ((reg[16] >> 4) & 3) == 1 ? 64 : 32;
+    uint32_t a = (uint32_t)(reg[2] & 0x38) << 10, b = (uint32_t)(reg[4] & 0x07) << 13, sat = (uint32_t)(reg[5] & 0x7F) << 9;
+    for (uint32_t base : { a, b })
+        for (uint32_t i = 0; i < wt * ht * 2; i++) vram[(base + i) & 0xFFFF] = 0;
+    for (uint32_t i = 0; i < 80 * 8; i++) vram[(sat + i) & 0xFFFF] = 0;
+}
+
+/* The same in players 3-4's region (xmen2_players34.h): their sprite tables and the main one with
+   three or more players, and each one's fill state (PlayerX sprIndex, sprWritePtr, sprLast) */
+static void mask_picture_p34(uint8_t *rg)
+{
+    memset(rg + 0x0400, 0, 82 * 8);    /* P34_SPR_TABLE(3) */
+    memset(rg + 0x0700, 0, 82 * 8);    /* P34_SPR_TABLE(4) */
+    memset(rg + 0x1000, 0, 162 * 8);   /* P34_SPR_MAIN */
+    for (int k = 0; k < 2; k++) memset(rg + 0x0200 + 40 * k + 30, 0, 8);   /* g_PX[k] */
+}
+
 extern "C" uint64_t machine_digest(void)
 {
-    static uint8_t ram[0x10000];
+    static uint8_t ram[0x10000], vram[0x10000];
     static Canon c;
     c.b.clear();
     xm_ram_image(ram);
+    const GVDP *v = &g_machine.vdp;
+    memcpy(vram, v->vram, sizeof vram);
+    machine_mask_picture(ram, vram);   /* R12: the same game with any seat's view */
     c.raw(ram, sizeof ram);
     size_t vdp_at = c.b.size();
-    const GVDP *v = &g_machine.vdp;
-    c.raw(v->vram, sizeof v->vram);
+    c.raw(vram, sizeof vram);
     for (unsigned i = 0; i < GVDP_CRAM_ENTRIES; i++) c.u(v->cram[i] & 0x0EEE, 2);
     for (unsigned i = 0; i < GVDP_VSRAM_ENTRIES; i++) c.u(v->vsram[i] & 0x7FF, 2);
     c.raw(v->reg, sizeof v->reg);
-    c.u(v->code, 1); c.u(v->address, 2);
-    c.u(s_pending, 1); c.u(s_addr_latch, 2); c.u((uint32_t)s_cached_write, 4); c.u(s_dma_length, 4);
+    /* not the data port's address, last word and FIFO: where the last write went, which the widened
+       streamer moves (R12; the game sets the address before each write) */
+    c.u(v->code, 1);
+    c.u(s_pending, 1); c.u(s_addr_latch, 2); c.u(s_dma_length, 4);
     c.u((uint32_t)s_dma_type, 1); c.u((uint32_t)s_dmafill, 1); c.u(s_dma_src, 4);
-    for (int i = 0; i < 4; i++) c.u(s_fifo[i], 2);
-    c.u((uint32_t)s_fifo_idx, 1); c.u((uint32_t)s_fs_vblank, 1);
+    c.u((uint32_t)s_fs_vblank, 1);
     size_t rest_at = c.b.size();
     const GenesisBus *b = &g_machine.bus;
     c.raw(b->z80_ram, sizeof b->z80_ram);
@@ -1147,8 +1188,28 @@ extern "C" uint64_t machine_digest(void)
     c.u(s_sr, 2); c.u(s_frame_no, 8);
     ws_digest_fields(&c.b);
     if (g_opt.players > 2) {
-        c.raw(xm_region, 0x2000);   /* phase 7 R5: players 3-4's region (XM_REGION_USED) */
+        static uint8_t rg[0x2000];
+        memcpy(rg, xm_region, sizeof rg);
+        mask_picture_p34(rg);
+        c.raw(rg, sizeof rg);   /* phase 7 R5: players 3-4's region (XM_REGION_USED), less the picture's (R12) */
         snd2_digest_fields(&c.b);   /* R9: the second sound machine */
+    }
+    /* diagnosing (XMEN2_DIGEST_DUMP=FRAME,... with XMEN2_DUMP_DIR): the digested bytes at those runner frames */
+    static const char *dump = getenv("XMEN2_DIGEST_DUMP"), *dump_dir = getenv("XMEN2_DUMP_DIR");
+    for (const char *q = dump_dir ? dump : nullptr; q && *q; ) {
+        char *e;
+        unsigned long long n = strtoull(q, &e, 10);
+        if (e == q) break;
+        if (n == s_frame_no) {
+            char path[600];
+            snprintf(path, sizeof path, "%s/d%06llu.bin", dump_dir, n);
+            if (FILE *f = fopen(path, "wb")) {
+                fwrite(c.b.data(), 1, c.b.size(), f);
+                fclose(f);
+            }
+            fprintf(stderr, "[digest] frame %llu: ram 0..%zu, vdp ..%zu, rest ..%zu\n", n, vdp_at, rest_at, c.b.size());
+        }
+        q = *e ? e + 1 : e;
     }
     s_digest_parts[0] = hash64(c.b.data(), vdp_at, 0xCBF29CE484222325ull);
     s_digest_parts[1] = hash64(c.b.data() + vdp_at, rest_at - vdp_at, 0xCBF29CE484222325ull);

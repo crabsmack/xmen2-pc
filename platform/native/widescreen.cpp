@@ -481,23 +481,37 @@ int ws_render_shift(void) { return s_shift; }
 
 /* ---- per frame ------------------------------------------------------------------------------ */
 
-/* F10 in a played run (options_toggle_widescreen): the view changes at the next screen */
+/* F10 in a played run (options_toggle_widescreen): the view changes at the next screen.
+   Online with the view presentation only it is each seat's own (phase 7 R12), and so is the request:
+   a rollback's load puts back the seat's latest one (ws_after_load), which stays until the view is
+   what it asks, so a replay that crosses the screen change again makes the change again. */
 static int s_pending = -1, s_pending_idx, s_pending_cerebro, s_renderer_wide;
+static int s_seat_pending = -1, s_seat_idx, s_seat_cerebro;   /* online: the request, outside the snapshot */
+
+static bool view_is_seats(void) { return netplay_enabled() && !g_opt.widescreen_gameplay; }
 
 void ws_request_toggle(void)
 {
     s_pending = !(s_pending >= 0 ? s_pending : g_opt.widescreen);
     s_pending_idx = s16at(0xFFCC64);
     s_pending_cerebro = s_cerebro;
+    s_seat_pending = s_pending, s_seat_idx = s_pending_idx, s_seat_cerebro = s_pending_cerebro;
 }
 
 /* Before the frame is rendered: the renderer's margins for this screen, the render camera, its bars. */
 extern "C" void ws_frame_setup(void)
 {
     if (s_pending >= 0 && (s16at(0xFFCC64) != s_pending_idx || s_cerebro != s_pending_cerebro)) {
-        options_set_widescreen(s_pending);
-        s_pending = -1;
-        s_cache_idx = -1000;
+        if (!view_is_seats()) {
+            options_set_widescreen(s_pending);
+            s_pending = -1;
+            s_cache_idx = -1000;
+        } else if (s_pending != g_opt.widescreen) {
+            options_set_widescreen(s_pending);
+            s_cache_idx = -1000;
+            fprintf(stderr, "[ws] the seat's view %s from frame %llu\n", s_pending ? "16:9" : "4:3",
+                    (unsigned long long)machine_frame_no());
+        }
     }
     if (!g_opt.widescreen) {
         if (s_renderer_wide) {   /* turned off: the renderer as it was */
@@ -564,8 +578,14 @@ std::string ws_counters_json(void)
 
 /* What the game's view depends on besides its memory: a Cerebro screen running, the 16:9 view and
    an F10 request for the next screen. The screen cache is derived (rebuilt after a load); the
-   counters are the host's. */
-static void ws_after_load(void) { s_cache_idx = -1000; }
+   counters are the host's. Online with the view each seat's own, the request is the seat's latest. */
+static void ws_after_load(void)
+{
+    s_cache_idx = -1000;
+    if (view_is_seats()) s_pending = s_seat_pending, s_pending_idx = s_seat_idx, s_pending_cerebro = s_seat_cerebro;
+    if (getenv("XMEN2_WS_DBG")) fprintf(stderr, "[ws] load: frame %llu view %d pending %d idx %d screen %d\n",
+                                        (unsigned long long)machine_frame_no(), g_opt.widescreen, s_pending, s_pending_idx, s16at(0xFFCC64));
+}
 
 void ws_state_init(void)
 {
@@ -582,9 +602,8 @@ void ws_state_init(void)
     state_after_load(ws_after_load);
 }
 
+/* the canonical digest's part: not the view or its request, which may be each seat's own (phase 7 R12) */
 void ws_digest_fields(std::vector<uint8_t> *out)
 {
     out->push_back((uint8_t)s_cerebro);
-    out->push_back((uint8_t)g_opt.widescreen);
-    out->push_back((uint8_t)(s_pending + 1));
 }
