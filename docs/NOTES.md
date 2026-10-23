@@ -861,7 +861,7 @@ Criteria, rulings and the measurement contract: xmen2disasm `docs/phases/P6-enha
   1; P1 compares the native with stepped-gen, the same machine): at sync 3,000 the native TAS is
   still in Siberia where the recording is in the Sentinels stage, and it never leaves Siberia.
 - **Results** (corpus, `widescreen=16:9`): 76/76 runs to their end, 0 terrain errors, 0 lost
-  sprites, 0 misplaced HUD frames. `phase.py 6` E5 passes (2026-10-21, XMen2Recomp ecae533).
+  sprites, 0 misplaced HUD frames. `phase.py 6` E5 passes (2026-10-21, XMen2Recomp bc8326b).
 - **Every world** (a development test, beyond the corpus): `XMEN2_DEBUG_SCENE=n` starts a new
   game at scene n (Game_ResetPlayers, native branch); from each world's Cerebro briefing (scenes
   1, 8, 18, 24, 34, 38) a "walker" input (right held, B/C/A presses, a Start pair every 300
@@ -1052,7 +1052,7 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   accelerates again; the bolt flies. Gate passes (TAS 6000 sync points equal, verify 0 mismatches).
   The user played it ("magneto fly feels good"); landing, walls and the two-player tether while
   flying were not tested on purpose.
-- **Native window across monitors** (81acd93): moving the game to another monitor froze and garbled
+- **Native window across monitors** (41e3669): moving the game to another monitor froze and garbled
   the picture while the game and music ran on (SDL 2.28's default Direct3D 9 renderer loses its
   device). The renderer is now direct3d11 on Windows, rebuilt on SDL_RENDER_DEVICE_RESET or 30
   failed draws in a row. Checked only that it opens and draws on direct3d11: the monitor change
@@ -1117,7 +1117,7 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   flags the renderer sets. A word-wise FNV-1a-style 64-bit hash.
 - Input scripts take up to four pad columns (`PADS p1 p2 p3 p4`); pads 3 and 4 are `g_pad34`.
 - `--scene N` (as `XMEN2_DEBUG_SCENE=N`): a new game starts at scene N.
-- `phase.py 7` (snapshot at be76044): **M2 passes**: 76/76 corpus runs restore exactly (rows, frames,
+- `phase.py 7` (snapshot at 3ff4741): **M2 passes**: 76/76 corpus runs restore exactly (rows, frames,
   snapshots), the negative control catches 5/5 sections.
 
 ### M3: two players online (2026-10-22)
