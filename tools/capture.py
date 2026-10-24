@@ -1,5 +1,5 @@
-"""Render a recorded take of the native port for a video: the picture, lossless, and the sound as two
-stems, the music and the sound effects (platform/native/capture.cpp; xmen2disasm docs/RELEASE.md).
+"""Render a recorded take of the native port: the picture, lossless, and the sound as two stems, the
+music and the sound effects (platform/native/capture.cpp; docs/NOTES.md "Capture").
 
     # record while playing (keyboard/controller, or online: every seat can record the shared game)
     build/Release/XMen2Native.exe xmen2.bin --record-inputs take.input [--scene N] [--options ...]

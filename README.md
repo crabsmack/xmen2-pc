@@ -19,15 +19,16 @@ it starts, and refuses any file but the USA/Europe cartridge (SHA-1
 ## Play
 
 Download the Windows or Linux zip from [Releases](https://github.com/crabsmack/xmen2-pc/releases),
-unzip it, and run it with your ROM:
+unzip it, and run it with your ROM (or [build it yourself](#build-from-source)):
 
 ```
-XMen2.exe path\to\xmen2.bin          (Linux: ./xmen2 path/to/xmen2.bin; needs SDL2: libsdl2-2.0-0)
+XMen2.exe path\to\xmen2.bin          Windows
+./xmen2 path/to/xmen2.bin            Linux (needs SDL2: libsdl2-2.0-0)
 ```
 
-Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
-Controllers (players 1-4, in the order they are plugged in): D-pad or left stick; X = A,
-A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode. F11: fullscreen. Esc: quit.
+Keyboard (player 1): arrows; Z/X/C = A/B/C, A/S/D = X/Y/Z, Enter = Start, Q = Mode.
+Controllers (players 1-4, in the order they are plugged in): D-pad or left stick;
+X/A/B = A/B/C, LB/Y/RB = X/Y/Z, Start = Start, Back = Mode. F11: fullscreen. Esc: quit.
 
 ## Options
 
@@ -43,12 +44,12 @@ program (`[options]`, one per line).
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
 | `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display. F9 toggles it |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
-| `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on a second sound machine |
+| `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
 | `lives=inf` | Lives are never spent (or `lives=N`, 1-99) |
 | `magneto=1` | Magneto can be chosen from the start |
-| `start_char=wolverine` | The character you start Siberia with (otherwise random) |
+| `start_char=wolverine` | The character you start Siberia with: `beast`, `cyclops`, `gambit`, `nightcrawler`, `psylocke`, `wolverine` or `magneto` (otherwise random) |
 | `magneto_flight=1` | Magneto moves left and right while hovering |
-| `music_voices=0` | On by default: the music plays on sound chips of its own, with players 1 and 2's music parts on a further set, so no part or sound effect takes its notes. On the cartridge, two players' parts need more voices than the chip has, and effects take voices from the music. `0` gives the cartridge's single set of chips |
+| `music_voices=0` | On by default: the music plays on sound chips of its own, and players 1 and 2's music parts on a further set, so neither the parts nor the sound effects take notes from the music. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music. `0` gives the cartridge's single set of chips |
 
 `XMen2.exe --options --json` lists them.
 
@@ -59,8 +60,8 @@ The host (seat 0) chooses the options that change the game, and every seat plays
 The picture and sound options (`high_fps`, the 16:9 view, `music_voices`) are each seat's own.
 
 ```
-host:    XMen2.exe xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000
-seat 1:  XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST_IP:7000
+seat 0 (host):  XMen2.exe xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000
+seat 1:         XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST_IP:7000
 ```
 
 - `lan`: every seat reaches the host's address directly (on a LAN, over a VPN such as
@@ -95,8 +96,9 @@ byte-matching disassembly that is also the hub of the project:
 1. A disassembly that rebuilds the cartridge byte for byte, cross-checked against an
    instrumented emulator.
 2. A static recompilation to C on
-   [segagenesisrecomp](https://github.com/mstan/segagenesisrecomp), frame-identical to the
-   emulator.
+   [segagenesisrecomp](https://github.com/mstan/segagenesisrecomp) (this repo pins a fork,
+   [crabsmack/segagenesisrecomp](https://github.com/crabsmack/segagenesisrecomp)),
+   frame-identical to the emulator.
 3. The original compiler identified and run: Apple MPW C 3.3, under an MPW emulator.
 4. Hand-written, readable C for the whole game: 3,164 functions (the disassembly's 3,621,
    less the switch cases and blocks that belong to a parent). 3,034 byte-match with MPW C
@@ -107,19 +109,24 @@ byte-matching disassembly that is also the hub of the project:
 7. Multiplayer: savestates, rollback netplay, four players.
 
 Almost all of it was written by AI coding agents (Claude Code) in nine days, under measured
-definitions of done. See the disassembly's README and docs/ROADMAP.md there.
+definitions of done. See the disassembly's [README](https://github.com/crabsmack/xmen2disasm)
+and [docs/ROADMAP.md](https://github.com/crabsmack/xmen2disasm/blob/main/docs/ROADMAP.md).
 
 ## Build from source
 
-You need the ROM (`XMEN2_ROM=path\to\xmen2.bin`, or `../xmen2disasm/xmen2.bin`) and
-[uv](https://docs.astral.sh/uv/).
+You need [uv](https://docs.astral.sh/uv/) and the ROM, named by `XMEN2_ROM`
+(Windows: `set XMEN2_ROM=C:\path\to\xmen2.bin`; Linux: `export XMEN2_ROM=/path/to/xmen2.bin`).
 
 ```
-git clone --recursive https://github.com/crabsmack/xmen2-pc
+git clone https://github.com/crabsmack/xmen2-pc
 cd xmen2-pc
+git submodule update --init --recursive segagenesisrecomp
 uv sync
-uv run tools/xmen2check.py native-build        # -> build/Release/XMen2Native.exe
+uv run tools/xmen2check.py native-build        # -> build/Release/XMen2Native.exe (Linux: build/XMen2Native)
 ```
+
+The build doesn't need the `xmen2disasm` submodule (the disassembly; only the recompiler and
+the phase checkers use it). The program it builds is the one the zips call `XMen2.exe` / `xmen2`.
 
 Windows: Visual Studio 2022 with the C++ workload. Linux: `build-essential cmake ninja-build
 pkg-config libsdl2-dev`. The rest of `tools/` (the recompiler, the trace harness and the phase

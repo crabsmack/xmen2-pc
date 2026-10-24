@@ -1,5 +1,5 @@
-/* capture.cpp - recording the port for showing it (xmen2disasm docs/RELEASE.md): development and
- * capture features, nothing the game sees.
+/* capture.cpp - recording the port, to look at it frame by frame or to show it (docs/NOTES.md
+ * "Capture"): development and capture features, nothing the game sees.
  *
  *   --record-inputs F   (played, netplay too) every runner frame's four pads, written at exit as an
  *                       input script with a header that replays it: the session seed, the start

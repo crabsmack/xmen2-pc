@@ -23,10 +23,13 @@ Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
 
 ## Rules
 
-- **Nothing personally identifying goes into this repo** (the user's ruling for the public
-  release, xmen2disasm docs/RELEASE.md): no names in files or messages (write "the user"), no
-  `Claude-Session:` commit trailers, author `crabsmack`, commit times in UTC
-  (`.claude/settings.json` sets `TZ=UTC`; outside Claude, `TZ=UTC git commit`).
+- **Nothing personally identifying goes into this repo, history included** (the user's ruling
+  for the public release): no names in files or messages (write "the user"), no local paths,
+  machine details or the user's other projects, no `Claude-Session:` commit trailers, author
+  `crabsmack`, commit times in UTC (`.claude/settings.json` sets `TZ=UTC`; outside Claude,
+  `TZ=UTC git commit`). Notes about this machine go in an untracked `CLAUDE.local.md`. Video
+  production (editing, the release cut) lives outside the repo; `tools/capture.py` and
+  `platform/native/capture.cpp` are the port's own recording.
 - **The ROM never enters git** (`git log --all` must never show a `.bin/.gen/.smd`; K1 checks).
 - **Never edit generated C** (engine PRINCIPLES #19). Fix the recompiler (core fork), the
   engine (engine fork), `game.toml` or the spec, and regenerate.
@@ -83,7 +86,7 @@ uv run tools/xmen2check.py trace --mode stepped --run tas --replay D --out E  # 
 uv run tools/xmen2check.py verify --inputs DIR [--functions A,B] [--frames N]
 uv run tools/xmen2check.py types|handc|lint
 uv run tools/pccheck.py game/c/X.c      # compile one file as C++ (no build tree; safe in parallel)
-# matching: in xmen2disasm, uv run tools/cc.py --match ../XMen2Recomp/game/c/X.c
+# matching: in xmen2disasm, uv run tools/cc.py --match PATH/TO/XMen2Recomp/game/c/X.c
 uv run tools/replaydump.py D/replay.bin --sync N; uv run tools/syncdiff.py A.ram B.ram
 ```
 
@@ -111,11 +114,11 @@ XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the 
 ```
 
 Harness (NOTES.md "Phase 5 harness"). `XMEN2_REFS` = the phase-4 `build/phase_traces` (inputs and
-D1 REFDIRs; today `../xmen2disasm/build/phase_traces`, harness.py's default with
-`XMEN2_DISASM=../xmen2disasm`; the phase4-decomp worktree path is gone, 2026-10-22). A fresh
+D1 REFDIRs; harness.py's default is `$XMEN2_DISASM/build/phase_traces`, `XMEN2_DISASM` defaulting
+to the xmen2disasm checkout next to this one; CLAUDE.local.md has this machine's paths). A fresh
 worktree here: `git submodule update --init --recursive segagenesisrecomp` only (recursing into
 xmen2disasm fetches emu/gpgx from GitHub and fails offline; nothing here needs it), and
-`XMEN2_ROM=../xmen2disasm/xmen2.bin`; its first gate run builds everything (~5 min). The
+`XMEN2_ROM` set to the ROM; its first gate run builds everything (~5 min). The
 runners are reproducible (CMakeLists `XMEN2_REPRODUCIBLE`, /Brepro): same sources, same SHA-1, so
 stepped-gen reference rows are cached by runner hash in `.git/xmen2-cache` (all worktrees).
 ```

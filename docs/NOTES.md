@@ -414,7 +414,7 @@ Getting there:
 
 ### MPW matching from the game repo
 
-`xmen2disasm tools/cc.py --match-recomp ../XMen2Recomp --json` compiles each game/c file
+`xmen2disasm tools/cc.py --match-recomp PATH/TO/XMen2Recomp --json` compiles each game/c file
 with the headers. MPW C 3.3's global symbol table can't hold every declaration of the game
 (Fatal Error 429), so cc.py gives each compile the lines of `xmen2_funcs.h`, `xmen2_data.h`
 and `xmen2_globals.h` that declare names the file uses (unused declarations emit no code).
@@ -728,8 +728,8 @@ ram_views, handc_rt or asm_conv).
   pointer equal the ROM's; GCC gets `-fno-delete-null-pointer-checks`). The six phase-4 guards
   (`grep -n Vectors game/c/*.c game/include/xmen2_macros.h`) stay: the MPW and PC modes need them.
 - **Frame time (R5's work item: D8 chugged in the Sentinel escape on a slower Linux PC).**
-  `XMEN2_FRAME_TIMES=path` logs each runner frame's wall time. The whole TAS headless on this
-  machine (a 16-core desktop, with `phase.py` running alongside): 636 fps, median 1.7 ms, p99 2.0 ms,
+  `XMEN2_FRAME_TIMES=path` logs each runner frame's wall time. The whole TAS headless on the
+  16-core desktop (with `phase.py` running alongside): 636 fps, median 1.7 ms, p99 2.0 ms,
   p99.9 2.9 ms, worst frame 17 ms (single frames at scene loads, where the original lags too).
   So sustained play needs ~10% of a 60 Hz frame here; the D8 build ran the engine's stepped
   runner (68000 state, dispatch, ~345 sync points/s per job), the port about twice as fast. A
@@ -1321,8 +1321,8 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   `aresample=48000:resampler=soxr`. With `full_rate_2p=1` the picture is 60 Hz (two or more players
   are 30 Hz in the original). scene20.input frames 1300-2500 with `players=4,widescreen=16:9` shows
   all four apart in the wide view (2026-10-22).
-- **Capture for the release video (2026-10-24, platform/native/capture.cpp, tools/capture.py;
-  xmen2disasm docs/RELEASE.md).** Nothing the game sees:
+- **Capture (2026-10-24, platform/native/capture.cpp, tools/capture.py):** recording the port to
+  look at it frame by frame or to show it. Nothing the game sees:
   - `--record-inputs F`: each runner frame's four pads, kept per frame number (a frame run again,
     by a rollback or a savestate load, drops what followed), written at exit as an input script
     whose header replays it (`# session SEED`, `# scene N`, `# options` = options_game_text). Netplay
@@ -1347,12 +1347,13 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
     Avalon's $00, also start without one); a song the game never started (a part the driver starts)
     is music too; everything else is an effect. Stop-then-play is no signal: the game does it for
     almost every sound. `XMEN2_SND_LOG=F` lists each play with its class.
-  - The TAS can't be port footage: the frame-synchronous machine has no lag frames, so its input
-    stops fitting in Siberia (xmen2disasm LESSONS.md, phase 6); footage is played from stage starts.
+  - The TAS can't be captured on the port: the frame-synchronous machine has no lag frames, so its
+    input stops fitting in Siberia (xmen2disasm LESSONS.md, phase 6); takes are played from stage
+    starts.
   - Two players at the original 30 Hz show each frame for two display periods
     (plat_frame_repeat): the capture writes it twice, so the video keeps the sound's time (a 2P
     take: 3,524 video frames = 58.81 s, its WAV 58.79 s; before the fix the video ran at twice
-    the speed). Edit-file frame numbers are video frames (seconds x 59.92).
+    the speed).
   - Music beds (before `music_voices`, which removes the contention: Phase 7 "music_voices";
     with `music_voices=0` this still holds): the music stem still has the original's voice contention: GEMS steals voices by
     priority, and a stage song with two player parts wants more FM voices than the chip has
