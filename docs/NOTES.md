@@ -652,8 +652,19 @@ of the time (noted where it mattered).
     native 180 -> 60 s wall, 4,147 -> 1,358 job-s (-67%; TAS 498 -> 1,539/s).
   - Engine 6693d84 is `--no-render` on ab07262. The fork's master (9bcb006, its merge with
     232cd0a) crashed a branched XMen2Verify process (0xc0000005, 3 of 3 replays; ab07262 2 of 2
-    clean), so this pin leaves 232cd0a out (open: find and fix that crash before the next bump). On 6693d84: phase.py 5 10/10, phase.py 7 as
-    before (M1 = phase 6 all pass, M2/M3/M5 pass, M4 40/46, M6 the user's).
+    clean), so this pin leaves 232cd0a out (open: find and fix that crash before the next bump).
+    On 6693d84: phase.py 5 10/10, phase.py 7 as before (M1 = phase 6 all pass, M2/M3/M5 pass,
+    M4 40/46, M6 the user's).
+- **Jobs by threads, memory by a gate (2026-10-24).** phase.py 7 had been run at `PHASE_JOBS=10`
+  after running out of memory once, which put every corpus stage on 10 of 32 threads (phase.py 7
+  took 2 h 1 min that way). Measured at 24 jobs: stepped-gen runners 1.6 GB together, native
+  0.7 GB, the WSL VM of the Linux checks ~2.4 GB, a branched verify process ~0.2 GB over a full
+  43,200-frame + 4-branch replay (the ~1.06 GB ones of that day ran the crashing 9bcb006 engine
+  above). So the job counts follow the threads (phase.py: the cores less two, `PHASE_JOBS` still
+  wins; verify `--jobs 24`; synccorpus `--jobs`), and each pool starts a job only while 3 GB is
+  free (`PHASE_MIN_FREE_GB` / `XMEN2_MIN_FREE_GB`), or when none of its jobs is running, or after
+  2 minutes; the first hold of a stretch is printed. Verify's per-run JSONs are byte-identical
+  held (one process at a time) and not.
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner

@@ -701,8 +701,14 @@ def cmd_verify(a) -> dict:
     # the longest processes start first, so the last ones to finish are short; the merge stays
     # in run order
     order = sorted(units, key=lambda u: -u["cost"])
+    gate = common.MemGate()
+
+    def gated(u: dict) -> list[tuple]:
+        with gate:
+            return one(u)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
-        futs = [ex.submit(one, u) for u in order]
+        futs = [ex.submit(gated, u) for u in order]
         by_run = {r[0]: r for f in futs for r in f.result()}
     results = [by_run[p.stem] for p in inputs]
     errs = [err for _run, _data, err, _s in results if err]
@@ -1332,7 +1338,8 @@ def main() -> int:
     p.add_argument("--runs", default="", help="dev: only these runs (comma-separated)")
     p.add_argument("--frames", type=int, default=0, help="dev: only the first N frames of each run")
     p.add_argument("--jobs", type=int, default=24,
-                   help="runs played at once (each on its own runner copy; ~80 MB and a fraction of a core each)")
+                   help="runner processes at once (each on its own runner copy; ~0.2 GB and a core each); a "
+                        "process starts while $XMEN2_MIN_FREE_GB (default 3) of RAM is free")
     p.add_argument("--timeout", type=int, default=7200)
     p.add_argument("--out", default="", help="output directory (default build/verify)")
     p.add_argument("--keep-going", action="store_true", help="play every run even after one failed")

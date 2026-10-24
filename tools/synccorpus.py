@@ -100,7 +100,13 @@ def main() -> int:
         env[k] = v
     size = {r: sum(1 for _ in open(refs / f"{r}-recomp-sync" / "sync.csv")) for r in runs}
 
+    gate = common.MemGate()
+
     def one(r: str) -> tuple[str, dict]:
+        with gate:
+            return run_one(r)
+
+    def run_one(r: str) -> tuple[str, dict]:
         t0 = time.time()
         out = a.out / r
         p = subprocess.run([sys.executable, str(common.ROOT / "tools" / "xmen2check.py"), "trace", "--mode", a.mode,
