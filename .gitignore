@@ -21,3 +21,7 @@ rom-*.cfg
 *.log
 
 .claude/worktrees/
+
+# The local task queue, not part of the published repo
+backlog.md
+backlog-archive.md

@@ -78,8 +78,8 @@ port runs one game frame per displayed frame, so it never slows down where the c
 lagged.
 
 Three and four players are new and still being finished: the enemies don't yet treat players
-3 and 4 the way they treat players 1 and 2. With 16:9, a few stages show glitches at the edges
-of the wide view.
+3 and 4 the way they treat players 1 and 2. In two-player stages the original's sound
+driver runs short of voices, so the characters' music parts lose notes, as on the cartridge.
 
 ## How it was made
 

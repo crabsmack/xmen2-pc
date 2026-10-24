@@ -23,6 +23,10 @@ Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
 
 ## Rules
 
+- **Nothing personally identifying goes into this repo** (the user's ruling for the public
+  release, xmen2disasm docs/RELEASE.md): no names in files or messages (write "the user"), no
+  `Claude-Session:` commit trailers, author `crabsmack`, commit times in UTC
+  (`.claude/settings.json` sets `TZ=UTC`; outside Claude, `TZ=UTC git commit`).
 - **The ROM never enters git** (`git log --all` must never show a `.bin/.gen/.smd`; K1 checks).
 - **Never edit generated C** (engine PRINCIPLES #19). Fix the recompiler (core fork), the
   engine (engine fork), `game.toml` or the spec, and regenerate.
