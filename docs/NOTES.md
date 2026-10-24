@@ -425,7 +425,7 @@ Of the 130 game/c files that didn't match at the end of phase 4, 117 are hand-wr
 the original: 97 tagged `asm`, and ~20 in an MPW-style frame whose bodies use what MPW C 3.3
 never emits (`dbra`, `exg`, `rol`/`ror`, `a2` as a variable, a store into an argument slot).
 The other 13 were C and now match (3,047 of 3,164 files; `docs/p4_mpw_matched.txt`). What it
-took, as rules for the next match (add them to xmen2disasm docs/COMPILER.md):
+took, as rules for the next match (also in xmen2disasm docs/COMPILER.md, b876007):
 
 - `while ((x & 8) != 0)` / `== 0` on a word gives `moveq #0,d1 / move.w d0,d1 / tst.l d1`; a
   bare `while (x & 8)` doesn't (VDP_WaitVBlank). `(signed char)b & k` on a u8 field gives
