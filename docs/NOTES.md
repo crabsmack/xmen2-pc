@@ -601,6 +601,37 @@ of the time (noted where it mattered).
   traces likewise. (2) The render in frame-synchronous mode is ~2/3 of every trace (12,300
   job-s); traces that compare no picture (P1; only P7 does) could skip it (an engine switch).
   (3) Shadow tests cost ~25% of the TAS's verify speed (273 vs 356 fps).
+- **verify branches from the TAS (2026-10-24, (1) above for verify).** A run whose input starts
+  with the TAS's first N >= 600 frames (all 62 fuzz runs at their branch frame; 11 of the 12
+  scenarios, mostly at 2,345) is played as a branch of a process playing the TAS: the engine's
+  `--branch-plan` (main.c "Branch plans") snapshots the machine after frame N, plays the run's
+  remaining frames, writes its results and restores. In-process only: the snapshot is the
+  engine's rollback state (rb_state.c), whose `exec` section is the game fiber's raw stack (host
+  addresses). verify.cpp keeps its testing state across a branch (`GameSpec.branch_save/
+  restore`; its per-run JSON at `branch_end`), so a branch reports exactly what the run reports
+  from power-on. `xmen2check.py verify` groups the branches into processes (`verify_units`:
+  latest first, bounded so that, longest first on `--jobs` workers, they finish soonest) and
+  reports them as `processes`; `--no-branch` is the control (every run from power-on).
+  - Two gaps, found on the way. (a) The rollback snapshot had none of the exact scheduler's state
+    (`exact_sched.c`: the 68000 clock and slice, the VDP FIFO/status/DMA, pads, the Z80 clock,
+    the YM timers): the engine's determinism probe (`GENESIS_RB_PROBE=500:64`) forked at the
+    first replayed tick (bus, z80) on every pass. Now an `exact` section (digested as `sched`):
+    the probe passes 57/57 over the whole TAS (period 997, depth 64), and fails again with the
+    section left out (`GENESIS_RB_NEGCTL_SKIP=exact`: asymmetric + diverging every pass). (b) An
+    open test's frame on the restored stack holds a reference to its function's `Stat`, so the
+    restore assigns into the existing map nodes; replacing the map made the second branch of a
+    process differ (interrupt-skipped and checked counts in 2-4 functions).
+  - Proof: a TAS carrier's final `state_fnv1a64`/`audio_state_fnv1a64` after branches equal the
+    plain run's (timed and verify runners), its own verify JSON byte-identical; the full corpus,
+    both ways on the same runner: **all 76 per-run JSONs byte-identical** and the merged
+    `functions` equal (3,160, 0 mismatches). Again on the engine pinned with it (three more fork
+    commits): the control's 76 JSONs byte-identical to phase.py 5's branched verify, and phase.py
+    5, 6 pass (7: M5 passes, M4 at its 40/46 of 2026-10-23).
+  - Time (24 jobs, the same runner, back to back): **597 s from power-on, 317 s branched** (-47%).
+    Frames played 2,273,389 -> 1,055,149 in 76 -> 20 processes; the longest is 59,400 frames, as
+    before (fuzz-55800's own length), so the TAS-length pole stays. `tools/bench.py` still plays
+    each run alone (`--runs R`: a fuzz run is then a one-branch process, same frames as before);
+    `tools/gate.py`'s 6,000-frame runs branch where they share the TAS's start.
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner

@@ -110,6 +110,9 @@ static uint64_t s_sync_rows;
 uint32_t xmen2_stack_low(void) { return s_stack_low; }   /* also verify.cpp's dead-stack bound */
 #ifdef XMEN2_VERIFY
 int xmen2_verify_entry(uint32_t addr);                    /* game/runtime/verify.cpp */
+void xmen2_verify_branch_save(void);                       /* its state at a branch point */
+void xmen2_verify_branch_restore(void);
+void xmen2_verify_branch_end(const char *tag);             /* a branch's results */
 #endif
 
 static uint32_t ram_crc_masked(const uint8_t *ram)
@@ -363,6 +366,10 @@ const GameSpec g_game_spec = {
 #endif
 #ifdef XMEN2_VERIFY
     .on_entry               = xmen2_verify_entry,
+    /* xmen2check.py verify: corpus runs that start with the TAS's input branch from it */
+    .branch_save            = xmen2_verify_branch_save,
+    .branch_restore         = xmen2_verify_branch_restore,
+    .branch_end             = xmen2_verify_branch_end,
 #endif
 
     .call_entry_point       = xmen2_call_entry_point,

@@ -373,10 +373,8 @@ std::string stopped_early()
     return "";
 }
 
-void report()
+void write_report(const char *path)
 {
-    const char *path = getenv("XMEN2_VERIFY_OUT");
-    if (!path) return;
     FILE *f = fopen(path, "w");
     if (!f) return;
     uint64_t tested = 0, checked = 0;
@@ -416,6 +414,25 @@ void report()
     fprintf(f, "\n}}\n");
     fclose(f);
 }
+
+void report()
+{
+    if (const char *path = getenv("XMEN2_VERIFY_OUT")) write_report(path);
+}
+
+/* Branch plans (the runner's --branch-plan; xmen2check.py verify): the testing's state at the
+   branch point, put back after each branch, so a branch reports what the run it stands for
+   reports when played from power-on. The tests open there keep their objects, and the functions
+   their Stat (the game fiber's restored stack refers to both): their contents are copied back. */
+struct Kept {
+    std::unordered_map<uint32_t, Stat> stats;
+    std::vector<Ctx> ctx;
+    int depth;
+    uint32_t entering;
+    bool any_done;
+    uint64_t refused, refused_since;
+};
+Kept *s_kept;
 
 std::string describe(const char *what, uint32_t a, uint32_t g, uint32_t c, const std::string &call)
 {
@@ -635,6 +652,52 @@ void crash_report(unsigned long code, void *where)
         fprintf(stderr, " $%06X (mode %d)", (unsigned)s_ctx[d]->fn->addr, s_ctx[d]->mode);
     fprintf(stderr, "; C function running $%06X\n", (unsigned)xm::fn_current());
     fflush(stderr);
+}
+
+extern "C" void xmen2_verify_branch_save(void)
+{
+    if (!s_kept) s_kept = new Kept();
+    Kept &k = *s_kept;
+    k.stats = s_stats;
+    k.ctx.clear();
+    for (int d = 0; d < s_depth; d++) k.ctx.push_back(*s_ctx[d]);
+    k.depth = s_depth;
+    k.entering = s_entering;
+    k.any_done = s_any_done;
+    k.refused = s_refused;
+    k.refused_since = s_refused_since;
+}
+
+extern "C" void xmen2_verify_branch_restore(void)
+{
+    const Kept &k = *s_kept;
+    /* into the same map nodes: a test open across the branch point holds a reference to its
+       function's Stat on the restored stack. A node made during the branch has no such holder. */
+    for (auto it = s_stats.begin(); it != s_stats.end();) {
+        auto kt = k.stats.find(it->first);
+        if (kt == k.stats.end()) { it = s_stats.erase(it); continue; }
+        it->second = kt->second;
+        ++it;
+    }
+    for (int d = 0; d < k.depth; d++) *s_ctx[d] = k.ctx[(size_t)d];
+    s_depth = k.depth;
+    s_entering = k.entering;
+    s_any_done = k.any_done;
+    s_refused = k.refused;
+    s_refused_since = k.refused_since;
+    g_xhw_hook = s_depth ? hw_hook : nullptr;
+    g_xinsn_hook = s_depth ? insn_hook : nullptr;
+}
+
+/* A branch's results: <dir of XMEN2_VERIFY_OUT>/<tag>.json */
+extern "C" void xmen2_verify_branch_end(const char *tag)
+{
+    const char *out = getenv("XMEN2_VERIFY_OUT");
+    if (!out) return;
+    std::string dir(out);
+    size_t slash = dir.find_last_of("/\\");
+    dir = slash == std::string::npos ? std::string() : dir.substr(0, slash + 1);
+    write_report((dir + tag + ".json").c_str());
 }
 
 extern "C" int xmen2_verify_entry(uint32_t addr)

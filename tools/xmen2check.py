@@ -450,12 +450,84 @@ def code_addrs_by_function() -> dict[str, list[int]]:
     return out
 
 
+BRANCH_MIN = 600   # frames of the TAS's input a run must start with to branch from a TAS run
+
+
+def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int) -> list[dict]:
+    """The runner processes a verify plays: {"input", "frames", "run" (the run whose results the
+    process's own JSON are, or None), "branches": [(at, frames, run, input)]}.
+
+    A run whose input starts with the TAS's first `at` >= BRANCH_MIN frames (the fuzz runs, most
+    scenarios) is played as a branch of a process playing the TAS (the runner's --branch-plan:
+    snapshot at `at`, the run's remaining frames, back to the snapshot), not from power-on: same
+    results (verify.cpp keeps its testing state across the branch), without replaying the prefix.
+    A process playing the TAS for branches stops at its last one, unless it is the TAS run itself.
+    Grouping: branches latest first, each into the TAS run or the last process opened if that keeps
+    it within a bound T, else into a new process; T is the one (from the longest run's frames up)
+    whose processes, longest first on `jobs` workers, finish first."""
+    import heapq
+    want = {p: min(cap, script_frames(p)) if cap else script_frames(p) for p in inputs}
+    branches, plain = [], []
+    tas_pads = input_pads(tas) if tas else []
+    for p in inputs:
+        if tas is None or p.stem == "tas":
+            plain.append(p)
+            continue
+        pads, n = input_pads(p), 0
+        lim = min(len(pads), len(tas_pads), want[p])
+        while n < lim and pads[n] == tas_pads[n]:
+            n += 1
+        if n >= BRANCH_MIN and n < want[p]:
+            branches.append((n, want[p] - n, p.stem, p))
+        else:
+            plain.append(p)
+    tas_run = next((p for p in plain if p.stem == "tas"), None)
+    plain = [p for p in plain if p is not tas_run]
+    branches.sort(key=lambda b: (-b[0], b[2]))
+
+    def group(bound: int) -> tuple[list[dict], int]:
+        units = []
+        own = {"input": tas_run, "frames": want[tas_run], "run": "tas", "branches": []} if tas_run else None
+        cost = want[tas_run] if tas_run else 0
+        cur = None
+        for b in branches:
+            if own is not None and cost + b[1] <= bound:
+                own["branches"].append(b)
+                cost += b[1]
+            elif cur is not None and cur["cost"] + b[1] <= bound:
+                cur["branches"].append(b)
+                cur["cost"] += b[1]
+            else:
+                cur = {"input": tas, "frames": b[0], "run": None, "branches": [b], "cost": b[0] + b[1]}
+                units.append(cur)
+        units = ([own] if own else []) + units + [{"input": p, "frames": want[p], "run": p.stem, "branches": []}
+                                                  for p in plain]
+        for k, u in enumerate(units):
+            u["branches"].sort(key=lambda b: (b[0], b[2]))
+            u["cost"] = u["frames"] + sum(b[1] for b in u["branches"])
+            u["name"] = u["run"] or f"tas{k}-to-{u['frames']}"
+        h = [0] * max(1, jobs)
+        for c in sorted((u["cost"] for u in units), reverse=True):
+            heapq.heappush(h, heapq.heappop(h) + c)
+        return units, max(h)
+
+    longest = max([want[p] for p in inputs], default=0)
+    best = None
+    for k in range(0, 41):
+        units, span = group(longest + longest * k // 20)
+        if best is None or span < best[1]:
+            best = (units, span)
+    return best[0] if best else []
+
+
 def cmd_verify(a) -> dict:
     """Play every corpus input on the verification runner (all generated code, timed, with the
     hand-written C as shadow tests: game/runtime/verify.cpp) and merge what the runs report.
     Exits non-zero, naming the run and why, when a run fails, plays short, or stopped testing
     early (its JSON's `stopped_early`); the output adds `per_run` (frames, functions_tested,
-    calls_checked, calls_refused, seconds)."""
+    calls_checked, calls_refused, seconds) and `processes` (how the runs were played: runs that
+    start with the TAS's input branch from a TAS run, verify_units; --no-branch: each from
+    power-on, the control)."""
     import os
     common.ensure_rom()
     src = exe_path(VERIFY_EXE)
@@ -473,7 +545,9 @@ def cmd_verify(a) -> dict:
     import time
     out = Path(a.out).resolve() if a.out else BUILD / "verify"
     out.mkdir(parents=True, exist_ok=True)
-    jobs = max(1, min(a.jobs, len(inputs)))
+    tas = Path(a.inputs) / "tas.input"
+    units = verify_units(inputs, None if a.no_branch or not tas.is_file() else tas, a.frames, a.jobs)
+    jobs = max(1, min(a.jobs, len(units)))
     free: "queue.Queue[Path]" = queue.Queue()
     for k in range(jobs):   # one runner copy per worker: settings.ini and evidence files stay apart
         run_dir = out / f"runner{k}"
@@ -489,55 +563,80 @@ def cmd_verify(a) -> dict:
 
     # A run fails when its runner fails, plays fewer frames than asked, or its testing stopped
     # before the end (verify.cpp `stopped_early`: a fatal error, a C run or synthetic case that
-    # never returned, calls refused for frames on end). The first failure kills the runs still
-    # going (by their own process) and skips the rest, unless --keep-going.
+    # never returned, calls refused for frames on end). The first failure kills the processes
+    # still going (by their own process) and skips the rest, unless --keep-going.
     stop = threading.Event()
     lock = threading.Lock()
-    live: dict = {}            # run -> its runner process
-    killed: set[str] = set()   # runs stopped because another one failed
+    live: dict = {}            # process name -> its runner process
+    killed: set[str] = set()   # processes stopped because another one failed
 
-    def fail(run: str, why: str) -> str:
+    def fail(name: str, why: str) -> str:
         if not a.keep_going and not stop.is_set():
             stop.set()
             with lock:
                 for other, p in live.items():
-                    if other != run and p.poll() is None:
+                    if other != name and p.poll() is None:
                         killed.add(other)
                         p.kill()
         return why
 
-    def one(inp: Path):
-        run = inp.stem
-        if stop.is_set():
-            return run, None, None, None
-        script = out / f"{run}.input"
+    def script_of(inp: Path) -> Path:
+        script = out / f"{inp.stem}.input"
         script.write_text("".join(l for l in inp.read_text().splitlines(True)
                                   if not l.strip().upper().startswith("EXIT")), newline="\n")
-        res = out / f"{run}.json"
-        if res.exists():
-            res.unlink()
+        return script
+
+    def check(run: str, data, logf: Path, played, frames: int, secs) -> tuple:
+        """One run's verdict: (run, data, error or None, seconds)."""
+        why = (data or {}).get("stopped_early")
+        if data is None:
+            return run, data, fail(run, f"verify {run}: no results; see {logf}"), secs
+        if not played or not played.get("complete") or played.get("frames") != frames:
+            return run, data, fail(run, f"verify {run}: the runner played {(played or {}).get('frames')} of {frames} "
+                                        f"frames; see {logf}"), secs
+        if why:
+            return run, data, fail(run, f"verify {run}: testing stopped early: {why} ({data.get('functions_tested')} "
+                                        f"functions tested); see {logf}"), secs
+        return run, data, None, secs
+
+    def one(u: dict) -> list[tuple]:
+        """One runner process: its own run (if any) and its branches."""
+        name = u["name"]
+        runs = ([u["run"]] if u["run"] else []) + [b[2] for b in u["branches"]]
+        if stop.is_set():
+            return [(r, None, None, None) for r in runs]
+        res = out / (f"{u['run']}.json" if u["run"] else f"_{name}.json")
+        for r in runs + ([] if u["run"] else [res.stem]):
+            if (out / f"{r}.json").exists():
+                (out / f"{r}.json").unlink()
         # synthetic cases (game/verify/<ADDR>.syn; verify.cpp load_synth)
         env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_VERIFY_OUT": str(res),
                "XMEN2_VERIFY_SYNTH": str(common.GAME / "verify"), "XMEN2_VERIFY_INSNS": str(insns)}
         if a.functions:
             env["XMEN2_VERIFY_ONLY"] = a.functions
-        frames = a.frames or script_frames(inp)
-        cmd = [src.name, str(common.ROM), "--benchmark", str(frames),
-               "--input-script", str(script), "--fresh-evidence"]
-        logf = out / f"{run}.log"
+        cmd = [src.name, str(common.ROM), "--benchmark", str(u["frames"]),
+               "--input-script", str(script_of(u["input"])), "--fresh-evidence"]
+        if u["branches"]:   # the runner's --branch-plan: FRAME FRAMES TAG SCRIPT
+            plan = out / f"{name}.branches"
+            plan.write_text("".join(f"{at} {n} {run} {script_of(inp)}\n" for at, n, run, inp in u["branches"]),
+                            newline="\n")
+            cmd += ["--branch-plan", str(plan)]
+        logf = out / f"{name}.log"
         run_dir = free.get()
         t0 = time.time()
         timed_out = False
         try:
             if stop.is_set():
-                return run, None, None, None
+                return [(r, None, None, None) for r in runs]
             cmd[0] = str(run_dir / src.name)
-            log(f"verify {run}: {frames} frames")
+            log(f"verify {name}: {u['frames']} frames" + (f" + {len(u['branches'])} branches "
+                                                          f"({sum(b[1] for b in u['branches'])} frames)"
+                                                          if u["branches"] else ""))
             with open(logf, "w", encoding="utf-8", errors="replace") as lf:
                 p = subprocess.Popen(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
                                      errors="replace")
                 with lock:
-                    live[run] = p
+                    live[name] = p
                 try:
                     stdout, _ = p.communicate(timeout=a.timeout)
                 except subprocess.TimeoutExpired:
@@ -546,38 +645,50 @@ def cmd_verify(a) -> dict:
                     timed_out = True
                 finally:
                     with lock:
-                        live.pop(run, None)
+                        live.pop(name, None)
         finally:
             free.put(run_dir)
         secs = round(time.time() - t0, 1)
-        if run in killed:
-            return run, None, None, secs
-        data = json.loads(res.read_text()) if res.exists() else None
-        why = (data or {}).get("stopped_early")
+        if name in killed:
+            return [(r, None, None, secs) for r in runs]
         if timed_out:
-            return run, data, fail(run, f"verify {run}: timed out after {a.timeout} s; see {logf}"), secs
-        if p.returncode != 0 or data is None:
-            last = [l for l in logf.read_text(errors="replace").splitlines() if l.startswith(("[handc]", "[verify]"))]
-            return run, data, fail(run, f"verify {run}: the verification runner failed ({p.returncode})"
-                                        f"{': ' + (why or last[-1]) if why or last else ''}; see {logf}"), secs
+            err = fail(name, f"verify {name} ({', '.join(runs)}): timed out after {a.timeout} s; see {logf}")
+            return [(runs[0], None, err, secs)] + [(r, None, None, secs) for r in runs[1:]]
+        if p.returncode != 0:
+            data = json.loads(res.read_text()) if res.exists() else {}
+            why = data.get("stopped_early")
+            last = [l for l in logf.read_text(errors="replace").splitlines() if l.startswith(("[handc]", "[verify]",
+                                                                                               "[branch]"))]
+            err = fail(name, f"verify {name} ({', '.join(runs)}): the verification runner failed ({p.returncode})"
+                             f"{': ' + (why or last[-1]) if why or last else ''}; see {logf}")
+            return [(runs[0], None, err, secs)] + [(r, None, None, secs) for r in runs[1:]]
+        got = []
         bench = re.search(r"GENESISRECOMP_BENCHMARK (\{.*\})", stdout or "")
-        b = json.loads(bench.group(1)) if bench else {}
-        if not b.get("complete") or b.get("frames") != frames:
-            return run, data, fail(run, f"verify {run}: the runner played {b.get('frames')} of {frames} frames; "
-                                        f"see {logf}"), secs
-        if why:
-            return run, data, fail(run, f"verify {run}: testing stopped early: {why} ({data.get('functions_tested')} "
-                                        f"functions tested); see {logf}"), secs
-        return run, data, None, secs
+        if u["run"]:
+            data = json.loads(res.read_text()) if res.exists() else None
+            got.append(check(u["run"], data, logf, json.loads(bench.group(1)) if bench else None, u["frames"],
+                             secs - sum(b.get("seconds", 0) for b in
+                                        map(json.loads, re.findall(r"GENESISRECOMP_BRANCH (\{.*\})", stdout or "")))))
+        elif not bench or not json.loads(bench.group(1)).get("complete"):
+            err = fail(name, f"verify {name}: the runner did not play its {u['frames']} frames; see {logf}")
+            return [(runs[0], None, err, secs)] + [(r, None, None, secs) for r in runs[1:]]
+        played = {b["tag"]: b for b in map(json.loads, re.findall(r"GENESISRECOMP_BRANCH (\{.*\})", stdout or ""))}
+        for _at, n, run, _inp in u["branches"]:
+            rj = out / f"{run}.json"
+            data = json.loads(rj.read_text()) if rj.exists() else None
+            pb = played.get(run)
+            got.append(check(run, data, logf, pb, n, round(pb["seconds"], 1) if pb else None))
+        return got
 
     merged: dict[str, dict] = {}
     per_run: dict[str, dict] = {}
-    # the longest runs start first (the TAS, then the late fuzz runs: their TAS prefix), so the
-    # last ones to finish are short; the merge stays in run order
-    longest = sorted(inputs, key=lambda p: -(a.frames or script_frames(p)))
+    # the longest processes start first, so the last ones to finish are short; the merge stays
+    # in run order
+    order = sorted(units, key=lambda u: -u["cost"])
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
-        done = {p: f for p, f in zip(longest, [ex.submit(one, p) for p in longest])}
-        results = [done[p].result() for p in inputs]
+        futs = [ex.submit(one, u) for u in order]
+        by_run = {r[0]: r for f in futs for r in f.result()}
+    results = [by_run[p.stem] for p in inputs]
     errs = [err for _run, _data, err, _s in results if err]
     if errs:
         sys.exit("\n".join(errs) + (f"\n({sum(1 for r in results if r[1] is None and not r[2])} other runs stopped or "
@@ -608,7 +719,9 @@ def cmd_verify(a) -> dict:
                        "first_uncovered": f"{unc[0]:06X}" if unc else None}
         if 0 < len(unc) <= 64:   # for P4-decomp.md decisions 10, 13 (listed unreachable instructions)
             funcs[addr]["uncovered_pcs"] = [f"{pc:06X}" for pc in unc]
-    return {"runs": len(inputs), "per_run": per_run, "functions": funcs}
+    processes = [{"name": u["name"], "input": u["input"].stem, "frames": u["frames"], "run": u["run"],
+                  "branches": [f"{run}@{at}" for at, _n, run, _i in u["branches"]], "cost": u["cost"]} for u in units]
+    return {"runs": len(inputs), "per_run": per_run, "processes": processes, "functions": funcs}
 
 
 # --- phase 4: the hand-written C (types, handc, lint) ----------------------------------
@@ -1208,6 +1321,9 @@ def main() -> int:
     p.add_argument("--out", default="", help="output directory (default build/verify)")
     p.add_argument("--keep-going", action="store_true", help="play every run even after one failed")
     p.add_argument("--keep-runner", action="store_true", help="keep the runner copies after a pass (XMEN2_KEEP_RUNNER=1)")
+    p.add_argument("--no-branch", action="store_true",
+                   help="play every run from power-on (the control: by default runs that start with the TAS's "
+                        "input branch from a TAS run at the frame they leave it)")
     for name in ("gen", "build", "trace"):
         p = sub.add_parser(name)
         p.add_argument("--json", action="store_true")
