@@ -6,7 +6,9 @@
  *                       scene and the game options (`tools/capture.py` reads it). A frame run again
  *                       (a rollback, a savestate load) replaces what followed it, so the file is the
  *                       timeline that was shown.
- *   XMEN2_CAPTURE=F     every shown frame, lossless (FFV1 in Matroska), through an ffmpeg on PATH, on
+ *   XMEN2_CAPTURE=F     every display period's picture (a frame shown twice, as two players at the
+ *                       original 30 Hz are, is written twice: the video is in the sound's time),
+ *                       lossless (FFV1 in Matroska), through an ffmpeg on PATH, on
  *                       a fixed canvas (XMEN2_CAPTURE_W, default 400 with widescreen, else 320, x 224):
  *                       narrower screens (the 4:3 Cerebro screens in 16:9) centred on black.
  *   XMEN2_STEM=music|sfx  the sound of only the music or only the sound effects: the chips' key-ons
@@ -74,6 +76,17 @@ static void snd_init(void)
 
 static const char *cls_name(int c) { return c == CLS_MUSIC ? "music" : c == CLS_SFX ? "sfx" : "driver"; }
 
+/* a song the game starts in frame f: music? */
+static bool is_music(uint8_t id, uint64_t f)
+{
+    /* the songs the rule below found to be music in a survey of every stage, the title and the
+       attract demos (6,000 frames each, 2026-10-23); some of them also start without a stop-all
+       (the Brood's theme $30, Avalon's $00), so the list decides for them */
+    static const uint8_t music[] = { 0x00, 0x01, 0x02, 0x04, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x1F, 0x23, 0x25, 0x27,
+                                     0x30, 0x3E, 0x40, 0x44, 0x47, 0x48, 0x51, 0x5C, 0x5E, 0x5F, 0x6F, 0x70 };
+    return memchr(music, id, sizeof music) != nullptr || f == s_stopall_frame;
+}
+
 /* sound2.cpp's ring parser: one complete command the game sent the first machine */
 extern "C" void capture_sound_command(uint8_t c, const uint8_t *a)
 {
@@ -81,14 +94,8 @@ extern "C" void capture_sound_command(uint8_t c, const uint8_t *a)
     uint64_t f = machine_frame_no();
     if (c == 0x16) s_stopall_frame = f;
     if (c == 0x10) {
-        /* the songs the rule below found to be music in a survey of every stage, the title and the
-           attract demos (6,000 frames each, 2026-10-23); some of them also start without a stop-all
-           (the Brood's theme $30, Avalon's $00), so the list decides for them */
-        static const uint8_t music[] = { 0x00, 0x01, 0x02, 0x04, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x1F, 0x23, 0x25, 0x27,
-                                         0x30, 0x3E, 0x40, 0x44, 0x47, 0x48, 0x51, 0x5C, 0x5E, 0x5F, 0x6F, 0x70 };
         uint8_t id = a[0];
-        bool known = memchr(music, id, sizeof music) != nullptr;
-        s_cls[id] = (known || f == s_stopall_frame) ? CLS_MUSIC : CLS_SFX;
+        s_cls[id] = is_music(id, f) ? CLS_MUSIC : CLS_SFX;
         if (!s_plays[id]++) s_first[id] = f;
     }
     if (s_snd_log && (c == 0x10 || c == 0x12 || c == 0x16))
@@ -96,16 +103,84 @@ extern "C" void capture_sound_command(uint8_t c, const uint8_t *a)
                 c == 0x10 ? cls_name(s_cls[a[0]]) : "");
 }
 
+/* XMEN2_BED=1 (a music bed, not a take): the sound effects never reach the driver, so none of them
+   takes a voice from the music (the driver steals by priority, and a stolen note is lost in the
+   music stem too). A play command of an effect, `$FF $10 id` in the ring, is made `$FF $12 id` (a
+   stop of what isn't playing) as its id byte arrives: the game holds the Z80's bus through
+   Snd_Play, so the driver reads none of it before. The bytes are followed in the order the game
+   writes them (Snd_PutByte publishes the index after each one). The game may differ from the take's
+   from then on: for the music alone. machine.cpp's plat_z80_ram_write8 calls this for each byte. */
+#define RING 0x1B40u   /* the command ring (Snd_PutByte), its write index at $36 (sound2.cpp) */
+static bool is_music(uint8_t id, uint64_t frame);
+extern "C" void capture_ring_write(uint8_t *ram, uint32_t off, uint8_t v)
+{
+    static const bool bed = [] { const char *b = getenv("XMEN2_BED"); return b && *b == '1'; }();
+    static int state;              /* 0: before a $FF, 1: the command byte next, 2: a play's id next */
+    static uint32_t cmd_off;
+    static uint64_t stopall = ~0ull;
+    if (!bed || off < RING || off >= RING + 0x40) return;
+    if (state == 0) { if (v == 0xFF) state = 1; return; }
+    if (state == 1) {
+        if (v == 0x16) stopall = machine_frame_no();
+        cmd_off = off;
+        state = v == 0x10 ? 2 : 0;   /* other commands' arguments are never $FF-led here: resync on the next $FF */
+        return;
+    }
+    uint64_t f = machine_frame_no();
+    if (f != stopall && !is_music(v, f)) ram[cmd_off] = 0x12;
+    state = 0;
+}
+
+/* XMEN2_SOLO=27,2B (a multitrack music render): only those songs' tracks play. Every other track
+   slot is kept muted in the driver (+6 bit 1, as the second sound machine mutes base tracks), so its
+   note-ons are skipped and take no voice: a song alone is never short of voices (the stage songs
+   with two player parts need more FM voices than the chip has, and the driver drops the
+   lowest-priority notes). Render each layer with the same input and mix them. The game never reads
+   the slots (Snd_ReadDriverByte reads the variables), so every pass is the same game.
+   machine.cpp's z80_bus_write calls this when the driver writes a slot. */
+static uint8_t s_solo[256];
+static int s_solo_on = -1;
+extern "C" void capture_slot_written(uint8_t *ram, uint32_t addr)
+{
+    if (s_solo_on < 0) {
+        s_solo_on = 0;
+        const char *s = getenv("XMEN2_SOLO");
+        for (const char *p = s; p && *p; ) {
+            char *e;
+            unsigned long id = strtoul(p, &e, 16);
+            if (e == p) { fprintf(stderr, "[capture] XMEN2_SOLO=%s: hex song ids, comma-separated\n", s); exit(2); }
+            s_solo[id & 0xFF] = 1;
+            s_solo_on = 1;
+            p = *e ? e + 1 : e;
+        }
+    }
+    if (!s_solo_on || addr < SLOTS || addr >= SLOTS + 16 * 0x20) return;
+    static uint8_t forced[16];   /* slots this muted: a slot reused for a solo song is unmuted (as sound2.cpp) */
+    unsigned t = (addr - SLOTS) >> 5;
+    uint8_t *slot = &ram[SLOTS + 0x20 * t];
+    if (!s_solo[slot[0x0E]]) {
+        slot[6] |= 0x02;
+        forced[t] = 1;
+    } else if (forced[t]) {
+        slot[6] &= (uint8_t)~0x02;
+        forced[t] = 0;
+    }
+}
+
 /* the class of the song whose track holds the voice on channel ch of a pool (CLS_NONE: no owner,
    which both stems keep) */
+static int s_song = -1;            /* the song voice_class found (-1: none) */
+static uint64_t s_keyons[256];     /* FM key-ons that sounded, per song (XMEN2_SND_LOG's summary) */
 static int voice_class(uint16_t pool, int entries, int ch)
 {
     const uint8_t *ram = g_machine.bus.z80_ram;
+    s_song = -1;
     for (int i = 0; i < entries; i++) {
         const uint8_t *e = &ram[pool + 7 * i];
         if (e[0] == 0xFF) break;
         if ((e[0] & 0x80) || (e[0] & 0x07) != ch) continue;
         uint8_t song = ram[SLOTS + 0x20 * (e[3] & 0x0F) + 0x0E];
+        s_song = song;
         return s_cls[song] == CLS_SFX ? CLS_SFX : CLS_MUSIC;
     }
     return CLS_NONE;
@@ -150,6 +225,7 @@ extern "C" bool capture_audio_write(int port, uint8_t *v)
         if (port == 1 && sel[0] == 0x28 && (*v & 0xF0)) {   /* key-on */
             int ch = *v & 7;
             if (other_kind(owner_or_last(0, ch, counted(0, voice_class(FM_POOL, 6, ch))))) *v &= 0x0F;   /* keys off instead */
+            else if (s_song >= 0) s_keyons[s_song]++;
         } else if (port == 1 && sel[0] == 0x2A) {           /* a DAC sample: FM channel 6 */
             if (other_kind(owner_or_last(0, 6, counted(1, voice_class(FM_POOL, 6, 6))))) *v = 0x80;
         }
@@ -267,6 +343,13 @@ extern "C" void capture_video_frame(const uint32_t *fb, int stride, int w, int h
     fwrite(s_canvas.data(), 4, s_canvas.size(), s_cap);
 }
 
+/* main.cpp's plat_frame_repeat: one more display period of the same picture (two players at the
+   original 30 Hz show each frame twice), so the video keeps the sound's time */
+extern "C" void capture_video_repeat(void)
+{
+    if (s_cap) fwrite(s_canvas.data(), 4, s_canvas.size(), s_cap);
+}
+
 /* ---- the summary ------------------------------------------------------------------------------- */
 
 extern "C" void capture_report(void)
@@ -277,6 +360,9 @@ extern "C" void capture_report(void)
         if (s_plays[i])
             fprintf(s_snd_log, "# %02X,%s,%llu,%llu\n", i, cls_name(s_cls[i]), (unsigned long long)s_plays[i],
                     (unsigned long long)s_first[i]);
+    fprintf(s_snd_log, "# keyons song,fm_keyons_heard (with XMEN2_STEM)\n");
+    for (int i = 0; i < 256; i++)
+        if (s_keyons[i]) fprintf(s_snd_log, "# keyons %02X,%llu\n", i, (unsigned long long)s_keyons[i]);
     fclose(s_snd_log);
     s_snd_log = nullptr;
 }

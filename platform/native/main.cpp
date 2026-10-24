@@ -506,6 +506,7 @@ static std::chrono::steady_clock::time_point s_tlast;
 
 extern "C" void plat_frame_repeat(void)
 {
+    if (!quiet()) capture_video_repeat();   /* XMEN2_CAPTURE: the video keeps the sound's time */
     if (!s_interactive || quiet()) return;
     if (g_opt.high_fps) present_repeat();   /* its period is covered by the frames in between */
     else host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());

@@ -266,7 +266,11 @@ static uint8_t z80_bus_read(uint16_t addr)
 static void z80_bus_write(uint16_t addr, uint8_t val)
 {
     GenesisBus *b = &g_machine.bus;
-    if (addr < 0x4000u) { b->z80_ram[addr & 0x1FFFu] = val; return; }
+    if (addr < 0x4000u) {
+        b->z80_ram[addr & 0x1FFFu] = val;
+        capture_slot_written(b->z80_ram, addr & 0x1FFFu);   /* XMEN2_SOLO: the other songs' tracks muted */
+        return;
+    }
     if (addr < 0x6000u) {
         uint8_t port = (uint8_t)(addr & 3);
         ym_write(s_znow, port, val);
@@ -683,6 +687,7 @@ void plat_z80_ram_write8(uint32_t off, uint8_t v)
     if (!s_zaccess) return;
     if ((off & 0x6000) == 0x0000 || (off & 0x6000) == 0x2000) {
         g_machine.bus.z80_ram[off & 0x1FFF] = v;
+        capture_ring_write(g_machine.bus.z80_ram, off & 0x1FFF, v);   /* XMEN2_BED: no effects reach the driver */
         snd2_ring_write(g_machine.bus.z80_ram, off & 0x1FFF, v);   /* phase 7 R9: the music commands */
         return;
     }

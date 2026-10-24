@@ -100,12 +100,15 @@ void     snd2_state_init(void);
 
 /* capture.cpp: recording the port for showing it (inputs, a lossless picture, music/SFX stems) */
 void capture_sound_command(uint8_t c, const uint8_t *a);   /* sound2.cpp's ring parser: a command */
+void capture_ring_write(uint8_t *ram, uint32_t off, uint8_t v);   /* machine.cpp: XMEN2_BED's filter */
+void capture_slot_written(uint8_t *ram, uint32_t addr);           /* machine.cpp: XMEN2_SOLO's mutes */
 bool capture_audio_write(int port, uint8_t *v);            /* plat_audio_write: the stem filter */
 bool capture_mute_snd2(void);                              /* host_audio: the second machine silent */
 void capture_record_start(const char *path);               /* --record-inputs */
 void capture_record_pads(uint64_t frame, const uint16_t pad[4]);
 void capture_record_truncate(uint64_t frames);              /* netplay.cpp: only frames 1..n are final */
 void capture_video_frame(const uint32_t *fb, int stride, int w, int h);   /* XMEN2_CAPTURE */
+void capture_video_repeat(void);                           /* plat_frame_repeat: the same picture again */
 
 /* the host side (main.cpp), called by the machine */
 #define PLAT_AUDIO_PSG 4                 /* audio/event_queue.h AUDIO_PORT_PSG; 0-3 the YM2612's ports */

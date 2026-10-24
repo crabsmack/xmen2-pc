@@ -1349,6 +1349,22 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
     almost every sound. `XMEN2_SND_LOG=F` lists each play with its class.
   - The TAS can't be port footage: the frame-synchronous machine has no lag frames, so its input
     stops fitting in Siberia (xmen2disasm LESSONS.md, phase 6); footage is played from stage starts.
+  - Two players at the original 30 Hz show each frame for two display periods
+    (plat_frame_repeat): the capture writes it twice, so the video keeps the sound's time (a 2P
+    take: 3,524 video frames = 58.81 s, its WAV 58.79 s; before the fix the video ran at twice
+    the speed). Edit-file frame numbers are video frames (seconds x 59.92).
+  - Music beds: the music stem still has the original's voice contention: GEMS steals voices by
+    priority, and a stage song with two player parts wants more FM voices than the chip has
+    (P7-kickoff.md section 4), so parts lose notes (the user heard Wolverine's part cut in the
+    Siberia bed). `XMEN2_SOLO=27` (hex song ids) keeps every other song's track slots muted in the
+    driver (+6 bit 1, forced and released per slot as sound2.cpp does), so a layer plays with the
+    chip to itself: render the base song and each part alone from the same input and mix them.
+    The slots are not game state: work RAM CRCs equal in all passes (9,500 frames). `XMEN2_BED=1`
+    turns effects' play commands into stops in the ring before the driver reads them (one
+    publish per byte: followed byte by byte), for a bed that no effect touches (3 more base notes
+    in Siberia); the game may then differ, so it is for beds only. The Siberia bed (P1 Gambit
+    via start_char, P2 joining as Wolverine: session 3 with game/mp_inputs/boot.input; $1B 0B/0C =
+    4/5 at frame 477) is the base $27, $2B and $2D mixed.
 - **R4, the cost of keeping the byte matches** (35 game files so far, the first batches): 444 lines
   added, 8 changed (`git diff --stat`), all in `#if defined(XMEN2_NATIVE)` blocks, most
   `if (g_opt.players > 2) { ... }` next to the original line they extend, the logic in
