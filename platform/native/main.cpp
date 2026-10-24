@@ -13,6 +13,7 @@
  *   --hash-frames K      [FBHASH] frame=f w=W h=H hash=0x... every K runner frames (FNV-1a-64 of
  *                        the framebuffer's active region, as main.c framebuf_active_hash)
  *   --fresh-evidence     accepted (nothing is written beside the runner)
+ *   --no-render          (--benchmark) the sync points render no frame: a trace that compares no picture
  *   --options K=V,...    the enhancement options (phase 6, options.cpp; also xmen2.ini beside the
  *                        runner); --options --json lists them and exits
  *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
@@ -572,7 +573,7 @@ extern "C" void plat_frame_end(uint64_t frame)
 int main(int argc, char **argv)
 {
     const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".", *game_rows = nullptr;
-    bool session = false;
+    bool session = false, no_render = false;
     uint64_t seed = 0;
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
     for (int i = 1; i < argc; i++) {
@@ -580,6 +581,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--input-script") && i + 1 < argc) script = argv[++i];
         else if (!strcmp(argv[i], "--hash-frames") && i + 1 < argc) s_hash_frames = (uint32_t)strtoul(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--fresh-evidence")) {}
+        else if (!strcmp(argv[i], "--no-render")) no_render = true;
         else if (!strcmp(argv[i], "--quit-after") && i + 1 < argc) s_quit_after = strtoull(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
@@ -661,6 +663,16 @@ int main(int argc, char **argv)
         }
         setvbuf(s_scan_out, nullptr, _IOFBF, 1 << 20);
         fprintf(s_scan_out, "flip,sync,t_us,whole,gameplay,fb_fnv1a64\n");
+    }
+    if (no_render) {   /* a trace that compares no picture: the sync points render none */
+        const char *shots = getenv("XMEN2_SHOTS"), *cap = getenv("XMEN2_CAPTURE");
+        if (!s_benchmark || s_hash_frames || present_log || s_flip || s_probe_every || netplay_enabled()
+            || (shots && *shots) || (cap && *cap)) {
+            fprintf(stderr, "[native] --no-render needs --benchmark, and no --hash-frames, --present-log, --flip, "
+                            "--flip-scan, --state-probe, --netplay, XMEN2_SHOTS or XMEN2_CAPTURE\n");
+            return 2;
+        }
+        machine_render_off();
     }
     crc_init();
     if (const char *sl = getenv("XMEN2_STACK_LOW"); sl && *sl) s_stack_low = (uint32_t)strtoul(sl, nullptr, 0);

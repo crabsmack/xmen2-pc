@@ -502,7 +502,7 @@ exporter and the measurement exist and are proven on the phase-4 C (LESSONS.md "
   0 interpreter instructions; `synccorpus.py --mode native --fb --against`, 275 s wall at 24 jobs,
   longest fuzz-55800-s2 142 s). Before the bump the same 76 took 92.5 s (TAS alone 2,200 fps); the
   render costs ~3x (TAS alone 674 fps, 631 with `--fb`: the hash is ~7%). A trace that compares
-  no picture could skip the render (an engine switch; not done).
+  no picture skips the render since 2026-10-24 (`--no-render`, "Phase 5 harness" below).
 
 ### What the C still needs from the 68000 (`build --native`, baseline 2026-10-17)
 
@@ -599,7 +599,8 @@ of the time (noted where it mattered).
   runs that replay the TAS up to their branch point: of 2,273,389 verify frames only 62 x 3,600 =
   223k are fuzzed; states every 1,800 TAS frames on both sides would cut verify ~4x and the fuzz
   traces likewise. (2) The render in frame-synchronous mode is ~2/3 of every trace (12,300
-  job-s); traces that compare no picture (P1; only P7 does) could skip it (an engine switch).
+  job-s); traces that compare no picture (P1; only P7 does) could skip it (an engine switch:
+  done 2026-10-24, `--no-render` below).
   (3) Shadow tests cost ~25% of the TAS's verify speed (273 vs 356 fps).
 - **verify branches from the TAS (2026-10-24, (1) above for verify).** A run whose input starts
   with the TAS's first N >= 600 frames (all 62 fuzz runs at their branch frame; 11 of the 12
@@ -632,6 +633,27 @@ of the time (noted where it mattered).
     before (fuzz-55800's own length), so the TAS-length pole stays. `tools/bench.py` still plays
     each run alone (`--runs R`: a fuzz run is then a one-branch process, same frames as before);
     `tools/gate.py`'s 6,000-frame runs branch where they share the TAS's start.
+- **Traces without a picture skip the render (2026-10-24, (2) above).** `--no-render` (with
+  `--benchmark`): the engine's frame-synchronous runners (XMen2Stepped, XMen2SteppedGen;
+  `exact_set_render(0)`, `fsync_render` returns at once) and XMen2Native (`machine_render_off`,
+  the rollback replay's path in `plat_sync_point`) render no frame at their sync points. The
+  render changes nothing the game reads there (the status read shows no sprite flags; netplay's
+  replays already relied on it natively), so only the framebuffer stays empty. `xmen2check.py
+  trace` passes it whenever nothing looks at the picture or the platform's per-frame work
+  (`picture_free`: not with `--fb`, `--options`, the present log, flips, game rows, sessions,
+  scenes, digests, state probes, `XMEN2_SHOTS`/`XMEN2_CAPTURE`); `--render` keeps it (the
+  control); the trace JSON says which (`render`). The runners refuse it with `--hash-frames` and
+  the other picture options.
+  - Proof, all 76 corpus runs both ways on the same runners (24 jobs, back to back): every
+    `sync.csv` byte-identical, stepped-gen and native (2,042,653 sync points each; stepped-gen
+    equal to the phase-4 references, native to stepped-gen; 0 misses, 0 interpreter
+    instructions).
+  - Time: stepped-gen 228 -> 92 s wall, 5,269 -> 2,108 job-s (-60%; TAS 392 -> 1,018 sync points/s);
+    native 180 -> 60 s wall, 4,147 -> 1,358 job-s (-67%; TAS 498 -> 1,539/s).
+  - Engine 6693d84 is `--no-render` on ab07262. The fork's master (9bcb006, its merge with
+    232cd0a) crashed a branched XMen2Verify process (0xc0000005, 3 of 3 replays; ab07262 2 of 2
+    clean), so this pin leaves 232cd0a out (open: find and fix that crash before the next bump). On 6693d84: phase.py 5 10/10, phase.py 7 as
+    before (M1 = phase 6 all pass, M2/M3/M5 pass, M4 40/46, M6 the user's).
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner

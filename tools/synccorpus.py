@@ -3,7 +3,7 @@ run's sync rows with a reference (P4 D2/D6, P5 P2): every row, `sync` and the fo
 picture, fb_fnv1a64, when both sides have it), the same number of rows. Runs in parallel,
 longest first.
 
-    uv run tools/synccorpus.py --refs REFS --mode native --out DIR [--against DIR2] [--fb]
+    uv run tools/synccorpus.py --refs REFS --mode native --out DIR [--against DIR2] [--fb | --render]
                                [--jobs 20] [--runs a,b] [--keep-runner] [--env NAME=VALUE ...] [--json]
 
 REFS holds, per run R (what xmen2disasm's phase.py 4 leaves in build/phase_traces):
@@ -72,6 +72,8 @@ def main() -> int:
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--against", type=Path, help="reference rows DIR/<run>/sync.csv instead of REFS/<run>-stepped-gen")
     ap.add_argument("--fb", action="store_true", help="trace with --fb (sync.csv + fb_fnv1a64)")
+    ap.add_argument("--render", action="store_true",
+                    help="trace with --render (the sync points render their frame without --fb: the control)")
     ap.add_argument("--jobs", type=int, default=20)
     ap.add_argument("--runs", default="", help="only these (comma-separated)")
     ap.add_argument("--keep-runner", action="store_true")
@@ -104,6 +106,7 @@ def main() -> int:
         p = subprocess.run([sys.executable, str(common.ROOT / "tools" / "xmen2check.py"), "trace", "--mode", a.mode,
                             "--replay", str(refs / f"{r}-recomp-sync"), "--run", r, "--input", str(refs / f"{r}.input"),
                             "--out", str(out), "--json", "--timeout", str(a.timeout)] + (["--fb"] if a.fb else [])
+                           + (["--render"] if a.render else [])
                            + (["--keep-runner"] if a.keep_runner else []),   # else the trace drops it after a pass
                            capture_output=True, text=True, env=env)
         res: dict = {"seconds": round(time.time() - t0, 1)}
@@ -111,7 +114,7 @@ def main() -> int:
             res.update(equal=False, error=(p.stdout + p.stderr).strip()[-600:])
         else:
             j = json.loads(p.stdout.strip().splitlines()[-1])
-            res.update({k: j[k] for k in ("sync_points", "dispatch_misses", "interp_instructions", "fps", "fb_rows")
+            res.update({k: j[k] for k in ("sync_points", "dispatch_misses", "interp_instructions", "fps", "fb_rows", "render")
                         if k in j})
             if "exported" in j:
                 res["exported"] = j["exported"]
@@ -130,7 +133,7 @@ def main() -> int:
         results = dict(ex.map(one, order))
     per = {r: results[r] for r in runs}
     summary = {"mode": a.mode, "against": str(a.against) if a.against else "REFS/<run>-stepped-gen",
-               "fb": a.fb, "runs": len(runs), "equal": sum(v["equal"] for v in per.values()),
+               "fb": a.fb, "render": a.fb or a.render, "runs": len(runs), "equal": sum(v["equal"] for v in per.values()),
                "fb_compared": sum(bool(v.get("fb_compared")) for v in per.values()),
                "failed": [r for r, v in per.items() if not v["equal"]], "wall_seconds": round(time.time() - t0, 1),
                "jobs": a.jobs, "env": a.env, "per_run": per}

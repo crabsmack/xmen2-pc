@@ -76,6 +76,7 @@ void     machine_power_on(void);         /* power-on, then runner frame 1 begins
 void     machine_run(void);              /* the game on its fiber, the host between its sync points; never returns */
 void     machine_start(void);            /* the game's fiber, made (netplay runs the ticks itself) */
 void     machine_set_render(int on);     /* 0: ticks render no frame (a rollback's replay) */
+void     machine_render_off(void);       /* --no-render: no tick renders a frame (traces without a picture) */
 uint16_t machine_peek16(uint32_t a);     /* a word of the 68000 bus (ROM, work RAM, players 3-4's region) */
 void     machine_tick(void);             /* the host: one more runner frame, to the game's next sync point */
 void     machine_state_init(void);       /* register the snapshot's sections (state.cpp) */

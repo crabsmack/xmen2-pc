@@ -866,6 +866,7 @@ static void frame_begin(void)
    frame's logic is done: the host takes over (its row, the end of the runner frame, the next one's
    pads and Z80 frame: machine_run), then the V-int and the picture it shows. */
 static int s_no_render;   /* a rollback's replay: nobody sees its frames (machine_set_render) */
+static int s_render_off;  /* --no-render: a headless trace that compares no picture (machine_render_off) */
 
 extern "C" void plat_sync_point(void)
 {
@@ -873,7 +874,7 @@ extern "C" void plat_sync_point(void)
     yield_to_host(YIELD_SYNC);
     fsync_vint();
     ws_frame_setup();
-    if (s_no_render) {   /* the renderer changes nothing the game reads (the status shows no sprite flags) */
+    if (s_no_render || s_render_off) {   /* the renderer changes nothing the game reads (the status shows no sprite flags) */
         ws_frame_check();
         return;
     }
@@ -896,6 +897,7 @@ extern "C" void machine_render(void)
     players_frame_restore();
 }
 extern "C" void machine_set_render(int on) { s_no_render = !on; }
+extern "C" void machine_render_off(void) { s_render_off = 1; }
 
 /* ======================================================================== */
 /* The host's loop                                                           */

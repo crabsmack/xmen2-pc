@@ -264,6 +264,19 @@ STEPPED_MODES = {"stepped": "STEPPED_EXE", "stepped-gen": "STEPPED_GEN_EXE", "ha
                  "native": "NATIVE_EXE"}   # native (P5): the hand-C build whose sync rows are its export's
 
 
+def picture_free(a) -> bool:
+    """A stepped trace that nothing compares a picture in: the runner gets --no-render, and its sync
+    points render no frame (exact_sched.c fsync_render, machine.cpp plat_sync_point; ~2/3 of such a
+    trace's time). The render changes nothing the game reads there, so the rows stay the same (the
+    savings and the proof: NOTES.md "Phase 5 harness"). Everything that looks at the picture or the
+    platform's per-frame work keeps it: --fb, phase 6's options, present log, flips and game rows,
+    phase 7's sessions, scenes, digests and probes, XMEN2_SHOTS / XMEN2_CAPTURE."""
+    import os
+    return not (a.render or a.fb or a.options or a.present_log or a.flip or a.flip_scan or a.game_rows
+                or a.session is not None or a.scene is not None or a.digest or a.state_probe or a.state_skip
+                or os.environ.get("XMEN2_SHOTS") or os.environ.get("XMEN2_CAPTURE"))
+
+
 def cmd_trace(a) -> dict:
     """recomp: the timed runner plays the input (phase 2); --sync adds sync.csv and the
     replay log (phase 4 D1). stepped / stepped-gen: the frame-synchronous untimed runner, with
@@ -325,6 +338,8 @@ def cmd_trace(a) -> dict:
                "--input-script", str(script), "--fresh-evidence"]
         if a.fb:   # the runner's [FBHASH] of every runner frame (see add_fb_column)
             cmd += ["--hash-frames", "1"]
+        if picture_free(a):
+            cmd += ["--no-render"]
         if a.options:   # phase 6: the enhancement options (P6-enhance.md "The contract")
             cmd += ["--options", a.options]
         if a.present_log:   # phase 6 E4: OUT/present.csv, one row per displayed frame
@@ -379,6 +394,7 @@ def cmd_trace(a) -> dict:
            "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(src), "exe_sha1": common.sha1(src)}
     if a.mode in STEPPED_MODES:
         res["sync_points"] = csv_rows(sync_csv)
+        res["render"] = not picture_free(a)
         if a.fb:
             res["fb_rows"] = add_fb_column(sync_csv, stderr, out / "runner.log")
         if a.mode == "native":
@@ -1341,6 +1357,9 @@ def main() -> int:
             p.add_argument("--replay", default="", help="stepped: the D1 trace dir to replay")
             p.add_argument("--fb", action="store_true",
                            help="stepped modes: + sync.csv column fb_fnv1a64, the frame rendered at the last sync point")
+            p.add_argument("--render", action="store_true",
+                           help="stepped modes: render every sync point's frame even when nothing compares the "
+                                "picture (the control for --no-render, see picture_free)")
             p.add_argument("--timeout", type=int, default=7200)
             p.add_argument("--dump-frames", default="", help="dev: dump full state after these frames")
             p.add_argument("--keep-runner", action="store_true",
