@@ -13,5 +13,5 @@ void Spr_SetFromDef(SprInst *spr, unsigned char n)
 	spr->tileBase = d->tileBase;
 	spr->tileCount = d->tileCount;
 	spr->flags &= ~3;
-	spr->flags |= d->flags & 3;
+	spr->flags |= 3 & d->flags;
 }

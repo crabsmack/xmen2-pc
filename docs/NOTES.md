@@ -419,6 +419,42 @@ with the headers. MPW C 3.3's global symbol table can't hold every declaration o
 (Fatal Error 429), so cc.py gives each compile the lines of `xmen2_funcs.h`, `xmen2_data.h`
 and `xmen2_globals.h` that declare names the file uses (unused declarations emit no code).
 
+### The last C functions matched (2026-10-24)
+
+Of the 130 game/c files that didn't match at the end of phase 4, 117 are hand-written 68000 in
+the original: 97 tagged `asm`, and ~20 in an MPW-style frame whose bodies use what MPW C 3.3
+never emits (`dbra`, `exg`, `rol`/`ror`, `a2` as a variable, a store into an argument slot).
+The other 13 were C and now match (3,047 of 3,164 files; `docs/p4_mpw_matched.txt`). What it
+took, as rules for the next match (add them to xmen2disasm docs/COMPILER.md):
+
+- `while ((x & 8) != 0)` / `== 0` on a word gives `moveq #0,d1 / move.w d0,d1 / tst.l d1`; a
+  bare `while (x & 8)` doesn't (VDP_WaitVBlank). `(signed char)b & k` on a u8 field gives
+  `moveq #k / and.b mem` (SiberiaB1_DebrisUpdate).
+- `const & expr` loads the expression first and emits `and.<sz> #imm,d0` (the C03C encodings);
+  `expr & const` with a memory operand emits `moveq #c,d0 / and mem,d0` (Spr_SetFromDef).
+- A char function ending `if (c) return 0; return 1;` gives `sCC d3 / neg / seq d0 / neg`;
+  `return !c` adds `move.b d3,d0` (BigAcolyte_OutsideActiveWindow).
+- A global array defined in the compile unit (`#ifdef XMEN2_MPW` definition, as g_Timers) is
+  kept in an address register and indexed `.w`; through a pointer local it is `.l`
+  (Scene_Register).
+- A global read through `*(T *)array_global` stays in a3/a4 across stores; a typed scalar global
+  (`*(T *)&long_global`) is reloaded into a0 after each store. g_SceneVar3B20 is now `s32` and its
+  18 users take its address (SavageA4_CamUpdate).
+- Comma expressions (`t = v, a = y - t, y = t;`) stop copy propagation and the extra copy
+  temporary (Cam_ClampLookToPlayers); several reads of a global pointer in one comma expression
+  keep it in a0 (SiberiaB1_StepWind).
+- Registers: dropping `register` from competing variables and register parameters lets use counts
+  decide (SavageA2_SetBlockTiles, ApocBomb_Draw); a register is reused on the plain variables'
+  timeline too, and among equal counts the later declaration is placed first. Variables reused
+  across a branch (one branch's temporaries in registers, the other's on the stack) point to the
+  original reusing them (Cam_SpringAxis).
+- A dead `if (0) (void)v;` (the original has 101 compiled-out blocks) adds v's reference weight
+  and live span: it reorders registers (PlayerSelect_Run) or keeps one busy through an if-arm so
+  a copy goes to the shared stack temp (Tile_RunHooksAtPoints).
+- An empty `do { } while (0);` is a label: after a `register`/long assignment it gives `tst.l dN`
+  plus the pending argument pop (SiberiaB1_StepWind). Both `?:` constants need `(short)` for
+  `move.w #imm`.
+
 ## Phase 5: native port (measurement first)
 
 Criteria: `xmen2disasm/docs/phases/P5-port.md` (draft). Before any state moves, the target, the

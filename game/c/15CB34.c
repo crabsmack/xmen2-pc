@@ -11,11 +11,11 @@
  * -1, -1), each hook type until one returns 0 (the result says go on).
  * Returns 1 if any hook ran.
  *
- * MPW: not byte-identical (verified by shadow tests). The ROM keeps its copy of py on the stack
- * in the v-flipped arm of the rectangle (as in the h-flip arms) where this compiles to d7, 4 bytes
- * shorter; the rest is the ROM's code shifted by those 4 bytes. The ROM's copy shares one stack
- * temp (-$1C) with the h-flip arms' copy of px, the only such temp in the ROM; ~40 variants got
- * no closer than 4 bytes (xmen2disasm docs/COMPILER.md, "Copies of stack variables"). */
+ * MPW: the ROM keeps its copy of py on the stack in the v-flipped arm of the rectangle, in the
+ * h-flip arms' stack temp for px (-$1C), and in d7 in the other arm: x1 (d7) is kept live
+ * through the v-flipped arm by the dead use there, so its copy of py has no free register
+ * (xmen2disasm docs/COMPILER.md, "Copies of stack variables"). The dead use also names y1 and y2,
+ * which keeps the ROM's register ranking. */
 #include "xmen2.h"
 
 /* 1 if any of bits m of v are set (the original's materialized form). */
@@ -87,6 +87,7 @@ char Tile_RunHooksAtPoints(void *obj, char *points, short x, short y)
 		if (vflip) {
 			top = py - y2;
 			bottom = py - y1;
+			if (0) (void)(x1 + y1 + y2);
 		} else {
 			top = py + y1;
 			bottom = py + y2;

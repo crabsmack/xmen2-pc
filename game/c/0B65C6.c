@@ -10,7 +10,7 @@
 #include "xmen2.h"
 
 #define g_A4Stats	(*(PTR(NpcStats) *)g_SceneVar3B14)	/* scene variable: the stats record of the Chamber's enemies */
-#define g_A4CamFocus	(*(PTR(Actor) *)g_SceneVar3B20)	/* scene variable: the enemy the camera also keeps in view (0: none) */
+#define g_A4CamFocus	(*(PTR(Actor) *)&g_SceneVar3B20)	/* scene variable: the enemy the camera also keeps in view (0: none) */
 
 void SavageA4_RunScene(void)
 {

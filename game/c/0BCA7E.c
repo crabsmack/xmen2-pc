@@ -32,7 +32,7 @@ short SavageBio_ActDie(SavageBigBio *self)
 		return self->flags & 8;
 	}
 	Scene_EndAfter(0xF0);
-	*(PTR(Actor) *)g_SceneVar3B20 = 0;		/* the object the SavageA4 camera follows */
+	*(PTR(Actor) *)&g_SceneVar3B20 = 0;		/* the object the SavageA4 camera follows */
 	ExplodeFx_Chain(self, CODEPTR(Tbl_ExplodeFxSpiralPath), 0, 0, self->boxTop - (self->y >> 8));
 	NO_RETURN_VALUE
 }

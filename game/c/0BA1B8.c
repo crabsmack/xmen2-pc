@@ -6,7 +6,7 @@
  * pl:   its placement entry; 0: one made on the stack from x, y with all params 0. */
 #include "xmen2.h"
 
-#define g_A4CamFocus	(*(PTR(Actor) *)g_SceneVar3B20)	/* scene variable: the enemy the camera also keeps in view (0: none) */
+#define g_A4CamFocus	(*(PTR(Actor) *)&g_SceneVar3B20)	/* scene variable: the enemy the camera also keeps in view (0: none) */
 
 void SavageBioBase_Init(register SavageBioBase *self, register long x, register long y,
 	register Placement *pl)

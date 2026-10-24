@@ -17,7 +17,7 @@
 #define g_DeathbirdAttack	(*(PTR(s8) *)g_SceneVar3B14)	/* scene variable: next entry of the attack list */
 #define g_DeathbirdHornets	(*(PTR(HornetWave) *)g_SceneVar3B1C)	/* scene variable: next entry of the hornet schedule */
 #define g_DeathbirdWingTimer	(*(s16 *)g_SceneVar3B02)	/* scene variable: frames before the flap sound may play again */
-#define g_DeathbirdHeading	(*(s32 *)g_SceneVar3B20)	/* scene variable: circling heading, degrees, 8 fraction bits */
+#define g_DeathbirdHeading	(*(s32 *)&g_SceneVar3B20)	/* scene variable: circling heading, degrees, 8 fraction bits */
 #define g_DeathbirdTurnRate	(*(s32 *)g_SceneVar3B24)	/* scene variable: added to the heading each step */
 #define g_DeathbirdTurnAccel	(*(s32 *)g_SceneVar3B28)	/* scene variable: added to the turn rate each step */
 

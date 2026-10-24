@@ -9,13 +9,12 @@
  * (up to maxAccel), speed by accel, and the move (speed >> 8) is at most the distance and the
  * target's own move plus catchUp, and never against the target's motion. A speed the wrong way
  * is stopped instead (speed and accel 0, accelStep turned the right way).
- * Not byte-identical (executed: verify): the ROM has maxAccel in d4 and want/v in d5, and keeps
- * the second branch's lim in d5 (the first branch's lim and step on the stack); ~10 register /
- * declaration-order variants came within 155 bytes. */
+ * Moving back, the code reuses its variables: v holds the limit, a the speed change and
+ * maxAccel (no longer needed) the move. */
 #include "xmen2.h"
 
-void Cam_SpringAxis(register short target, short prev, short lo, short hi, short catchUp,
-	register short maxAccel, s16 *pos, register s16 *speed, s16 *accel, register s16 *accelStep)
+void Cam_SpringAxis(short target, short prev, short lo, short hi, short catchUp,
+	short maxAccel, s16 *pos, register s16 *speed, s16 *accel, register s16 *accelStep)
 {
 	short lim, step;
 	register short moved = target - prev;
@@ -50,6 +49,8 @@ void Cam_SpringAxis(register short target, short prev, short lo, short hi, short
 			}
 			*pos += step;
 		} else {
+			short a;
+
 			if (*speed > 0) {
 				*speed = 0;
 				*accel = 0;
@@ -60,18 +61,18 @@ void Cam_SpringAxis(register short target, short prev, short lo, short hi, short
 			if (moved >= 0)
 				return;
 			moved -= catchUp;
-			lim = MAX(moved, dist);
-			v = *accel + *accelStep;
-			if (v < -maxAccel)
-				v = -maxAccel;
-			*accel = v;
-			*speed += v;
-			step = *speed >> 8;
-			if (step < lim) {
-				step = lim;
-				*speed = lim << 8;
+			v = MAX(moved, dist);
+			a = *accel + *accelStep;
+			if (a < -maxAccel)
+				a = -maxAccel;
+			*accel = a;
+			*speed += a;
+			maxAccel = *speed >> 8;
+			if (maxAccel < v) {
+				maxAccel = v;
+				*speed = v << 8;
 			}
-			*pos += step;
+			*pos += maxAccel;
 		}
 	}
 }

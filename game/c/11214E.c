@@ -11,7 +11,7 @@
  * The cases are Deathbird_Move_Polar, _Wobble and _Done (the end). */
 #include "xmen2.h"
 
-#define g_DeathbirdHeading	(*(s32 *)g_SceneVar3B20)	/* scene variable: circling heading, degrees, 8 fraction bits */
+#define g_DeathbirdHeading	(*(s32 *)&g_SceneVar3B20)	/* scene variable: circling heading, degrees, 8 fraction bits */
 #define g_DeathbirdTurnRate	(*(s32 *)g_SceneVar3B24)	/* scene variable: added to the heading each step */
 #define g_DeathbirdTurnAccel	(*(s32 *)g_SceneVar3B28)	/* scene variable: added to the turn rate each step */
 

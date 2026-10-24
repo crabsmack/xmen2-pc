@@ -10,11 +10,10 @@
  *           bits) instead.
  * edge:     the top row's tile when removing.
  * The cells are the 32-px blocks the segment covers (its corners + 16, / 32), redrawn at once
- * (Map_RedrawBlock). Returns 0 (also when there is no block there).
- * MPW: 4 bytes differ: the ROM keeps the object index in d7 (with y), this C gets d6 (with x). */
+ * (Map_RedrawBlock). Returns 0 (also when there is no block there). */
 #include "xmen2.h"
 
-long SavageA2_SetBlockTiles(short col, short row, register short tile, register char remove, short edge)
+long SavageA2_SetBlockTiles(short col, short row, short tile, char remove, short edge)
 {
 	long ex;
 	long ey;
@@ -26,7 +25,7 @@ long SavageA2_SetBlockTiles(short col, short row, register short tile, register 
 	register s16 *p;
 	register Actor *obj;
 	register long i;
-	register short x;
+	short x;
 	register short y;
 
 	if (!(seg = Seg_FindInBlock(0x14, col, row)))

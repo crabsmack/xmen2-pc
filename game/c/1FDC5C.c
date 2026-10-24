@@ -10,9 +10,9 @@ void VDP_WaitVBlank(void)
 {
 	g_FrameUpdated = 0;
 	if (g_VdpReg1 & 0x40) {
-		while (VDP_CTRL & 8)
+		while ((VDP_CTRL & 8) != 0)
 			;
-		while (!(VDP_CTRL & 8))
+		while ((VDP_CTRL & 8) == 0)
 			;
 	}
 }

@@ -27,6 +27,7 @@
  * Game_SceneLoop (32), the scene's run (4), Cerebro_Run (28) and the call (4), and this C keeps
  * none of those frames on the 68000 stack. The rest of the frame (2 bytes of locals, 6 saved
  * registers) is reserved below.
+ * MPW: the dead `if (0) (void)c;` in each LIVES loop ranks c above sx, as the ROM's registers do.
  *
  * Inline here, separate blocks in the disassembly: PlayerSelect_Run_P1Cyclops, PlayerSelect_Run_P1Nightcrawler, PlayerSelect_Run_P1Psylocke, PlayerSelect_Run_P1Wolverine, PlayerSelect_Run_P1Magneto, PlayerSelect_Run_P2Cyclops, PlayerSelect_Run_P2Gambit.
  */
@@ -239,6 +240,7 @@ void PlayerSelect_Run(void)
 					g_SprWritePtr->x = sx + 0x80;
 					s++;
 					sx += 8;
+					if (0) (void)c;
 				}
 				if (g_P1Lives > 9) {
 					c = g_P1Lives / 10;
@@ -273,6 +275,7 @@ void PlayerSelect_Run(void)
 					g_SprWritePtr->x = sx + 0x80;
 					s++;
 					sx += 8;
+					if (0) (void)c;
 				}
 				if (g_P2Lives > 9) {
 					c = g_P2Lives / 10;

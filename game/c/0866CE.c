@@ -15,7 +15,7 @@
 #define g_BroodArmFrame		(*(s16 *)g_SceneVar3B10)	/* scene variable: frame of the boss arm (BroodClaw_Swing) */
 #define g_BroodBossDebris	(*(PTR(DebrisPool) *)g_SceneVar3B14)	/* scene variable: the boss's explosion debris pool */
 #define g_CloneDebris		(*(PTR(DebrisPool) *)g_SceneVar3B1C)	/* scene variable: the clone-maker debris pool */
-#define g_BroodArenaLeft	(*(s32 *)g_SceneVar3B20)	/* scene variable: scroll x the claw swings the arena to (CloneA5_CamUpdate, BroodClaw_Swing) */
+#define g_BroodArenaLeft	(*(s32 *)&g_SceneVar3B20)	/* scene variable: scroll x the claw swings the arena to (CloneA5_CamUpdate, BroodClaw_Swing) */
 #define g_BroodCamY		(*(s16 *)g_SceneVar3B22)	/* scene variable: camera y in the arena (CloneA5_CamApply pins it) */
 #define g_BroodCamX		(*(s16 *)g_SceneVar3B24)	/* scene variable: camera x in the arena (CloneA5_CamApply pins it) */
 

@@ -75,10 +75,11 @@ Everyone must run the same build.
 
 ## Status
 
-The game logic is the original's. Its C compiles with the original compiler (Apple MPW C 3.3)
-to the cartridge's exact machine code for 3,034 of 3,164 functions. Most of the rest were
-written in 68000 assembly, which no compiler produces; their C is tested against the
-recompiled cartridge code, with every instruction run and no differences. With every option
+The game logic is the original's. Every function the original wrote in C, 3,047 of 3,164,
+has C that compiles with the original compiler (Apple MPW C 3.3) to the cartridge's exact
+machine code. The other 117 were written in 68000 assembly, which no compiler produces; their
+C is tested against the recompiled cartridge code, with every instruction run and no
+differences. With every option
 off the port produces the same game state and picture as the recompiled cartridge at every
 frame of the test runs. One difference is deliberate: the port runs one game frame per
 displayed frame, so it never slows down where the cartridge lagged.
@@ -101,8 +102,8 @@ byte-matching disassembly that is also the hub of the project:
    frame-identical to the emulator.
 3. The original compiler identified and run: Apple MPW C 3.3, under an MPW emulator.
 4. Hand-written, readable C for the whole game: 3,164 functions (the disassembly's 3,621,
-   less the switch cases and blocks that belong to a parent). 3,034 byte-match with MPW C
-   3.3; the rest, most of them assembly in the original, are tested instruction by
+   less the switch cases and blocks that belong to a parent). The 3,047 the original wrote
+   in C byte-match with MPW C 3.3; the 117 written in assembly are tested instruction by
    instruction against the recompiled code.
 5. The native port: no 68000 emulation left, the game's memory in the PC's own byte order.
 6. The enhancements (16:9, high frame rate, two players at full rate).

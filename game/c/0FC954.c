@@ -6,7 +6,9 @@
  * either way), the strength step is $80 toward it; the keyframe's hold becomes the step timer.
  * Every frame: the wind offset added to plane A's scroll (SiberiaB1_CamApply) is strength *
  * (cos, -sin) of the angle >> 24.
- * The angle variable starts out as the strength; that value is never used. */
+ * The angle variable starts out as the strength; that value is never used. The empty
+ * do/while before the offset stores is in the ROM: a label there (the pending argument pop of
+ * the Math calls lands before it, after the `tst.l` of oy). */
 #include "xmen2.h"
 
 #define g_WindAngle	(*(s16 *)g_SceneVar3B04)	/* scene variable: wind angle, degrees */
@@ -19,13 +21,13 @@
 void SiberiaB1_StepWind(void)
 {
 	register short steps = 0;
-	register short angle = g_WindStrength;
-	register short hold;
+	short angle = g_WindStrength;
 	register short strength;
-	register long cx;
-	register long sy;
+	short oy;
+	long sy;
+	long cx;
+	short hold;
 	register short ox;
-	register short oy;
 
 	if (g_WindTimer > 0)
 		return;
@@ -37,10 +39,8 @@ void SiberiaB1_StepWind(void)
 		g_WindStrength = g_WindKey->strength;
 		if (g_WindAngleStep >= 0 && g_WindAngle >= g_WindKey->angle
 		    || g_WindAngleStep < 0 && g_WindAngle <= g_WindKey->angle) {
-			angle = g_WindKey->angle;
-			strength = g_WindKey->strength;
-			hold = g_WindKey->hold;
-			g_WindKey++;
+			angle = g_WindKey->angle, strength = g_WindKey->strength,
+				hold = g_WindKey->hold, g_WindKey++;
 			if (g_WindKey->hold < 0)
 				g_WindKey = (WindKey *)CODEPTR(Tbl_SiberiaB1Wind);
 			if (g_WindKey->angle == 0) {
@@ -62,7 +62,7 @@ void SiberiaB1_StepWind(void)
 				g_WindAngleStep = MIN(g_WindAngleStep, 5);
 			else if (g_WindAngleStep < 0)
 				g_WindAngleStep = MAX(g_WindAngleStep, -5);
-			g_WindStrengthStep = strength < g_WindKey->strength ? 0x80 : -0x80;
+			g_WindStrengthStep = strength < g_WindKey->strength ? (short)0x80 : (short)-0x80;
 			g_WindAngle = angle;
 			g_WindStrength = strength;
 			g_WindTimer = hold;
@@ -72,6 +72,8 @@ void SiberiaB1_StepWind(void)
 	sy = g_WindStrength * Math_SinDeg(g_WindAngle);
 	ox = cx >> 24;
 	oy = sy >> 24;
+	do {
+	} while (0);
 	g_BgOffsetX = ox;
 	g_BgOffsetY = -oy;
 }

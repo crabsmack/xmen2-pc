@@ -15,7 +15,7 @@
  * _Case4, _Case5 (5, 6), _Case7 (7, 8), _Case9, _Case10 and _Default. */
 #include "xmen2.h"
 
-#define g_DeathbirdHeading	(*(s32 *)g_SceneVar3B20)	/* scene variable: circling heading, degrees, 8 fraction bits */
+#define g_DeathbirdHeading	(*(s32 *)&g_SceneVar3B20)	/* scene variable: circling heading, degrees, 8 fraction bits */
 #define g_DeathbirdTurnRate	(*(s32 *)g_SceneVar3B24)	/* scene variable: added to the heading each step */
 #define g_DeathbirdTurnAccel	(*(s32 *)g_SceneVar3B28)	/* scene variable: added to the turn rate each step */
 

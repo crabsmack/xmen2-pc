@@ -9,5 +9,7 @@ char BigAcolyte_OutsideActiveWindow(register BigAcolyte *self)
 {
 	if ((self->flags6 & 0x1000) && self->health > 0)
 		return 0;
-	return !(self->state == (StateFn)BigAcolyte_DieEndScene);
+	if (self->state == (StateFn)BigAcolyte_DieEndScene)
+		return 0;
+	return 1;
 }

@@ -14,7 +14,7 @@
 
 #define g_Shake			(*(PTR(s8) *)&g_CamShake)	/* g_CamShake read as its bytes */
 #define g_BroodScrollStep	(*(s16 *)g_SceneVar3B02)	/* scene variable (CloneA5): pixels the arena scrolls this frame (BroodClaw_Swing) */
-#define g_BroodArenaLeft	(*(s32 *)g_SceneVar3B20)	/* scene variable: scroll x the claw swings the arena to (CloneA5_CamUpdate, BroodClaw_Swing) */
+#define g_BroodArenaLeft	(*(s32 *)&g_SceneVar3B20)	/* scene variable: scroll x the claw swings the arena to (CloneA5_CamUpdate, BroodClaw_Swing) */
 #define g_BroodCamY		(*(s16 *)g_SceneVar3B22)	/* scene variable: camera y in the arena (BroodBoss_Init) */
 #define g_BroodCamX		(*(s16 *)g_SceneVar3B24)	/* scene variable: camera x in the arena (BroodBoss_Init) */
 

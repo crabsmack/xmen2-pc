@@ -10,7 +10,7 @@
 #define g_CloneFlags		(*(s16 *)g_SceneVar3B08)	/* scene variable: 1 arena locked, 2 reward given, $100 << type killed by its own character */
 #define g_CloneRewardTimer	(*(s16 *)g_SceneVar3B06)	/* scene variable: frames before the next reward */
 #define g_CloneBufSize		(*(s16 *)g_SceneVar3B04)	/* scene variable: size of the clone-maker buffer */
-#define g_CloneBuf		(*(PTR(void) *)g_SceneVar3B20)	/* scene variable: the clone-maker buffer */
+#define g_CloneBuf		(*(PTR(void) *)&g_SceneVar3B20)	/* scene variable: the clone-maker buffer */
 
 void XClone_StartMakerMode(void)
 {

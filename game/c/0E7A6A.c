@@ -3,7 +3,7 @@
  * loop (Level_Run) until the scene ends. */
 #include "xmen2.h"
 
-#define g_A1SceneObj	(*(PTR(Actor) *)g_SceneVar3B20)	/* scene variable: an object pointer (other scenes' camera focus, boss); nothing in the Coolant Core reads it */
+#define g_A1SceneObj	(*(PTR(Actor) *)&g_SceneVar3B20)	/* scene variable: an object pointer (other scenes' camera focus, boss); nothing in the Coolant Core reads it */
 
 void SentinelsA1_RunScene(void)
 {

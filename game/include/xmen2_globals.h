@@ -1172,9 +1172,9 @@ extern u8 g_SceneVar3B22[];
 #endif
 /* $FFC6E0 long, scene-local: boss object pointer (BroodBoss_Init, SavageA4_RunScene, SentinelsA1_RunScene, Deathbird_Init, Savage bio bosses), Deathbird polar radius, ApocBomb speed timer, XClone maker */
 #ifdef XMEN2_MPW
-extern u8 g_SceneVar3B20[];
+extern s32 g_SceneVar3B20;
 #else
-#define g_SceneVar3B20 XM_GA(u8, 0xFFC6E0)
+#define g_SceneVar3B20 XM_G(s32, 0xFFC6E0)
 #endif
 /* $FFC6E4 long, scene-local: data pointer for Apocalypse, XClone, BroodBoss and CloneA5 resources, SavageBigBio second hit mask, Deathbird hornet schedule */
 #ifdef XMEN2_MPW

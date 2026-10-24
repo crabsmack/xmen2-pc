@@ -3,7 +3,7 @@
  * (g_ApocBombTimer 0). */
 #include "xmen2.h"
 
-#define g_ApocBombTimer	(*(PTR(Timer) *)g_SceneVar3B20)	/* scene variable: the bomb-speed timer */
+#define g_ApocBombTimer	(*(PTR(Timer) *)&g_SceneVar3B20)	/* scene variable: the bomb-speed timer */
 
 void ApocBomb_StartAccelTimer(void)
 {

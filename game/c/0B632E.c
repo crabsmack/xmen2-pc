@@ -11,14 +11,13 @@
  * With no focus and the range wider than $E0 the side is chosen by the larger player y instead
  * of the focus x: the original kept both in one register. The stores to focusX/focusY are never
  * read (the original's).
- * Not byte-identical (executed: verify, game/verify/0B632E.syn for the paths the corpus doesn't
- * take): g_SceneVar3B20 is declared as raw bytes (other scenes keep other types there), and MPW
- * keeps the cast pointer in a3 where the ROM reloads it into a0 (a global typed PTR(Actor), as
- * XClone's g_SceneVar3B30, compiles like the ROM); the focus x and y are also computed in d0
- * before the assignment chain in the ROM (as in XClone_CamArenaUpdate). */
+ * g_SceneVar3B20 is a long (other scenes keep other types there) read through its address: MPW
+ * reloads it into a0 after each store, as the ROM does (declared as raw bytes, the cast pointer
+ * stayed in a3). The `+ 0` computes the focus x and y in d0 before the assignment chain, as in
+ * XClone_CamArenaUpdate. */
 #include "xmen2.h"
 
-#define g_A4CamFocus	(*(PTR(Actor) *)g_SceneVar3B20)	/* scene variable: the enemy the camera also keeps in view (0: none) */
+#define g_A4CamFocus	(*(PTR(Actor) *)&g_SceneVar3B20)	/* scene variable: the enemy the camera also keeps in view (0: none) */
 
 void SavageA4_CamUpdate(Camera *cam)
 {
@@ -55,8 +54,8 @@ void SavageA4_CamUpdate(Camera *cam)
 	} else {
 		if (!g_A4CamFocus)
 			return;
-		focusX = x2 = x1 = g_A4CamFocus->x >> 8;
-		focusY = y2 = y1 = g_A4CamFocus->y >> 8;
+		focusX = x2 = x1 = (g_A4CamFocus->x >> 8) + 0;
+		focusY = y2 = y1 = (g_A4CamFocus->y >> 8) + 0;
 	}
 	top = y1;
 	bottom = y2;

@@ -18,7 +18,7 @@ short SavageBio_StateDeathExplode(SavageBigBio *self)
 	balls = self->balls;
 	if (self->countdown <= 0) {
 		Scene_EndAfter(0xF0);
-		*(PTR(Actor) *)g_SceneVar3B20 = 0;	/* the object the SavageA4 camera follows */
+		*(PTR(Actor) *)&g_SceneVar3B20 = 0;	/* the object the SavageA4 camera follows */
 		(*self->cls->method[19])(self);		/* Kill */
 	} else {
 		if (!(self->countdown & 0xF) && balls) {

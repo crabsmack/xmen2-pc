@@ -5,7 +5,8 @@
  * (frame 0-2, every 4-7 frames) and age, and are drawn when on screen: one 16x16 hardware
  * sprite (size 5) of the shard sprite definition, frame (set + frame) * 4, high priority,
  * h-flipped while age bit 3 is set, 9 px lower than its position.
- * The screen position is unsigned: the left and top tests never fail. */
+ * The screen position is unsigned: the left and top tests never fail. The flip bit is taken
+ * from age as a signed byte (the ROM's `moveq #8 / and.b`). */
 #include "xmen2.h"
 
 #define g_IceFloorY	(*(s16 *)g_SceneVar3B0C)	/* scene variable: floor line the shards bounce on, pixels (SiberiaB1_IceTileHit) */
@@ -61,7 +62,7 @@ void SiberiaB1_DebrisUpdate(void)
 		if (sx > -20 && sx < 0x154 && sy > -10 && sy < 0xFE) {
 			def = &g_SpriteDefs[g_IceShardSprDef];
 			attr = (p->frameSet + p->frame) << 2;
-			attr = def->tileBase + (attr | 0 | (p->age & 8) << 8 | 0x8000);
+			attr = def->tileBase + (attr | 0 | ((signed char)p->age & 8) << 8 | 0x8000);
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 			g_SprWritePtr->y = sy + 0x80;
 			g_SprWritePtr->size = 5;
