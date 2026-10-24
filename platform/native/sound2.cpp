@@ -374,6 +374,7 @@ static void command(uint8_t c, const uint8_t *a)
     static const bool dbg = getenv("XMEN2_SND2_DEBUG") != nullptr;
     if (dbg) fprintf(stderr, "[snd2] frame %llu command $%02X %02X %02X (active %d)\n", (unsigned long long)machine_frame_no(),
                      c, a[0], a[1], S.active);
+    capture_sound_command(c, a);   /* capture.cpp: music or sound effect (XMEN2_STEM, XMEN2_SND_LOG) */
     switch (c) {
     case 0x0B: memcpy(S.init, a, 12); S.have_init = 1; if (S.active) cmd(0x0B, a, 12); break;
     case 0x10: {

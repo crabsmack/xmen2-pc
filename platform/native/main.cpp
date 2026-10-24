@@ -15,6 +15,8 @@
  *   --fresh-evidence     accepted (nothing is written beside the runner)
  *   --options K=V,...    the enhancement options (phase 6, options.cpp; also xmen2.ini beside the
  *                        runner); --options --json lists them and exits
+ *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
+ *                        (capture.cpp; also XMEN2_CAPTURE, XMEN2_STEM, XMEN2_SND_LOG there)
  * Environment: XMEN2_SYNC_CSV=path (sync rows from the export image), XMEN2_SYNC_DUMP=n,m +
  * XMEN2_DUMP_DIR (sNNNNNN.ram/.vram), XMEN2_STACK_LOW (as game/xmen2_spec.c).
  * At exit stderr gets `[xmen2] counters {...}` with the export's counts.
@@ -400,7 +402,7 @@ static int s_interactive;
    run has a device to hear them */
 extern "C" void plat_audio_write(uint32_t stamp, int port, uint8_t v)
 {
-    if (machine_session()) audio_event_push(stamp, (uint8_t)port, v);
+    if (machine_session() && capture_audio_write(port, &v)) audio_event_push(stamp, (uint8_t)port, v);
 }
 
 extern "C" void plat_frame_audio(uint64_t frame)
@@ -485,6 +487,7 @@ extern "C" void plat_frame_begin(uint64_t frame)
     else if (s_interactive && s_script.empty()) host_input(pad);
     else if (!s_script.empty()) script_pads(frame, pad);
     if (s_flip && frame >= s_flip && frame < s_flip + 8) pad[0] ^= GPAD_C;   /* --flip: the latency probe */
+    capture_record_pads(frame, pad);   /* --record-inputs */
     g_machine.bus.pad[0] = pad[0];
     g_machine.bus.pad[1] = pad[1];
     g_pad34[0] = pad[2];
@@ -535,6 +538,7 @@ extern "C" void plat_frame_end(uint64_t frame)
     }
     if (quiet()) return;   /* the probe's first pass, a rollback's replay: nothing is shown or ends */
     maybe_shot(frame);
+    capture_video_frame(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());   /* XMEN2_CAPTURE */
     if (s_ftimes) {
         auto now = std::chrono::steady_clock::now();
         fprintf(s_ftimes, "%llu,%lld\n", (unsigned long long)frame,
@@ -592,6 +596,7 @@ int main(int argc, char **argv)
         /* phase 7 (P7-multiplayer.md "The contract") */
         else if (!strcmp(argv[i], "--session") && i + 1 < argc) { session = true; seed = strtoull(argv[++i], nullptr, 10); }
         else if (!strcmp(argv[i], "--scene") && i + 1 < argc) options_set_first_scene(atoi(argv[++i]));
+        else if (!strcmp(argv[i], "--record-inputs") && i + 1 < argc) capture_record_start(argv[++i]);   /* capture.cpp */
         else if (!strcmp(argv[i], "--digest") && i + 1 < argc) digest = argv[++i];
         else if (!strcmp(argv[i], "--game-rows") && i + 1 < argc) game_rows = argv[++i];   /* phase 6 R8 */
         else if (!strcmp(argv[i], "--state-probe") && i + 1 < argc) {

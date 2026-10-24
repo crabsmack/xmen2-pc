@@ -1321,6 +1321,34 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   `aresample=48000:resampler=soxr`. With `full_rate_2p=1` the picture is 60 Hz (two or more players
   are 30 Hz in the original). scene20.input frames 1300-2500 with `players=4,widescreen=16:9` shows
   all four apart in the wide view (2026-10-22).
+- **Capture for the release video (2026-10-24, platform/native/capture.cpp, tools/capture.py;
+  xmen2disasm docs/RELEASE.md).** Nothing the game sees:
+  - `--record-inputs F`: each runner frame's four pads, kept per frame number (a frame run again,
+    by a rollback or a savestate load, drops what followed), written at exit as an input script
+    whose header replays it (`# session SEED`, `# scene N`, `# options` = options_game_text). Netplay
+    cuts it to the final timeline: `frames` in harness sessions, and in a played one (it ends at the
+    window) the lowest remote input tip less 60 frames. Checked: a scripted run vs its recording's
+    render, digests equal over 2,400 frames; 2 seats on loopback at 150 ms/50 ms jitter/10% loss
+    (25 replays, up to 8 ticks): both recordings byte-identical, the render's digest = the
+    session's; played (windowed) solo with a clock seed, equal over 1,200 frames; played 2-seat,
+    both recordings identical (1,139 of 1,200 frames kept).
+  - `XMEN2_CAPTURE=F.mkv`: every shown frame piped to ffmpeg (FFV1, 53693175/896040 fps) on a fixed
+    canvas (`XMEN2_CAPTURE_W`, 400 with widescreen, else 320, x 224; narrower screens centred).
+  - `XMEN2_STEM=music|sfx`: the other kind's FM key-ons (sent as key-offs), DAC samples (as $80)
+    and PSG volumes (as silent) are changed on the way to the synthesis (plat_audio_write); the
+    driver, Z80 RAM and the YM timers (machine.cpp ym_write) are untouched, so the game is the
+    same: full/music/sfx renders of a Savage take have equal digests over 3,000 frames, and
+    music + sfx = the full mix to -30 dB (rms 22 of 669, without the chips' DC bias of ~380, which
+    a silent stem keeps). A voice is its owner's song's (voice pools +3 -> slot +$0E, as sound2.cpp);
+    a channel written after its voice was freed (PSG releases) is its last owner's.
+  - Music or effect: GEMS plays both as songs. Music = a song started in the same frame as a
+    stop-all (`$16`: Music_Play, Music_PlayStage, Cerebro_Run, the stage scripts), or one of the 25
+    a survey of every stage + the title and attract found that way (some, the Brood's $30 and
+    Avalon's $00, also start without one); a song the game never started (a part the driver starts)
+    is music too; everything else is an effect. Stop-then-play is no signal: the game does it for
+    almost every sound. `XMEN2_SND_LOG=F` lists each play with its class.
+  - The TAS can't be port footage: the frame-synchronous machine has no lag frames, so its input
+    stops fitting in Siberia (xmen2disasm LESSONS.md, phase 6); footage is played from stage starts.
 - **R4, the cost of keeping the byte matches** (35 game files so far, the first batches): 444 lines
   added, 8 changed (`git diff --stat`), all in `#if defined(XMEN2_NATIVE)` blocks, most
   `if (g_opt.players > 2) { ... }` next to the original line they extend, the logic in

@@ -789,6 +789,10 @@ internet).  hub: the host relays the others' traffic (3-4 seats).  ice: NAT trav
 public STUN server, the seats swapping their connection details as files (--ice-signal-dir DIR,
 a shared folder).  --input-delay D (frames, default 5).  {exe} --netplay --json lists them.
 
+Recording: --record-inputs FILE writes every frame's pads when you quit (Esc), online too (the
+shared game, the same file on every seat). It is small, it holds no picture or sound, and the game
+can replay it exactly, so a session can be turned into video afterwards.
+
 Licenses of the parts it is built from: LICENSES/.
 """
 
@@ -831,6 +835,24 @@ def wsl_run(cmd: str, timeout: int = 3600) -> subprocess.CompletedProcess:
                           errors="replace", timeout=timeout)
 
 
+def package_licenses(dest: Path, sdl: bool) -> None:
+    """The licenses of what the native runner is built from, and this repo's own (NOTICE.md lists
+    them), into a package's LICENSES/. libjuice's comes from the build tree (CMake fetches it), so the
+    caller copies that one (package_licenses_libjuice)."""
+    engine = common.ENGINE / "runner" / "external"
+    pairs = [(common.ROOT / "LICENSE", "xmen2-pc-LICENSE.txt"), (common.ROOT / "NOTICE.md", "xmen2-pc-NOTICE.md"),
+             (common.ENGINE / "LICENSE.md", "segagenesisrecomp-LICENSE.md"),
+             (common.ENGINE / "THIRD-PARTY-LICENSES.md", "segagenesisrecomp-THIRD-PARTY-LICENSES.md"),
+             (engine / "ymfm" / "LICENSE", "ymfm-LICENSE.txt"),
+             (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt"),
+             (engine / "minicoro" / "LICENSE", "minicoro-LICENSE.txt"),
+             (common.ENGINE / "external" / "recomp-net" / "LICENSE", "recomp-net-LICENSE.txt")]
+    if sdl:
+        pairs.append((engine / "SDL2" / "SDL2-2.28.5" / "COPYING.txt", "SDL2-COPYING.txt"))
+    for src, name in pairs:
+        shutil.copy2(src, dest / name)
+
+
 def linux_native_build() -> str:
     """`native-build` in this machine's WSL Ubuntu (P9), build dir ~/xmen2-native-build/<hash of the
     tree> (one per source tree); returns that directory (holding XMen2Native)."""
@@ -867,12 +889,10 @@ def package_linux(a) -> dict:
     readme = PACKAGE_README.format(exe="./xmen2").replace("path\\to\\xmen2.bin", "path/to/xmen2.bin")
     readme += "\nLinux: needs SDL2 (Debian/Ubuntu: sudo apt install libsdl2-2.0-0).\n"
     (stage / "README.txt").write_text(readme, encoding="utf-8", newline="\n")
-    engine = common.ENGINE / "runner" / "external"
-    for src, name in ((common.ENGINE / "LICENSE.md", "segagenesisrecomp-LICENSE.md"),
-                      (common.ENGINE / "THIRD-PARTY-LICENSES.md", "segagenesisrecomp-THIRD-PARTY-LICENSES.md"),
-                      (engine / "ymfm" / "LICENSE", "ymfm-LICENSE.txt"),
-                      (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt")):
-        shutil.copy2(src, stage / "LICENSES" / name)
+    package_licenses(stage / "LICENSES", sdl=False)
+    c = wsl(f"cp \"{bdir}/_deps/libjuice-src/LICENSE\" '{wsl_path(stage)}/LICENSES/libjuice-LICENSE.txt'")
+    if c.returncode:
+        sys.exit(f"libjuice's license (MPL-2.0) is not in the Linux build tree: {c.stderr.strip()[-300:]}")
     files = sorted(p for p in stage.rglob("*") if p.is_file())
     zpath = BUILD / "package" / "xmen2-native-linux.zip"
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
@@ -1118,7 +1138,6 @@ def cmd_package(a) -> dict:
         sys.exit(f"the build failed, see {b['log']}")
     if not exe.is_file():
         sys.exit(f"no native runner at {exe}")
-    engine = common.ENGINE / "runner" / "external"
     stage = BUILD / "package" / "xmen2-native-windows"
     if stage.exists():
         shutil.rmtree(stage)
@@ -1126,12 +1145,11 @@ def cmd_package(a) -> dict:
     shutil.copy2(exe, stage / "XMen2.exe")
     shutil.copy2(exe.parent / "SDL2.dll", stage / "SDL2.dll")
     (stage / "README.txt").write_text(PACKAGE_README.format(exe="XMen2.exe"), encoding="utf-8", newline="\r\n")
-    for src, name in ((common.ENGINE / "LICENSE.md", "segagenesisrecomp-LICENSE.md"),
-                      (common.ENGINE / "THIRD-PARTY-LICENSES.md", "segagenesisrecomp-THIRD-PARTY-LICENSES.md"),
-                      (engine / "SDL2" / "SDL2-2.28.5" / "COPYING.txt", "SDL2-COPYING.txt"),
-                      (engine / "ymfm" / "LICENSE", "ymfm-LICENSE.txt"),
-                      (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt")):
-        shutil.copy2(src, stage / "LICENSES" / name)
+    package_licenses(stage / "LICENSES", sdl=True)
+    juice = BUILD / "_deps" / "libjuice-src" / "LICENSE"
+    if not juice.is_file():
+        sys.exit(f"libjuice's license (MPL-2.0) is not in the build tree ({juice})")
+    shutil.copy2(juice, stage / "LICENSES" / "libjuice-LICENSE.txt")
     files = sorted(p for p in stage.rglob("*") if p.is_file())
     zpath = BUILD / "package" / "xmen2-native-windows.zip"
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:

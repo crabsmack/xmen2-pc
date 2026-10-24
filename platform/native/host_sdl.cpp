@@ -191,7 +191,7 @@ void host_audio(uint64_t frame, bool mute)
     static int16_t fm[8192 * 2], psg[16384];
     size_t fm_n = 0, psg_n = 0;
     audio_mixer_drain(895780u, fm, 8192, &fm_n, psg, sizeof psg / sizeof psg[0], &psg_n);
-    snd2_mix(fm, fm_n, psg, psg_n, mute);   /* phase 7 R9: players 3-4's parts */
+    snd2_mix(fm, fm_n, psg, psg_n, mute || capture_mute_snd2());   /* phase 7 R9: players 3-4's parts (XMEN2_STEM=sfx: silent) */
     if (s_audio && !mute) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
 }
 

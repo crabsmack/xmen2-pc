@@ -467,6 +467,19 @@ static void start_transport(void)
     if (rc != 0) np_fail("the transport didn't start");
 }
 
+/* --record-inputs in a played session (it ends at the window): the frames every remote seat's real
+   input has reached, less a second for a correction still to come, are final */
+static void record_cut(void)
+{
+    if (!s_session || !s_drv) return;
+    uint64_t cut = rnet_rb_driver_sim_tick(s_drv);
+    for (int i = 0; i < N.seats; i++) {
+        rnet_u32 tip = 0;
+        if (i != N.seat && rnet_session_remote_tip(s_session, i, &tip) && tip < cut) cut = tip;
+    }
+    capture_record_truncate(cut > 60 ? cut - 60 : 0);
+}
+
 void netplay_run(uint64_t frames)
 {
     if (N.seats < 2 || N.seats > 4 || N.seat < 0 || N.seat >= N.seats) np_fail("--seat I --seats N: 0 <= I < N, 2 <= N <= 4");
@@ -570,6 +583,7 @@ void netplay_run(uint64_t frames)
     const char *f10 = getenv("XMEN2_NP_F10");
     uint32_t d_waits = 0, d_replay0 = 0;
     double d_admit = 0, d_tick = 0;
+    if (!frames) atexit(record_cut);   /* a played session ends at the window: --record-inputs keeps what is final */
     for (;;) {
         ice_pump_signals();
         rnet_session_pump(s_session);
@@ -650,6 +664,7 @@ void netplay_run(uint64_t frames)
                 exit(8);
             }
             main_np_write_rows(frames);
+            capture_record_truncate(frames);   /* --record-inputs: the final timeline */
             write_json();
             (void)rnet_session_send_bye(s_session);
             fprintf(stderr, "[netplay] done: %llu frames, %u replays (%u ticks, longest %u), %llu late; drain %s\n",

@@ -22,6 +22,7 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/state.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/players.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/sound2.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/capture.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/snd2_chips.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/snd2_psg.c"
     "${CMAKE_SOURCE_DIR}/game/runtime/players34.cpp"
