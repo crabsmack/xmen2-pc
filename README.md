@@ -74,9 +74,11 @@ Everyone must run the same build.
 
 ## Status
 
-The game logic is the original's. Every function's C was verified against the cartridge's
-machine code, and with every option off the port produces the same game state and picture as
-the recompiled cartridge at every frame of the test runs. One difference is deliberate: the
+The game logic is the original's. 3,034 of its 3,621 functions are byte-matched: their C,
+compiled with the original compiler (Apple MPW C 3.3), gives the cartridge's exact machine
+code. The other 587 are tested against the recompiled cartridge code, with every instruction
+run and no differences. With every option off the port produces the same game state and
+picture as the recompiled cartridge at every frame of the test runs. One difference is deliberate: the
 port runs one game frame per displayed frame, so it never slows down where the cartridge
 lagged.
 
@@ -95,9 +97,9 @@ byte-matching disassembly that is also the hub of the project:
 2. A static recompilation to C on
    [segagenesisrecomp](https://github.com/mstan/segagenesisrecomp), frame-identical to the
    emulator.
-3. The original compiler identified: Apple MPW C 3.3. Hand-written C can therefore be proven
-   byte-identical to the ROM.
-4. Hand-written, readable C for all 3,621 functions, each one verified.
+3. The original compiler identified and run: Apple MPW C 3.3, under an MPW emulator.
+4. Hand-written, readable C for all 3,621 functions: 3,034 byte-matched with MPW C 3.3, and
+   the rest tested instruction by instruction against the recompiled code.
 5. The native port: no 68000 emulation left, the game's memory in the PC's own byte order.
 6. The enhancements (16:9, high frame rate, two players at full rate).
 7. Multiplayer: savestates, rollback netplay, four players.
