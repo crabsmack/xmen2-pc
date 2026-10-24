@@ -14,7 +14,9 @@
  *   XMEN2_STEM=music|sfx  the sound of only the music or only the sound effects: the chips' key-ons
  *                       (FM), DAC samples and PSG volumes of the other kind's voices are dropped on
  *                       their way to the synthesis. The driver, its RAM and the YM2612's timers run as
- *                       always, so the game and its picture are those of a run without it.
+ *                       always, so the game and its picture are those of a run without it. (With
+ *                       music_voices on, the first machine's music is dropped the same way and the
+ *                       music machines are the music, sound2.cpp.)
  *   XMEN2_SND_LOG=F     every play/stop command with the class it got, and a per-song summary at exit.
  *
  * Music or sound effect: GEMS plays both as songs. A song the game starts in the same frame as a
@@ -81,9 +83,11 @@ static bool is_music(uint8_t id, uint64_t f)
 {
     /* the songs the rule below found to be music in a survey of every stage, the title and the
        attract demos (6,000 frames each, 2026-10-23); some of them also start without a stop-all
-       (the Brood's theme $30, Avalon's $00), so the list decides for them */
+       (the Brood's theme $30, Avalon's $00), so the list decides for them. $42, SavageA4's music,
+       starts the frame after its stop-all (found by music_voices' sweep of the stage inputs,
+       2026-10-24). */
     static const uint8_t music[] = { 0x00, 0x01, 0x02, 0x04, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x1F, 0x23, 0x25, 0x27,
-                                     0x30, 0x3E, 0x40, 0x44, 0x47, 0x48, 0x51, 0x5C, 0x5E, 0x5F, 0x6F, 0x70 };
+                                     0x30, 0x3E, 0x40, 0x42, 0x44, 0x47, 0x48, 0x51, 0x5C, 0x5E, 0x5F, 0x6F, 0x70 };
     return memchr(music, id, sizeof music) != nullptr || f == s_stopall_frame;
 }
 
@@ -140,20 +144,31 @@ extern "C" void capture_ring_write(uint8_t *ram, uint32_t off, uint8_t v)
    machine.cpp's z80_bus_write calls this when the driver writes a slot. */
 static uint8_t s_solo[256];
 static int s_solo_on = -1;
+static void solo_init(void)
+{
+    if (s_solo_on >= 0) return;
+    s_solo_on = 0;
+    const char *s = getenv("XMEN2_SOLO");
+    for (const char *p = s; p && *p; ) {
+        char *e;
+        unsigned long id = strtoul(p, &e, 16);
+        if (e == p) { fprintf(stderr, "[capture] XMEN2_SOLO=%s: hex song ids, comma-separated\n", s); exit(2); }
+        s_solo[id & 0xFF] = 1;
+        s_solo_on = 1;
+        p = *e ? e + 1 : e;
+    }
+}
+
+/* the music machines (music_voices, sound2.cpp) mute the same songs in their own slots */
+extern "C" bool capture_solo_keeps(uint8_t song)
+{
+    solo_init();
+    return !s_solo_on || s_solo[song];
+}
+
 extern "C" void capture_slot_written(uint8_t *ram, uint32_t addr)
 {
-    if (s_solo_on < 0) {
-        s_solo_on = 0;
-        const char *s = getenv("XMEN2_SOLO");
-        for (const char *p = s; p && *p; ) {
-            char *e;
-            unsigned long id = strtoul(p, &e, 16);
-            if (e == p) { fprintf(stderr, "[capture] XMEN2_SOLO=%s: hex song ids, comma-separated\n", s); exit(2); }
-            s_solo[id & 0xFF] = 1;
-            s_solo_on = 1;
-            p = *e ? e + 1 : e;
-        }
-    }
+    solo_init();
     if (!s_solo_on || addr < SLOTS || addr >= SLOTS + 16 * 0x20) return;
     static uint8_t forced[16];   /* slots this muted: a slot reused for a solo song is unmuted (as sound2.cpp) */
     unsigned t = (addr - SLOTS) >> 5;
@@ -185,7 +200,14 @@ static int voice_class(uint16_t pool, int entries, int ch)
     }
     return CLS_NONE;
 }
-static bool other_kind(int k) { return k != CLS_NONE && k != s_stem; }
+/* a voice of this class is dropped: the other stem's, and with music_voices the music (the music
+   machines play it, sound2.cpp); CLS_NONE, no owner, sounds */
+static bool s_drop_music;
+static bool other_kind(int k) { return k != CLS_NONE && ((s_stem >= 0 && k != s_stem) || (s_drop_music && k == CLS_MUSIC)); }
+
+/* sound2.cpp: the music machine mutes the effects' tracks (a song the game never started, which the
+   driver starts from inside another, is music) */
+extern "C" bool capture_song_effect(uint8_t id) { return s_cls[id] == CLS_SFX; }
 
 /* XMEN2_STEM_DEBUG: what the filter saw, by chip event and class (none, music, sfx), at exit */
 static uint64_t s_dbg[3][3];   /* [key-on, DAC, PSG volume][class] */
@@ -214,14 +236,16 @@ static int owner_or_last(int chip, int ch, int k)
     return k != CLS_NONE ? k : s_last[chip][ch & 7];
 }
 
-/* main.cpp's plat_audio_write: false = drop the write; *v may be changed */
+/* main.cpp's plat_audio_write: false = drop the write; *v may be changed. With music_voices on, the
+   first machine sounds only its effects: its music is the music machines'. */
 extern "C" bool capture_audio_write(int port, uint8_t *v)
 {
     snd_init();
-    if (s_stem < 0) return true;
     static uint8_t sel[2];
+    if (port >= 0 && port <= 3 && !(port & 1)) { sel[port >> 1] = *v; return true; }
+    s_drop_music = sound_music_voices();
+    if (s_stem < 0 && !s_drop_music) return true;
     if (port >= 0 && port <= 3) {
-        if (!(port & 1)) { sel[port >> 1] = *v; return true; }
         if (port == 1 && sel[0] == 0x28 && (*v & 0xF0)) {   /* key-on */
             int ch = *v & 7;
             if (other_kind(owner_or_last(0, ch, counted(0, voice_class(FM_POOL, 6, ch))))) *v &= 0x0F;   /* keys off instead */
@@ -239,7 +263,7 @@ extern "C" bool capture_audio_write(int port, uint8_t *v)
     return true;
 }
 
-/* host_audio: the second sound machine is players 3-4's music parts */
+/* host_audio: the other sound machines are music (players 3-4's parts; music_voices' music) */
 extern "C" bool capture_mute_snd2(void) { snd_init(); return s_stem == CLS_SFX; }
 
 /* ---- the inputs ---------------------------------------------------------------------------------- */

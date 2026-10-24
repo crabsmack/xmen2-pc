@@ -359,10 +359,10 @@ static void report_counters(void)
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
                     "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
-                    "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s}\n",
+                    "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s, \"sound\": %s}\n",
             (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory,
             options_effective_json().c_str(), enhance, state.c_str(), machine_session() ? "true" : "false",
-            players_counters_json().c_str());
+            players_counters_json().c_str(), sound_counters_json().c_str());
     fflush(stderr);
 }
 

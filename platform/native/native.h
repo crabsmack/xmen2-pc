@@ -49,9 +49,10 @@ bool        players_vram_write(uint16_t a, uint16_t w);   /* a player 3-4's VRAM
 void        players_video_init(void);
 void        players_frame_setup(void);   /* before a frame is rendered: VRAM's sprite chain ended at 80 */
 void        players_frame_restore(void);
-/* sound2.cpp (phase 7 R9: the second sound machine, players 3-4's music parts) */
+/* sound2.cpp (phase 7 R9: the second sound machine, players 3-4's music parts; music_voices' two) */
 void        snd2_digest_fields(std::vector<uint8_t> *out);
 std::string snd2_counters_json(void);
+std::string sound_counters_json(void);     /* every machine's key-ons and stolen voices by song */
 extern "C" {
 #endif
 
@@ -94,16 +95,20 @@ int      machine_screen_width(void);
 int      machine_screen_height(void);
 uint64_t machine_frame_tick_waits(void); /* V-ints taken by IRQ_WAIT (plat_wait_vint), outside a sync point */
 void     snd2_ring_write(const uint8_t *ram, uint32_t off, uint8_t v);   /* sound2.cpp: the game wrote Z80 RAM */
-void     snd2_frame(void);                /* ... the first machine's Z80 frame is done: the second's */
-void     snd2_mix(int16_t *fm, size_t fm_n, int16_t *psg, size_t psg_n, int mute);   /* host_audio */
+void     snd2_frame(void);                /* ... the first machine's Z80 frame is done: the others' */
+void     sound_mix(int16_t *fm, size_t fm_n, int16_t *psg, size_t psg_n, int mute);   /* host_audio */
 void     snd2_state_init(void);
+bool     sound_music_voices(void);        /* music_voices: the music machines play (the first's music is dropped) */void     snd_m1_ram_write(const uint8_t *ram, uint32_t off, uint8_t v);   /* machine.cpp: the first's driver, for the counters */
+void     snd_m1_audio_write(const uint8_t *ram, int port, uint8_t v, uint32_t stamp);
 
 /* capture.cpp: recording the port for showing it (inputs, a lossless picture, music/SFX stems) */
 void capture_sound_command(uint8_t c, const uint8_t *a);   /* sound2.cpp's ring parser: a command */
 void capture_ring_write(uint8_t *ram, uint32_t off, uint8_t v);   /* machine.cpp: XMEN2_BED's filter */
 void capture_slot_written(uint8_t *ram, uint32_t addr);           /* machine.cpp: XMEN2_SOLO's mutes */
-bool capture_audio_write(int port, uint8_t *v);            /* plat_audio_write: the stem filter */
-bool capture_mute_snd2(void);                              /* host_audio: the second machine silent */
+bool capture_audio_write(int port, uint8_t *v);            /* plat_audio_write: the stem and music_voices filter */
+bool capture_mute_snd2(void);                              /* host_audio: the other machines silent */
+bool capture_song_effect(uint8_t id);                      /* sound2.cpp: a song the game started as a sound effect */
+bool capture_solo_keeps(uint8_t song);                     /* sound2.cpp: XMEN2_SOLO keeps the song's tracks */
 void capture_record_start(const char *path);               /* --record-inputs */
 void capture_record_pads(uint64_t frame, const uint16_t pad[4]);
 void capture_record_truncate(uint64_t frames);              /* netplay.cpp: only frames 1..n are final */

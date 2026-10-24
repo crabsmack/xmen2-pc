@@ -762,6 +762,12 @@ Enhancements, each off unless you turn it on:
                         and 4 join and choose at the player select as player 2 does, have
                         their own panels, and the camera keeps everyone in view; their
                         characters' music parts play on a second sound machine
+Sound, on unless you turn it off:
+    music_voices=0      the original's single set of sound chips. By default the music plays on
+                        sound chips of its own, players 1 and 2's music parts on a further set,
+                        so no part or sound effect takes its notes (on the cartridge, two
+                        players' parts need more voices than the chip has, and effects take
+                        voices from the music); the game itself is the same either way
 Cheats, also off unless you turn them on:
     lives=inf           lives are never spent (or lives=N: start a new game with N, 1-99)
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
@@ -780,8 +786,8 @@ screen).  {exe} --options --json lists them.
 Online (rollback netplay, two to four players, each on their own machine with their own
 cartridge file). The host (seat 0) chooses the options that change the game (players,
 widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays with them;
-high_fps and the 16:9 view are each seat's own (F9 and F10 work), except that with the
-host's widescreen_gameplay=1 the view is the host's too.
+high_fps, music_voices and the 16:9 view are each seat's own (F9 and F10 work), except that
+with the host's widescreen_gameplay=1 the view is the host's too.
     host:   {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options players=2
     others: {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
 lan / direct IP: every seat reaches the host's address (a forwarded UDP port across the

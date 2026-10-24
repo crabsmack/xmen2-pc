@@ -1,6 +1,7 @@
 /* xmen2_options.h - the native runner's enhancement options (xmen2disasm docs/phases/P6-enhance.md
  * R1): set by platform/native/options.cpp from the command line and xmen2.ini, read by the platform
- * and by the game's native-only branches (`#if defined(XMEN2_NATIVE)`). All 0 = the original. */
+ * and by the game's native-only branches (`#if defined(XMEN2_NATIVE)`). All 0 = the original
+ * (players: 2); music_voices, presentation only, is on by default. */
 #ifndef XMEN2_OPTIONS_H
 #define XMEN2_OPTIONS_H
 
@@ -19,6 +20,8 @@ typedef struct XmOptions {
     int players;        /* phase 7 R7: players at once, 2 (the original), 3 or 4 */
     int widescreen_gameplay;   /* R6/R8: with widescreen, objects activate across the wide view and the
                                   camera keeps it inside the level (0: the 16:9 view is presentation only) */
+    int music_voices;   /* the music on sound machines of its own (platform/native/sound2.cpp), so no part
+                           or effect takes its voices; on by default, 0 = the original's one machine */
 } XmOptions;
 
 extern XmOptions g_opt;

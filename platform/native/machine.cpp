@@ -267,6 +267,7 @@ static void z80_bus_write(uint16_t addr, uint8_t val)
 {
     GenesisBus *b = &g_machine.bus;
     if (addr < 0x4000u) {
+        snd_m1_ram_write(b->z80_ram, addr & 0x1FFFu, val);   /* the voice counters (sound2.cpp) */
         b->z80_ram[addr & 0x1FFFu] = val;
         capture_slot_written(b->z80_ram, addr & 0x1FFFu);   /* XMEN2_SOLO: the other songs' tracks muted */
         return;
@@ -275,11 +276,17 @@ static void z80_bus_write(uint16_t addr, uint8_t val)
         uint8_t port = (uint8_t)(addr & 3);
         ym_write(s_znow, port, val);
         ym_shadow(port, val);
+        snd_m1_audio_write(b->z80_ram, port, val, s_zstamp);
         plat_audio_write(s_zstamp, port, val);
         return;
     }
     if (addr < 0x6100u) { b->z80_bank = ((b->z80_bank >> 1) | ((val & 1) << 8)) & 0x1FF; return; }
-    if (addr == 0x7F11u) { psg_shadow(val); plat_audio_write(s_zstamp, PLAT_AUDIO_PSG, val); return; }
+    if (addr == 0x7F11u) {
+        psg_shadow(val);
+        snd_m1_audio_write(b->z80_ram, PLAT_AUDIO_PSG, val, s_zstamp);
+        plat_audio_write(s_zstamp, PLAT_AUDIO_PSG, val);
+        return;
+    }
     if (addr >= 0x8000u) machine_fatal("the Z80 wrote the 68000 bus through its bank window (not in the game)");
 }
 
@@ -842,7 +849,7 @@ static void z80_frame(void)
     if (k == 0) k = 1;
     s_fm_count = s_fm_start = s_fm_start + k * FM_SAMPLE - F;
     s_zclk -= F;
-    snd2_frame();   /* phase 7 R9: the second sound machine's frame (players 3-4 in the game) */
+    snd2_frame();   /* phase 7 R9 and music_voices: the other sound machines' frames */
 }
 
 /* A runner frame begins: the host's input for it, the Z80's frame. */

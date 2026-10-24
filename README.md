@@ -31,9 +31,11 @@ A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode. F11: fullscreen. Esc: q
 
 ## Options
 
-Every option is off unless you turn it on, so by default the game plays exactly like the
-cartridge. Give them on the command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`,
-or in `xmen2.ini` next to the program (`[options]`, one per line).
+Every option but one is off unless you turn it on, so by default the game plays exactly like
+the cartridge. The exception is the sound: `music_voices` is on, and changes what you hear,
+never the game (`music_voices=0` gives the cartridge's sound). Give options on the command line,
+`XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in `xmen2.ini` next to the
+program (`[options]`, one per line).
 
 | Option | What it does |
 |---|---|
@@ -46,6 +48,7 @@ or in `xmen2.ini` next to the program (`[options]`, one per line).
 | `magneto=1` | Magneto can be chosen from the start |
 | `start_char=wolverine` | The character you start Siberia with (otherwise random) |
 | `magneto_flight=1` | Magneto moves left and right while hovering |
+| `music_voices=0` | On by default: the music plays on sound chips of its own, with players 1 and 2's music parts on a further set, so no part or sound effect takes its notes. On the cartridge, two players' parts need more voices than the chip has, and effects take voices from the music. `0` gives the cartridge's single set of chips |
 
 `XMen2.exe --options --json` lists them.
 
@@ -53,7 +56,7 @@ or in `xmen2.ini` next to the program (`[options]`, one per line).
 
 Rollback netplay for two to four players, each on their own machine with their own ROM file.
 The host (seat 0) chooses the options that change the game, and every seat plays with them.
-The picture options (`high_fps`, the 16:9 view) are each seat's own.
+The picture and sound options (`high_fps`, the 16:9 view, `music_voices`) are each seat's own.
 
 ```
 host:    XMen2.exe xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000
@@ -78,8 +81,9 @@ port runs one game frame per displayed frame, so it never slows down where the c
 lagged.
 
 Three and four players are new and still being finished: the enemies don't yet treat players
-3 and 4 the way they treat players 1 and 2. In two-player stages the original's sound
-driver runs short of voices, so the characters' music parts lose notes, as on the cartridge.
+3 and 4 the way they treat players 1 and 2. In two-player stages the original's sound driver
+runs short of voices, and the music loses notes to the characters' parts and the sound effects.
+By default (`music_voices`) the port gives the music sound chips of its own, so no note is lost.
 
 ## How it was made
 

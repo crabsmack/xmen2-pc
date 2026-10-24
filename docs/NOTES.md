@@ -1353,7 +1353,8 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
     (plat_frame_repeat): the capture writes it twice, so the video keeps the sound's time (a 2P
     take: 3,524 video frames = 58.81 s, its WAV 58.79 s; before the fix the video ran at twice
     the speed). Edit-file frame numbers are video frames (seconds x 59.92).
-  - Music beds: the music stem still has the original's voice contention: GEMS steals voices by
+  - Music beds (before `music_voices`, which removes the contention: Phase 7 "music_voices";
+    with `music_voices=0` this still holds): the music stem still has the original's voice contention: GEMS steals voices by
     priority, and a stage song with two player parts wants more FM voices than the chip has
     (P7-kickoff.md section 4), so parts lose notes (the user heard Wolverine's part cut in the
     Siberia bed). `XMEN2_SOLO=27` (hex song ids) keeps every other song's track slots muted in the
@@ -1405,6 +1406,70 @@ presentation-only `widescreen` is each seat's own, like `high_fps`, and F10 work
   host's 16:9, 0 desyncs. Host `widescreen=16:9` under `bad` with seat 1 (own 4:3) pressing F10
   before tick 600: its view turns 16:9 at the next screen (frame 1203), 7 rollbacks after it keep
   the request, 0 desyncs.
+
+### music_voices: the music on sound machines of its own (2026-10-24)
+
+The user (2026-10-24): "fix these sound issues in the game itself, not just our renderer. as an
+option (default on)". The first option on by default. The issues: GEMS takes a voice per note
+and, with none free, steals the lowest-priority one or drops the note (P7-kickoff.md section 4),
+so a stage song with two players' parts (up to 7 FM voices of 6) loses notes, and effects take
+voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around it in renders.
+- **How** (platform/native/sound2.cpp, now three instances of one audio-only machine): with the
+  option on, in the session machine (where the chips run), a *music* machine and a *parts*
+  machine (each its own Z80 + GEMS driver + YM2612 + PSG, chips compiled again as mus_/prt_)
+  get every command the game writes into the first machine's ring, as it is, effects included.
+  The music machine keeps the effects' and the part songs' tracks muted in its slots (+6 bit 1,
+  as R9's second machine); the parts machine everything but the part songs. A muted track takes
+  no voice but still does what it does besides notes, which matters: some "effects" are music
+  changes (`$45` = stop SavageA4's `$42`, start `$43`; `$46` = stop `$43`, start `$44`; `$73`
+  stops the Brood's `$30` and starts `$72`; `$D1`, `$21` stop songs), and the variables and the
+  tempo stay the first machine's. So the three drivers run the same songs and each sounds its
+  own. The first machine runs as always (RAM, registers, timers: the game and the digest), and
+  `capture_audio_write` drops its music voices (key-ons sent as key-offs, DAC samples as $80,
+  PSG volumes silent: the `XMEN2_STEM` filter), so it sounds the effects. Music vs effect is the
+  capture's class (capture.cpp `is_music`); `$42` (SavageA4's music, started the frame after its
+  stop-all) was added to its list. A first version sent the music machines only the music
+  commands: the stage sweep below found `$43` lost in SavageA4 with four players (started by the
+  "effect" `$45`), and `$42` would have kept playing beside it.
+- **The digest and the seal** (R12's precedent for presentation-only state): the two machines are
+  not in the canonical digest and `music_voices` is not in the sealed options
+  (`presentation_only`): each seat's own. They are in the snapshot (`snd_music`, `snd_parts`), so
+  rollbacks and savestates keep them in step. The traced runs (not the session machine) never
+  start them. R9's second machine is unchanged (its snapshot bytes, digest fields, counters).
+- **Counters** (the counters line's `"sound"`; every machine and the first): per song, FM key-ons
+  and PSG notes the driver wrote, its voices stolen by another song's note (a pool entry's +3
+  owner rewritten while busy, with no free in between) and stolen from others, and the time its
+  FM channels were keyed / PSG channels loud (ms).
+- **Measured** (session 3, 2026-10-24; references: the option off with `XMEN2_SOLO` of the
+  base or of the parts, so each layer has the chip to itself):
+  - Siberia, P1 Gambit + P2 Wolverine (`boot.input`, `start_char=gambit,lives=inf`, 3,400
+    frames, song `$27`, parts `$2B` `$2D`): off, the base loses 3 of 481 FM notes, 15 voices
+    stolen, 135.1 s of 156.3 s FM time; the parts lose ~0.3 s. On: base 481 notes / 156.3 s,
+    `$2B` 72 / 60.5 s, `$2D` 114 / 11.8 s, 0 stolen: the solo references (key-ons exact, times
+    within 0.1%).
+  - BaniMazaB2 (`scene18`, `$25` + `$28`/`$2F`): off, the base 959 of 1,053 FM notes and 392 of
+    435 PSG; on 1,053 / 435, parts exact, 0 stolen. SavageB1 (`scene26`, `$47`/`$48` +
+    `$49`/`$4E`) and CloneA1 (`scene38`, `$64`/`$6C` + `$65`/`$6A`: off, `$6C` 18 voices stolen,
+    51.3 of 62.0 s): on, the solo references, 0 stolen (times within 1.2%).
+  - Effects: with the option on, the first machine's heard FM key-ons per effect equal the
+    original's `XMEN2_STEM=sfx` stem, and the effects-only WAV is sample-identical on and off.
+    The full mix on = its music stem + its effects stem (AC residual 0.3; the -380 is one chip's
+    DC bias counted twice). Loudness: AC rms 843 on, 834 off. Each extra chip adds its DC bias
+    (~360 a chip in the mean).
+  - Every stage input + boot, `players` 2 and 4 (46 runs): every song the first machine keys on
+    is an effect (heard there) or plays on a music machine, but one `$51` blip (one 2 ms note in
+    scene26 with four players: the game stops and restarts it within a frame, which the first
+    machine, a frame ahead, catches).
+  - The game: canonical digests equal with the option on and off (3,400 sync points). Two seats
+    on loopback, one with `music_voices=0`: 0 desyncs against the offline digests under `mid`
+    and under `bad` (8 rollbacks).
+  - Savestates: `--state-probe 300:60` passes; leaving `snd_music` or `snd_parts` out of the
+    restore is caught at every save point (11 of 11).
+  - Cost: two more machines ~0.5 ms a Z80 frame (a headless 3,400-frame two-player session
+    4.5 s -> 7.6 s).
+- **The capture** with it on: `XMEN2_STEM=music` = the music machines (the first machine silent),
+  `sfx` = the first machine's effects (the others muted); `XMEN2_SOLO` mutes the music machines'
+  other songs too. A music bed no longer needs `XMEN2_SOLO` layers or `XMEN2_BED`.
 
 ## Open questions
 

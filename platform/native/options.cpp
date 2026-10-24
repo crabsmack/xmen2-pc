@@ -1,12 +1,13 @@
 /* options.cpp - the native runner's options (xmen2disasm docs/phases/P6-enhance.md R1, E2): each
- * enhancement is a runtime option of the one release runner, off by default.
+ * enhancement is a runtime option of the one release runner, off by default, except music_voices
+ * (the user, 2026-10-24: "as an option (default on)"), which changes only the sound.
  *
  *   --options --json     print the options (default, values, the effective value) and exit 0
  *   --options K=V,K=V    set them for this run
  *   xmen2.ini            beside the runner: [options] K=V lines set them too; the command line wins
  *
  * The game's C reads them through g_opt (platform/xmen2_platform.h, native-only branches); with
- * every option at its default no option code runs.
+ * every option at its default no option code runs in the game (music_voices is the platform's).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,11 +25,11 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 1 };
 
 struct OptDef {
     const char *name;
-    const char *values[10];   /* the first is the default (off); null-terminated */
+    const char *values[10];   /* the first is the default (off, but music_voices'); null-terminated */
     const char *what;
     std::string value;
 };
@@ -51,6 +52,9 @@ static OptDef s_defs[] = {
       "tweak: Magneto moves left/right at his walking speed while hovering, 0 = he only turns (the original)", "0" },
     /* phase 7 (P7-multiplayer.md R7) */
     { "players", { "2", "3", "4", nullptr }, "players at once: 2 (the original), 3 or 4 (pads 3 and 4 join with Start)", "2" },
+    /* sound (the user, 2026-10-24; on by default) */
+    { "music_voices", { "1", "0", nullptr },
+      "the music on sound chips of its own, players 1-2's parts on a further set, so no part or sound effect takes its notes; 0 = one set of chips, as the original", "1" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path;
@@ -138,6 +142,7 @@ static void apply(void)
         if (sc->value == sc->values[i]) g_opt.start_char = i;
     g_opt.magneto_flight = find("magneto_flight")->value == "1";
     g_opt.players = atoi(find("players")->value.c_str());
+    g_opt.music_voices = find("music_voices")->value == "1";
 }
 
 static std::string json_str(const std::string &s)
@@ -202,11 +207,13 @@ void options_toggle_widescreen(void)
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
 /* Netplay (phase 7 R10, R12): the options that change the game are the host's, sealed into the
-   session; each player keeps the presentation ones: high_fps, and widescreen unless the sealed
-   widescreen_gameplay is 1. The text is `k=v,...` in table order. */
+   session; each player keeps the presentation ones: high_fps, music_voices (the sound only: not in
+   the canonical digest), and widescreen unless the sealed widescreen_gameplay is 1. The text is
+   `k=v,...` in table order. */
 static bool presentation_only(const OptDef &d, bool ws_gameplay)
 {
-    return !strcmp(d.name, "high_fps") || (!strcmp(d.name, "widescreen") && !ws_gameplay);
+    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "music_voices") ||
+           (!strcmp(d.name, "widescreen") && !ws_gameplay);
 }
 
 std::string options_game_text(void)
