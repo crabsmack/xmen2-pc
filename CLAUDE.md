@@ -1,5 +1,7 @@
 # CLAUDE.md — XMen2Recomp
 
+Publication tier: public-bound (going public: nothing personal in files, messages or history).
+
 Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
 `61409e6cf6065ab67d8952b891d8edcf47777193`) to native C with
 [segagenesisrecomp](https://github.com/mstan/segagenesisrecomp). Phases 2 (recomp, complete) and 4
