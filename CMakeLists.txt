@@ -26,6 +26,14 @@ if(MSVC AND XMEN2_REPRODUCIBLE)
     add_compile_options(/Brepro)
     add_link_options(/Brepro)
 endif()
+# No build paths in the executables: MSBuild compiles by absolute path, so __FILE__ (libjuice's
+# log calls) would carry the checkout's location into the published zips. /d1trimfile cuts these
+# prefixes off; Ninja (the Linux build) already passes relative paths.
+if(MSVC)
+    file(TO_NATIVE_PATH "${CMAKE_SOURCE_DIR}/" _xmen2_src_prefix)
+    file(TO_NATIVE_PATH "${CMAKE_BINARY_DIR}/" _xmen2_bin_prefix)
+    add_compile_options("/d1trimfile:${_xmen2_bin_prefix}" "/d1trimfile:${_xmen2_src_prefix}")
+endif()
 
 # ---------------------------------------------------------------------------
 # X-Men 2: Clone Wars, statically recompiled with segagenesisrecomp.
