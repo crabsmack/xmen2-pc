@@ -573,8 +573,12 @@ static void maybe_shot(uint64_t frame)
     }
 }
 
+extern "C" void xm_install_crash_trace(void);   /* game/runtime/crash_win.cpp */
+extern "C" void xm_crash_test(uint64_t frame);
+
 extern "C" void plat_frame_end(uint64_t frame)
 {
+    xm_crash_test(frame);   /* XMEN2_CRASH_FRAME */
     if (s_scan_flip) {   /* --flip-scan's flipped frames: their present rows only */
         present_whole(frame, &s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height(), false);
         return;
@@ -753,6 +757,7 @@ int main(int argc, char **argv)
     const char *plan = nullptr, *hash_out = nullptr;
     bool session = false, no_render = false, scan_first = false;
     uint64_t seed = 0;
+    xm_install_crash_trace();   /* a host exception prints where and the stack (crash_win.cpp) */
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--benchmark") && i + 1 < argc) s_benchmark = strtoull(argv[++i], nullptr, 10);

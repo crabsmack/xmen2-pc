@@ -286,6 +286,19 @@ def picture_free(a) -> bool:
                 or os.environ.get("XMEN2_SHOTS") or os.environ.get("XMEN2_CAPTURE"))
 
 
+def crash_note(log_text: str) -> str:
+    """A crashed runner's own report (game/runtime/crash_win.cpp: the exception, where, the host
+    stack named from the linker map), for a failure message: '' when there is none."""
+    lines = [l.strip() for l in log_text.splitlines() if l.startswith("[crash]")]
+    return ("; " + " | ".join(lines[:6])) if lines else ""
+
+
+def crash_env(src: Path) -> dict:
+    """The runner's map for its crash report: runner copies don't carry it."""
+    m = src.with_suffix(".map")
+    return {"XMEN2_CRASH_MAP": str(m)} if m.is_file() else {}
+
+
 def stepped_args(a, out: Path, hash_out: Path | None = None) -> list[str]:
     """A stepped runner's options for a trace's flags, its files in OUT (hash_out: the [FBHASH]
     lines to that file, not stderr: a branch plan's runs)."""
@@ -382,7 +395,7 @@ def cmd_trace(a) -> dict:
         shutil.rmtree(run_dir)
     run_dir.mkdir()
     copy_runner(src, run_dir)
-    env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy"}
+    env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", **crash_env(src)}
     sync_csv = out / "sync.csv"
     if a.mode in STEPPED_MODES:
         if not a.input:
@@ -430,7 +443,7 @@ def cmd_trace(a) -> dict:
     if div:
         sys.exit(f"replay {div.group(0)} (see {out / 'runner.log'})")
     if r.returncode != 0 or not bench or not counters:
-        sys.exit(f"runner failed ({r.returncode}); see {out / 'runner.log'}")
+        sys.exit(f"runner failed ({r.returncode}){crash_note(stderr)}; see {out / 'runner.log'}")
     b, c = json.loads(bench.group(1)), json.loads(counters.group(1))
     if a.mode in STEPPED_MODES:
         return drop_runner(a, run_dir, stepped_result(a, src, out, b, c, stderr))
@@ -539,7 +552,8 @@ def cmd_trace_group(a) -> dict:
             shutil.rmtree(run_dir)
         run_dir.mkdir()
         copy_runner(src, run_dir)
-        env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_SYNC_CSV": str(d / "sync.csv")}
+        env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_SYNC_CSV": str(d / "sync.csv"),
+               **crash_env(src)}
         env.pop("GENESIS_REPLAY_IN", None)
         cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(u["frames"]), "--input-script", str(script),
                "--fresh-evidence", *stepped_args(a, d, d / "fbhash.log" if u["branches"] else None)]
@@ -570,7 +584,8 @@ def cmd_trace_group(a) -> dict:
             bench = re.search(r"GENESISRECOMP_BENCHMARK (\{.*\})", so)
             counters = re.search(r"\[xmen2\] counters (\{.*\})", se)
             if code != 0 or not bench or not counters:
-                results[r] = {"error": f"runner failed ({code}) in {u['name']}; see {d / 'runner.log'}"}
+                results[r] = {"error": f"runner failed ({code}) in {u['name']}{crash_note(stderr)}; "
+                                       f"see {d / 'runner.log'}"}
                 continue
             try:
                 res = stepped_result(a, src, o, json.loads(bench.group(1)), json.loads(counters.group(1)), fb)
@@ -792,7 +807,7 @@ def cmd_verify(a) -> dict:
                 (out / f"{r}.json").unlink()
         # synthetic cases (game/verify/<ADDR>.syn; verify.cpp load_synth)
         env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_VERIFY_OUT": str(res),
-               "XMEN2_VERIFY_SYNTH": str(common.GAME / "verify"), "XMEN2_VERIFY_INSNS": str(insns)}
+               "XMEN2_VERIFY_SYNTH": str(common.GAME / "verify"), "XMEN2_VERIFY_INSNS": str(insns), **crash_env(src)}
         if a.functions:
             env["XMEN2_VERIFY_ONLY"] = a.functions
         cmd = [src.name, str(common.ROM), "--benchmark", str(u["frames"]),
@@ -838,10 +853,11 @@ def cmd_verify(a) -> dict:
         if p.returncode != 0:
             data = json.loads(res.read_text()) if res.exists() else {}
             why = data.get("stopped_early")
-            last = [l for l in logf.read_text(errors="replace").splitlines() if l.startswith(("[handc]", "[verify]",
-                                                                                               "[branch]"))]
+            text = logf.read_text(errors="replace")
+            last = [l for l in text.splitlines() if l.startswith(("[handc]", "[verify]", "[branch]"))]
+            logf.with_suffix(".stdout").write_text(stdout or "", encoding="utf-8")   # the runner's own lines too
             err = fail(name, f"verify {name} ({', '.join(runs)}): the verification runner failed ({p.returncode})"
-                             f"{': ' + (why or last[-1]) if why or last else ''}; see {logf}")
+                             f"{': ' + (why or last[-1]) if why or last else ''}{crash_note(text)}; see {logf}")
             return [(runs[0], None, err, secs)] + [(r, None, None, secs) for r in runs[1:]]
         got = []
         bench = re.search(r"GENESISRECOMP_BENCHMARK (\{.*\})", stdout or "")

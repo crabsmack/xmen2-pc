@@ -665,6 +665,17 @@ of the time (noted where it mattered).
   free (`PHASE_MIN_FREE_GB` / `XMEN2_MIN_FREE_GB`), or when none of its jobs is running, or after
   2 minutes; the first hold of a stretch is printed. Verify's per-run JSONs are byte-identical
   held (one process at a time) and not.
+- **A crash names itself (2026-10-24).** A verify process that died of an access violation (the
+  fork's 9bcb006) left exit 1 and nothing else: no PDB, no debugger, the stack unknown. Every runner
+  now installs `xm_install_crash_trace` (game/runtime/crash_win.cpp; the engine runners at reset,
+  XMen2Native first thing): for an exception nobody handles it prints `[crash] exception CODE at
+  module+RVA (symbol+off)` and the host stack above it, unwound with the x64 unwind tables and named
+  from the linker map (`/MAP` for every runner, beside it; xmen2check.py passes `XMEN2_CRASH_MAP`,
+  runner copies don't carry it; the exe's bytes don't change and nothing ships it). xmen2check.py's
+  trace, trace-group and verify put those lines in their failure message; verify keeps a failed
+  process's stdout as `<name>.stdout`. `XMEN2_CRASH_FRAME=N` faults at runner frame N, the test:
+  verify reports `[crash] exception C0000005 at XMen2Verify.exe+0x2d903a (xm_crash_test+0x8a) |
+  #1 (xmen2_on_frame_post+0xf6) | #2 (genesis_sim_step+0x18a) | ...` after its own tests-open line.
 - **Native traces branch from the TAS (2026-10-24, (1) above for the native corpus).** Phases 6 and
   7 trace the native corpus about nine times (`--fb`, full_rate_2p, 120 and 144 Hz, three widescreen
   passes, the state probe), each run from power-on. `xmen2check.py trace-group` plays them as

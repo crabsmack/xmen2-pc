@@ -308,10 +308,16 @@ static void maybe_dump(uint64_t frame)
     }
 }
 
+void xm_install_crash_trace(void);   /* game/runtime/crash_win.cpp */
+void xm_crash_test(uint64_t frame);
+
+static void xmen2_on_post_reset(void) { xm_install_crash_trace(); }
+
 static void xmen2_on_frame_post(uint64_t frame)
 {
     static int started;
-    if (!started) { started = 1; xmen2_trace_init(); }
+    if (!started) { started = 1; xmen2_trace_init(); xm_install_crash_trace(); }
+    xm_crash_test(frame);
     maybe_dump(frame);
     if (!s_trace) return;
     const GVDP *v = &g_machine.vdp;
@@ -380,7 +386,7 @@ const GameSpec g_game_spec = {
     .dispatch_main_loop_pc  = 0u,
     .call_periodic          = NULL,
 
-    .on_post_reset          = NULL,
+    .on_post_reset          = xmen2_on_post_reset,
     .on_frame_pre           = NULL,
     .on_frame_post          = xmen2_on_frame_post,
     .on_hblank              = NULL,

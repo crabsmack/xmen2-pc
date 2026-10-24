@@ -12,6 +12,7 @@ add_executable(XMen2Native
     "${XMEN2_NATIVE_BRIDGE_DIR}/xmen2_bridge.cpp"
     "${CMAKE_SOURCE_DIR}/game/runtime/native_rt.cpp"
     "${CMAKE_SOURCE_DIR}/game/runtime/export.cpp"
+    "${CMAKE_SOURCE_DIR}/game/runtime/crash_win.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/machine.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/main.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/options.cpp"
