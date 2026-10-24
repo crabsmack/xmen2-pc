@@ -652,9 +652,21 @@ of the time (noted where it mattered).
     native 180 -> 60 s wall, 4,147 -> 1,358 job-s (-67%; TAS 498 -> 1,539/s).
   - Engine 6693d84 is `--no-render` on ab07262. The fork's master (9bcb006, its merge with
     232cd0a) crashed a branched XMen2Verify process (0xc0000005, 3 of 3 replays; ab07262 2 of 2
-    clean), so this pin leaves 232cd0a out (open: find and fix that crash before the next bump).
+    clean), so this pin leaves 232cd0a out (the cause and the fix: next bullet but one).
     On 6693d84: phase.py 5 10/10, phase.py 7 as before (M1 = phase 6 all pass, M2/M3/M5 pass,
     M4 40/46, M6 the user's).
+- **Exact mode's returns nobody waits for and the C callers (2026-10-24).** The fork's 232cd0a runs
+  an RTS on from its address when no call site awaits it (generated JSRs await their return
+  address: XCALL_BEGIN/END). The verification runner calls one function from C (verify.cpp
+  run_gen) and so does the hand-C runtime (handc_rt.cpp call_slots, call_raw, jump_raw); neither
+  awaited, so a run that returned anywhere but its caller ran the game on from there. A
+  synthetic case of $15F572 at frame 2 did, untimed (no slices, no interrupts) and for ever,
+  logging every instruction until the host stack ran out: 0xC0000005 with nothing printed, the
+  private memory at 1.7 GB, in every verify process. Engine 00074ae adds `XAWAIT_ANY` (an await
+  that takes any return); both C callers push it, so their run ends at its RTS wherever it goes,
+  as before. On it: the process that died plays its TAS and 4 branches (peak 218 MB), the full
+  verify passes (3,160 functions, 0 mismatches, 306 s), the native TAS's framebuffers equal the
+  engine's with 232cd0a's sprite rules, and phase.py's smoke stage passes.
 - **Jobs by threads, memory by a gate (2026-10-24).** phase.py 7 had been run at `PHASE_JOBS=10`
   after running out of memory once, which put every corpus stage on 10 of 32 threads (phase.py 7
   took 2 h 1 min that way). Measured at 24 jobs: stepped-gen runners 1.6 GB together, native

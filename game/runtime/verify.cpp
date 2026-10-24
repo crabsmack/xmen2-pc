@@ -537,8 +537,17 @@ void run_gen(const XmVerifyFn *fn)
     g_xtrace = 1;
     s_entering = fn->addr;
     /* its XENTRY sees s_entering and lets the body run; in a dispatch frame of its own, so that
-       a jmp to another function (a pending tail call) runs before the comparison */
+       a jmp to another function (a pending tail call) runs before the comparison. Its RTS ends
+       the run wherever it returns (the comparison checks where): exact mode's returns nobody
+       waits for (the engine since the fork's 232cd0a) would otherwise run the game on from there
+       (a synthetic case returning further out ran untimed for ever) */
+#ifdef XAWAIT_ANY
+    XCALL_BEGIN(XAWAIT_ANY);
     recomp_call_func(fn->gen);
+    XCALL_END();
+#else
+    recomp_call_func(fn->gen);
+#endif
     s_entering = 0;
     g_xtrace = trace0;
 }

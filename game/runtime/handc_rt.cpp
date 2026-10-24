@@ -40,6 +40,17 @@ char g_fatal_msg[512];   /* the fatal error ending the run: verify.cpp's report 
    callee hands it back in g_xrts, which proves the call returned to us. */
 static const uint32_t RET_FROM_C = 0xF00001u;
 
+/* Exact mode's returns nobody waits for (the engine since the fork's 232cd0a): an RTS to an
+   address no call site waits for is run on by the dispatcher. A call from C wants control back at
+   the callee's RTS wherever it goes (RET_FROM_C, else the fatal below), as before: it waits for
+   any return (XAWAIT_ANY) and takes ours. */
+#ifdef XAWAIT_ANY
+#define CALL_FROM_C(call) do { XCALL_BEGIN(XAWAIT_ANY); call; XCALL_END(); \
+                               if (g_xrts == RET_FROM_C) XRTS_TAKEN(); } while (0)
+#else
+#define CALL_FROM_C(call) call
+#endif
+
 /* A call into a jump: an AI-script step table's `jmp d16(a5)` (A5 is always $200) or a jump-table
    entry's `jmp abs.l`. A jump changes nothing but the PC, so the call is a call of its target;
    the hand-C build has no generated code for those tables (bridge.py: fragments go with their
@@ -67,7 +78,7 @@ uint32_t call_slots(uint32_t a, const uint32_t *slots, int n)
     }
     uint32_t sp = g_cpu.A[7];
     recomp_push_return(RET_FROM_C);
-    recomp_call_addr(a & 0xFFFFFFu);
+    CALL_FROM_C(recomp_call_addr(a & 0xFFFFFFu));
     if (g_xrts != RET_FROM_C || g_cpu.A[7] != sp)
         fatal("call of $%06X from C returned to $%06X with A7 $%08X (expected $%06X, $%08X)",
               (unsigned)(a & 0xFFFFFFu), (unsigned)g_xrts, (unsigned)g_cpu.A[7], (unsigned)RET_FROM_C,
@@ -83,14 +94,14 @@ uint32_t call_slots(uint32_t a, const uint32_t *slots, int n)
 void call_raw(uint32_t a)
 {
     recomp_push_return(RET_FROM_C);
-    recomp_call_addr(a & 0xFFFFFFu);
+    CALL_FROM_C(recomp_call_addr(a & 0xFFFFFFu));
     if (g_xrts != RET_FROM_C)
         fatal("call of $%06X from C returned to $%06X", (unsigned)(a & 0xFFFFFFu), (unsigned)g_xrts);
 }
 
 void jump_raw(uint32_t a)
 {
-    recomp_call_addr(a & 0xFFFFFFu);
+    CALL_FROM_C(recomp_call_addr(a & 0xFFFFFFu));   /* the stack holds RET_FROM_C already */
     if (g_xrts != RET_FROM_C)
         fatal("jump to $%06X from C returned to $%06X", (unsigned)(a & 0xFFFFFFu), (unsigned)g_xrts);
 }
