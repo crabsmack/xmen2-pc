@@ -20,6 +20,7 @@
  */
 #include <algorithm>
 #include <chrono>
+#include <map>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,10 +166,45 @@ static bool s_gameplay;     /* the frame being led up to is a gameplay frame */
 static FILE *s_scan;
 static uint64_t s_scan_flip;
 
+/* --flip-scan-first: each flipped pass's rows are compared with the unflipped run's own rows as the
+   run reaches them (sync N+L); the first flip N whose sync point N is a gameplay one and whose pass
+   shows another picture at some sync point ends the scan (phase 6 E4 picks that N the same way,
+   against the unflipped run's present log) */
+static bool s_first;
+static uint64_t s_first_len, s_found;
+static std::map<uint64_t, std::pair<uint64_t, bool>> s_main;   /* sync -> (hash, gameplay) */
+static std::vector<std::pair<uint64_t, std::vector<std::pair<uint64_t, uint64_t>>>> s_trials;   /* flip -> (sync, hash) */
+
 void present_scan(FILE *f, uint64_t flip)
 {
     s_scan = f;
     s_scan_flip = flip;
+    if (s_first && f && !s_found) s_trials.push_back({flip, {}});
+}
+
+void present_scan_first(uint64_t len) { s_first = true; s_first_len = len; }
+uint64_t present_scan_found(void) { return s_found; }
+
+static void scan_resolve(uint64_t sync)   /* the unflipped run has reached `sync` */
+{
+    while (!s_trials.empty() && s_trials.front().first + s_first_len <= sync) {
+        const auto &t = s_trials.front();
+        auto at = s_main.find(t.first);
+        bool changed = false;
+        for (const auto &r : t.second) {
+            auto m = s_main.find(r.first);
+            if (m != s_main.end() && m->second.first != r.second) { changed = true; break; }
+        }
+        if (changed && at != s_main.end() && at->second.second) {
+            s_found = t.first;
+            s_trials.clear();
+            s_main.clear();
+            return;
+        }
+        s_trials.erase(s_trials.begin());
+    }
+    uint64_t keep = s_trials.empty() ? sync + 1 : s_trials.front().first;
+    while (!s_main.empty() && s_main.begin()->first < keep) s_main.erase(s_main.begin());
 }
 
 extern "C" void present_note_render(double us)
@@ -192,6 +228,8 @@ static void log_row(uint64_t sync, double t, bool whole, bool gameplay, uint64_t
     if (s_scan) {
         fprintf(s_scan, "%llu,%llu,%.1f,%d,%d,%016llX\n", (unsigned long long)s_scan_flip, (unsigned long long)sync, t,
                 whole ? 1 : 0, gameplay ? 1 : 0, (unsigned long long)hash);
+        if (s_first && !s_trials.empty() && s_trials.back().first == s_scan_flip)
+            s_trials.back().second.push_back({sync, hash});
         return;
     }
     s_frames++;
@@ -199,6 +237,10 @@ static void log_row(uint64_t sync, double t, bool whole, bool gameplay, uint64_t
     if (s_log)
         fprintf(s_log, "%llu,%.1f,%d,%d,%016llX\n", (unsigned long long)sync, t, whole ? 1 : 0, gameplay ? 1 : 0,
                 (unsigned long long)hash);
+    if (s_first && !s_found) {
+        s_main[sync] = {hash, gameplay};
+        scan_resolve(sync);
+    }
 }
 
 void present_init(const char *log_path)

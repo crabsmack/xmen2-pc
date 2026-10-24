@@ -299,6 +299,8 @@ def cmd_trace(a) -> dict:
         sys.exit("--options, --present-log, --flip, --flip-scan, --game-rows: only the native runner has them (phase 6)")
     if a.flip_scan and not a.present_log:
         sys.exit("--flip-scan needs --present-log")
+    if a.flip_scan_first and not a.flip_scan:
+        sys.exit("--flip-scan-first needs --flip-scan")
     p7 = a.session is not None or a.scene is not None or a.digest or a.state_probe or a.state_skip
     if p7 and a.mode != "native":
         sys.exit("--session, --scene, --digest, --state-probe, --state-skip: only the native runner has them (phase 7)")
@@ -347,7 +349,7 @@ def cmd_trace(a) -> dict:
         if a.flip:   # phase 6 E4: the latency probe
             cmd += ["--flip", str(a.flip)]
         if a.flip_scan:   # phase 6 E4: every probe of a span in one run, OUT/flip_scan.csv
-            cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)]
+            cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)] + (["--flip-scan-first"] if a.flip_scan_first else [])
         if a.game_rows:   # phase 6 R8: OUT/game.csv, the game's state less the picture's
             cmd += ["--game-rows", str(out / "game.csv")]
         # phase 7 (P7-multiplayer.md "The contract")
@@ -1379,6 +1381,9 @@ def main() -> int:
             p.add_argument("--flip-scan", default="",
                            help="native (phase 6 E4) LO:HI:L: before each runner frame N in [LO, HI) save, run "
                                 "N..N+L with --flip N into OUT/flip_scan.csv, restore (with --present-log)")
+            p.add_argument("--flip-scan-first", action="store_true",
+                           help="with --flip-scan: stop after the first N (a gameplay sync point) whose flip changes "
+                                "the picture against the run's own unflipped rows")
             p.add_argument("--game-rows", action="store_true",
                            help="native (phase 6 R8): OUT/game.csv, the game's state at each sync point less "
                                 "what only the picture depends on")

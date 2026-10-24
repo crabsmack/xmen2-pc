@@ -33,6 +33,8 @@ std::string ws_counters_json(void);                 /* widescreen.cpp: the `ws` 
 void        present_init(const char *log_path);
 bool        present_logging(void);
 void        present_scan(FILE *f, uint64_t flip);   /* --flip-scan: a flipped pass's rows (null: the log's) */
+void        present_scan_first(uint64_t len);       /* --flip-scan-first: stop at the first flip that shows */
+uint64_t    present_scan_found(void);               /* that flip's frame, or 0 */
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
 void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
 std::string present_counters_json(void);

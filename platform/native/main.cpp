@@ -243,7 +243,9 @@ static std::vector<std::string> s_np_rows, s_np_digests;
    --flip-scan LO:HI:L (with --present-log, high_fps off): before each runner frame N in [LO, HI),
    save, run frames N to N+L with that flip (what `--flip N --frames N+L` runs from there), restore
    and go on unflipped. The flipped frames' present rows go to flip_scan.csv (flip,sync,... as
-   present.csv); like the probe's first pass they show, hear, end and count nothing. */
+   present.csv); like the probe's first pass they show, hear, end and count nothing.
+   --flip-scan-first: stop flipping after the first N (a gameplay sync point) whose pass shows another
+   picture than the run's own unflipped rows (present.cpp); the run goes on to its --frames. */
 static uint64_t s_flip, s_scan_lo, s_scan_hi, s_scan_len, s_scan_flip;
 static FILE *s_scan_out;
 static bool quiet(void) { return s_probe_pass == 1 || s_np_quiet || s_scan_flip; }
@@ -309,7 +311,8 @@ extern "C" void plat_at_sync(uint64_t sync)
         state_save(t);
         s_state_bytes = t.bytes.size();
     }
-    if (uint64_t n = machine_frame_no() + 1; s_scan_hi && !s_scan_flip && n >= s_scan_lo && n < s_scan_hi) {
+    if (uint64_t n = machine_frame_no() + 1;
+        s_scan_hi && !s_scan_flip && n >= s_scan_lo && n < s_scan_hi && !present_scan_found()) {
         static Snapshot at;
         state_save(at);
         s_flip = s_scan_flip = n;
@@ -573,7 +576,7 @@ extern "C" void plat_frame_end(uint64_t frame)
 int main(int argc, char **argv)
 {
     const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".", *game_rows = nullptr;
-    bool session = false, no_render = false;
+    bool session = false, no_render = false, scan_first = false;
     uint64_t seed = 0;
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
     for (int i = 1; i < argc; i++) {
@@ -586,6 +589,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
         else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);
+        else if (!strcmp(argv[i], "--flip-scan-first")) scan_first = true;
         else if (!strcmp(argv[i], "--flip-scan") && i + 1 < argc) {
             unsigned long long lo = 0, hi = 0, l = 0;
             if (sscanf(argv[++i], "%llu:%llu:%llu", &lo, &hi, &l) != 3 || !lo || hi <= lo || !l) {
@@ -663,6 +667,10 @@ int main(int argc, char **argv)
         }
         setvbuf(s_scan_out, nullptr, _IOFBF, 1 << 20);
         fprintf(s_scan_out, "flip,sync,t_us,whole,gameplay,fb_fnv1a64\n");
+        if (scan_first) present_scan_first(s_scan_len);
+    } else if (scan_first) {
+        fprintf(stderr, "[native] --flip-scan-first needs --flip-scan\n");
+        return 2;
     }
     if (no_render) {   /* a trace that compares no picture: the sync points render none */
         const char *shots = getenv("XMEN2_SHOTS"), *cap = getenv("XMEN2_CAPTURE");

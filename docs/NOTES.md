@@ -1110,6 +1110,15 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   docs/QUESTIONS.md): the TAS doesn't play its recorded game in the frame-synchronous machine and
   keeps pausing (the pause screen is a gameplay frame by the definition); C does nothing there. Of
   the 10 probes, the 3 whose flip changes the picture show it one 144 Hz tick earlier than 60 Hz.
+- **The probe search** (phase.py E4, since 2026-10-22: each window's first gameplay sync point whose
+  flip changes the 60 Hz picture within 40 frames) used `--flip-scan` runs of 512 frames, each
+  replaying the TAS from frame 0, and a window in a long pause needed them one after another
+  (2026-10-24: 24 scans over ~13 min, 10 of them in series for one window). `--flip-scan-first`
+  (2026-10-24) compares each flipped pass with the run's own unflipped rows as the run reaches them
+  and stops flipping at the first gameplay N that shows; phase.py scans each window's whole rest in
+  one run, all windows at once, and still picks the point from flip_scan.csv against the unflipped
+  present log. Same 10 points (31, 6652, 10266, 16481, 21308, 25635, 30742, 40766, 40980, 46092),
+  ~5 min (window 7, the pause: 4,951 flips in one run).
 - **Keys** (R1, played runs): F9 turns `high_fps` off and back (144 if none was given), F10 asks
   for the 16:9 view on or off from the next screen (the camera, the streamer and what activates
   follow it, so it starts with a scene). The window opens 16:9 when widescreen is on at start.
