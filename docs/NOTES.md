@@ -665,6 +665,31 @@ of the time (noted where it mattered).
   free (`PHASE_MIN_FREE_GB` / `XMEN2_MIN_FREE_GB`), or when none of its jobs is running, or after
   2 minutes; the first hold of a stretch is printed. Verify's per-run JSONs are byte-identical
   held (one process at a time) and not.
+- **Native traces branch from the TAS (2026-10-24, (1) above for the native corpus).** Phases 6 and
+  7 trace the native corpus about nine times (`--fb`, full_rate_2p, 120 and 144 Hz, three widescreen
+  passes, the state probe), each run from power-on. `xmen2check.py trace-group` plays them as
+  verify does (`pack_branches`): a run whose runner-frame pads (`stepped_pads`, from its input and
+  D1 reference) start with the TAS's for 600 frames or more is a branch of a process playing the
+  TAS, from a save at the last frame they share (73 of the 75 other runs, in 22 processes).
+  - The runner: `--branch-plan` (main.cpp `run_branches`). After frame AT it saves, plays the
+    branch's script to its last frame with its own files (each a copy of this run's rows so far,
+    then its own), its counters and benchmark line, and puts back everything: the savestate with
+    its counters, and what no section holds (present.cpp's frame-to-frame state, the widescreen
+    counters' strings, the export's and the memory census's counts, the reported snapshot sizes,
+    the stack's paint). A branch point inside a state probe's window moves to the probe's start.
+    `--hash-out` puts the `[FBHASH]` lines in a file, so a branch can start with its prefix's.
+  - phase.py `Traces.prefetch` runs a stage's traces as one trace-group before the stage (P1, E3,
+    E4, E5, M2) and hands each `plain()`/`run()` call its result; cache hits are left out.
+  - Proof, all 76 runs alone and as a group, every option set phase.py traces the corpus with:
+    every file byte-identical (sync.csv with the fb column, present.csv, game.csv, probe.csv) and
+    the JSON equal less timings and `fiber_stack_peak`; probe_snap.csv's saves equal their re-saves
+    at the same points (its hashes hold host addresses, so they differ between any two processes).
+    `fiber_stack_peak` can differ: the game's fiber also runs the host's allocator (high_fps's
+    render-time vector), whose depth depends on the heap's history (fuzz-09000-s1 at 144 Hz: 12,408
+    alone, 10,384 as a branch, the rows the same).
+  - Time (24 jobs, wall, alone -> group): plain 67 -> 34 s, `--fb` 236 -> 115, full_rate_2p
+    236 -> 115, 144 Hz 648 -> 310, widescreen 298 -> 144, state probe 290 -> 140: about half, the
+    TAS's own process (its 51k frames) now the long pole. The phase 6/7 corpus stages: ~54 -> ~26 min.
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner

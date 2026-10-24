@@ -165,6 +165,14 @@ extern "C" void xm_export(XmImage *im)
     s_stats.unsized = unsized;
 }
 
+/* the native runner's --branch-plan: the counts as at the branch point, put back when it ends */
+extern "C" void xm_export_branch(int save)
+{
+    static Stats kept;
+    if (save) kept = s_stats;
+    else s_stats = kept;
+}
+
 extern "C" int xm_export_stats(char *buf, int n)
 {
     const Global *t = selftest_global();

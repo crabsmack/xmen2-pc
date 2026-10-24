@@ -153,6 +153,10 @@ void state_load(const Snapshot &snap, const char *skip)
     for (auto fn : after_load()) fn();
 }
 
+/* --branch-plan (main.cpp): a branch's own saves are not the run's, so they leave the reported sizes */
+std::vector<size_t> state_reported_spans(void) { return s_last_spans; }
+void state_set_reported_spans(const std::vector<size_t> &spans) { s_last_spans = spans; }
+
 int state_has_section(const char *name)
 {
     for (const Section &s : sections())

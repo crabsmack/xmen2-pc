@@ -225,8 +225,17 @@ def stepped_script(inp: Path, ref: Path, out: Path) -> int:
     to sync 1) gets the input's first frame; frame k+1 (after sync k) the input of the
     reference frame of sync k (D1 sync.csv), the frame whose V-int read the pads. Returns the
     number of runner frames (= the reference's sync points)."""
+    return write_script(stepped_pads(inp, ref), out)
+
+
+def stepped_pads(inp: Path, ref: Path) -> list[str]:
+    """stepped_script's pads, one per runner frame (index 0 = runner frame 1)."""
     pads, frames = input_pads(inp), sync_frames(ref)
-    seq = [pads[0] if pads else "0 0"] + [pads[min(f, len(pads)) - 1] if pads else "0 0" for f in frames[:-1]]
+    return [pads[0] if pads else "0 0"] + [pads[min(f, len(pads)) - 1] if pads else "0 0" for f in frames[:-1]]
+
+
+def write_script(seq: list[str], out: Path) -> int:
+    """An input script of one runner frame per pads entry; returns the frames."""
     lines, prev, n = [], None, 0
     for p in seq:
         if p != prev and prev is not None:
@@ -236,7 +245,7 @@ def stepped_script(inp: Path, ref: Path, out: Path) -> int:
     if prev is not None:
         lines += [f"PADS {prev}", f"WAIT {n}"]
     out.write_text("# per sync interval (xmen2check.py trace --mode stepped)\n" + "\n".join(lines) + "\n", newline="\n")
-    return len(frames)
+    return len(seq)
 
 
 FBHASH = re.compile(r"^\[FBHASH\] frame=(\d+) w=(\d+) h=(\d+) hash=0x([0-9A-Fa-f]{16})", re.M)
@@ -275,6 +284,62 @@ def picture_free(a) -> bool:
     return not (a.render or a.fb or a.options or a.present_log or a.flip or a.flip_scan or a.game_rows
                 or a.session is not None or a.scene is not None or a.digest or a.state_probe or a.state_skip
                 or os.environ.get("XMEN2_SHOTS") or os.environ.get("XMEN2_CAPTURE"))
+
+
+def stepped_args(a, out: Path, hash_out: Path | None = None) -> list[str]:
+    """A stepped runner's options for a trace's flags, its files in OUT (hash_out: the [FBHASH]
+    lines to that file, not stderr: a branch plan's runs)."""
+    cmd = []
+    if a.fb:   # the runner's [FBHASH] of every runner frame (see add_fb_column)
+        cmd += ["--hash-frames", "1"] + (["--hash-out", str(hash_out)] if hash_out else [])
+    if picture_free(a):
+        cmd += ["--no-render"]
+    if a.options:   # phase 6: the enhancement options (P6-enhance.md "The contract")
+        cmd += ["--options", a.options]
+    if a.present_log:   # phase 6 E4: OUT/present.csv, one row per displayed frame
+        cmd += ["--present-log", str(out / "present.csv")]
+    if getattr(a, "flip", 0):   # phase 6 E4: the latency probe
+        cmd += ["--flip", str(a.flip)]
+    if getattr(a, "flip_scan", ""):   # phase 6 E4: every probe of a span in one run, OUT/flip_scan.csv
+        cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)] + (["--flip-scan-first"] if a.flip_scan_first else [])
+    if a.game_rows:   # phase 6 R8: OUT/game.csv, the game's state less the picture's
+        cmd += ["--game-rows", str(out / "game.csv")]
+    # phase 7 (P7-multiplayer.md "The contract")
+    if a.session is not None:
+        cmd += ["--session", str(a.session)]
+    if a.scene is not None:
+        cmd += ["--scene", str(a.scene)]
+    if a.digest:
+        cmd += ["--digest", str(out / "digest.csv")]
+    if a.state_probe:
+        cmd += ["--state-probe", a.state_probe, "--probe-out", str(out)]
+    if a.state_skip:
+        cmd += ["--state-skip", a.state_skip]
+    return cmd
+
+
+def stepped_result(a, src: Path, out: Path, b: dict, c: dict, fb_text: str) -> dict:
+    """A stepped trace's JSON from its runner's benchmark line (b), counters (c) and [FBHASH] lines
+    (fb_text), its files in OUT (sync.csv gets the fb column with --fb)."""
+    res = {"dispatch_misses": c["dispatch_misses"], "interp_instructions": c["interp_instructions"],
+           "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(src), "exe_sha1": common.sha1(src)}
+    res["sync_points"] = csv_rows(out / "sync.csv")
+    res["render"] = not picture_free(a)
+    if a.fb:
+        res["fb_rows"] = add_fb_column(out / "sync.csv", fb_text, out / "runner.log")
+    if a.mode == "native":
+        if "exported" not in c:
+            sys.exit(f"{src.name} reported no export counts; see {out / 'runner.log'}")
+        res["exported"] = c["exported"]
+        # phase 6: the effective option values and the enhance counters, the runner's own
+        if "options" not in c or "enhance" not in c:
+            sys.exit(f"{src.name} reported no options / enhance counters; see {out / 'runner.log'}")
+        res["options"], res["enhance"] = c["options"], c["enhance"]
+        # phase 7: the savestate's sections, the session machine, the multiplayer counters
+        for k in ("state", "session", "mp"):
+            if k in c:
+                res[k] = c[k]
+    return res
 
 
 def cmd_trace(a) -> dict:
@@ -337,32 +402,7 @@ def cmd_trace(a) -> dict:
         env.update(XMEN2_SYNC_CSV=str(sync_csv))
         env.pop("GENESIS_REPLAY_IN", None)
         cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames),
-               "--input-script", str(script), "--fresh-evidence"]
-        if a.fb:   # the runner's [FBHASH] of every runner frame (see add_fb_column)
-            cmd += ["--hash-frames", "1"]
-        if picture_free(a):
-            cmd += ["--no-render"]
-        if a.options:   # phase 6: the enhancement options (P6-enhance.md "The contract")
-            cmd += ["--options", a.options]
-        if a.present_log:   # phase 6 E4: OUT/present.csv, one row per displayed frame
-            cmd += ["--present-log", str(out / "present.csv")]
-        if a.flip:   # phase 6 E4: the latency probe
-            cmd += ["--flip", str(a.flip)]
-        if a.flip_scan:   # phase 6 E4: every probe of a span in one run, OUT/flip_scan.csv
-            cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)] + (["--flip-scan-first"] if a.flip_scan_first else [])
-        if a.game_rows:   # phase 6 R8: OUT/game.csv, the game's state less the picture's
-            cmd += ["--game-rows", str(out / "game.csv")]
-        # phase 7 (P7-multiplayer.md "The contract")
-        if a.session is not None:
-            cmd += ["--session", str(a.session)]
-        if a.scene is not None:
-            cmd += ["--scene", str(a.scene)]
-        if a.digest:
-            cmd += ["--digest", str(out / "digest.csv")]
-        if a.state_probe:
-            cmd += ["--state-probe", a.state_probe, "--probe-out", str(out)]
-        if a.state_skip:
-            cmd += ["--state-skip", a.state_skip]
+               "--input-script", str(script), "--fresh-evidence", *stepped_args(a, out)]
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -392,26 +432,10 @@ def cmd_trace(a) -> dict:
     if r.returncode != 0 or not bench or not counters:
         sys.exit(f"runner failed ({r.returncode}); see {out / 'runner.log'}")
     b, c = json.loads(bench.group(1)), json.loads(counters.group(1))
+    if a.mode in STEPPED_MODES:
+        return drop_runner(a, run_dir, stepped_result(a, src, out, b, c, stderr))
     res = {"dispatch_misses": c["dispatch_misses"], "interp_instructions": c["interp_instructions"],
            "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(src), "exe_sha1": common.sha1(src)}
-    if a.mode in STEPPED_MODES:
-        res["sync_points"] = csv_rows(sync_csv)
-        res["render"] = not picture_free(a)
-        if a.fb:
-            res["fb_rows"] = add_fb_column(sync_csv, stderr, out / "runner.log")
-        if a.mode == "native":
-            if "exported" not in c:
-                sys.exit(f"{src.name} reported no export counts; see {out / 'runner.log'}")
-            res["exported"] = c["exported"]
-            # phase 6: the effective option values and the enhance counters, the runner's own
-            if "options" not in c or "enhance" not in c:
-                sys.exit(f"{src.name} reported no options / enhance counters; see {out / 'runner.log'}")
-            res["options"], res["enhance"] = c["options"], c["enhance"]
-            # phase 7: the savestate's sections, the session machine, the multiplayer counters
-            for k in ("state", "session", "mp"):
-                if k in c:
-                    res[k] = c[k]
-        return drop_runner(a, run_dir, res)
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
     if a.sync:
         # stack_low: the fixed bound the sync CRCs mask from (the corpus's lowest A7);
@@ -443,6 +467,135 @@ def drop_runner(a, run_dir: Path, res: dict) -> dict:
     else:
         shutil.rmtree(run_dir, ignore_errors=True)
     return res
+
+
+def cmd_trace_group(a) -> dict:
+    """Native traces of many corpus runs at once, each as `trace --mode native --run R --input I
+    --replay D --out O` with this command's flags would write it (O's files, the per-run JSON in
+    the result), played as few processes as can: a run whose runner-frame pads start with the
+    TAS's for BRANCH_MIN frames or more is a branch of a process playing the TAS (the runner's
+    --branch-plan: from a save at the last frame they share, not from power-on), grouped by
+    pack_branches. --runs FILE: a JSON list of {"run", "input", "replay", "out"}; the TAS's own
+    entry (run "tas") is its carrier, else --tas-input/--tas-replay give it. --no-branch: every run
+    alone (the control). Prints {run: result or {"error": why}}; exits 1 when any failed."""
+    import concurrent.futures
+    import os
+    import tempfile
+    if a.mode != "native":
+        sys.exit("trace-group: --mode native only (the runner with --branch-plan)")
+    a.jobs = a.jobs or max(1, (os.cpu_count() or 2) - 2)
+    common.ensure_rom()
+    src = exe_path(NATIVE_EXE)
+    if not src.is_file():
+        sys.exit(f"no Release runner at {src}: run `xmen2check.py build`")
+    entries = json.loads(Path(a.runs).read_text())
+    runs = {e["run"]: e for e in entries}
+    if len(runs) != len(entries):
+        sys.exit("trace-group: a run is listed twice")
+    pads, frames = {}, {}
+    for r, e in runs.items():
+        out = Path(e["out"]).resolve()
+        out.mkdir(parents=True, exist_ok=True)
+        ref = Path(e["replay"]).resolve()
+        if not (ref / "sync.csv").is_file():
+            sys.exit(f"{ref} has no sync.csv (a `trace --mode recomp --sync` output)")
+        pads[r] = stepped_pads(Path(e["input"]), ref)
+        frames[r] = write_script(pads[r], out / "input.input")
+    tas_pads = pads.get("tas")
+    if tas_pads is None and a.tas_input and a.tas_replay:
+        tas_pads = stepped_pads(Path(a.tas_input), Path(a.tas_replay).resolve())
+    work = Path(tempfile.mkdtemp(prefix="trace-group-", dir=common.BUILD))
+    carrier_script = None
+    if tas_pads is not None:
+        carrier_script = work / "tas.input"
+        write_script(tas_pads, carrier_script)
+    branches, plain = [], []
+    for r in runs:
+        n = 0
+        if tas_pads is not None and r != "tas" and not a.no_branch:
+            lim = min(len(pads[r]), len(tas_pads), frames[r])
+            while n < lim and pads[r][n] == tas_pads[n]:
+                n += 1
+        if n >= BRANCH_MIN and n < frames[r]:
+            branches.append((n, frames[r] - n, r, None))
+        elif r != "tas":
+            plain.append((None, frames[r], r))
+    own = (None, frames["tas"], "tas") if "tas" in runs else None
+    units = pack_branches(branches, own, plain, None, max(frames.values(), default=0), a.jobs)
+    gate = common.MemGate()
+    results: dict[str, dict] = {}
+
+    def one(u: dict) -> None:
+        with gate:
+            play(u)
+
+    def play(u: dict) -> None:
+        mine = u["run"]
+        d = Path(runs[mine]["out"]).resolve() if mine else work / u["name"]
+        d.mkdir(parents=True, exist_ok=True)
+        script = d / "input.input" if mine else carrier_script
+        run_dir = d / "runner"
+        if run_dir.exists():
+            shutil.rmtree(run_dir)
+        run_dir.mkdir()
+        copy_runner(src, run_dir)
+        env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_SYNC_CSV": str(d / "sync.csv")}
+        env.pop("GENESIS_REPLAY_IN", None)
+        cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(u["frames"]), "--input-script", str(script),
+               "--fresh-evidence", *stepped_args(a, d, d / "fbhash.log" if u["branches"] else None)]
+        if u["branches"]:
+            plan = d / "branches.txt"
+            plan.write_text("".join(f"{at} {at + n} {Path(runs[r]['out']).resolve()} "
+                                    f"{Path(runs[r]['out']).resolve() / 'input.input'}\n"
+                                    for at, n, r, _p in u["branches"]), newline="\n")
+            cmd += ["--branch-plan", str(plan)]
+        log(f"trace-group {u['name']}: {u['frames']} frames" + (f" + {len(u['branches'])} branches" if u["branches"] else ""))
+        with open(d / "runner.log", "w", encoding="utf-8", errors="replace") as lf:
+            try:
+                r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
+                                   errors="replace", timeout=a.timeout)
+                code, stdout = r.returncode, r.stdout
+            except subprocess.TimeoutExpired:
+                code, stdout = -1, ""
+        if mine:
+            (d / "runner.stdout").write_text(stdout, encoding="utf-8")
+        stderr = (d / "runner.log").read_text(errors="replace")
+        outs = ([(mine, d, stdout, stderr, stderr if not u["branches"] else
+                  (d / "fbhash.log").read_text(errors="replace") if (d / "fbhash.log").exists() else "")] if mine else [])
+        for _at, _n, r, _p in u["branches"]:
+            o = Path(runs[r]["out"]).resolve()
+            rd = lambda f: (o / f).read_text(errors="replace") if (o / f).exists() else ""   # noqa: E731
+            outs.append((r, o, rd("runner.stdout"), rd("runner.log"), rd("fbhash.log")))
+        for r, o, so, se, fb in outs:
+            bench = re.search(r"GENESISRECOMP_BENCHMARK (\{.*\})", so)
+            counters = re.search(r"\[xmen2\] counters (\{.*\})", se)
+            if code != 0 or not bench or not counters:
+                results[r] = {"error": f"runner failed ({code}) in {u['name']}; see {d / 'runner.log'}"}
+                continue
+            try:
+                res = stepped_result(a, src, o, json.loads(bench.group(1)), json.loads(counters.group(1)), fb)
+            except SystemExit as e:
+                results[r] = {"error": str(e)}
+                continue
+            res["process"] = u["name"]
+            results[r] = res
+            (o / "trace.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
+        keep = a.keep_runner or os.environ.get("XMEN2_KEEP_RUNNER", "") not in ("", "0")
+        if code == 0 and not keep:
+            shutil.rmtree(run_dir, ignore_errors=True)
+
+    order = sorted(units, key=lambda u: -u["cost"])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(a.jobs, len(units)))) as ex:
+        list(ex.map(one, order))
+    shutil.rmtree(work, ignore_errors=True)
+    failed = sorted(r for r in runs if "error" in results.get(r, {"error": "not played"}))
+    out = {"runs": len(runs), "processes": [{"name": u["name"], "frames": u["frames"],
+                                             "branches": [b[2] for b in u["branches"]]} for u in units],
+           "failed": failed, "per_run": {r: results.get(r, {"error": "not played"}) for r in runs}}
+    if failed:
+        print(json.dumps(out))
+        sys.exit(1)
+    return out
 
 
 # --- phase 4: verify (shadow differential tests) --------------------------------------
@@ -482,8 +635,7 @@ def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int) -> l
     A process playing the TAS for branches stops at its last one, unless it is the TAS run itself.
     Grouping: branches latest first, each into the TAS run or the last process opened if that keeps
     it within a bound T, else into a new process; T is the one (from the longest run's frames up)
-    whose processes, longest first on `jobs` workers, finish first."""
-    import heapq
+    whose processes, longest first on `jobs` workers, finish first (pack_branches)."""
     want = {p: min(cap, script_frames(p)) if cap else script_frames(p) for p in inputs}
     branches, plain = [], []
     tas_pads = input_pads(tas) if tas else []
@@ -501,25 +653,37 @@ def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int) -> l
             plain.append(p)
     tas_run = next((p for p in plain if p.stem == "tas"), None)
     plain = [p for p in plain if p is not tas_run]
-    branches.sort(key=lambda b: (-b[0], b[2]))
+    return pack_branches(branches, (tas_run, want[tas_run], "tas") if tas_run else None,
+                         [(p, want[p], p.stem) for p in plain], tas, max([want[p] for p in inputs], default=0), jobs)
+
+
+def pack_branches(branches: list[tuple], own: tuple | None, plain: list[tuple], carrier, longest: int,
+                  jobs: int) -> list[dict]:
+    """verify_units' (and trace-group's) processes: branches (at, frames after it, run, input) go
+    latest first into the TAS run `own` (input, frames, run) or the last carrier process opened (one
+    playing `carrier`, the TAS's input, up to its first branch) while that keeps it within a bound T,
+    else into a new carrier; `plain` (input, frames, run) runs play alone. T is the one (from the
+    longest run's frames up) whose processes, longest first on `jobs` workers, finish first."""
+    import heapq
+    branches = sorted(branches, key=lambda b: (-b[0], b[2]))
 
     def group(bound: int) -> tuple[list[dict], int]:
         units = []
-        own = {"input": tas_run, "frames": want[tas_run], "run": "tas", "branches": []} if tas_run else None
-        cost = want[tas_run] if tas_run else 0
+        mine = {"input": own[0], "frames": own[1], "run": own[2], "branches": []} if own else None
+        cost = own[1] if own else 0
         cur = None
         for b in branches:
-            if own is not None and cost + b[1] <= bound:
-                own["branches"].append(b)
+            if mine is not None and cost + b[1] <= bound:
+                mine["branches"].append(b)
                 cost += b[1]
             elif cur is not None and cur["cost"] + b[1] <= bound:
                 cur["branches"].append(b)
                 cur["cost"] += b[1]
             else:
-                cur = {"input": tas, "frames": b[0], "run": None, "branches": [b], "cost": b[0] + b[1]}
+                cur = {"input": carrier, "frames": b[0], "run": None, "branches": [b], "cost": b[0] + b[1]}
                 units.append(cur)
-        units = ([own] if own else []) + units + [{"input": p, "frames": want[p], "run": p.stem, "branches": []}
-                                                  for p in plain]
+        units = ([mine] if mine else []) + units + [{"input": p, "frames": n, "run": r, "branches": []}
+                                                    for p, n, r in plain]
         for k, u in enumerate(units):
             u["branches"].sort(key=lambda b: (b[0], b[2]))
             u["cost"] = u["frames"] + sum(b[1] for b in u["branches"])
@@ -529,7 +693,6 @@ def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int) -> l
             heapq.heappush(h, heapq.heappop(h) + c)
         return units, max(h)
 
-    longest = max([want[p] for p in inputs], default=0)
     best = None
     for k in range(0, 41):
         units, span = group(longest + longest * k // 20)
@@ -1395,6 +1558,27 @@ def main() -> int:
                            help="native (phase 7 M2) P:L: every P-th sync point save, run L, restore, run L again")
             p.add_argument("--state-skip", default="",
                            help="native (phase 7 M2): leave this section out of every restore (negative control)")
+    p = sub.add_parser("trace-group")   # many native traces, the fuzz runs as branches of TAS runs
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--mode", default="native")
+    p.add_argument("--runs", required=True, help='JSON list of {"run", "input", "replay", "out"}')
+    p.add_argument("--tas-input", default="", help="the TAS's .input, when its run is not in --runs")
+    p.add_argument("--tas-replay", default="", help="the TAS's D1 trace dir, when its run is not in --runs")
+    p.add_argument("--jobs", type=int, default=0, help="processes at once (default: the cores less two)")
+    p.add_argument("--no-branch", action="store_true", help="every run from power-on (the control)")
+    p.add_argument("--timeout", type=int, default=7200)
+    p.add_argument("--keep-runner", action="store_true")
+    p.add_argument("--fb", action="store_true")
+    p.add_argument("--render", action="store_true")
+    p.add_argument("--options", default="")
+    p.add_argument("--present-log", action="store_true")
+    p.add_argument("--game-rows", action="store_true")
+    p.add_argument("--session", type=int, default=None)
+    p.add_argument("--scene", type=int, default=None)
+    p.add_argument("--digest", action="store_true")
+    p.add_argument("--state-probe", default="")
+    p.add_argument("--state-skip", default="")
+    p.set_defaults(flip=0, flip_scan="", flip_scan_first=False)
     p = sub.add_parser("options")
     p.add_argument("--json", action="store_true")
     p = sub.add_parser("netplay")   # phase 7 (P7-multiplayer.md "The contract")
@@ -1418,7 +1602,7 @@ def main() -> int:
     p = sub.add_parser("native-build")
     p.add_argument("--json", action="store_true")
     a = ap.parse_args()
-    res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "types": cmd_types,
+    res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "trace-group": cmd_trace_group, "types": cmd_types,
            "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify, "package": cmd_package,
            "native-build": cmd_native_build, "options": cmd_options, "netplay": cmd_netplay}[a.cmd](a)
     if a.cmd == "gen" and not a.json:

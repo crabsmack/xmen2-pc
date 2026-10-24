@@ -14,6 +14,9 @@
  *                        the framebuffer's active region, as main.c framebuf_active_hash)
  *   --fresh-evidence     accepted (nothing is written beside the runner)
  *   --no-render          (--benchmark) the sync points render no frame: a trace that compares no picture
+ *   --hash-out F         the [FBHASH] lines to F instead of stderr
+ *   --branch-plan F      (--benchmark) other runs that start with this one's pads, played from saves of
+ *                        this run (`AT TOTAL DIR SCRIPT`: see run_branches)
  *   --options K=V,...    the enhancement options (phase 6, options.cpp; also xmen2.ini beside the
  *                        runner); --options --json lists them and exits
  *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
@@ -22,11 +25,13 @@
  * XMEN2_DUMP_DIR (sNNNNNN.ram/.vram), XMEN2_STACK_LOW (as game/xmen2_spec.c).
  * At exit stderr gets `[xmen2] counters {...}` with the export's counts.
  */
+#include <algorithm>
 #include <chrono>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <vector>
 
 #include "host_sdl.h"
@@ -250,6 +255,28 @@ static uint64_t s_flip, s_scan_lo, s_scan_hi, s_scan_len, s_scan_flip;
 static FILE *s_scan_out;
 static bool quiet(void) { return s_probe_pass == 1 || s_np_quiet || s_scan_flip; }
 
+/* --branch-plan FILE (headless traces of runs that start with this run's input; the plan's
+   lines `AT TOTAL DIR SCRIPT`): when runner frame AT is done, the run is saved and branches:
+   DIR's run plays SCRIPT up to its frame TOTAL, as `--benchmark TOTAL --input-script SCRIPT` from
+   power-on would (same pads up to AT), writing its files in DIR (sync.csv, present.csv, game.csv,
+   digest.csv, probe.csv, probe_snap.csv, fbhash.log as asked for this run: this run's rows up to AT,
+   then its own), its counters to DIR/runner.log and its benchmark line to DIR/runner.stdout; then
+   everything is put back (the savestate with its counters, the presentation's state, the widescreen
+   counters' strings, the export's counts, the stack's paint, the reported snapshot sizes) and this run
+   goes on. A branch point inside a state probe's window moves back to the probe's start (same pads
+   there too). A branch's fiber_stack_peak can differ from its run's from power-on: the game's fiber
+   also runs the host's allocator, whose depth depends on the heap's history. */
+struct Branch { uint64_t at, total; std::string dir, script; };
+static std::vector<Branch> s_plan;
+static size_t s_plan_next;
+static bool s_branch_on, s_branch_done;
+static uint64_t s_branch_at;
+static std::chrono::steady_clock::time_point s_branch_t0;
+static FILE *s_branch_log, *s_branch_stdout;
+static std::string s_branch_json;   /* the branch's own fields for its benchmark line */
+static bool branch_running(void) { return s_branch_on; }
+static void run_branches(void);
+
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
     s_sync_rows = sync;
@@ -304,7 +331,15 @@ void main_np_write_rows(uint64_t upto)   /* the rows and digests of sync points 
 
 static uint64_t s_benchmark, s_quit_after;
 
+static void at_sync_work(uint64_t sync);
+
 extern "C" void plat_at_sync(uint64_t sync)
+{
+    if (!s_branch_on && s_plan_next < s_plan.size()) run_branches();   /* --branch-plan: before this run's own work */
+    at_sync_work(sync);
+}
+
+static void at_sync_work(uint64_t sync)
 {
     if (!s_state_bytes) {   /* the snapshot's size, for the counters */
         Snapshot t;
@@ -338,7 +373,7 @@ extern "C" void plat_at_sync(uint64_t sync)
     s_probe_pass = 0;
 }
 
-static void report_counters(void)
+static void report_counters_to(FILE *out)
 {
     if (s_sync) fflush(s_sync);
     if (s_digest) fflush(s_digest);
@@ -361,14 +396,16 @@ static void report_counters(void)
     snprintf(peak, sizeof peak, ", \"fiber_stack_peak\": %llu}", (unsigned long long)machine_stack_peak());
     std::string state = state_sections_json(s_state_bytes) + peak;
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
-    fprintf(stderr, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
-                    "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
-                    "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s, \"sound\": %s}\n",
+    fprintf(out, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
+                 "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
+                 "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s, \"sound\": %s}\n",
             (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory,
             options_effective_json().c_str(), enhance, state.c_str(), machine_session() ? "true" : "false",
             players_counters_json().c_str(), sound_counters_json().c_str());
-    fflush(stderr);
+    fflush(out);
 }
+
+static void report_counters(void) { report_counters_to(stderr); }
 
 /* ---- the picture ---------------------------------------------------------------------------- */
 
@@ -378,6 +415,7 @@ static uint32_t s_fb[FB_H][FB_W];
 static uint32_t s_ifb[FB_H][FB_W];          /* high_fps: an in-between frame (present.cpp) */
 static uint32_t (*s_target)[FB_W] = s_fb;
 static uint32_t s_hash_frames;
+static FILE *s_hash_out;   /* the [FBHASH] lines: stderr, or --hash-out FILE (a branch plan's runs have their own) */
 
 extern "C" void plat_scanline(int row, const uint32_t *argb, int width)
 {
@@ -552,8 +590,8 @@ extern "C" void plat_frame_end(uint64_t frame)
     }
     if (s_hash_frames && frame % s_hash_frames == 0) {
         int w = machine_screen_width(), h = machine_screen_height();
-        fprintf(stderr, "[FBHASH] frame=%llu w=%d h=%d hash=0x%016llX\n", (unsigned long long)frame, w, h,
-                (unsigned long long)fb_hash(w, h));
+        fprintf(s_hash_out ? s_hash_out : stderr, "[FBHASH] frame=%llu w=%d h=%d hash=0x%016llX\n",
+                (unsigned long long)frame, w, h, (unsigned long long)fb_hash(w, h));
     }
     /* the present clock (--present-log, high_fps: present.cpp shows the frame at its time) */
     bool shown = present_whole(frame, &s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height(), s_interactive != 0);
@@ -563,19 +601,156 @@ extern "C" void plat_frame_end(uint64_t frame)
         exit(0);
     }
     if (s_benchmark && frame >= s_benchmark) {
-        double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - s_t0).count();
-        printf("GENESISRECOMP_BENCHMARK {\"game\":\"xmen2\",\"frames\":%llu,\"seconds\":%.9f,\"fps\":%.3f,"
-               "\"ms_per_frame\":%.6f,\"requested_frames\":%llu,\"complete\":true,\"runner\":\"native\"}\n",
-               (unsigned long long)frame, s, s > 0 ? (double)frame / s : 0.0, frame ? s * 1000.0 / (double)frame : 0.0,
-               (unsigned long long)s_benchmark);
-        fflush(stdout);
+        bool branch = branch_running();
+        double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - (branch ? s_branch_t0 : s_t0)).count();
+        uint64_t played = branch ? frame - s_branch_at : frame;   /* a branch's own frames, timed */
+        FILE *o = branch ? s_branch_stdout : stdout;
+        fprintf(o, "GENESISRECOMP_BENCHMARK {\"game\":\"xmen2\",\"frames\":%llu,\"seconds\":%.9f,\"fps\":%.3f,"
+                "\"ms_per_frame\":%.6f,\"requested_frames\":%llu,\"complete\":true,\"runner\":\"native\"%s}\n",
+                (unsigned long long)frame, s, s > 0 ? (double)played / s : 0.0, played ? s * 1000.0 / (double)played : 0.0,
+                (unsigned long long)s_benchmark, branch ? s_branch_json.c_str() : "");
+        fflush(o);
+        if (branch) {   /* --branch-plan: the run ends here; its process goes on with the plan */
+            report_counters_to(s_branch_log);
+            s_branch_done = true;
+            return;
+        }
+        if (s_plan_next < s_plan.size()) run_branches();   /* the plan's branches at this run's last frame */
         exit(0);
     }
+}
+
+/* ---- --branch-plan (see the declarations above plat_sync_row) --------------------------------- */
+
+extern "C" void xm_export_branch(int save);
+extern "C" void xm_mem_branch(int save);
+
+/* this run's files, by path, so a branch's copies start with its rows so far */
+static std::string s_sync_path, s_present_path, s_game_rows_path, s_digest_path, s_probe_dir, s_hash_path;
+
+static FILE *branch_file(FILE *mine, const std::string &from, const std::string &to)
+{
+    if (!mine) return nullptr;
+    fflush(mine);
+    FILE *in = fopen(from.c_str(), "rb"), *out = fopen(to.c_str(), "wb");
+    if (!in || !out) { fprintf(stderr, "[native] --branch-plan: cannot copy %s to %s\n", from.c_str(), to.c_str()); exit(2); }
+    char buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof buf, in)) > 0) fwrite(buf, 1, n, out);
+    fclose(in);
+    fclose(out);
+    FILE *f = fopen(to.c_str(), "a");   /* text mode, as this run's own files */
+    if (!f) { fprintf(stderr, "[native] --branch-plan: cannot write %s\n", to.c_str()); exit(2); }
+    setvbuf(f, nullptr, _IOFBF, 1 << 20);
+    return f;
+}
+
+static void branch_close(FILE *&branch, FILE *mine)
+{
+    if (branch && branch != mine) fclose(branch);
+    branch = mine;
+}
+
+static void run_branches(void)
+{
+    uint64_t f = machine_frame_no();
+    if (s_plan[s_plan_next].at != f) return;
+    Snapshot snap;
+    std::vector<size_t> spans = state_reported_spans();
+    state_save(snap);
+    state_set_reported_spans(spans);   /* this save is not the run's own */
+    present_branch_save();
+    ws_branch(1);
+    xm_export_branch(1);
+    xm_mem_branch(1);
+    uint64_t peak = machine_stack_peak(), benchmark = s_benchmark;
+    size_t state_bytes = s_state_bytes;
+    std::vector<PadSpan> script = s_script;
+    FILE *sync = s_sync, *game = s_game_rows, *digest = s_digest, *prows = s_probe_rows, *psnap = s_probe_snap,
+         *hash = s_hash_out;
+    while (s_plan_next < s_plan.size() && s_plan[s_plan_next].at == f) {
+        const Branch &b = s_plan[s_plan_next++];
+        const std::string d = b.dir + "/";
+        s_sync = branch_file(sync, s_sync_path, d + "sync.csv");
+        s_game_rows = branch_file(game, s_game_rows_path, d + "game.csv");
+        s_digest = branch_file(digest, s_digest_path, d + "digest.csv");
+        s_probe_rows = branch_file(prows, s_probe_dir + "/probe.csv", d + "probe.csv");
+        s_probe_snap = branch_file(psnap, s_probe_dir + "/probe_snap.csv", d + "probe_snap.csv");
+        s_hash_out = branch_file(hash, s_hash_path, d + "fbhash.log");
+        FILE *plog = present_logging() ? present_log_file(nullptr) : nullptr;
+        if (plog) present_log_file(branch_file(plog, s_present_path, d + "present.csv"));
+        s_branch_log = fopen((d + "runner.log").c_str(), "w");
+        s_branch_stdout = fopen((d + "runner.stdout").c_str(), "w");
+        if (!s_branch_log || !s_branch_stdout) { fprintf(stderr, "[native] --branch-plan: cannot write in %s\n", b.dir.c_str()); exit(2); }
+        s_script.clear();
+        load_script(b.script.c_str());
+        s_benchmark = b.total;
+        s_branch_at = f;
+        s_branch_json = ",\"branched_at\":" + std::to_string(f);
+        s_branch_on = true;
+        s_branch_done = false;
+        s_branch_t0 = std::chrono::steady_clock::now();
+        at_sync_work(s_sync_rows);   /* as plat_at_sync after frame AT in a run of its own */
+        while (!s_branch_done) {
+            machine_tick();
+            if (!s_branch_done) at_sync_work(s_sync_rows);
+        }
+        s_branch_on = false;
+        fprintf(stderr, "[branch] %s: frames %llu-%llu\n", b.dir.c_str(), (unsigned long long)f + 1, (unsigned long long)b.total);
+        branch_close(s_sync, sync);
+        branch_close(s_game_rows, game);
+        branch_close(s_digest, digest);
+        branch_close(s_probe_rows, prows);
+        branch_close(s_probe_snap, psnap);
+        branch_close(s_hash_out, hash);
+        if (plog) fclose(present_log_file(plog));
+        fclose(s_branch_log);
+        fclose(s_branch_stdout);
+        s_branch_log = s_branch_stdout = nullptr;
+        s_script = script;
+        s_benchmark = benchmark;
+        state_load(snap, nullptr);
+        state_set_reported_spans(spans);
+        s_state_bytes = state_bytes;
+        present_branch_restore();
+        ws_branch(0);
+        xm_export_branch(0);
+        xm_mem_branch(0);
+        machine_stack_repaint(peak);
+    }
+}
+
+/* the plan: `AT TOTAL DIR SCRIPT` lines, in AT order (as moved for the state probe) */
+static void load_plan(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    if (!f) { fprintf(stderr, "[native] cannot open the branch plan %s\n", path); exit(2); }
+    char line[2048];
+    while (fgets(line, sizeof line, f)) {
+        unsigned long long at = 0, total = 0;
+        int used = 0;
+        if (sscanf(line, "%llu %llu %n", &at, &total, &used) != 2) continue;
+        std::string rest = line + used;
+        while (!rest.empty() && (rest.back() == '\n' || rest.back() == '\r')) rest.pop_back();
+        size_t sp = rest.find(' ');
+        if (!at || total <= at || sp == std::string::npos) {
+            fprintf(stderr, "[native] branch plan %s: bad line: %s", path, line);
+            exit(2);
+        }
+        if (s_probe_every && at % s_probe_every) {   /* not inside a probe's window (no plat_at_sync there): its start */
+            uint64_t p = at - at % s_probe_every;
+            if (p && at <= p + s_probe_len) at = p;
+        }
+        s_plan.push_back(Branch{ at, total, rest.substr(0, sp), rest.substr(sp + 1) });
+    }
+    fclose(f);
+    std::stable_sort(s_plan.begin(), s_plan.end(), [](const Branch &a, const Branch &b) { return a.at < b.at; });
 }
 
 int main(int argc, char **argv)
 {
     const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".", *game_rows = nullptr;
+    const char *plan = nullptr, *hash_out = nullptr;
     bool session = false, no_render = false, scan_first = false;
     uint64_t seed = 0;
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
@@ -583,6 +758,8 @@ int main(int argc, char **argv)
         if (!strcmp(argv[i], "--benchmark") && i + 1 < argc) s_benchmark = strtoull(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--input-script") && i + 1 < argc) script = argv[++i];
         else if (!strcmp(argv[i], "--hash-frames") && i + 1 < argc) s_hash_frames = (uint32_t)strtoul(argv[++i], nullptr, 10);
+        else if (!strcmp(argv[i], "--hash-out") && i + 1 < argc) hash_out = argv[++i];
+        else if (!strcmp(argv[i], "--branch-plan") && i + 1 < argc) plan = argv[++i];
         else if (!strcmp(argv[i], "--fresh-evidence")) {}
         else if (!strcmp(argv[i], "--no-render")) no_render = true;
         else if (!strcmp(argv[i], "--quit-after") && i + 1 < argc) s_quit_after = strtoull(argv[++i], nullptr, 10);
@@ -689,6 +866,30 @@ int main(int argc, char **argv)
         if (!s_sync) { fprintf(stderr, "[xmen2] cannot open XMEN2_SYNC_CSV %s\n", p); return 2; }
         setvbuf(s_sync, nullptr, _IOFBF, 1 << 20);
         fprintf(s_sync, "sync,frame,ram_crc32,vram_crc32,cram_crc32,vsram_crc32\n");
+        s_sync_path = p;
+    }
+    if (hash_out) {
+        if (!(s_hash_out = fopen(hash_out, "w"))) { fprintf(stderr, "[native] cannot write %s\n", hash_out); return 2; }
+        setvbuf(s_hash_out, nullptr, _IOFBF, 1 << 20);
+        s_hash_path = hash_out;
+    }
+    if (plan) {   /* --branch-plan: headless traces only, every file of the run by path */
+        if (!s_benchmark || !script || s_flip || s_scan_hi || netplay_enabled() || (s_hash_frames && !hash_out)) {
+            fprintf(stderr, "[native] --branch-plan needs --benchmark and --input-script, --hash-out with --hash-frames, "
+                            "and no --flip, --flip-scan or --netplay\n");
+            return 2;
+        }
+        load_plan(plan);
+        for (const Branch &b : s_plan)
+            if (b.at > s_benchmark) {
+                fprintf(stderr, "[native] branch plan: %s branches at %llu, after this run's %llu frames\n", b.dir.c_str(),
+                        (unsigned long long)b.at, (unsigned long long)s_benchmark);
+                return 2;
+            }
+        s_present_path = present_log ? present_log : "";
+        s_game_rows_path = game_rows ? game_rows : "";
+        s_digest_path = digest ? digest : "";
+        s_probe_dir = probe_out;
     }
     atexit(report_counters);
     xm_native_mem_init();

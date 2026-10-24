@@ -180,6 +180,14 @@ int xm_mem_census(char *buf, int n)
                     "\"slow_stores\": %llu}", (unsigned)units, (unsigned)(0x10000u - units),
                     (unsigned long long)xm::s_slow_loads, (unsigned long long)xm::s_slow_stores);
 }
+
+/* the native runner's --branch-plan: the census's counts as at the branch point, put back when it ends */
+void xm_mem_branch(int save)
+{
+    static unsigned long long kept[2];
+    if (save) { kept[0] = xm::s_slow_loads; kept[1] = xm::s_slow_stores; }
+    else { xm::s_slow_loads = kept[0]; xm::s_slow_stores = kept[1]; }
+}
 }
 
 /* Power-on: the arena (zeroed, as the stepped runners' RAM at reset) and the stack region's mark

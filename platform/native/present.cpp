@@ -255,11 +255,61 @@ void present_init(const char *log_path)
 
 bool present_logging(void) { return s_log != nullptr; }
 
+/* --branch-plan (main.cpp): a branch's present rows go to its own log, and everything this file
+   carries from frame to frame (the interpolation's previous frame and owners, the counters) is put
+   back when the branch ends, as a savestate's sections and counters are (none of it is the game's
+   state, so it is no section) */
+static struct PresentKept {
+    std::vector<Mark> marks;
+    Tag tags[80], prev_tags[80];
+    Snap prev, cur;
+    uint64_t frames, whole, sprites, matched, unmatched[5], fallback, extra;
+    std::vector<uint32_t> render_us;
+    bool gameplay;
+} s_kept;
+static uint64_t s_extra;
+
+FILE *present_log_file(FILE *f)   /* swap the log: the one in use is returned */
+{
+    FILE *old = s_log;
+    s_log = f;
+    return old;
+}
+
+void present_branch_save(void)
+{
+    PresentKept &k = s_kept;
+    k.marks = s_marks;
+    memcpy(k.tags, s_tags, sizeof s_tags);
+    memcpy(k.prev_tags, s_prev_tags, sizeof s_prev_tags);
+    k.prev = s_prev;
+    k.cur = s_cur;
+    k.frames = s_frames; k.whole = s_whole; k.sprites = s_sprites; k.matched = s_matched;
+    memcpy(k.unmatched, s_unmatched, sizeof s_unmatched);
+    k.fallback = s_fallback; k.extra = s_extra;
+    k.render_us = s_render_us;
+    k.gameplay = s_gameplay;
+}
+
+void present_branch_restore(void)
+{
+    const PresentKept &k = s_kept;
+    s_marks = k.marks;
+    memcpy(s_tags, k.tags, sizeof s_tags);
+    memcpy(s_prev_tags, k.prev_tags, sizeof s_prev_tags);
+    s_prev = k.prev;
+    s_cur = k.cur;
+    s_frames = k.frames; s_whole = k.whole; s_sprites = k.sprites; s_matched = k.matched;
+    memcpy(s_unmatched, k.unmatched, sizeof s_unmatched);
+    s_fallback = k.fallback; s_extra = k.extra;
+    s_render_us = k.render_us;
+    s_gameplay = k.gameplay;
+}
+
 /* A played run's frame-tick V-ints (two players stepping by 2: plat_frame_repeat) are display
    periods of their own: s_extra of them so far, and the next logic frame spans 2 periods when it
    will wait for the tick (g_TwoPlayerStep, $FFC922, unless g_LevelFreeze, $FFC91C). Traced runs
-   have none: their clock is the contract's k x T. */
-static uint64_t s_extra;
+   have none: their clock is the contract's k x T. (s_extra: declared above, with the branch's kept state) */
 
 void present_repeat(void) { s_extra++; }
 

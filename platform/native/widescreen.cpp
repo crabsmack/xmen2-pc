@@ -178,6 +178,15 @@ static uint64_t s_gameplay_frames, s_terrain_checks, s_terrain_errors, s_sprites
 static std::string s_screens_json;   /* "id": "mode" pairs, in the order first seen */
 static std::string s_first_error, s_first_lost;
 
+/* --branch-plan (main.cpp): the counters' strings as at the branch point, put back when it ends (the
+   numbers are state_counters) */
+void ws_branch(int save)
+{
+    static std::string kept[3];
+    if (save) { kept[0] = s_screens_json; kept[1] = s_first_error; kept[2] = s_first_lost; }
+    else { s_screens_json = kept[0]; s_first_error = kept[1]; s_first_lost = kept[2]; }
+}
+
 static void note_screen(void)
 {
     screen_now();

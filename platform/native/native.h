@@ -34,6 +34,10 @@ void        present_init(const char *log_path);
 bool        present_logging(void);
 void        present_scan(FILE *f, uint64_t flip);   /* --flip-scan: a flipped pass's rows (null: the log's) */
 void        present_scan_first(uint64_t len);       /* --flip-scan-first: stop at the first flip that shows */
+FILE       *present_log_file(FILE *f);              /* --branch-plan: swap the present log (the old one returned) */
+void        present_branch_save(void);              /* --branch-plan: this file's frame-to-frame state, kept */
+void        present_branch_restore(void);           /* ... and put back when the branch ends */
+void        ws_branch(int save);                    /* --branch-plan: widescreen.cpp's counter strings, kept (1) / put back (0) */
 uint64_t    present_scan_found(void);               /* that flip's frame, or 0 */
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
 void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
@@ -86,6 +90,7 @@ uint64_t machine_digest(void);           /* the canonical digest of the state no
 void     machine_mask_picture(uint8_t *ram, uint8_t *vram);   /* zero what only the picture depends on (R8, P7 R12) */
 void     machine_digest_parts(uint64_t out[3]);   /* the last digest's partitions: work RAM, the VDP, the rest */
 uint64_t machine_stack_peak(void);       /* the game fiber's deepest stack use, bytes */
+void     machine_stack_repaint(uint64_t peak);   /* --branch-plan: the paint below that depth put back */
 void     machine_set_session(uint64_t seed);   /* the session machine (P7 "Definitions") */
 int      machine_session(void);
 uint64_t machine_session_seed(void);

@@ -946,6 +946,17 @@ extern "C" uint64_t machine_stack_peak(void)
     return (uint64_t)(top - (uintptr_t)p);
 }
 
+/* --branch-plan: after a branch, the paint below the branch point's deepest is put back (a restore
+   puts back only the stack in use), so the next branch reports its own depth, not this one's */
+extern "C" void machine_stack_repaint(uint64_t peak)
+{
+    uintptr_t lo, top;
+    if (fiber_stack_range(s_game_fiber, &lo, &top) != 0) return;
+    uintptr_t end = top - (uintptr_t)peak, guard = top - 4096u;
+    if (end > guard) end = guard;
+    if (end > lo) memset((void *)lo, STACK_PAINT, (size_t)(end - lo));
+}
+
 /* After power-on: the game's fiber, made but not run (its first tick starts the reset entry). */
 extern "C" void machine_start(void)
 {
