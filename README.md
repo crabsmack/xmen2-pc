@@ -2,7 +2,7 @@
 
 **X-Men 2: Clone Wars** (Sega Genesis, 1995) as a native PC game for Windows and Linux,
 built from a complete decompilation, with optional widescreen, high frame rates, two players
-at the full 60 fps, and online play for up to four players.
+at the full 60 fps, and up to four players, on one PC or online.
 
 | | |
 |---|---|
@@ -41,7 +41,7 @@ or in `xmen2.ini` next to the program (`[options]`, one per line).
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
 | `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display. F9 toggles it |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
-| `players=4` | Three or four players: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on a second sound machine |
+| `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on a second sound machine |
 | `lives=inf` | Lives are never spent (or `lives=N`, 1-99) |
 | `magneto=1` | Magneto can be chosen from the start |
 | `start_char=wolverine` | The character you start Siberia with (otherwise random) |
