@@ -27,7 +27,8 @@ XMen2.exe path\to\xmen2.bin          Windows
 ```
 
 Keyboard (player 1): arrows; Z/X/C = A/B/C, A/S/D = X/Y/Z, Enter = Start, Q = Mode.
-Controllers (players 1-4, in the order they are plugged in): D-pad or left stick;
+Controllers (players 1-4, in the order they are plugged in; an unplugged controller's player
+goes to the next one plugged in): D-pad or left stick;
 X/A/B = A/B/C, LB/Y/RB = X/Y/Z, Start = Start, Back = Mode. F11: fullscreen. Esc: quit.
 
 ## Options
@@ -71,7 +72,7 @@ seat 1:         XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.
   files in a shared folder (`--ice-signal-dir DIR`).
 - `--input-delay D` sets the delay in frames (default 5). `XMen2.exe --netplay --json` lists the flags.
 
-Everyone must run the same build.
+Everyone must run the same build (v1.0.1 refuses a v1.0.0 seat when it connects).
 
 ## Status
 
@@ -84,8 +85,8 @@ off the port produces the same game state and picture as the recompiled cartridg
 frame of the test runs. One difference is deliberate: the port runs one game frame per
 displayed frame, so it never slows down where the cartridge lagged.
 
-Three and four players are new and still being finished: the enemies don't yet treat players
-3 and 4 the way they treat players 1 and 2. In two-player stages the original's sound driver
+Three and four players are new and have been played less than the rest. Enemies choose their
+targets among all the players in play. In two-player stages the original's sound driver
 runs short of voices, and the music loses notes to the characters' parts and the sound effects.
 By default (`music_voices`) the port gives the music sound chips of its own, so no note is lost.
 
