@@ -810,6 +810,38 @@ of the time (noted where it mattered).
     interrupted attempt had made): M2 742 -> 387 s, M3 533 -> 533, M4 129 -> 125, M5 233 -> 230,
     E3 128 -> 126, E4 1,420 -> 1,162, E5 399 -> 332 (E1 221 -> 528: its verify and stepped-gen
     references ran cold here, cached there); the corpus stages (M2, E3, E4, E5) 2,689 -> 2,007 s.
+- **E4's latency runs from TAS state files (2026-10-25).** E4's latency search played 30 runs of the
+  TAS's prefix from power-on (10 `--flip-scan` spans, 10 `--flip N` runs at 144 Hz and the same 10
+  at 60 Hz: 760,855 frames). They differ from the TAS only from their first flipped frame on, so
+  they now start from a state of it.
+  - The runner: `--state-load` takes `--flip N` and `--flip-scan LO:HI:L` when the state is of a
+    frame before N (LO): up to there the run is the unflipped one that saved it; a later state is
+    refused (exit 2). `--state-at` still takes no flip.
+  - `xmen2check.py trace` (native): `--save-states K` saves a state every K runner frames in
+    OUT/states, with states.json (the frames, the /GS cookie the loading processes take, the
+    runner's hash, the options, the script). `--load-states DIR` starts from DIR's last state
+    before the run's first flipped frame or first differing pad; with none there, from power-on
+    (`loaded_at` in the JSON). The saving run's files must stay where they are: a loaded run's
+    start with a copy of their rows.
+  - phase.py E4 (xmen2disasm): the 60 Hz and 144 Hz present-log TAS traces save a state every 600
+    frames (85 each, 27 MB), in parallel with the `--fb` one (they ran one after another). The scans
+    and the 60 Hz flips load the 60 Hz states, the 144 Hz probes the 144 Hz ones.
+    `PHASE_E4_STATES=0` plays them all from power-on (the control); E4 logs each part's time.
+  - Proof:
+    - A producer's sync.csv, present.csv and counters equal the same trace's without
+      `--save-states` (less timings), at 60 and 144 Hz.
+    - phase.py 6 with `PHASE_E4_STATES=0`, then phase.py 7 with states, on this runner: all 30
+      latency runs byte-identical to their power-on twins (flip_scan.csv, present.csv, sync.csv).
+      The same probes were found, and the verdict text is the same but the render p99 (1,261 /
+      1,241 us).
+    - phase.py 7: 6/7 as before (M1-M5 pass; M6 the user's).
+  - Time, E4's parts (30 jobs; control -> states):
+    - the TAS traces: 209 -> 215 s;
+    - the flip scans: 284 -> 225 s (the scan itself dominates: each flipped frame plays 41);
+    - the probes: 294 -> 7 s;
+    - together 787 -> 447 s.
+    E4 was 1,258 s in the control (its corpus passes 470 s, cold), 448 s with states (those
+    cached).
     Every verdict as before (M6 the user's).
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
