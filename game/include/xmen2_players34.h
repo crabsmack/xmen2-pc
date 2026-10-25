@@ -54,7 +54,7 @@ typedef struct PlayerX {
    fills it. */
 #undef g_SpriteTable
 #define g_SpriteTable		(g_P34Active ? XM_RGA(HwSprite, P34_SPR_TABLE(g_P34Active)) \
-				 : g_opt.players > 2 ? XM_RGA(HwSprite, P34_SPR_MAIN) : XM_GA(HwSprite, 0xFFE226))
+				 : g_opt.players > 2 ? XM_RGA(HwSprite, P34_SPR_MAIN) : g_SpriteTableBase)
 
 #ifdef __cplusplus
 extern "C" {

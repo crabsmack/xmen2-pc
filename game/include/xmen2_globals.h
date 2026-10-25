@@ -2417,6 +2417,10 @@ extern s16 g_SprUnusedE224;
 extern HwSprite g_SpriteTable[];
 #else
 #define g_SpriteTable XM_GA(HwSprite, 0xFFE226)
+/* the table at its own address, for xmen2_players34.h, which redefines g_SpriteTable (phase 7) and
+   still needs this one; an alias, not a global of its own (tools/export_table.py lists g_SpriteTable,
+   not this cast) */
+#define g_SpriteTableBase ((HwSprite *)XM_GA(HwSprite, 0xFFE226))
 #endif
 /* $FFE4B6 byte: set by game code when g_SpriteTable/g_DmaQueue are ready; VDP_FrameUpdate flushes and clears it */
 #ifdef XMEN2_MPW
