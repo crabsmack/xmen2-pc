@@ -23,7 +23,7 @@ void Platform1_Init(register Platform1 *self, long x, long y, register Placement
 		self->spr.def = CODEPTR(Art_Platform1Spr);
 		self->spr.flags = self->spr.flags & ~3 | 0;
 	}
-	if ((IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)->spr.flags & 4)
+	if (PLAYER_LIVE->spr.flags & 4)
 		self->spr.flags |= 4;
 	switch (pl->param[1]) {
 	case 0:		/* Platform1_Init_SetFrame2 */

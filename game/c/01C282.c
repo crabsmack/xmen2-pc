@@ -73,6 +73,19 @@ void YoyoAcolyte_Draw(YoyoAcolyte *self)
 				(*p->cls->method[8])(p, self, type, self->attack, cx, cy);	/* +$26 TakeDamage */
 				self->hitCooldown = 10;
 			}
+#if defined(XMEN2_NATIVE)
+			P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+				p = q;
+				if (IS_ALIVE(p) && !p->hitCooldown && left <= p->box2Right && right >= p->box2Left
+				    && top <= p->box2Bottom && bottom >= p->box2Top) {
+					short px = p->x >> 8;
+					short type = cx < px ? 10 : 9;
+
+					(*p->cls->method[8])(p, self, type, self->attack, cx, cy);	/* +$26 TakeDamage */
+					self->hitCooldown = 10;
+				}
+			});
+#endif
 		}
 	}
 	(*CLASS(Tbl_YoyoAcolyte_vtable)->parent->method[5])(self);	/* BIONPC Draw */

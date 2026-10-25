@@ -65,4 +65,15 @@ void BioFlame_Update(register BioFlame *self)
 		    && py <= g_Player2.box2Bottom)
 			(*self->cls->method[7])(self, &g_Player2, self->hitType, self->attack, hx, py);	/* +$22 Attack */
 	}
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		if (IS_ALIVE(q) && !q->hitCooldown) {
+			hx = q->x >> 8;
+			py = self->y >> 8;
+			if (left <= q->box2Right && right >= q->box2Left && py >= q->box2Top
+			    && py <= q->box2Bottom)
+				(*self->cls->method[7])(self, q, self->hitType, self->attack, hx, py);	/* +$22 Attack */
+		}
+	});
+#endif
 }

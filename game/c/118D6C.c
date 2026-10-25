@@ -50,14 +50,14 @@ void GaussBullet_Update(GaussBullet *b, short steps)
 			REMOVE(b);
 			return;
 		}
-		for (i = 0; i < 2; ++i) {
-			if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2))) {
+		for (i = 0; i < GROUP_N; ++i) {
+			if (IS_ALIVE(GROUP_P(i, p))) {
 				left = p->box2Left;
 				top = p->box2Top;
 				right = p->box2Right;
 				bottom = p->box2Bottom;
 				if (!p->hitCooldown && x >= left && x <= right && y >= top && y <= bottom) {
-					(*p->cls->method[8])(p, 0, 4, 1, x, y);	/* +$26 TakeDamage */
+					P34_HIT(p, (*p->cls->method[8])(p, 0, 4, 1, x, y));	/* +$26 TakeDamage */
 					REMOVE(b);
 					return;
 				}

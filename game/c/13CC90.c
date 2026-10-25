@@ -37,7 +37,11 @@ void Ninja_Init(register Ninja *self, long x, long y, register Placement *pl)
 			self->spr.flags |= 4;
 		else
 			self->spr.flags &= ~4;
-	} else {
+	} else
+#if defined(XMEN2_NATIVE)
+	if (!P34_CopyLiveLayer(&self->spr, 1))	/* players 1-2 out: a live player 3-4's (R11) */
+#endif
+	{
 		if (g_Player1.spr.flags & 4)
 			self->spr.flags |= 4;
 		else

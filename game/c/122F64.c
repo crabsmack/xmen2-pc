@@ -30,7 +30,11 @@ short BigBio_StateWaitPlayers(register BigBio *self)
 			in2 = 1;
 	} else
 		in2 = 1;
-	if (in1 && in2) {
+	if (in1 && in2
+#if defined(XMEN2_NATIVE)	/* phase 7: players 3-4 in play too (R11) */
+	    && !P34_Any([&](XPlayer *q) { return IS_ALIVE(q) && (q->x >> 8) >= self->arenaLeft + 360; })
+#endif
+	    ) {
 		seg = &g_Segs[self->wallSeg = (u8)Seg_Alloc()];
 		Seg_Setup(seg, 0x14, 0, self->arenaLeft + -10, (self->y >> 8) - 235,
 			self->arenaLeft + 30, (self->y >> 8) - 5);

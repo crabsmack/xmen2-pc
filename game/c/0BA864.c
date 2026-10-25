@@ -17,4 +17,11 @@ void SavageBigBio_Update(SavageBigBio *self)
 		(*g_Player1.cls->method[8])(&g_Player1, 0, 8, 1, g_A4Hit1 & 0xFFFF, g_A4Hit1 >> 16);	/* +$26 TakeDamage */
 	if (g_A4TentacleHits & 2)
 		(*g_Player2.cls->method[8])(&g_Player2, 0, 8, 1, g_A4Hit2 & 0xFFFF, g_A4Hit2 >> 16);	/* +$26 TakeDamage */
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11): bits 4, 8 (SavageBigBio_Draw) */
+		int k = P34_Index(q) - 3;
+		if (g_A4TentacleHits & 4 << k)
+			(*q->cls->method[8])(q, 0, 8, 1, g_P34A4Hit[k] & 0xFFFF, g_P34A4Hit[k] >> 16);
+	});
+#endif
 }

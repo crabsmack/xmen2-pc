@@ -41,7 +41,11 @@ void FluxBomb_Init(register FluxBomb *self, long x, long y, register Placement *
 			g_FluxBombSpr.flags |= 4;
 		else
 			g_FluxBombSpr.flags &= ~4;
-	} else {
+	} else
+#if defined(XMEN2_NATIVE)
+	if (!P34_CopyLiveLayer(&g_FluxBombSpr, 1))	/* players 1-2 out: a live player 3-4's (R11) */
+#endif
+	{
 		if (g_Player1.spr.flags & 4)
 			g_FluxBombSpr.flags |= 4;
 		else

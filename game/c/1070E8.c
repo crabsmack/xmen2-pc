@@ -26,6 +26,14 @@ void Platform1_StateRide(register Platform1 *self)
 			Platform1_SteerByPad(self, &g_Player1);
 		else if (ride2)
 			Platform1_SteerByPad(self, &g_Player2);
+#if defined(XMEN2_NATIVE)
+		else if (P34_Any([&](XPlayer *q) {	/* phase 7: a player 3-4 riding steers, with its pad (R11) */
+			if (!IS_ALIVE(q) || q->seg != self->ownSeg)
+				return 0;
+			Platform1_SteerByPad(self, q);
+			return 1; }))
+			;
+#endif
 		else
 			self->vx = self->speed;
 	}

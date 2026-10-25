@@ -24,6 +24,11 @@ void Exodus_CheckFloorHit(void)
 			b->prev = 0xFF;
 			Exodus_DropPlayerFromSeg(&g_Player1, a);
 			Exodus_DropPlayerFromSeg(&g_Player2, a);
+#if defined(XMEN2_NATIVE)
+			P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+				Exodus_DropPlayerFromSeg(q, a);
+			});
+#endif
 			Exodus_BreakFloorTiles(1);
 		} else if (seg == EXODUS->segB) {
 			b->flags |= 0x40;
@@ -31,6 +36,11 @@ void Exodus_CheckFloorHit(void)
 			a->next = 0xFF;
 			Exodus_DropPlayerFromSeg(&g_Player1, b);
 			Exodus_DropPlayerFromSeg(&g_Player2, b);
+#if defined(XMEN2_NATIVE)
+			P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+				Exodus_DropPlayerFromSeg(q, b);
+			});
+#endif
 			Exodus_BreakFloorTiles(0);
 		}
 		EXODUS->breakSeg = 0;

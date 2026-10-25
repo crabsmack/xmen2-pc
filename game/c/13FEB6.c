@@ -18,6 +18,11 @@ short Spark_StateStart(register Spark *self)
 		SET_STATE(self, Spark_StateFlyStraight);
 		return self->flags & 8;
 	} else {
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2)	/* phase 7: the nearest of the group in play, each lap (R11) */
+			self->target = (Actor *)Player_Nearest((Actor *)self);
+		else
+#endif
 		self->target = (Actor *)&g_Player1;
 		SET_STATE(self, Spark_StateStop);
 		return self->flags & 8;

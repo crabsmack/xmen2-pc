@@ -60,11 +60,11 @@ void Deathbird_UpdateBurst(register Deathbird *self)
 				g_SprWritePtr->attr = attr + frame;
 				g_SprWritePtr->x = sx + 0x80;
 			}
-			for (j = 0; j < 2; ++j) {
-				if (IS_ALIVE(j == 0 ? (pl = &g_Player1) : (pl = &g_Player2)) && !pl->hitCooldown
+			for (j = 0; j < GROUP_N; ++j) {
+				if (IS_ALIVE(GROUP_P(j, pl)) && !pl->hitCooldown
 				    && x >= pl->box2Left && x <= pl->box2Right
 				    && y >= pl->box2Top && y <= pl->box2Bottom)
-					(*self->cls->method[7])(self, pl, self->hitType, self->attack, x, y);	/* Attack */
+					P34_HIT(pl, (*self->cls->method[7])(self, pl, self->hitType, self->attack, x, y));	/* Attack */
 			}
 		}
 	}

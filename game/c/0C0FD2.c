@@ -42,5 +42,13 @@ void Water_DrawHook(void)
 		(*g_Player2.cls->method[8])(&g_Player2, &g_Player2, 7, 4, -1, -1);	/* +$26 TakeDamage */
 		g_Player2.hitCooldown = 5;
 	}
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11): the hurt (their splashes aren't drawn) */
+		if (IS_ALIVE(q) && q->health > 0 && q->hitCooldown <= 0 && UNDER_WATER(*q) && g_WaterHurts) {
+			(*q->cls->method[8])(q, q, 7, 4, -1, -1);	/* +$26 TakeDamage */
+			q->hitCooldown = 5;
+		}
+	});
+#endif
 	DrawList_DrawAll();
 }

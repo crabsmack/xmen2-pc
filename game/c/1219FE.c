@@ -38,7 +38,11 @@ void BigBio_Draw(register BigBio *self)
 			g_PalBaseDirty = 1;
 		}
 	}
-	if (!IS_ALIVE(&g_Player1) && !IS_ALIVE(&g_Player2))
+	if (!IS_ALIVE(&g_Player1) && !IS_ALIVE(&g_Player2)
+#if defined(XMEN2_NATIVE)
+	    && !P34_AliveCount()	/* phase 7: players 3-4 in play too (R11) */
+#endif
+	    )
 		g_SceneExitTimer = 1;
 	if (self->orbMode & 0xB) {
 		orb = g_BigBioOrbs;

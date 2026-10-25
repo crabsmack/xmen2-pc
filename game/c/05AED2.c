@@ -26,6 +26,25 @@ void Boulder_SpawnerTick(long yLimit)
 		limit = yLimit + 0x1C000;
 		alive1 = IS_ALIVE(&g_Player1);
 		alive2 = IS_ALIVE(&g_Player2);
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2 && P34_FirstAlive()) {	/* phase 7: among every live player in play (R11) */
+			XPlayer *o[4], *t;
+			int n = 0, i;
+			long high;
+
+			for (i = 1; i <= g_opt.players; i++)
+				if (IS_ALIVE(P34_Player(i)))
+					o[n++] = P34_Player(i);
+			high = o[0]->y;
+			for (i = 1; i < n; i++)
+				if (o[i]->y < high)
+					high = o[i]->y;
+			if (high < limit)
+				return;
+			t = o[n - 1 - (unsigned short)g_BoulderSeqIndex % n];	/* two: as bit 0 picks them */
+			x = t->x + t->vx * 15;
+		} else
+#endif
 		if (alive1 && alive2) {
 			if (MIN(g_Player1.y, g_Player2.y) < limit)
 				return;

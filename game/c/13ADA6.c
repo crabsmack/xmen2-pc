@@ -19,8 +19,8 @@ void Mine_Explode(register MineRec *m)
 	x = m->x << 8;
 	y = m->y << 8;
 	Explosion_Spawn(x, y, 0);
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2))) {
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p))) {
 			short px = x >> 8;
 			register short py = y >> 8;
 			register short left = px - 0x3C;
@@ -34,7 +34,7 @@ void Mine_Explode(register MineRec *m)
 
 				if (0)
 					type = type;
-				(*p->cls->method[8])(p, 0, 4, 1, px, py);	/* +$26 TakeDamage */
+				P34_HIT(p, (*p->cls->method[8])(p, 0, 4, 1, px, py));	/* +$26 TakeDamage */
 			}
 		}
 	}

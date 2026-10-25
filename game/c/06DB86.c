@@ -16,8 +16,8 @@ short Brood_StateWalkToPlayer(Brood *self)
 	short x;
 
 	Obj_ChangeAnim(self, CODEPTR(Tbl_Anim_06D0F0));
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2)) && left <= p->boxRight
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p)) && left <= p->boxRight
 		    && right >= p->boxLeft && top <= p->boxBottom && bottom >= p->boxTop) {
 			self->target = p;
 			AI_NEXT_STEP(self, self->ai, 0);

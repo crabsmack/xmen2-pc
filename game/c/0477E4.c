@@ -10,4 +10,9 @@ void BaniMazaA2_DrawHook(void)
 		ApocBomb_DrawShadow((Actor *)&g_Player1);
 	if (IS_ALIVE(&g_Player2))
 		ApocBomb_DrawShadow((Actor *)&g_Player2);
+#if defined(XMEN2_NATIVE)
+	for (int k = 3; k <= g_opt.players; k++)	/* players 3-4 in play too (R11); in the main sprite table */
+		if (IS_ALIVE(PLAYER34(k)))
+			ApocBomb_DrawShadow((Actor *)PLAYER34(k));
+#endif
 }

@@ -46,6 +46,17 @@ void BroodBoss_Update(BroodBoss *self)
 				y = 0x62D;
 				(*self->cls->method[7])(self, &g_Player2, 4, self->attack, x, y);	/* +$22 Attack */
 			}
+#if defined(XMEN2_NATIVE)
+			P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+				if (IS_ALIVE(q) && !q->hitCooldown
+				    && g_CameraX <= q->box2Right && g_CameraX + 0x140 >= q->box2Left
+				    && q->box2Bottom >= 0x62D && q->box2Top <= 0x631) {
+					x = q->box2Left + ((q->box2Right - q->box2Left) >> 1);
+					y = 0x62D;
+					(*self->cls->method[7])(self, q, 4, self->attack, x, y);	/* +$22 Attack */
+				}
+			});
+#endif
 		}
 	}
 }

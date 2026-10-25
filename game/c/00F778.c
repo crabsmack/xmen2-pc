@@ -22,5 +22,13 @@ void AvalonB1_CamHookWait2(Camera *cam)
 		STOP_MOVING(&g_Player1);
 	if (IS_ALIVE(&g_Player2))
 		STOP_MOVING(&g_Player2);
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		g_Pad2Pressed = 0;	/* its pad, no input (its context) */
+		g_Pad2Latch = 0;
+		if (IS_ALIVE(q))
+			STOP_MOVING(q);
+	});
+#endif
 	AvalonB1_ScrollCameraTo(g_CameraX, g_CameraY);
 }

@@ -48,6 +48,21 @@ short Barrier_StateWatch(register Barrier *self)
 				passed = 0;
 		}
 	}
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		if (IS_ALIVE(q)) {
+			cx = (q->boxLeft + q->boxRight) >> 1;
+			cy = (q->boxTop + q->boxBottom) >> 1;
+			if (self->side > 0) {
+				if (cx > self->px - 0x40)
+					passed = 0;
+			} else {
+				if (cx < self->px + 0x40)
+					passed = 0;
+			}
+		}
+	});
+#endif
 	if (passed) {
 		Barrier_Close(self);
 		SET_STATE(self, Barrier_StateIdle);

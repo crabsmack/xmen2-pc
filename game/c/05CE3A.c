@@ -46,5 +46,21 @@ void Tusk_Update(Tusk *self)
 				}
 			}
 		} while (p == &g_Player1 ? (p = &g_Player2) : 0);
+#if defined(XMEN2_NATIVE)
+		for (int k = 3; k <= g_opt.players; k++) {	/* phase 7: players 3-4 in play too (R11) */
+			p = PLAYER34(k);
+			if (IS_ALIVE(p)) {
+				if (y > p->y) {
+					if (p->spr.flags & 4) {
+						p->spr.flags &= ~4;
+						DrawList_SetPriority(p->drawNode, 0, p->layer, p->flags6 & 8);
+					}
+				} else if (!(p->spr.flags & 4)) {
+					p->spr.flags |= 4;
+					DrawList_SetPriority(p->drawNode, 1, p->layer, p->flags6 & 8);
+				}
+			}
+		}
+#endif
 	}
 }

@@ -7,6 +7,15 @@
 
 short Tusk_StateWaitP1Platform(Tusk *self)
 {
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: once every live player in play is on the floor (R11) */
+		if (P34_EveryLive([&](XPlayer *q) { return Tusk_PlayerOnPlatform(self, q); })) {
+			self->state = Tusk_StateStartFight;
+			return 0;
+		}
+		NO_RETURN_VALUE
+	}
+#endif
 	if (Tusk_PlayerOnPlatform(self, &g_Player1)) {
 		self->state = Tusk_StateStartFight;
 		return 0;

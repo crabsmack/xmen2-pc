@@ -29,11 +29,11 @@ char BigBio_UpdateOrbRing(register BigBio *self)
 	py = self->y >> 8;
 	step = 24;
 	rs = (r = 48 - (self->ringSpeed >> 4)) >> 2;
-	for (n = 0; n < 2; ++n) {
-		if (IS_ALIVE(n == 0 ? (p = &g_Player1) : (p = &g_Player2)) && !p->hitCooldown
+	for (n = 0; n < GROUP_N; ++n) {
+		if (IS_ALIVE(GROUP_P(n, p)) && !p->hitCooldown
 		    && p->box2Left <= px + r && p->box2Right >= px - r
 		    && p->box2Top <= py + r && p->box2Bottom >= py - r)
-			(*p->cls->method[8])(p, self, 4, 1, -1, -1);		/* TakeDamage */
+			P34_HIT(p, (*p->cls->method[8])(p, self, 4, 1, -1, -1));		/* TakeDamage */
 	}
 	for (i = 0; i < 16; orb++, i++) {
 		if (i & 1) {

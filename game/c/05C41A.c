@@ -28,6 +28,11 @@ short Tusk_StateStartFight(Tusk *self)
 	Snd_Play(0x23);
 	Tusk_PlayerToLayer0(&g_Player1);
 	Tusk_PlayerToLayer0(&g_Player2);
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		Tusk_PlayerToLayer0(q);
+	});
+#endif
 	self->countdown = 100;
 	self->state = Tusk_StateChooseAttack;
 	return 0;

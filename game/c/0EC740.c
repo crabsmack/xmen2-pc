@@ -12,5 +12,9 @@ char CoreElevator_CarriesAllPlayers(CoreElevator *self)
 		return 0;
 	if (IS_ALIVE(&g_Player2) && g_Player2.seg != seg)
 		return 0;
+#if defined(XMEN2_NATIVE)
+	if (P34_Any([&](XPlayer *q) { return IS_ALIVE(q) && q->seg != seg; }))
+		return 0;	/* phase 7: players 3-4 in play too (R11) */
+#endif
 	return 1;
 }

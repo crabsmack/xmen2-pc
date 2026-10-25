@@ -17,11 +17,21 @@ short BeamScooter_StatePickUp(register BeamScooter *self)
 		p1 = 1;
 	if (IS_ALIVE(&g_Player2) && g_Player2.health > 0)
 		p2 = 1;
-	if ((!p1 || g_Player1.spr.parent != 0xFF) && (!p2 || g_Player2.spr.parent != 0xFF)) {
+	if ((!p1 || g_Player1.spr.parent != 0xFF) && (!p2 || g_Player2.spr.parent != 0xFF)
+#if defined(XMEN2_NATIVE)
+	    && !P34_Any([&](XPlayer *q) { return IS_ALIVE(q) && q->health > 0 && q->spr.parent == 0xFF; })	/* players 3-4 too (R11) */
+#endif
+	    ) {
 		if (p1)
 			(*g_Player1.cls->method[29])(&g_Player1, 1);	/* +$7A FreezeStanding */
 		if (p2)
 			(*g_Player2.cls->method[29])(&g_Player2, 1);
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			if (IS_ALIVE(q) && q->health > 0)
+				(*q->cls->method[29])(q, 1);
+		});
+#endif
 		self->ay = -0x20;
 		self->ax = -0x10;
 		Scene_EndAfter(0xB4);

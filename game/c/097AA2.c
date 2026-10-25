@@ -16,6 +16,29 @@ short XClone_ActKeepDistance(XClone *self)
 	p = Player_Nearest((Actor *)self);
 	px = p->x >> 8;
 	x = self->x >> 8;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: the same with every player in play (R11) */
+		int alive = 0, near = 1, left = 1, right = 1;
+		for (int n = 1; n <= g_opt.players; n++) {
+			XPlayer *q = P34_Player(n);
+			if (!IS_ALIVE(q))
+				continue;
+			alive++;
+			dist1 = (q->x >> 8) - x;
+			dist1 = ABS(dist1);
+			near &= dist1 < self->keepDistance;
+			left &= q->x < self->x;
+			right &= q->x > self->x;
+		}
+		if (alive >= 2 && near) {
+			if (left)
+				self->spr.flags |= 0x10;	/* face left */
+			else if (right)
+				self->spr.flags &= ~0x10;
+			goto stand;
+		}
+	} else
+#endif
 	if (IS_ALIVE(&g_Player1) && IS_ALIVE(&g_Player2)) {
 		dist1 = (g_Player1.x >> 8) - x;
 		dist1 = ABS(dist1);

@@ -16,7 +16,11 @@ short BigAcolyte_StateCheckPlayersLow(register BigAcolyte *self)
 		low1 = 1;
 	if (IS_ALIVE(&g_Player2) && g_Player2.y >> 8 >= 0x3F4)
 		low2 = 1;
-	if (low1 || low2) {
+	if (low1 || low2
+#if defined(XMEN2_NATIVE)	/* phase 7: players 3-4 in play too (R11) */
+	    || P34_Any([&](XPlayer *q) { return IS_ALIVE(q) && q->y >> 8 >= 0x3F4; })
+#endif
+	    ) {
 		SET_STATE_WAIT(self, BigAcolyte_StateShootAnim, 15);
 		return self->flags & 8;
 	}

@@ -1395,7 +1395,8 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   highest in y (XPlayer_TetherToPartner), PushingTetherEdge / DeathDone (the scene ends when nobody else
   is in play) / StateRejoin (at another player in play); enemies' Player_Nearest / NearestLive (71
   callers) take the nearest of the four. Enemies hurt them through the generic hit lists (no change:
-  XPlayer_Activate lists any player). About 80 enemy files still test players 1-2 by name (see R4).
+  XPlayer_Activate lists any player). The enemy files that tested players 1-2 by name take players
+  3-4 too since 2026-10-25 (R11 (c) below).
   The stage cameras with their own tracking do the same: XClone_CamArenaUpdate (the clone arenas) and
   SavageA4_CamUpdate take the group's extents (P34_Extents), SpaceA1_CamUpdate stays active while a
   player 3-4 is (and its lift's crash takes their health too), CloneA5_CamUpdate pushes them with
@@ -1538,6 +1539,77 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   three free-character files (the original condition token for token in MPW/PC), the g_SpriteTable
   switch (a header). Readable: each branch says what players 3-4 add, the original stays untouched
   above or below it. The MPW gate checks every one still byte-matches.
+
+### R11 (c): enemies choose among all four (2026-10-25)
+
+With three or more players nothing in game/c picks players 1-2 by name any more where an enemy, a
+hazard or a stage object chooses, hits or waits for the players. Natively only (`#if
+defined(XMEN2_NATIVE)`, R4's pattern); with `players` 2 every addition is a loop over no players or
+sits under `g_opt.players > 2`, so the TAS stays the original's. Helpers (xmen2_players34.h,
+players34.cpp): `P34_Each(fn)` runs fn for each player 3-4 in play **in that player's context** (as a
+hit list's hit, Collide_ObjVsList: a TakeDamage, a pad read, a climb state take player 2's globals);
+`P34_Any(fn)` the same as a test (stops at the first true); `P34_EveryLive(test)` every live player
+1-4 (no context); `P34_HIT(p, call)` a call on a GROUP_P loop's player in its context; `PLAYER_LIVE`,
+`P34_CopyLiveLayer`, `P34_SetLayer` for the sprite layer; `P34_IS_PLAYER(obj)`. Code already in a
+player 3-4's context (its own objects) calls the other one's as is. By how each now chooses:
+
+- **The group loops** (the original's `for (i = 0; i < 2; ++i)`, GROUP_N / GROUP_P, now with the hit
+  in the player's context, P34_HIT): BigBio_SpitUpdateAll, BigBio_UpdateOrbRing,
+  Brood_StateWalkToPlayer, DropBomb_StateExplode, FlyBrood_StateWaitPlayerInRange,
+  HornetBullet_Update, Mine_Explode, PowerUp_Update, GaussBullet_Update, SmallBrood_StateExplode,
+  SmallBrood_StateWaitForPlayer, SporeMine_RecExplode, TechWallGun_UpdateBullet,
+  Deathbird_UpdateBurst.
+- **Player 2's test repeated for each player 3-4** (P34_Each, in context): BroodBoss_Update,
+  BroodBossDamage_Update (the Brood's body and attacks: NOTES M4's "kills players 1-2 in under 500
+  frames"), BioFlame_Update, EvilBeam_Update, CoreZap_Update, Launcher_Draw (P34_Any: a shot stops at
+  the first player it hits), SavageBigBio_Draw/Update (the tentacle: bits 4 and 8 of its hit mask,
+  their hit points in the region, `g_P34A4Hit`), YoyoAcolyte_Draw, RollingDiscs_UpdateScroll,
+  Water_DrawHook (the hurt; their splashes aren't drawn), Exodus_Update / CheckFloorHit,
+  AvalonA3_PsiFlashStep, RetractFloor_StateDrop, TrapDoor_StateSag / Spring / Open,
+  XClone_LockArena / UnlockArena (the arena flag), XClone_TileHookOpenWall (a Magneto among them),
+  Tusk_StateStartFight, the AvalonB1 intro's five camera hooks (held still, their pads cleared in
+  their context as player 2's), BaniMazaA2_DrawHook (their shadows, drawn outside their context: the
+  main sprite table), Tusk_Update and BigAcolyte_ActWaitPlayers (their layer), SentinelsB2_FrameHook
+  (the escape's end takes their health too).
+- **Hooks the players' own code runs** (a floor segment or map tile under them, already in their
+  context): `obj == &g_Player1 || obj == &g_Player2` gains P34_IS_PLAYER: CloneA5_SegHook17,
+  SentinelsB_HazardSeg, SegHook_HurtPlayerStop, SegHook_HurtPlayer, PerimeterDoor_TileHit (its hit
+  cooldown).
+- **Waits for "every live player" / "any player"**: BroodClaw_StateDropClone (and with players 1-2
+  out it clones a live player 3-4), BigBio_StateWaitPlayers, BigBio_InActivateWindow, BigBio_Draw
+  (the scene ends when nobody is alive), BigAcolyte_StateCheckPlayersLow, Barrier_StateWatch,
+  XClone_StateWaitPlayers, PerimeterDoor_StateWaitExit (alive or not, as the original),
+  BanimazaDoor_StateWaitRespawn, TrapDoor_StateWaitPlayer, Hologram_WaitPlayersInArena,
+  CoreElevator_WaitAtTop / CarriesAllPlayers, BeamScooter_StatePickUp (and freezes them),
+  Tusk_StateBoulderRain / WaitP1Platform / WaitP2Platform (the fight starts once every live one is
+  on the floor; either wait state then waits for all).
+- **Picks**: Barbarian_StateWatchP2 (then players 3-4), EvilNightcrawler_ActTeleport (with two or
+  more alive the farthest, which with two is the original's "the other one"), XClone_ActKeepDistance
+  (every live player near: turn away when all are on one side), Spark_StateStart (the nearest each
+  lap, Player_Nearest, instead of always player 1), Boulder_SpawnerTick (the highest live one limits;
+  the sequence index picks among the live ones, with two as its bit 0 did), Platform1_StateRide (a
+  player 3-4 riding steers with its own pad).
+- **The sprite layer** (a new object takes the live player's: players 1-2 out, a live player 3-4's;
+  the stages that move players 1-2 in front of / behind the foreground move them too): the 22
+  three-way inits (BabyBio, Barrier, Brood, CapedAcolyte, CoreElevator, EvilDrop, FireWall, FluxBomb,
+  FlyBrood, HoloBolt, Hornet, EvilMaker, BioFlame, BioBalls, HornetBullet, MagneticGlob_Activate,
+  Ninja, SmallBrood, Tank, ToxicCan, BigAcolyte, XClone `_Init`), BioSentinel_Init (set only),
+  PLAYER_LIVE in MaintRobot_Init, Platform1_Init, PowerUp_Init, TechWallGun_UpdateBullet;
+  P34_SetLayer in BaniMazaA1/A2/B2_PlacePlayers, SavageJungle_PlacePlayers, CloneA1 / SentinelsA1 /
+  SpaceA1 / SpaceB1_InstallHooks, CloneA5_RunScene.
+- **Left as they are**: SmallBrood_ActWaitCooldown (its player 1 read is compiled out),
+  SpaceA1_SwitchTileHit (keeps the player in a register it never reads), SiberiaB1_FrameHook (the
+  intro's music: player 2 is in play whenever 3-4 are), the per-player helpers that take the player
+  as an argument (Exodus_HurtPlayer, Tusk_PlayerOnPlatform, Barbarian_TargetPlayer, ...), player
+  code (Beast_StateUpAttack's partner, Cyclops_ResetBeams, Player2_*), the cameras' look clamps and
+  SpaceB1 / CloneA5_InitCamera (R7's camera, not a choice of target), the HUD and the pause (R6).
+- **Checked**: tools/gate.py in handc and native mode (pccheck 3164/3164, MPW 3047/3047 still
+  byte-match, the TAS's 6,000 sync points equal, verify 0 mismatches); four-seat hub sessions
+  (`players=4`, session 1, the `mid` link) on boot, scene42 (cloneA5), scene38 and scene24: every
+  seat's digests equal the offline run's (3,479, 1,408, 2,508, 3,533 sync points; no rollbacks
+  happened). cloneA5 with four players now takes all four alike: in play 456, 471, 419, 434 of 1,261
+  gameplay frames (before, the Brood went for players 1-2 only). The stage inputs change who dies:
+  part 2 regenerates them.
 
 ### R12: each seat's own 16:9 view (2026-10-23)
 

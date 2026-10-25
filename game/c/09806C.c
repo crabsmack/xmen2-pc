@@ -49,5 +49,12 @@ void EvilBeam_Update(EvilBeam *self)
 		if (IS_ALIVE(&g_Player2) && self->x >= g_Player2.box2Left && self->x <= g_Player2.box2Right
 		    && y >= g_Player2.box2Top && y <= g_Player2.box2Bottom)
 			(*g_Player2.cls->method[8])(&g_Player2, 0, 0xC, 1, self->x, y);	/* +$26 TakeDamage */
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			if (IS_ALIVE(q) && self->x >= q->box2Left && self->x <= q->box2Right
+			    && y >= q->box2Top && y <= q->box2Bottom)
+				(*q->cls->method[8])(q, 0, 0xC, 1, self->x, y);	/* +$26 TakeDamage */
+		});
+#endif
 	}
 }

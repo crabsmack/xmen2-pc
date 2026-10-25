@@ -32,11 +32,11 @@ void HornetBullet_Update(register HornetBullet *self)
 		return;
 	}
 	if (!g_SceneExitTimer) {
-		for (i = 0; i < 2; ++i) {
-			if (IS_ALIVE(i == 0 ? (pl = &g_Player1) : (pl = &g_Player2)) && !pl->hitCooldown
+		for (i = 0; i < GROUP_N; ++i) {
+			if (IS_ALIVE(GROUP_P(i, pl)) && !pl->hitCooldown
 			    && x >= pl->box2Left && x <= pl->box2Right
 			    && y >= pl->box2Top && y <= pl->box2Bottom)
-				(*self->cls->method[7])(self, pl, self->hitType, self->attack, x, y);	/* Attack */
+				P34_HIT(pl, (*self->cls->method[7])(self, pl, self->hitType, self->attack, x, y));	/* Attack */
 		}
 	}
 }

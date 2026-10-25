@@ -9,4 +9,7 @@ void BaniMazaB2_PlacePlayers(void)
 		g_Player1.spr.flags |= 4;
 	if (IS_ALIVE(&g_Player2))
 		g_Player2.spr.flags |= 4;
+#if defined(XMEN2_NATIVE)
+	P34_SetLayer(1, 0);	/* players 3-4 in play too (R11) */
+#endif
 }

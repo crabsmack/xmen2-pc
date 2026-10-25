@@ -274,6 +274,45 @@ extern "C" XPlayer *P34_Nearest(long x, long y)
 	return best;
 }
 
+/* ---- R11: what the game takes from players 1-2 by name (enemies' targets, layers) ------------------ */
+
+extern "C" XPlayer *P34_LayerPlayer(void)
+{
+	if (IS_ALIVE(&g_Player1)) return &g_Player1;
+	if (IS_ALIVE(&g_Player2)) return &g_Player2;
+	for (int n = 3; n <= g_opt.players; n++)
+		if (IS_ALIVE(player_n(n))) return player_n(n);
+	return &g_Player2;
+}
+
+/* A new object takes the live player's sprite priority (bit 2: behind the foreground), player 1's
+   when neither 1 nor 2 is in play; with a player 3-4 in play it takes theirs. clear: also clear the
+   bit when theirs is clear (the inits that only ever set it pass 0). 1 when it did. */
+extern "C" int P34_CopyLiveLayer(SprInst *spr, int clear)
+{
+	for (int n = 3; n <= g_opt.players; n++) {
+		XPlayer *p = player_n(n);
+		if (!IS_ALIVE(p)) continue;
+		if (p->spr.flags & 4) spr->flags |= 4;
+		else if (clear) spr->flags &= ~4;
+		return 1;
+	}
+	return 0;
+}
+
+/* A stage's hook that moves the players in front of or behind its foreground: players 3-4 in play
+   too (behind: bit 2 set, else cleared; drawList: their draw node's priority as well) */
+extern "C" void P34_SetLayer(int behind, int drawList)
+{
+	for (int n = 3; n <= g_opt.players; n++) {
+		XPlayer *p = player_n(n);
+		if (!IS_ALIVE(p)) continue;
+		if (behind) p->spr.flags |= 4;
+		else p->spr.flags &= ~4;
+		if (drawList) DrawList_SetPriority(p->drawNode, behind ? 1 : 0, p->layer, p->flags6 & 8);
+	}
+}
+
 extern "C" int P34_Extents(short *x1, short *x2, short *y1, short *y2)
 {
 	int c = 0;

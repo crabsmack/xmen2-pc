@@ -30,11 +30,11 @@ void PowerUp_Update(register PowerUp *self)
 		if (!(self->flags & 0x8000))
 			return;
 	}
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2))
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p))
 		    && px >= p->boxLeft && px <= p->boxRight && py >= p->boxTop && py <= p->boxBottom
 		    && p->health > 0 && p->health < 0x900) {
-			(*self->cls->method[26])(self, p);	/* +$6E Collect */
+			P34_HIT(p, (*self->cls->method[26])(self, p));	/* +$6E Collect */
 			(*self->cls->method[19])(self);	/* +$52 Kill */
 			Snd_Play(0x39);
 			return;

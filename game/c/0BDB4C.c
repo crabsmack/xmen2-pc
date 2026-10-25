@@ -8,7 +8,11 @@
 
 short Barbarian_StateWatchP2(Barbarian *self)
 {
-	if (Barbarian_TargetPlayer(self, &g_Player2)) {
+	if (Barbarian_TargetPlayer(self, &g_Player2)
+#if defined(XMEN2_NATIVE)	/* phase 7: then players 3-4 in play (R11) */
+	    || P34_Any([&](XPlayer *q) { return Barbarian_TargetPlayer(self, q); })
+#endif
+	    ) {
 		SET_STATE(self, Barbarian_StateEngage);
 		return self->flags & 8;
 	}

@@ -16,7 +16,11 @@ short CloneA5_SegHook17(short mode, register Seg *seg, register Actor *obj)
 		if (obj->boxTop >= seg->y2 || obj->boxLeft >= seg->x2 || obj->boxRight < seg->x1
 		    || obj->boxBottom <= seg->y1)
 			return 1;
-		if ((obj == (Actor *)&g_Player1 || obj == (Actor *)&g_Player2) && !obj->hitCooldown) {
+		if ((obj == (Actor *)&g_Player1 || obj == (Actor *)&g_Player2
+#if defined(XMEN2_NATIVE)
+		     || P34_IS_PLAYER(obj)	/* players 3-4 too (R11); their own code runs this, in their context */
+#endif
+		    ) && !obj->hitCooldown) {
 			cx = (obj->boxLeft + obj->boxRight) >> 1;
 			cy = (obj->boxTop + obj->boxBottom) >> 1;
 			(*obj->cls->method[8])(obj, 0, 5, 2, cx, cy);	/* +$26 TakeDamage */

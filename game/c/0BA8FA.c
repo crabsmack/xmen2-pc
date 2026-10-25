@@ -37,6 +37,10 @@ void SavageBigBio_Draw(SavageBigBio *self)
 	g_A4TentacleHits = 0;
 	g_A4Hit1 = 0;
 	g_A4Hit2 = 0;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2)
+		g_P34A4Hit[0] = g_P34A4Hit[1] = 0;
+#endif
 	if (self->flags6 & 0x40 && (g_LevelFrame & 1) == 0) {
 		flash = 1;
 		self->flags6 &= ~0x40;
@@ -71,6 +75,10 @@ void SavageBigBio_Draw(SavageBigBio *self)
 			sy += g_CameraY;
 			SavageBigBio_TentacleHit(&g_Player1, 1, &g_A4Hit1, sx, sy);
 			SavageBigBio_TentacleHit(&g_Player2, 2, &g_A4Hit2, sx, sy);
+#if defined(XMEN2_NATIVE)
+			for (int k = 3; k <= g_opt.players; k++)	/* players 3-4 in play too (R11) */
+				SavageBigBio_TentacleHit(PLAYER34(k), 4 << (k - 3), &g_P34A4Hit[k - 3], sx, sy);
+#endif
 		} else {
 			w = 0x20;
 			sx = bx - (pt->x + w + wave->dx);
@@ -86,6 +94,10 @@ void SavageBigBio_Draw(SavageBigBio *self)
 			sy += g_CameraY;
 			SavageBigBio_TentacleHit(&g_Player1, 1, &g_A4Hit1, sx, sy);
 			SavageBigBio_TentacleHit(&g_Player2, 2, &g_A4Hit2, sx, sy);
+#if defined(XMEN2_NATIVE)
+			for (int k = 3; k <= g_opt.players; k++)	/* players 3-4 in play too (R11) */
+				SavageBigBio_TentacleHit(PLAYER34(k), 4 << (k - 3), &g_P34A4Hit[k - 3], sx, sy);
+#endif
 		}
 		/* the segments */
 		wave = (TentacleWave *)CODEPTR(Tbl_SavageBigBioTentacleWave);
@@ -107,6 +119,10 @@ void SavageBigBio_Draw(SavageBigBio *self)
 				sy += g_CameraY;
 				SavageBigBio_TentacleHit(&g_Player1, 1, &g_A4Hit1, sx, sy);
 				SavageBigBio_TentacleHit(&g_Player2, 2, &g_A4Hit2, sx, sy);
+#if defined(XMEN2_NATIVE)
+				for (int k = 3; k <= g_opt.players; k++)	/* players 3-4 in play too (R11) */
+					SavageBigBio_TentacleHit(PLAYER34(k), 4 << (k - 3), &g_P34A4Hit[k - 3], sx, sy);
+#endif
 				wave++;
 				if (wave->dx >= 1000)
 					wave = (TentacleWave *)CODEPTR(Tbl_SavageBigBioTentacleWave);
@@ -128,6 +144,10 @@ void SavageBigBio_Draw(SavageBigBio *self)
 				sy += g_CameraY;
 				SavageBigBio_TentacleHit(&g_Player1, 1, &g_A4Hit1, sx, sy);
 				SavageBigBio_TentacleHit(&g_Player2, 2, &g_A4Hit2, sx, sy);
+#if defined(XMEN2_NATIVE)
+				for (int k = 3; k <= g_opt.players; k++)	/* players 3-4 in play too (R11) */
+					SavageBigBio_TentacleHit(PLAYER34(k), 4 << (k - 3), &g_P34A4Hit[k - 3], sx, sy);
+#endif
 				wave++;
 				if (wave->dx >= 1000)
 					wave = (TentacleWave *)CODEPTR(Tbl_SavageBigBioTentacleWave);

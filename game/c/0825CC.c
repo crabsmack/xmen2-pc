@@ -21,13 +21,13 @@ void DropBomb_StateExplode(DropBomb *self)
 	XPlayer *p;
 
 	Explosion_Spawn(cx, cy, 0);
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2)) && p->hitCooldown == 0
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p)) && p->hitCooldown == 0
 		    && left <= p->box2Right && right >= p->box2Left && top <= p->box2Bottom
 		    && bottom >= p->box2Top) {
 			short dir = cx < p->x ? 6 : 5;
 
-			(*p->cls->method[8])(p, self, dir, self->attack, px, py);	/* +$26 TakeDamage */
+			P34_HIT(p, (*p->cls->method[8])(p, self, dir, self->attack, px, py));	/* +$26 TakeDamage */
 			self->hitCooldown = 10;
 		}
 	}

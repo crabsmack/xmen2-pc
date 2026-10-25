@@ -15,4 +15,7 @@ void SavageJungle_PlacePlayers(void)
 		g_Player2.spr.flags &= ~4;
 		DrawList_SetPriority(g_Player2.drawNode, 0, g_Player2.layer, g_Player2.flags6 & 8);
 	}
+#if defined(XMEN2_NATIVE)
+	P34_SetLayer(0, 1);	/* players 3-4 in play too (R11) */
+#endif
 }

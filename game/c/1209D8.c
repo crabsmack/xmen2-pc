@@ -31,7 +31,11 @@ void BioSentinel_Init(register BioSentinel *self, long x, long y, register Place
 	} else if (IS_ALIVE(&g_Player2)) {
 		if (g_Player2.spr.flags & 4)
 			self->spr.flags |= 4;
-	} else if (g_Player1.spr.flags & 4)
+	} else
+#if defined(XMEN2_NATIVE)
+	if (!P34_CopyLiveLayer(&self->spr, 0))	/* players 1-2 out: a live player 3-4's (R11) */
+#endif
+	if (g_Player1.spr.flags & 4)
 		self->spr.flags |= 4;
 	self->variant = (s8)pl->param[1];
 	if (pl->param[2])

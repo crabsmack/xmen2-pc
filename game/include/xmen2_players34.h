@@ -39,6 +39,7 @@ typedef struct PlayerX {
 #define g_P34Depth		XM_RG(s16, 0x0286)	/* nested Enters of g_P34Active */
 #define g_P34ObjIndex		XM_RGA(s16, 0x0288)	/* [0], [1]: players 3 and 4's g_ObjTable slots (Obj_AllocPool) */
 #define g_P34BeamTable		XM_RG(s16, 0x028C)	/* Cyclops' beam went into player 3-4's table (3, 4), else 0 */
+#define g_P34A4Hit		XM_RGA(s32, 0x0290)	/* [0], [1]: SavageBigBio's tentacle hit point on players 3-4 (g_A4Hit1/2's) */
 #define g_P34Slot		XM_RGA(BigSprite, 0x0300)	/* [0] player 3's select slot, [1] player 4's ($42 bytes each) */
 #define P34_SPR_TABLE(k)	(0x0400 + 0x300 * ((k) - 3))	/* player k's sprite table: 82 hardware sprites */
 #define P34_SPR_MAIN		0x1000	/* the main sprite table with three or more players: 162 (SPR_STOP) */
@@ -93,6 +94,10 @@ void P34_SprBeginFrame(void);
 void P34_SprEndFrame(void);
 void P34_HudSprites(void);		/* players 3-4's HUD panels, in their own tables */
 void P34_TagNew(Actor *obj);		/* an object made now belongs to the player 3-4 whose code runs */
+/* R11: what the game takes from players 1-2 by name, for players 3-4 too */
+XPlayer *P34_LayerPlayer(void);		/* PLAYER_LIVE */
+int  P34_CopyLiveLayer(SprInst *spr, int clear);	/* players 1-2 out: a live 3-4's priority bit; 0: none */
+void P34_SetLayer(int behind, int drawList);	/* a stage's layer change for players 3-4 in play */
 #ifdef __cplusplus
 }
 #endif
@@ -103,9 +108,57 @@ void P34_TagNew(Actor *obj);		/* an object made now belongs to the player 3-4 wh
    g_Player2 come out undeclared (measured), hence n_ / v_. */
 #define GROUP_N			g_opt.players
 #define GROUP_P(n_, v_)		((v_) = P34_Player((int)(n_) + 1))
+/* a hit or a pick-up on a player found by such a loop: on a player 3-4 it runs in that player's
+   context, as a hit list's does (Collide_ObjVsList). The original's statement in the other modes. */
+#define P34_HIT(v_, call_)	do { int k_ = P34_Index(v_); k_ = k_ && (!g_P34Active || g_P34Active == k_) ? k_ : 0; \
+				     if (k_) P34_Enter(k_); call_; if (k_) P34_Leave(k_); } while (0)
+/* the original's `IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2` (whose layer a new object
+   takes): player 1, else 2, else a live player 3-4 (R11), else player 2 */
+#define PLAYER_LIVE		P34_LayerPlayer()
+
+#ifdef __cplusplus
+/* R11, where the game hits or tests players 1-2 one by one by name: the same for each player 3-4
+   in play, in that player's context as a hit list's hit is (Collide_ObjVsList). Code already in a
+   player 3-4's context (its own objects') calls the other one's as is (one context at a time). */
+template <class F> static inline void P34_Each(F fn)
+{
+	for (int k = 3; k <= g_opt.players; k++) {
+		int in = !g_P34Active || g_P34Active == k;
+		if (in) P34_Enter(k);
+		fn(P34_Player(k));
+		if (in) P34_Leave(k);
+	}
+}
+/* ... and a test: true when it holds for one of them (the rest aren't tested, as `a || b` stops) */
+template <class F> static inline int P34_Any(F fn)
+{
+	for (int k = 3; k <= g_opt.players; k++) {
+		int in = !g_P34Active || g_P34Active == k, r;
+		if (in) P34_Enter(k);
+		r = fn(P34_Player(k)) != 0;
+		if (in) P34_Leave(k);
+		if (r) return 1;
+	}
+	return 0;
+}
+/* every live player in play (1-4) passes test (no context: a test only); 1 with none live */
+template <class F> static inline int P34_EveryLive(F test)
+{
+	for (int n = 1; n <= g_opt.players; n++) {
+		XPlayer *q = P34_Player(n);
+		if (IS_ALIVE(q) && !test(q))
+			return 0;
+	}
+	return 1;
+}
+#endif
+/* obj is player 3's or 4's object (not one they made) */
+#define P34_IS_PLAYER(o_)	((const void *)(o_) == (const void *)&g_Player3 || (const void *)(o_) == (const void *)&g_Player4)
 
 #else
 #define GROUP_N			2
 #define GROUP_P(n_, v_)		(n_ == 0 ? (v_ = &g_Player1) : (v_ = &g_Player2))
+#define P34_HIT(v_, call_)	call_
+#define PLAYER_LIVE		(IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)
 #endif /* XMEN2_NATIVE */
 #endif /* XMEN2_PLAYERS34_H */

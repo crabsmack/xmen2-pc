@@ -31,10 +31,10 @@ void TechWallGun_UpdateBullet(WallGunBullet *b)
 		b->flags = 0;
 		return;
 	}
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2)) && !p->hitCooldown
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p)) && !p->hitCooldown
 		    && x + 8 > p->boxLeft && x + 8 < p->boxRight && y + 8 > p->boxTop && y + 8 < p->boxBottom) {
-			(*p->cls->method[8])(p, 0, 4, 1, x, y);	/* +$26 TakeDamage */
+			P34_HIT(p, (*p->cls->method[8])(p, 0, 4, 1, x, y));	/* +$26 TakeDamage */
 			b->flags = 0;
 			return;
 		}
@@ -101,7 +101,7 @@ void TechWallGun_UpdateBullet(WallGunBullet *b)
 		attr |= 0x800;
 	if (st & 0x10)
 		attr |= 0x1000;
-	if ((IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)->spr.flags & 4)
+	if (PLAYER_LIVE->spr.flags & 4)
 		attr |= 0x8000;
 	g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
 	g_SprWritePtr->y = y + 0x80;

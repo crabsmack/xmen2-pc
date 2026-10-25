@@ -33,6 +33,12 @@ long XClone_TileHookOpenWall(register short col, short row, Actor *obj)
 			n++;
 		if (IS_ALIVE(&g_Player2) && g_Player2.cls == CLASS(Tbl_Magneto_vtable))
 			n++;
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			if (IS_ALIVE(q) && q->cls == CLASS(Tbl_Magneto_vtable))
+				n++;
+		});
+#endif
 		type = Clone_CharTypeOf(obj);
 		if (g_CloneFlags & 1L << ((char)type + 8))
 			ownKill = 1;

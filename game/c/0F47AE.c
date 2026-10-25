@@ -93,6 +93,10 @@ void SentinelsB2_FrameHook(void)
 			g_SceneExitTimer = 0x78;
 			g_Player1.health = 0;
 			g_Player2.health = 0;
+#if defined(XMEN2_NATIVE)
+			for (int k = 3; k <= g_opt.players; k++)
+				PLAYER34(k)->health = 0;	/* phase 7: players 3-4 in play too (R11) */
+#endif
 			break;
 		case 3:
 			for (i = 0, q = g_PalBase; i < 0x40; i++, q++)

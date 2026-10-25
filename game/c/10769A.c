@@ -21,6 +21,9 @@ void SpaceB1_InstallHooks(void)
 		g_Player2.spr.flags |= 4;
 		DrawList_SetPriority(g_Player2.drawNode, 1, g_Player2.layer, g_Player2.flags6 & 8);
 	}
+#if defined(XMEN2_NATIVE)
+	P34_SetLayer(1, 1);	/* players 3-4 in play too (R11) */
+#endif
 	g_SegTypeHooks[27] = (SegHookFn)SegHook_HurtPlayerStop;
 	g_TwoPlayerStep = 0;
 	g_Camera = (Camera *)(*CLASS(Tbl_Camera_vtable)->method[1])(CLASS(Tbl_Camera_vtable),

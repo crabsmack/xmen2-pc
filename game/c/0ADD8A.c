@@ -17,6 +17,14 @@ short TrapDoor_StateOpen(TrapDoor *self)
 		Obj_Detach(&g_Player2);
 		self->door->flags |= 0x40;
 	}
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		if (q->seg == self->door) {
+			Obj_Detach(q);
+			self->door->flags |= 0x40;
+		}
+	});
+#endif
 	Barbarian_NotifySegmentGone(self->door);
 	SET_STATE_WAIT(self, TrapDoor_StateOpenWide, 8);
 	return self->flags & 8;

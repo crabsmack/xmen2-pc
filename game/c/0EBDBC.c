@@ -28,4 +28,9 @@ void CoreZap_Update(register CoreZap *self)
 	self->box2Bottom = sy + 10;
 	CoreZap_HitActor(self, (Actor *)&g_Player1);
 	CoreZap_HitActor(self, (Actor *)&g_Player2);
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		CoreZap_HitActor(self, (Actor *)q);
+	});
+#endif
 }

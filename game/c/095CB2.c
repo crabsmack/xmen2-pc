@@ -35,6 +35,12 @@ short XClone_StateWaitPlayers(XClone *self)
 				inside = 0;
 		}
 	}
+#if defined(XMEN2_NATIVE)
+	if (inside && P34_Any([&](XPlayer *q) {	/* phase 7: players 3-4 in play too (R11) */
+		    short qx = (q->boxLeft + q->boxRight) >> 1, qy = (q->boxTop + q->boxBottom) >> 1;
+		    return IS_ALIVE(q) && (qx < left || qx > right || qy < top || qy > bottom); }))
+		inside = 0;
+#endif
 	if (inside) {
 		XClone_LockArena(self);
 		SET_STATE(self, XClone_StateDropPod);

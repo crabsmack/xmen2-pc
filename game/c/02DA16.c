@@ -21,6 +21,11 @@ void Exodus_Update(register Exodus *self)
 		self->flags6 &= ~0x40;
 	Exodus_HurtOnHotTiles(&g_Player1);
 	Exodus_HurtOnHotTiles(&g_Player2);
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		Exodus_HurtOnHotTiles(q);
+	});
+#endif
 	px = self->x >> 8;
 	py = self->y >> 8;
 	if (px < 0 || px > 0x180 || py < 0 || py > 0x380) {

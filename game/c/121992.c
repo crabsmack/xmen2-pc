@@ -11,5 +11,9 @@ char BigBio_InActivateWindow(register BigBio *self)
 		return 0;
 	if (IS_ALIVE(&g_Player2) && self->y + 0x1000 < g_Player2.y)
 		return 0;
+#if defined(XMEN2_NATIVE)
+	if (P34_Any([&](XPlayer *q) { return IS_ALIVE(q) && self->y + 0x1000 < q->y; }))
+		return 0;	/* phase 7: players 3-4 in play too (R11) */
+#endif
 	return 1;
 }

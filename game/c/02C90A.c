@@ -24,6 +24,11 @@ void AvalonA3_PsiFlashStep(void)
 		if (1) {
 			Exodus_HurtPlayer(&g_Player1);
 			Exodus_HurtPlayer(&g_Player2);
+#if defined(XMEN2_NATIVE)
+			P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+				Exodus_HurtPlayer(q);
+			});
+#endif
 		}
 		first = g_PalBase[0];
 		for (i = 0; i <= 12; i++)

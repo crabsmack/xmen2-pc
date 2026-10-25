@@ -12,6 +12,21 @@ short Tusk_StateBoulderRain(Tusk *self)
 {
 	Boulder_SpawnerTick(self->y);
 	Boulder_UpdateDebris();
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: one on the floor, then wait for every live one (R11) */
+		int on = 0;
+		for (int n = 1; n <= g_opt.players; n++)
+			on |= Tusk_PlayerOnPlatform(self, P34_Player(n));
+		if (on) {
+			if (P34_EveryLive([&](XPlayer *q) { return Tusk_PlayerOnPlatform(self, q); }))
+				self->state = Tusk_StateStartFight;
+			else
+				self->state = Tusk_StateWaitP2Platform;	/* waits for them all (R11) */
+			return 0;
+		}
+		NO_RETURN_VALUE
+	}
+#endif
 	if (Tusk_PlayerOnPlatform(self, &g_Player1)) {
 		if (IS_ALIVE(&g_Player2)) {
 			self->state = Tusk_StateWaitP2Platform;

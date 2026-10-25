@@ -41,4 +41,18 @@ void BroodBossDamage_Update(register BroodBossDamage *self)
 			}
 		}
 	}
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		r = self->rects;
+		if (IS_ALIVE(q) && !q->hitCooldown) {
+			for (i = 0; i < self->rectCount; i++, r++) {
+				if (q->box2Left <= ox + r->right && q->box2Right >= ox + r->left
+				    && q->box2Top <= oy + r->bottom && q->box2Bottom >= oy + r->top) {
+					(*q->cls->method[8])(q, 0, 5, 1, 0, 0);	/* +$26 TakeDamage */
+					break;
+				}
+			}
+		}
+	});
+#endif
 }

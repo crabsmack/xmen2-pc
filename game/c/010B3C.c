@@ -58,6 +58,25 @@ short BigAcolyte_ActWaitPlayers(register BigAcolyte *self)
 		past2 = 1;
 		back2 = 1;
 	}
+#if defined(XMEN2_NATIVE)
+	for (int k = 3; k <= g_opt.players; k++) {	/* phase 7: players 3-4 in play too (R11) */
+		XPlayer *q = PLAYER34(k);
+
+		if (!IS_ALIVE(q))
+			continue;
+		px = q->x >> 8;
+		if (px > 0x19C0 && !(q->spr.flags & 4)) {
+			q->spr.flags |= 4;
+			DrawList_SetPriority(q->drawNode, 1, q->layer, q->flags6 & 8);
+		}
+		if (px < 0x1900 && q->spr.flags & 4) {
+			q->spr.flags &= ~4;
+			DrawList_SetPriority(q->drawNode, 0, q->layer, q->flags6 & 8);
+		}
+		if (px <= 0x1A5E)
+			past2 = 0;	/* not past: wait for it too */
+	}
+#endif
 	if (past1 && past2) {
 		seg = &g_Segs[Seg_Alloc()];
 		Seg_Setup(seg, 1, 0, 0x1A5F, 0x3AC, 0x1A5F, 0x401);

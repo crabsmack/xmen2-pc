@@ -8,7 +8,11 @@
 short CoreElevator_WaitAtTop(register CoreElevator *self)
 {
 	if (CoreElevator_PlayerBelow(self, (Actor *)&g_Player1)
-	    || CoreElevator_PlayerBelow(self, (Actor *)&g_Player2)) {
+	    || CoreElevator_PlayerBelow(self, (Actor *)&g_Player2)
+#if defined(XMEN2_NATIVE)	/* phase 7: players 3-4 in play too (R11) */
+	    || P34_Any([&](XPlayer *q) { return CoreElevator_PlayerBelow(self, (Actor *)q); })
+#endif
+	    ) {
 		self->trips = 1;
 		SET_STATE(self, CoreElevator_StartDown);
 		return self->flags & 8;

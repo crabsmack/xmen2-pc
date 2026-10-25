@@ -36,6 +36,10 @@ short BroodClaw_StateDropClone(BroodClaw *self)
 			if (cx > 0x71E)
 				go = 0;
 		}
+#if defined(XMEN2_NATIVE)
+		if (P34_Any([&](XPlayer *q) { return IS_ALIVE(q) && (q->boxLeft + q->boxRight) >> 1 > 0x71E; }))
+			go = 0;		/* phase 7: players 3-4 in play too (R11) */
+#endif
 		if (go) {
 			g_SegTypeHooks[0x15] = 0;
 			g_SegTypeHooks[0x1A] = 0;
@@ -68,6 +72,10 @@ short BroodClaw_StateDropClone(BroodClaw *self)
 		else
 			p = &g_Player2;
 	}
+#if defined(XMEN2_NATIVE)
+	if (!IS_ALIVE(p) && g_opt.players > 2 && P34_FirstAlive())
+		p = P34_FirstAlive();	/* phase 7: players 1-2 out, a live player 3-4's clone (R11) */
+#endif
 	if (clone = XClone_SpawnByType(&place, p)) {
 		if (p) {
 			if (p->x < clone->x)

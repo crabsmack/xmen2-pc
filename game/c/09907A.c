@@ -28,6 +28,12 @@ void XClone_LockArena(XClone *self)
 		g_Player1.playerFlags |= 0x200000;
 	if (IS_ALIVE(&g_Player2))
 		g_Player2.playerFlags |= 0x200000;
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		if (IS_ALIVE(q))
+			q->playerFlags |= 0x200000;
+	});
+#endif
 	if (!g_CloneArenaFocus)
 		g_CloneArenaFocus = (Actor *)self;
 	minX = MAX(g_CamMinX, g_CloneWallLeft);

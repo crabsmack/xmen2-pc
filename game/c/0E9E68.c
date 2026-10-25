@@ -7,7 +7,11 @@
 
 void Hologram_WaitPlayersInArena(register Hologram *self)
 {
-	if (Hologram_PlayerInArena(self, &g_Player1) && Hologram_PlayerInArena(self, &g_Player2)) {
+	if (Hologram_PlayerInArena(self, &g_Player1) && Hologram_PlayerInArena(self, &g_Player2)
+#if defined(XMEN2_NATIVE)	/* phase 7: players 3-4 in play too (R11) */
+	    && !P34_Any([&](XPlayer *q) { return !Hologram_PlayerInArena(self, q); })
+#endif
+	    ) {
 		Hologram_LockArena(self);
 		AI_FIRST_STEP(self, self->ai, 60);
 	}

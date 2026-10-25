@@ -117,6 +117,15 @@ void RollingDiscs_UpdateScroll(void)
 					(*p2->cls->method[8])(p2, 0, dir, 3, 0, 0);	/* +$26 TakeDamage */
 					g_DiscHurtCooldown = 0xDC;
 				}
+#if defined(XMEN2_NATIVE)
+				P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+					if (HURTABLE(q) && x1 <= q->boxRight && x2 >= q->boxLeft && y1 <= q->boxBottom
+					    && y2 >= q->boxTop) {
+						(*q->cls->method[8])(q, 0, band->speed > 0 ? 10 : 9, 3, 0, 0);	/* +$26 TakeDamage */
+						g_DiscHurtCooldown = 0xDC;
+					}
+				});
+#endif
 			}
 		}
 	}

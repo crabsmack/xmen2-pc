@@ -23,6 +23,15 @@ short RetractFloor_StateDrop(register RetractFloor *self)
 			Obj_Detach(p);
 			g_FloatFallSpeed = g_RetractFloorDepth;
 		}
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			p = q;
+			if (p && IS_ALIVE(p)) {
+				Obj_Detach(p);
+				g_FloatFallSpeed = g_RetractFloorDepth;
+			}
+		});
+#endif
 		Seg_Free(seg);
 		self->floorSeg = 0;
 	}

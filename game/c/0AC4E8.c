@@ -115,6 +115,13 @@ void PerimeterDoor_TileHit(register PerimeterDoor *self, register short col, reg
 			return;
 		g_Player2.hitCooldown = 10;
 	}
+#if defined(XMEN2_NATIVE)
+	else if (P34_IS_PLAYER(obj) && IS_ALIVE(obj)) {	/* players 3-4 too (R11) */
+		if (obj->hitCooldown > 0)
+			return;
+		obj->hitCooldown = 10;
+	}
+#endif
 	Snd_Stop(0x38);
 	Snd_Play(0x38);
 }

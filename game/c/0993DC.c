@@ -18,6 +18,12 @@ void XClone_UnlockArena(XClone *self)
 			g_Player1.playerFlags &= ~0x200000;
 		if (IS_ALIVE(&g_Player2))
 			g_Player2.playerFlags &= ~0x200000;
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			if (IS_ALIVE(q))
+				q->playerFlags &= ~0x200000;
+		});
+#endif
 		g_SpawnEnabled = 1;
 		g_Camera->postHook = 0;
 		XClone_CamSetNormal(g_Camera);

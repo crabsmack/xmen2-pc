@@ -37,7 +37,7 @@ void MaintRobot_Init(register MaintRobot *self, long x, long y, register Placeme
 	self->patrolVx = self->speed;
 	self->vx = self->speed;
 	self->unread_94 = 0;
-	if ((IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)->spr.flags & 4)
+	if (PLAYER_LIVE->spr.flags & 4)
 		self->spr.flags |= 4;
 	Obj_StandOnSegHere(self);
 }

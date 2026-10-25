@@ -18,6 +18,14 @@ short TrapDoor_StateSpring(TrapDoor *self)
 		g_Player2.y -= 0x200;
 		Obj_UpdateBoxes(&g_Player2);
 	}
+#if defined(XMEN2_NATIVE)
+	P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+		if (IS_ALIVE(q) && q->seg == self->door) {
+			q->y -= 0x200;
+			Obj_UpdateBoxes(q);
+		}
+	});
+#endif
 	SET_STATE_WAIT(self, TrapDoor_StateOpen, 5);
 	return self->flags & 8;
 }

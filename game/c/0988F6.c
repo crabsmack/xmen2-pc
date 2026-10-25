@@ -12,6 +12,26 @@ short EvilNightcrawler_ActTeleport(EvilNightcrawler *self)
 	XPlayer *target;
 
 	target = Player_Nearest((Actor *)self);
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2) {	/* phase 7: with two or more in play the farthest (on ties the later; R11) */
+		XPlayer *far = 0;
+		long d, bd = -1;
+		for (int n = 1; n <= g_opt.players; n++) {
+			XPlayer *q = P34_Player(n);
+			if (!IS_ALIVE(q) || q == target)
+				continue;
+			d = q->x - self->x;
+			d = ABS(d);
+			d += ABS(q->y - self->y);
+			if (d >= bd) {
+				bd = d;
+				far = q;
+			}
+		}
+		if (far)
+			target = far;
+	} else
+#endif
 	if (IS_ALIVE(&g_Player1) && IS_ALIVE(&g_Player2)) {
 		if (target == &g_Player1)
 			target = &g_Player2;

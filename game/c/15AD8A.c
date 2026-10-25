@@ -12,7 +12,11 @@ short SegHook_HurtPlayerStop(short mode, Seg *seg, register Actor *obj, s16 *fla
 	if (!mode) {
 		*flags &= ~8;
 		obj->flags |= 0x100;
-		if ((obj == (Actor *)&g_Player1 || obj == (Actor *)&g_Player2) && !obj->hitCooldown)
+		if ((obj == (Actor *)&g_Player1 || obj == (Actor *)&g_Player2
+#if defined(XMEN2_NATIVE)
+		     || P34_IS_PLAYER(obj)	/* players 3-4 too (R11); their own code runs this, in their context */
+#endif
+		    ) && !obj->hitCooldown)
 			(*obj->cls->method[8])(obj, 0, 4, 1, 0, 0);	/* +$26 TakeDamage */
 		return 0;
 	}

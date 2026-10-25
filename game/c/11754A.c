@@ -13,7 +13,7 @@ void PowerUp_Init(register PowerUp *self, long x, long y, register Placement *pl
 	self->flags6 |= 3;
 	self->spr.def = CODEPTR(Art_PowerUpSpr);
 	self->spr.flags = self->spr.flags & ~3 | 1;
-	if ((IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)->spr.flags & 4)
+	if (PLAYER_LIVE->spr.flags & 4)
 		self->spr.flags |= 4;
 	self->lifetime = 0;
 	if (pl)

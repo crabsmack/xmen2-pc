@@ -19,4 +19,7 @@ void CloneA1_InstallHooks(void)
 		g_Player2.spr.flags |= 4;
 		DrawList_SetPriority(g_Player2.drawNode, 1, g_Player2.layer, g_Player2.flags6 & 8);
 	}
+#if defined(XMEN2_NATIVE)
+	P34_SetLayer(1, 1);	/* players 3-4 in play too (R11) */
+#endif
 }

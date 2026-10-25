@@ -47,14 +47,14 @@ void BigBio_SpitUpdateAll(void)
 			if (px > g_CameraX + 340)
 				dead = 1;
 		}
-		for (n = 0; n < 2; ++n) {
-			if (IS_ALIVE(n == 0 ? (p = &g_Player1) : (p = &g_Player2))) {
+		for (n = 0; n < GROUP_N; ++n) {
+			if (IS_ALIVE(GROUP_P(n, p))) {
 				left = p->box2Left;
 				top = p->box2Top;
 				right = p->box2Right;
 				bottom = p->box2Bottom;
 				if (!p->hitCooldown && left <= px && right >= px && top <= py && py <= bottom) {
-					(*p->cls->method[8])(p, 0, 4, 1, px, py);	/* TakeDamage */
+					P34_HIT(p, (*p->cls->method[8])(p, 0, 4, 1, px, py));	/* TakeDamage */
 					dead = 1;
 				}
 			}

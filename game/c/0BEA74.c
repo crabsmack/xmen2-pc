@@ -31,7 +31,11 @@ void Launcher_Draw(register Launcher *self)
 			sx = shot->x >> 8;
 			sy = shot->y >> 8;
 			if (Launcher_ShotHitsPlayer(&g_Player1, sx, sy, type)
-			    || Launcher_ShotHitsPlayer(&g_Player2, sx, sy, type)) {
+			    || Launcher_ShotHitsPlayer(&g_Player2, sx, sy, type)
+#if defined(XMEN2_NATIVE)
+			    || P34_Any([&](XPlayer *q) { return Launcher_ShotHitsPlayer(q, sx, sy, type); })	/* players 3-4 in play too (R11) */
+#endif
+			    ) {
 				Explosion_Spawn(shot->x, shot->y, 0);
 				shot->x = 0;
 				continue;

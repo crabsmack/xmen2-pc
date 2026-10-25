@@ -25,8 +25,8 @@ void FlyBrood_StateWaitPlayerInRange(FlyBrood *self)
 		self->spr.flags |= 0x10;
 	else
 		self->spr.flags &= ~0x10;
-	for (i = 0; i < 2; ++i) {
-		if (IS_ALIVE(i == 0 ? (p = &g_Player1) : (p = &g_Player2)) && left <= p->boxRight
+	for (i = 0; i < GROUP_N; ++i) {
+		if (IS_ALIVE(GROUP_P(i, p)) && left <= p->boxRight
 		    && right >= p->boxLeft && top <= p->boxBottom && bottom >= p->boxTop) {
 			AI_NEXT_STEP(self, self->ai, 30);
 			return;

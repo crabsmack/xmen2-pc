@@ -22,6 +22,12 @@ void AvalonB1_CamHookFinish(register Camera *cam)
 			ready = 0;
 		if (IS_ALIVE(&g_Player2) && (g_Player2.flags & 0x1000))
 			ready = 0;
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			if (IS_ALIVE(q) && (q->flags & 0x1000))
+				ready = 0;
+		});
+#endif
 		if (ready) {
 			g_SndMute = 0;
 			Snd_Stop(0);
@@ -35,6 +41,14 @@ void AvalonB1_CamHookFinish(register Camera *cam)
 			STOP_MOVING(&g_Player1);
 		if (IS_ALIVE(&g_Player2))
 			STOP_MOVING(&g_Player2);
+#if defined(XMEN2_NATIVE)
+		P34_Each([&](XPlayer *q) {	/* players 3-4 in play too (R11) */
+			g_Pad2Pressed = 0;	/* its pad, no input (its context) */
+			g_Pad2Latch = 0;
+			if (IS_ALIVE(q))
+				STOP_MOVING(q);
+		});
+#endif
 		cam->x = g_CameraX;
 		x = g_CameraX;
 		y = cam->y = g_CameraY - (char)(g_TwoPlayerStep ? 4 : 2);
