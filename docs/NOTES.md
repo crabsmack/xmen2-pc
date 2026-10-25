@@ -677,6 +677,12 @@ of the time (noted where it mattered).
   free (`PHASE_MIN_FREE_GB` / `XMEN2_MIN_FREE_GB`), or when none of its jobs is running, or after
   2 minutes; the first hold of a stretch is printed. Verify's per-run JSONs are byte-identical
   held (one process at a time) and not.
+- **The gate after the speed-ups (2026-10-25).** phase.py 7 with this batch (jobs by threads and
+  the memory gate, E4's first-flip search, native traces branching from the TAS, the smoke stage,
+  the crash report) and the engine pin 00074ae, every runner-keyed cache cold: ~75 min (phase 7's
+  own stages 1,794 s, D1 references included; M1 = phases 6 and 5 2,691 s) against 2 h 1 min the
+  day before at `PHASE_JOBS=10` (7,291 s), every verdict as before (M4 40/46, M6 the user's).
+  Stages then and now: M2 1,267 -> 718 s, E3 386 -> 132 s, E4 3,325 -> 1,428 s.
 - **A crash names itself (2026-10-24).** A verify process that died of an access violation (the
   fork's 9bcb006) left exit 1 and nothing else: no PDB, no debugger, the stack unknown. Every runner
   now installs `xm_install_crash_trace` (game/runtime/crash_win.cpp; the engine runners at reset,
