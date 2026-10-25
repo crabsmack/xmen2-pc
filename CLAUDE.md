@@ -88,6 +88,7 @@ uv run tools/xmen2check.py trace --mode stepped --run tas --replay D --out E  # 
 uv run tools/xmen2check.py verify --inputs DIR [--functions A,B] [--frames N]
 uv run tools/xmen2check.py types|handc|lint
 uv run tools/pccheck.py game/c/X.c      # compile one file as C++ (no build tree; safe in parallel)
+#   PC mode only: `#if defined(XMEN2_NATIVE)` branches aren't compiled; `xmen2check.py build` is their check
 # matching: in xmen2disasm, uv run tools/cc.py --match PATH/TO/XMen2Recomp/game/c/X.c
 uv run tools/replaydump.py D/replay.bin --sync N; uv run tools/syncdiff.py A.ram B.ram
 ```
