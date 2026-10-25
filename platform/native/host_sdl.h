@@ -12,5 +12,6 @@ void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us);
                                                                                       at t_us on the present clock */
 void host_slip(double us);   /* netplay: both present clocks move by us (the scheduler held a frame) */
 void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, int h);   /* BMP */
+int  host_pad_selftest(void);   /* XMEN2_PAD_SELFTEST: the controllers' slots with virtual ones; 0 = pass */
 
 #endif /* XMEN2_HOST_SDL_H */

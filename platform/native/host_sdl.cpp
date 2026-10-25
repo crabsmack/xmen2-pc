@@ -4,8 +4,10 @@
  * queue the Z80's writes go into, audio.c's device bridge).
  *
  *   Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
- *   Game controllers (players 1 and 2): D-pad or left stick; X = A, A = B, B = C, Start;
+ *   Game controllers (players 1-4 in plug-in order, the keyboard with the first; an unplugged one
+ *   frees its slot): D-pad or left stick; X = A, A = B, B = C, Start;
  *   LB = X, Y = Y, RB = Z, Back = Mode.  Esc or closing the window quits.
+ * XMEN2_PAD_SELFTEST=1: the slots checked with virtual controllers, headless (host_pad_selftest).
  * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
  * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen).
  * The renderer is Direct3D 11 on Windows where it can be (SDL's default, Direct3D 9, loses its
@@ -65,6 +67,48 @@ static int make_renderer(void)
     return 1;
 }
 
+/* The controllers' slots (players 1-4 in plug-in order). SDL2 also sends SDL_CONTROLLERDEVICEADDED
+   for the controllers present at SDL_Init, which host_open has opened already: opening one again
+   gives the same handle, so a slot is taken only by a device in none (v1.0.0 on Linux: one pad was
+   players 1 and 2). An unplugged controller frees its slot; plugged in again it takes the first free
+   one, its own when the others are still there. */
+static SDL_JoystickID pad_id(SDL_GameController *c) { return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)); }
+
+static void pad_add(int index)   /* a device index */
+{
+    if (!SDL_IsGameController(index)) return;
+    SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(index);
+    for (int n = 0; n < 4; n++)
+        if (s_pad[n] && pad_id(s_pad[n]) == id) return;
+    for (int n = 0; n < 4; n++)
+        if (!s_pad[n]) {
+            if ((s_pad[n] = SDL_GameControllerOpen(index)))
+                fprintf(stderr, "[native] controller %d: %s (instance %d)\n", n + 1, SDL_GameControllerName(s_pad[n]), (int)id);
+            return;
+        }
+}
+
+static void pad_remove(SDL_JoystickID id)   /* an instance ID */
+{
+    for (int n = 0; n < 4; n++)
+        if (s_pad[n] && pad_id(s_pad[n]) == id) {
+            SDL_GameControllerClose(s_pad[n]);
+            s_pad[n] = nullptr;
+            fprintf(stderr, "[native] controller %d removed (instance %d)\n", n + 1, (int)id);
+        }
+}
+
+static void pad_event(const SDL_Event &e)
+{
+    if (e.type == SDL_CONTROLLERDEVICEADDED) pad_add(e.cdevice.which);
+    else if (e.type == SDL_CONTROLLERDEVICEREMOVED) pad_remove(e.cdevice.which);
+}
+
+static void pads_scan(void)   /* those present at SDL_Init */
+{
+    for (int i = 0; i < SDL_NumJoysticks(); i++) pad_add(i);
+}
+
 int host_open(const char *title)
 {
     SDL_SetMainReady();
@@ -76,8 +120,7 @@ int host_open(const char *title)
                              224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
     if (!make_renderer()) return 0;
-    for (int i = 0, n = 0; i < SDL_NumJoysticks() && n < 4; i++)
-        if (SDL_IsGameController(i) && (s_pad[n] = SDL_GameControllerOpen(i))) n++;
+    pads_scan();
     s_audio = audio_init((int)GENESIS_PSG_SAMPLE_RATE_NTSC) == 0;
     if (s_audio) audio_set_playback_enabled(1);
     else fprintf(stderr, "[native] no audio device: playing silent\n");
@@ -143,15 +186,96 @@ void host_input(uint16_t pads[4])
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
         if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
-        if (e.type == SDL_CONTROLLERDEVICEADDED) {
-            for (int n = 0; n < 4; n++)
-                if (!s_pad[n]) { s_pad[n] = SDL_GameControllerOpen(e.cdevice.which); break; }
-        }
+        pad_event(e);
     }
     pads[0] = (uint16_t)(keyboard_pad() | controller_pad(s_pad[0]));
     pads[1] = controller_pad(s_pad[1]);
     pads[2] = controller_pad(s_pad[2]);
     pads[3] = controller_pad(s_pad[3]);
+}
+
+/* XMEN2_PAD_SELFTEST=1: the slots with SDL's virtual game controllers, headless (no window, no ROM).
+   A controller attached after SDL_Init is found by host_open's scan and then announced by
+   SDL_CONTROLLERDEVICEADDED, as one plugged in before launch; unplugged, plugged in again, a second
+   one, the first replugged. Each step's slots are printed; exit 0 when every step holds. */
+static int virtual_pad(void)   /* its instance ID, or -1 */
+{
+    SDL_VirtualJoystickDesc d;
+    SDL_zero(d);
+    d.version = SDL_VIRTUAL_JOYSTICK_DESC_VERSION;
+    d.type = SDL_JOYSTICK_TYPE_GAMECONTROLLER;
+    d.naxes = SDL_CONTROLLER_AXIS_MAX;
+    d.nbuttons = SDL_CONTROLLER_BUTTON_MAX;
+    d.name = "xmen2 selftest pad";
+    int index = SDL_JoystickAttachVirtualEx(&d);
+    return index < 0 ? -1 : (int)SDL_JoystickGetDeviceInstanceID(index);
+}
+
+static void unplug(int id)
+{
+    for (int i = 0; i < SDL_NumJoysticks(); i++)
+        if (SDL_JoystickGetDeviceInstanceID(i) == id) { SDL_JoystickDetachVirtual(i); return; }
+}
+
+static void pump(void)
+{
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) pad_event(e);
+}
+
+int host_pad_selftest(void)
+{
+    SDL_SetMainReady();
+    if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
+        fprintf(stderr, "[native] pad selftest: SDL: %s\n", SDL_GetError());
+        return 2;
+    }
+    int steps = 0, good = 0;
+    auto expect = [&](const char *what, int p1, int p2) {   /* instance IDs in slots 1 and 2, -1 empty; 3-4 empty */
+        int got[4];
+        for (int n = 0; n < 4; n++) got[n] = s_pad[n] ? (int)pad_id(s_pad[n]) : -1;
+        bool ok = got[0] == p1 && got[1] == p2 && got[2] == -1 && got[3] == -1;
+        steps++;
+        good += ok;
+        fprintf(stderr, "[native] pad selftest: %s: slots %d %d %d %d (want %d %d -1 -1) %s\n", what, got[0], got[1], got[2],
+                got[3], p1, p2, ok ? "ok" : "WRONG");
+    };
+    int a = virtual_pad();
+    if (a < 0) {
+        fprintf(stderr, "[native] pad selftest: no virtual controller: %s\n", SDL_GetError());
+        return 2;
+    }
+    pads_scan();   /* host_open's, then the event SDL queued for it */
+    pump();
+    expect("one controller before launch", a, -1);
+    if (s_pad[0]) {   /* its button reaches player 1 only */
+        SDL_JoystickSetVirtualButton(SDL_GameControllerGetJoystick(s_pad[0]), SDL_CONTROLLER_BUTTON_A, 1);
+        uint16_t pads[4];
+        host_input(pads);
+        bool ok = pads[0] == GPAD_B && !pads[1] && !pads[2] && !pads[3];
+        steps++;
+        good += ok;
+        fprintf(stderr, "[native] pad selftest: its A button: pads %04x %04x %04x %04x (want %04x 0 0 0) %s\n", pads[0], pads[1],
+                pads[2], pads[3], GPAD_B, ok ? "ok" : "WRONG");
+    }
+    unplug(a);
+    pump();
+    expect("unplugged", -1, -1);
+    int a2 = virtual_pad();
+    pump();
+    expect("plugged in again", a2, -1);
+    int b = virtual_pad();
+    pump();
+    expect("a second controller", a2, b);
+    unplug(a2);
+    pump();
+    expect("the first unplugged", -1, b);
+    int a3 = virtual_pad();
+    pump();
+    expect("the first plugged in again", a3, b);
+    fprintf(stderr, "[native] pad selftest: %d of %d steps ok\n", good, steps);
+    SDL_Quit();
+    return good == steps ? 0 : 1;
 }
 
 void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, int h)

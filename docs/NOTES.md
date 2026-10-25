@@ -1965,6 +1965,29 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
 - `XMEN2_FIBER_ANYWHERE=1` is the check for this kind of bug: run a case twice and compare the
   game rows. A state file can't be loaded across processes with it set.
 
+### Controllers: one pad was players 1 and 2 (v1.0.0, Linux; 2026-10-25)
+
+- **The report**: a tester on Linux with the v1.0.0 package had their one pad as players 1 and 2 at
+  character select (Cyclops and Psylocke at once in the Sentinel facility).
+- **The cause** (platform/native/host_sdl.cpp): host_open opened every controller present at
+  SDL_Init into the next slot. SDL2 also sends `SDL_CONTROLLERDEVICEADDED` for those controllers,
+  and host_input opened that device again into the first empty slot: `SDL_GameControllerOpen` on
+  an open device returns the same handle, so slot 2 = slot 1. On Windows an XInput pad is often
+  found only after SDL_Init, so it was opened once, by the event. `SDL_CONTROLLERDEVICEREMOVED`
+  was not handled: an unplugged pad kept its slot, and plugged in again it took another one.
+- **The fix**: `pad_add` takes a slot only for a device whose instance ID is in none, and
+  `pad_remove` closes and frees the slot of a removed one. Each open and removal is logged
+  (`[native] controller N: NAME (instance I)`).
+- **The check** (`XMEN2_PAD_SELFTEST=1 XMen2Native.exe`; headless, no ROM): SDL's virtual game
+  controllers, attached after SDL_Init and then found by host_open's scan and by the event, as a
+  pad plugged in before launch. 7 steps:
+  - the pad is in slot 1 only, and its A button reaches player 1 only;
+  - unplugged, its slot is free; plugged in again, it is back in slot 1;
+  - a second pad takes slot 2;
+  - the first unplugged and plugged in again returns to slot 1, slot 2 kept.
+  7 of 7 pass. The control (the old slot code) passes 0 of 7: the one pad is in slots 1 and 2,
+  and its A button reaches players 1 and 2, as in the report.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

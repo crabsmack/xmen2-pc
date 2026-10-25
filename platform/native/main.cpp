@@ -1079,6 +1079,7 @@ int main(int argc, char **argv)
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
+    if (const char *t = getenv("XMEN2_PAD_SELFTEST"); t && *t && strcmp(t, "0")) return host_pad_selftest();   /* host_sdl.cpp */
     if (!rom) { fprintf(stderr, "usage: XMen2Native ROM [--benchmark N] [--input-script F] [--hash-frames K]\n"); return 2; }
     load_rom(rom);
     if (!s_benchmark) {   /* played: a window, the pads, the sound */
