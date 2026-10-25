@@ -16,7 +16,7 @@ void FluxBomb_StartBurst(FluxBomb *self)
 	register short i;
 
 	if (self->strong) {
-		d = (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirs);
+		d = (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirsStrong);
 		self->countdown = 15;
 	} else {
 		d = (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirs);

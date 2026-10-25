@@ -15,9 +15,8 @@ void FluxBomb_StepImplode(FluxBomb *self)
 	register short x;
 	register short y;
 
-	/* s's first load above is dead (the original's, kept). Strong: jt entry 2288, weak: 2287;
-	   both are Tbl_FluxBombImplodeParticles. */
-	s = self->strong ? (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticles)
+	/* s's first load above is dead (the original's, kept) */
+	s = self->strong ? (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticlesStrong)
 		: (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticles);
 	for (i = 0; i < 16; i++) {
 		if (p->flags & 1) {

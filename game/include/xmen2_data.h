@@ -1082,7 +1082,9 @@ extern void Tbl_FluxBombAnim21();
 extern void Tbl_FluxBombAnim22();
 extern void Tbl_FluxBombAnim23();
 extern void Tbl_FluxBombImplodeParticles();
+extern void Tbl_FluxBombImplodeParticlesStrong();
 extern void Tbl_FluxBombBurstDirs();
+extern void Tbl_FluxBombBurstDirsStrong();
 extern void Tbl_MagnetoCharRecord();
 extern void Art_FluxBombTiles();
 extern void Art_FluxBombTiles2();
@@ -2277,7 +2279,9 @@ extern void Snd_Z80DriverEnd();
 #define Tbl_FluxBombAnim22 (xm::rom(0x1CD8DE))
 #define Tbl_FluxBombAnim23 (xm::rom(0x1CD8F2))
 #define Tbl_FluxBombImplodeParticles (xm::rom(0x1CD928))
+#define Tbl_FluxBombImplodeParticlesStrong (xm::rom(0x1CD928))
 #define Tbl_FluxBombBurstDirs (xm::rom(0x1CD956))
+#define Tbl_FluxBombBurstDirsStrong (xm::rom(0x1CD956))
 #define Tbl_MagnetoCharRecord (xm::rom(0x1CD99C))
 #define Art_FluxBombTiles (xm::rom(0x1CD9FA))
 #define Art_FluxBombTiles2 (xm::rom(0x1CDA1A))

@@ -66,10 +66,9 @@ short Level_LoadUsedTiles(void *map, void *tileset, short vram, s16 *layout, voi
 	}
 	p = (s16 *)Nem_BuildCodeTable(p, (NemCodeTable *)remap);
 	/* Mode 2: masked, with the used-tile mask (bits) as a sixth argument, which Nem_Decode reads
-	   ($1C(a6)). MPW sees its five-argument prototype (the mode-1 callers'), so this call goes
-	   without one, as the original's. */
+	   ($1C(a6)). MPW: by its other name, declared without a prototype, as the original's. */
 #ifdef XMEN2_MPW
-	((void (*)())Nem_Decode)(p, remap, i, 2, (long)vram << 5, bits);
+	Nem_DecodeMasked(p, remap, i, 2, (long)vram << 5, bits);
 #else
 	Nem_Decode(p, (NemCodeTable *)remap, i, 2, (long)vram << 5, (NemTileMask *)bits);
 #endif

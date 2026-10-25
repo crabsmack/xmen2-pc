@@ -15,9 +15,8 @@ void FluxBomb_StartImplode(FluxBomb *self)
 	register FluxImplode *s = (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticles);
 	register short i;
 
-	/* s's first load above is dead (the original's, kept). Strong: jt entry 2288, weak: 2287;
-	   both are Tbl_FluxBombImplodeParticles. */
-	s = self->strong ? (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticles)
+	/* s's first load above is dead (the original's, kept) */
+	s = self->strong ? (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticlesStrong)
 		: (FluxImplode *)CODEPTR(Tbl_FluxBombImplodeParticles);
 	self->phase = 1;
 	VDP_QueueDma(CODEPTR(Art_FluxBombTiles), (g_FluxBombSpr.tileBase + g_FluxBombSpr.tileCount - 1) << 5, 0x20);

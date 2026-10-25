@@ -17,8 +17,7 @@ void FluxBomb_DrawBurst(FluxBomb *self)
 	short sy = (self->y >> 8) - g_CameraY;
 	register FluxParticle *p = self->part;
 	register short n = MIN(self->burstCount, 16);
-	/* strong: jt entry 2290, weak: 2289; both are Tbl_FluxBombBurstDirs (the ROM's choice, kept) */
-	register FluxDir *d = self->strong ? (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirs)
+	register FluxDir *d = self->strong ? (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirsStrong)
 		: (FluxDir *)CODEPTR(Tbl_FluxBombBurstDirs);
 	register short i;
 	register short x;

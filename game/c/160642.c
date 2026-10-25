@@ -9,6 +9,10 @@
  * DMA (VDP status bit 1) before clearing. */
 #include "xmen2.h"
 
+#ifdef XMEN2_MPW
+extern void Jt_NullTarget();	/* jump-table entry 2612, linked to address 0 */
+#endif
+
 void Sys_InitHardware(void)
 {
 	register long debug;
@@ -20,7 +24,7 @@ void Sys_InitHardware(void)
 		g_VBlankHook = Irq_VBlank;
 		g_VBlankHook = Irq_HBlank;
 #ifdef XMEN2_MPW
-		g_VBlankHook = Vectors;		/* jump-table entry 2612 (Jt_NullTarget): address 0 */
+		g_VBlankHook = Jt_NullTarget;
 #else
 		g_VBlankHook = FN_AT(FrameHookFn, Vectors);
 #endif

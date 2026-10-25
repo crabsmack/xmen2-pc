@@ -2989,9 +2989,11 @@ void Map_DrawColumnA(s16 *map, u16 *defs, short tileX, short tileY, short vramRo
 void Map_DrawColumnB(s16 *map, u16 *defs, short tileX, short tileY, short vramRow, short vramCol);	/* $15F16A asm regs(a4,a2,d4,d5,d6,d7) clobbers(d3,a3) */
 void Map_StreamColumns(void);	/* $15F1F8 asm */
 /* Nem_Decode: its mode-1 callers pass five arguments, Level_LoadUsedTiles (mode 2) a sixth, the
-   tile mask (the original called it without a prototype). MPW: five; PC: the mask defaults to 0. */
+   tile mask, by the original's second name (Nem_DecodeMasked, jt entry 2077: the same code) and
+   without a prototype. MPW: five, and the second name; PC: the mask defaults to 0. */
 #ifdef XMEN2_MPW
 void Nem_Decode(void *src, NemCodeTable *table, long rows, char mode, long dest);
+void Nem_DecodeMasked();
 #else
 void Nem_Decode(void *src, NemCodeTable *table, long rows, char mode, long dest, NemTileMask *mask = 0);	/* $15F37C */
 #endif
