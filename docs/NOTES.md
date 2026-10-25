@@ -1987,6 +1987,12 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
   - the first unplugged and plugged in again returns to slot 1, slot 2 kept.
   7 of 7 pass. The control (the old slot code) passes 0 of 7: the one pad is in slots 1 and 2,
   and its A button reaches players 1 and 2, as in the report.
+- **Netplay version 3** (`NP_VERSION`, for v1.0.1): since v1.0.0 the game with players 3-4 changed
+  (enemies choose among all four, player 2's pick avoids 3-4's characters, the camera with none in
+  play). A v1.0.0 seat and a v1.0.1 seat now refuse each other at the seal, so they can't play into a
+  desync. Loopback sessions on this build: two seats on boot.input (session 3, 30 ms / 10 ms /
+  2%), the same Windows against Linux, and four seats on scene42 (`players=4`): every seat's
+  digests equal (the Linux seat's file differs only in its line ends).
 
 ## Open questions
 
