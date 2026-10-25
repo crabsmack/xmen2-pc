@@ -34,6 +34,7 @@ extern "C" {
 
 #include "native.h"
 #include "state.h"
+#include "state_place.h"
 
 GenesisMachine g_machine;
 extern "C" unsigned long g_snd_frame;   /* the sound's frame number (chip_trace.c; genesis_vdp.c, mixer.c read it) */
@@ -957,10 +958,24 @@ extern "C" void machine_stack_repaint(uint64_t peak)
     if (end > lo) memset((void *)lo, STACK_PAINT, (size_t)(end - lo));
 }
 
+extern "C" int machine_fiber_range(uintptr_t *lo, uintptr_t *top) { return fiber_stack_range(s_game_fiber, lo, top); }
+
+/* --state-load: the paint as the saving run's, with its deepest at `peak` (a load puts back only
+   the stack in use: the bytes below it are painted, so the byte at that depth is marked) */
+extern "C" void machine_stack_set_peak(uint64_t peak)
+{
+    uintptr_t lo, top;
+    if (fiber_stack_range(s_game_fiber, &lo, &top) != 0 || peak > top - lo) return;
+    machine_stack_repaint(peak);
+    uint8_t *p = (uint8_t *)(top - (uintptr_t)peak);
+    if (peak && *p == STACK_PAINT) *p = 0;
+}
+
 /* After power-on: the game's fiber, made but not run (its first tick starts the reset entry). */
 extern "C" void machine_start(void)
 {
     s_host_fiber = fiber_convert_thread();
+    fiber_set_placement((uintptr_t)XM_FIBER_BASE);   /* --state-load: the stack's addresses (state_place.h) */
     s_game_fiber = fiber_create(GAME_STACK, GAME_STACK, game_main, nullptr);
     if (!s_host_fiber || !s_game_fiber) machine_fatal("cannot make the game's fiber");
     paint_stack();
@@ -968,13 +983,18 @@ extern "C" void machine_start(void)
 
 /* The game from its reset entry, on its fiber, the host between its sync points: tick after tick
    (runner frame 1 begins right after power-on, its pads before the game's first instruction). */
-extern "C" void machine_run(void)
+extern "C" void machine_loop(void)
 {
-    machine_start();
     for (;;) {
         machine_tick();
         plat_at_sync(s_sync_no);
     }
+}
+
+extern "C" void machine_run(void)
+{
+    machine_start();
+    machine_loop();
 }
 
 /* ======================================================================== */

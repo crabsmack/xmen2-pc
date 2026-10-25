@@ -28,6 +28,7 @@
 
 #include "xmen2_functions.h"   /* xmen2_game_functions[]: tools/sync_disasm.py */
 #include "runtime/xmen2_image.h"   /* the state a sync row is computed from; XMen2Native's export */
+#include "runtime/state_place.h"   /* state files: the process layout */
 
 #define XMEN2_ENTRY 0x1F43AEu
 #define XMEN2_VINT  0x1F4860u
@@ -329,6 +330,98 @@ static void xmen2_on_frame_post(uint64_t frame)
             crc32_bytes(g_machine.bus.z80_ram, sizeof g_machine.bus.z80_ram));
 }
 
+/* ---- state files (the engine's --state-at / --state-load: main.c "State files") ----------------
+ * A TAS run saves its state at the frames other runs branch from it; each of those runs is then a
+ * process of its own that starts there (xmen2check.py verify). The game fiber's stack is placed at
+ * XM_FIBER_BASE and the file records the process's layout (game/runtime/state_place.cpp), which a
+ * load must match. Carried: the layout, this file's counters, verify's testing state. Not yet the
+ * per-frame and sync CSVs: a load refuses them. */
+int glue_rb_fiber_stack_range(uintptr_t *lo, uintptr_t *top);
+size_t glue_rb_exec_save(void *dst, size_t cap);
+#ifdef XMEN2_VERIFY
+size_t xmen2_verify_state_save(void *dst, size_t cap);
+int xmen2_verify_state_load(const void *src, size_t len);
+#endif
+
+typedef struct SpecState { XmPlace place; uint64_t sync_rows; } SpecState;
+
+static void here(XmPlace *p)
+{
+    uintptr_t lo = 0, top = 0;
+    glue_rb_fiber_stack_range(&lo, &top);
+    xm_place_get(p, lo, top, 0);
+}
+
+/* XMEN2_STATE_SCAN: the saved stack's words that look like addresses elsewhere (state_place.h) */
+static void scan_stack(const XmPlace *p)
+{
+    const char *e = getenv("XMEN2_STATE_SCAN");
+    if (!e || !*e || *e == '0') return;
+    size_t n = glue_rb_exec_save(NULL, 0);
+    uint8_t *b = (uint8_t *)malloc(n);
+    if (!b || glue_rb_exec_save(b, n) != n || n < 12 + 48) { free(b); return; }
+    uint64_t span_lo, span_len;   /* [u64 head][u32 len] then fiber_compat.c's FiberSnapHeader, the context, the span */
+    uint32_t ctx_size;
+    memcpy(&span_lo, b + 12 + 24, 8);
+    memcpy(&span_len, b + 12 + 32, 8);
+    memcpy(&ctx_size, b + 12 + 40, 4);
+    if (12 + 48 + (size_t)ctx_size + span_len <= n) {
+        xm_place_scan(b + 12 + 48, ctx_size, 0, p, "context");
+        xm_place_scan(b + 12 + 48 + ctx_size, (size_t)span_len, span_lo, p, "stack");
+    }
+    free(b);
+}
+
+static size_t xmen2_state_file_save(void *dst, size_t cap)
+{
+    size_t v = 0;
+#ifdef XMEN2_VERIFY
+    v = xmen2_verify_state_save(NULL, 0);
+    if (!v) return 0;
+#endif
+    size_t need = sizeof(SpecState) + v;
+    if (!dst) return need;
+    if (cap < need) return 0;
+    SpecState s;
+    memset(&s, 0, sizeof s);
+    here(&s.place);
+    s.sync_rows = s_sync_rows;
+    memcpy(dst, &s, sizeof s);
+#ifdef XMEN2_VERIFY
+    if (xmen2_verify_state_save((uint8_t *)dst + sizeof s, v) != v) return 0;
+#endif
+    scan_stack(&s.place);
+    return need;
+}
+
+static int xmen2_state_file_load(const void *src, size_t len)
+{
+    SpecState s;
+    XmPlace mine;
+    if (len < sizeof s) return 0;
+    memcpy(&s, src, sizeof s);
+    here(&mine);
+    const char *why = xm_place_mismatch(&s.place, &mine);
+    if (why && !getenv("XMEN2_STATE_PLACE_UNCHECKED")) { fprintf(stderr, "[xmen2] state file: %s\n", why); return 0; }
+    if (why) fprintf(stderr, "[xmen2] state file: %s (XMEN2_STATE_PLACE_UNCHECKED: loading it anyway)\n", why);
+    const char *csv = getenv("XMEN2_SYNC_CSV"), *trace = getenv("XMEN2_TRACE_CSV");
+    if ((csv && *csv) || (trace && *trace)) {
+        fprintf(stderr, "[xmen2] state file: XMEN2_SYNC_CSV and XMEN2_TRACE_CSV don't carry over yet\n");
+        return 0;
+    }
+    xmen2_start();   /* what the game fiber's first instruction did in the run that saved it */
+    s_sync_rows = s.sync_rows;
+#ifdef XMEN2_VERIFY
+    if (getenv("XMEN2_STATE_SKIP_TESTING")) {   /* the negative control: verify's testing state left out */
+        fprintf(stderr, "[xmen2] NEGATIVE CONTROL: the testing state is not loaded\n");
+        return 1;
+    }
+    return xmen2_verify_state_load((const uint8_t *)src + sizeof s, len - sizeof s);
+#else
+    return len == sizeof s;
+#endif
+}
+
 #ifdef XMEN2_STEPPED
 /* The two-player half-rate waits (Level_FrameLoop $1FA6C0 and PlayerSelect_Run $065BD8:
    `tst.b g_FrameTick / beq` on itself) spin until the V-int handler sets g_FrameTick, with no
@@ -377,6 +470,9 @@ const GameSpec g_game_spec = {
     .branch_restore         = xmen2_verify_branch_restore,
     .branch_end             = xmen2_verify_branch_end,
 #endif
+    .state_file_save        = xmen2_state_file_save,
+    .state_file_load        = xmen2_state_file_load,
+    .game_fiber_base        = (uintptr_t)XM_FIBER_BASE,
 
     .call_entry_point       = xmen2_call_entry_point,
     .call_vblank            = xmen2_call_vblank,

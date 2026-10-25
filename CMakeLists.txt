@@ -96,7 +96,7 @@ set(XMEN2_COMMON_DEFS INCLUDE_GENERATED_CODE=1 ENABLE_RECOMPILED_CODE=1 OWN_BACK
 function(xmen2_runner TARGET PORT)
     cmake_parse_arguments(XR "" "" "DEFS;SOURCES;DEPENDS" ${ARGN})
     add_executable(${TARGET} ${XMEN2_RUNNER_SOURCES} ${XR_SOURCES} "${CMAKE_SOURCE_DIR}/game/xmen2_spec.c"
-                   "${CMAKE_SOURCE_DIR}/game/runtime/crash_win.cpp")
+                   "${CMAKE_SOURCE_DIR}/game/runtime/crash_win.cpp" "${CMAKE_SOURCE_DIR}/game/runtime/state_place.cpp")
     if(XR_DEPENDS)
         add_dependencies(${TARGET} ${XR_DEPENDS})
     endif()
@@ -115,6 +115,8 @@ function(xmen2_runner TARGET PORT)
         # the map names the frames of a crash's stack trace (game/runtime/crash_win.cpp); the
         # executable's bytes don't change
         target_link_options(${TARGET} PRIVATE "/MAP:$<TARGET_FILE_DIR:${TARGET}>/${TARGET}.map")
+        # state files in other processes: XMEN2_GS_COOKIE before the C runtime starts (state_place.cpp)
+        target_link_options(${TARGET} PRIVATE "/ENTRY:xm_entry")
         add_custom_command(TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${RUNNER_ROOT}/external/SDL2/SDL2-2.28.5/lib/x64/SDL2.dll"

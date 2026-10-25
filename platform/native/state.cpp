@@ -2,10 +2,11 @@
  *
  * A snapshot is the game's whole state at a sync point, while the game's fiber is suspended there
  * (machine.cpp): named sections, each a list of memory ranges or a custom save/load (the fiber's
- * stack and context, the machine with its host pointers scrubbed, the sound chips). In-process
- * only: the fiber's stack holds host addresses (frame pointers, pointers to locals and into the
- * arena and the ROM image), valid because the stack and every static stay where they are. Peers
- * compare the canonical digest (machine.cpp machine_digest), never these bytes.
+ * stack and context, the machine with its host pointers scrubbed, the sound chips). The fiber's
+ * stack holds host addresses (frame pointers, pointers to locals and into the arena and the ROM
+ * image), valid because the stack and every static stay where they are: in-process, or in a
+ * process laid out the same (main.cpp "State files", game/runtime/state_place.cpp). Peers compare
+ * the canonical digest (machine.cpp machine_digest), never these bytes.
  *
  * Besides the sections, a snapshot carries the host's counters (the trace's measurements): they are
  * not the game's state (no section, not in the snapshot's hash), but a restore puts them back too,
@@ -162,6 +163,20 @@ int state_has_section(const char *name)
     for (const Section &s : sections())
         if (s.name == name) return 1;
     return 0;
+}
+
+std::vector<std::string> state_section_names(void)
+{
+    std::vector<std::string> n;
+    for (const Section &s : sections()) n.push_back(s.name);
+    return n;
+}
+
+int state_section_index(const char *name)
+{
+    for (size_t i = 0; i < sections().size(); i++)
+        if (sections()[i].name == name) return (int)i;
+    return -1;
 }
 
 std::string state_sections_json(size_t bytes)

@@ -173,6 +173,14 @@ extern "C" void xm_export_branch(int save)
     else s_stats = kept;
 }
 
+/* the native runner's --state-at / --state-load: the counts as bytes, got (1) / set (0); the size */
+extern "C" size_t xm_export_counts(void *buf, int get)
+{
+    if (buf && get) memcpy(buf, &s_stats, sizeof s_stats);
+    else if (buf) memcpy(&s_stats, buf, sizeof s_stats);
+    return sizeof s_stats;
+}
+
 extern "C" int xm_export_stats(char *buf, int n)
 {
     const Global *t = selftest_global();

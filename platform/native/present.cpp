@@ -55,7 +55,7 @@ static int16_t s16at(uint32_t a) { return (int16_t)(m8(a) << 8 | m8(a + 1)); }
 /* While runner frame k-1's logic builds the sprite list (DMA'd at the next V-int: R_k's), each
    owner's draw is announced with the slot written last before it (g_SprIndex, $FFE21E: $51 = none
    yet); slots are filled in order from 0 (Spr_BeginFrame). */
-struct Mark { uintptr_t owner; int before; uintptr_t spr; int ax, ay; };   /* spr: an anchor mark */
+namespace { struct Mark { uintptr_t owner; int before; uintptr_t spr; int ax, ay; }; }   /* spr: an anchor mark (internal linkage: players.cpp has a Mark too) */
 static std::vector<Mark> s_marks;
 
 extern "C" void plat_spr_owner(const void *owner)
@@ -304,6 +304,55 @@ void present_branch_restore(void)
     s_fallback = k.fallback; s_extra = k.extra;
     s_render_us = k.render_us;
     s_gameplay = k.gameplay;
+}
+
+/* --state-at / --state-load (main.cpp "State files"): what present_branch_save keeps, as bytes for
+   another process (Mark/Tag owners and anchors point into the arena, at a fixed place there too) */
+template <class T> static void put(std::vector<uint8_t> &o, const T &v) { o.insert(o.end(), (const uint8_t *)&v, (const uint8_t *)&v + sizeof v); }
+template <class T> static void put_vec(std::vector<uint8_t> &o, const std::vector<T> &v)
+{
+    put(o, (uint64_t)v.size());
+    if (!v.empty()) o.insert(o.end(), (const uint8_t *)v.data(), (const uint8_t *)v.data() + v.size() * sizeof(T));
+}
+template <class T> static bool get(const uint8_t *&p, const uint8_t *end, T &v)
+{
+    if ((size_t)(end - p) < sizeof v) return false;
+    memcpy(&v, p, sizeof v);
+    p += sizeof v;
+    return true;
+}
+template <class T> static bool get_vec(const uint8_t *&p, const uint8_t *end, std::vector<T> &v)
+{
+    uint64_t n;
+    if (!get(p, end, n) || n > (uint64_t)(end - p) / sizeof(T)) return false;
+    v.resize((size_t)n);
+    if (n) memcpy(v.data(), p, (size_t)n * sizeof(T));
+    p += n * sizeof(T);
+    return true;
+}
+
+void present_state_save(std::vector<uint8_t> &out)
+{
+    present_branch_save();
+    const PresentKept &k = s_kept;
+    put_vec(out, k.marks);
+    put(out, k.tags); put(out, k.prev_tags); put(out, k.prev); put(out, k.cur);
+    put(out, k.frames); put(out, k.whole); put(out, k.sprites); put(out, k.matched); put(out, k.unmatched);
+    put(out, k.fallback); put(out, k.extra);
+    put_vec(out, k.render_us);
+    put(out, k.gameplay);
+}
+
+bool present_state_load(const uint8_t *p, size_t n)
+{
+    const uint8_t *end = p + n;
+    PresentKept &k = s_kept;
+    bool ok = get_vec(p, end, k.marks) && get(p, end, k.tags) && get(p, end, k.prev_tags) && get(p, end, k.prev) &&
+              get(p, end, k.cur) && get(p, end, k.frames) && get(p, end, k.whole) && get(p, end, k.sprites) &&
+              get(p, end, k.matched) && get(p, end, k.unmatched) && get(p, end, k.fallback) && get(p, end, k.extra) &&
+              get_vec(p, end, k.render_us) && get(p, end, k.gameplay) && p == end;
+    if (ok) present_branch_restore();
+    return ok;
 }
 
 /* A played run's frame-tick V-ints (two players stepping by 2: plat_frame_repeat) are display

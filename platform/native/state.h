@@ -19,9 +19,11 @@ struct Snapshot {
 void        state_save(Snapshot &snap);
 void        state_load(const Snapshot &snap, const char *skip);   /* skip: a section left out (the negative control) */
 int         state_has_section(const char *name);
+int         state_section_index(const char *name);   /* its place in Snapshot::spans, or -1 */
 std::vector<size_t> state_reported_spans(void);   /* the section sizes state_sections_json reports (the last save's) */
 void        state_set_reported_spans(const std::vector<size_t> &spans);
 std::string state_sections_json(size_t bytes);    /* {"sections": [...], "bytes": n  (unterminated: the caller adds fields) */
+std::vector<std::string> state_section_names(void);   /* in table order (Snapshot::spans') */
 std::string state_sha1(const Snapshot &snap);
 void        state_serialize(const Snapshot &snap, std::vector<uint8_t> &out);   /* one blob */
 bool        state_deserialize(const uint8_t *p, size_t n, Snapshot &snap);

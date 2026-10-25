@@ -329,7 +329,9 @@ static uint32_t addr68(const void *p)
     return 0;
 }
 
-struct Mark { uint32_t owner; int idx; };
+/* internal linkage: present.cpp has a Mark of its own, and the two vectors' out-of-line members
+   (one per name: the linker keeps either file's) grew this one with the other's element size */
+namespace { struct Mark { uint32_t owner; int idx; }; }
 static std::vector<Mark> s_marks;
 
 void players_spr_owner(const void *owner, int idx) { s_marks.push_back({ addr68(owner), idx }); }

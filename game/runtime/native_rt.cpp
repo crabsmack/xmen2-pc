@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "state.h"
+#include "state_place.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -58,11 +59,16 @@ static void *map_twice(void)
     HANDLE h = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 0x10000, nullptr);
     if (!h) return nullptr;
     for (int attempt = 0; attempt < 64; attempt++) {
-        /* find 128 KB of free address space, then map the section into both halves (another
-           thread could take the range in between: try again) */
-        void *base = VirtualAlloc(nullptr, 0x20000, MEM_RESERVE, PAGE_NOACCESS);
-        if (!base) break;
-        VirtualFree(base, 0, MEM_RELEASE);
+        /* 128 KB of free address space, XM_ARENA_BASE first (state files: the fiber's stack holds
+           pointers into the arena; state_place.h), then the section mapped into both halves
+           (another thread could take the range in between: try again) */
+        void *base = (void *)(uintptr_t)XM_ARENA_BASE;
+        if (attempt) {
+            if (attempt == 1) fprintf(stderr, "[native] the arena's place %p is taken: mapped anywhere\n", base);
+            base = VirtualAlloc(nullptr, 0x20000, MEM_RESERVE, PAGE_NOACCESS);
+            if (!base) break;
+            VirtualFree(base, 0, MEM_RELEASE);
+        }
         void *a = MapViewOfFileEx(h, FILE_MAP_ALL_ACCESS, 0, 0, 0x10000, base);
         if (!a) continue;
         void *b = MapViewOfFileEx(h, FILE_MAP_ALL_ACCESS, 0, 0, 0x10000, (uint8_t *)base + 0x10000);
@@ -77,7 +83,7 @@ static void *map_twice(void)
     if (fd < 0) return nullptr;
     shm_unlink(name);
     if (ftruncate(fd, 0x10000) != 0) { close(fd); return nullptr; }
-    void *base = mmap(nullptr, 0x20000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *base = mmap((void *)(uintptr_t)XM_ARENA_BASE, 0x20000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);   /* a hint */
     if (base == MAP_FAILED) { close(fd); return nullptr; }
     void *a = mmap(base, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
     void *b = mmap((uint8_t *)base + 0x10000, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
@@ -187,6 +193,13 @@ void xm_mem_branch(int save)
     static unsigned long long kept[2];
     if (save) { kept[0] = xm::s_slow_loads; kept[1] = xm::s_slow_stores; }
     else { xm::s_slow_loads = kept[0]; xm::s_slow_stores = kept[1]; }
+}
+
+/* ... and its --state-at / --state-load: the counts got (1) / set (0) */
+void xm_mem_counts(unsigned long long v[2], int get)
+{
+    if (get) { v[0] = xm::s_slow_loads; v[1] = xm::s_slow_stores; }
+    else { xm::s_slow_loads = v[0]; xm::s_slow_stores = v[1]; }
 }
 }
 

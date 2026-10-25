@@ -209,6 +209,23 @@ static int voice_class(uint16_t pool, int entries, int ch)
 static bool s_drop_music;
 static bool other_kind(int k) { return k != CLS_NONE && ((s_stem >= 0 && k != s_stem) || (s_drop_music && k == CLS_MUSIC)); }
 
+/* --state-at / --state-load (main.cpp "State files"): the songs' classes as seen so far, as bytes */
+void capture_state_save(std::vector<uint8_t> &out)
+{
+    const uint8_t *parts[4] = { s_cls, (const uint8_t *)s_plays, (const uint8_t *)s_first, (const uint8_t *)&s_stopall_frame };
+    const size_t sizes[4] = { sizeof s_cls, sizeof s_plays, sizeof s_first, sizeof s_stopall_frame };
+    for (int i = 0; i < 4; i++) out.insert(out.end(), parts[i], parts[i] + sizes[i]);
+}
+
+bool capture_state_load(const uint8_t *p, size_t n)
+{
+    uint8_t *parts[4] = { s_cls, (uint8_t *)s_plays, (uint8_t *)s_first, (uint8_t *)&s_stopall_frame };
+    const size_t sizes[4] = { sizeof s_cls, sizeof s_plays, sizeof s_first, sizeof s_stopall_frame };
+    if (n != sizes[0] + sizes[1] + sizes[2] + sizes[3]) return false;
+    for (int i = 0; i < 4; i++) { memcpy(parts[i], p, sizes[i]); p += sizes[i]; }
+    return true;
+}
+
 /* sound2.cpp: the music machine mutes the effects' tracks (a song the game never started, which the
    driver starts from inside another, is music) */
 extern "C" bool capture_song_effect(uint8_t id) { return s_cls[id] == CLS_SFX; }

@@ -608,7 +608,8 @@ of the time (noted where it mattered).
   `--branch-plan` (main.c "Branch plans") snapshots the machine after frame N, plays the run's
   remaining frames, writes its results and restores. In-process only: the snapshot is the
   engine's rollback state (rb_state.c), whose `exec` section is the game fiber's raw stack (host
-  addresses). verify.cpp keeps its testing state across a branch (`GameSpec.branch_save/
+  addresses). (Since 2026-10-25 the default is a process per branch from a state file: "TAS state
+  files" below; `--in-process` is this.) verify.cpp keeps its testing state across a branch (`GameSpec.branch_save/
   restore`; its per-run JSON at `branch_end`), so a branch reports exactly what the run reports
   from power-on. `xmen2check.py verify` groups the branches into processes (`verify_units`:
   latest first, bounded so that, longest first on `--jobs` workers, they finish soonest) and
@@ -719,6 +720,97 @@ of the time (noted where it mattered).
   - Time (24 jobs, wall, alone -> group): plain 67 -> 34 s, `--fb` 236 -> 115, full_rate_2p
     236 -> 115, 144 Hz 648 -> 310, widescreen 298 -> 144, state probe 290 -> 140: about half, the
     TAS's own process (its 51k frames) now the long pole. The phase 6/7 corpus stages: ~54 -> ~26 min.
+- **TAS state files: branches in processes of their own (2026-10-25).** The branching above stayed
+  in-process (a snapshot holds the game fiber's raw stack), so every branch replayed the TAS's
+  prefix in some carrier process: verify played 1,055,149 frames in 20 processes, a native pass
+  ~1,010,000 in 22. Now the TAS run saves a state file at every frame a corpus run branches from it
+  (`--state-at FILE`: lines `FRAME PATH`), and each branching run is a process of its own that starts
+  from its file (`--state-load FILE`) as soon as the TAS run has written it. `xmen2check.py verify`
+  and `trace-group` do this by default (`state_units`, `StateFiles`); `--in-process` is the
+  branching above (the control), `--no-branch` every run from power-on, as before.
+  - What makes a state loadable in another process (game/runtime/state_place.cpp): (a) the
+    executable at the same base: the harness's runner copies have DYNAMICBASE cleared
+    (`xmen2check.py fixed_base`; the build's runners and the package keep ASLR); (b) the game fiber's
+    stack at a fixed address (engine `fiber_set_placement`, `GameSpec.game_fiber_base`,
+    `XM_FIBER_BASE`) and XMen2Native's arena too (`XM_ARENA_BASE`); (c) the same /GS cookie: a
+    frame's cookie is the process's random `__security_cookie` XOR its stack pointer, so every runner
+    enters at `xm_entry` (`/ENTRY`), which takes `XMEN2_GS_COOKIE` before the C runtime starts; the
+    harness gives one random value to all processes of a group (without it each keeps its own);
+    (d) nothing a saved frame holds live on the heap: verify.cpp's open tests (`Ctx`) and per-function
+    counts (`Stat`, referenced from the stack while a test is open across a frame's end) moved to
+    static storage. The file records (a)-(c) (`XmPlace`: the PE timestamp and size, the image base, a
+    hash of the cookie, the stack's range, the arena) and a load refuses any difference.
+  - What a file carries besides the snapshot: the engine runners, verify's whole testing state and
+    the spec's counters (`GameSpec.state_file_save/load`; the per-frame and sync CSVs refuse to
+    load: not needed yet); XMen2Native, everything `run_branches` keeps outside the savestate
+    (presentation, widescreen strings, export and census counts, reported section sizes, the stack's
+    paint as a peak), capture.cpp's song classes, the options (a load with other options is refused)
+    and where each of the saving run's files stood: a loaded run's files start with a copy of those
+    bytes, as a branch's do. trace-group adds the fb column to sync.csv only once every process has
+    ended (the copies read the TAS run's file as written).
+  - `XMEN2_STATE_SCAN=1` (2: also the values below 4 GB) lists a saved stack's words that look like
+    addresses outside the executable, the stack and the arena (stale slots show up too). At the TAS
+    frames tried: one `private` word below 4 GB in a callee's home area, system DLL addresses (one
+    base per boot in every process), the rest 68000 values.
+  - Found on the way: players.cpp and present.cpp each had a namespace-scope `struct Mark` (8 and 32
+    bytes), so the linker kept one out-of-line `std::vector<Mark>::_Emplace_reallocate` (present's)
+    for both, and players' owner marks grew with 32-byte elements: garbage entries after each growth.
+    Deterministic from power-on, so the in-process proofs never saw it; a loaded run grew the vector
+    at another frame and counted player 1 drawn once more (widescreen_gameplay, fuzz-25200-s1/s2
+    loaded at 22,455; from power-on 16,765, loaded 16,766). Both now have internal linkage; the
+    counts from power-on stay as they were (every corpus run's JSON equal to today's runner's).
+  - Proof, verify (all 76 runs, 24 jobs, XMen2Verify unchanged since): every per-run JSON
+    byte-identical between today's runner in-process, this runner in-process and from state files
+    (3,160 functions, 0 mismatches). Native (all 76 runs, the nine option sets phase.py traces the
+    corpus with: plain, `--fb`, `--fb` full_rate_2p, 120 and 144 Hz with the present log, 16:9
+    presentation with game rows, widescreen_gameplay, widescreen=0 with game rows, `--fb` with the
+    state probe): every file byte-identical (sync.csv with its fb column, present.csv, game.csv,
+    probe.csv; probe_snap.csv's saves equal their re-saves), the JSON equal less timings
+    (`render_us_p99` too) and `fiber_stack_peak` (54 runs at 120/144 Hz: 11,688 in-process, 10,384
+    loaded, the allocator's depth as above). Three ways: today's runner in-process, this runner
+    in-process and from state files, all equal; widescreen_gameplay also from power-on, equal
+    (2,042,653 sync points a pass). XMen2Native's last build differs from the one proven only by the
+    `XMEN2_STATE_SECTIONS` line below.
+  - Cross-process loads with a negative control: `uv run tools/statecheck.py` (~40 min). A run
+    saves at three frames; each state is loaded by a process of its own runner copy, then once per
+    section left out (`--state-skip`, `GENESIS_RB_NEGCTL_SKIP`, `XMEN2_STATE_SKIP_TESTING`); native
+    runs also save at a later frame, where each section's SHA-1 is compared (`XMEN2_STATE_SECTIONS`,
+    the fiber's raw stack excepted). Four configurations: verify (the TAS to 9,000, states at 2,345,
+    4,500, 7,200: JSON, counters, final state hash), the native TAS (stepped, to 15,000: 3,000, 7,200,
+    12,600), the TAS in the session machine at 16:9 (to 8,000: 2,400, 4,800, 7,200) and scene 1 with
+    `players=4 --session 1` (to 4,433: 1,200, 2,400, 3,600; the framebuffers too); native outputs
+    sync.csv, digest.csv, counters. Every load the same as the run that saved it. Caught when left
+    out: all ten native sections (sound only in the session machine, players34 and p34video only
+    with four players, p34video from 2,400: nothing of it is drawn at 1,200), and exec, cpu, sched,
+    exact, ram, machine, fm, psg and the testing state; not caught: evq (empty at every frame's
+    end: 4 bytes, count 0), input (the pads, set from the script before every frame, and a tick
+    count nothing reads), game (0 bytes: this game keeps no rollback state of its own). Refused:
+    another cookie, the build's own (ASLR) runner. Loaded anyway (`XMEN2_STATE_PLACE_UNCHECKED`)
+    with another cookie, verify dies of a failed cookie check (0xC0000409); the native runs play
+    on (no frame with a cookie returned there).
+  - Time (24 jobs, wall, back to back on the same machine; today's runner in-process -> this runner
+    in-process -> state files): verify 295 -> 259 -> 215 s (frames played 1,055,149 -> 436,659,
+    processes 20 -> 76; the TAS's own run, 57,465 frames in 208 s, is now the whole wall time).
+    The native passes (sync points played ~1,010,000 -> 407,953, processes 22 -> 76): plain 34 ->
+    35 -> 32 s, `--fb` 113 -> 122 -> 106, full_rate_2p 113 -> 121 -> 106, 120 Hz 266 -> 283 -> 247,
+    144 Hz 303 -> 304 -> 277, 16:9 presentation 137 -> 133 -> 123, widescreen_gameplay 121 -> 127 ->
+    105, widescreen=0 115 -> 117 -> 104, state probe 139 -> 152 -> 131; all nine 1,340 -> 1,393 ->
+    1,230 s (-8%; the in-process pass of this runner had a negative-control run beside it). The
+    native passes gain little: the TAS's own trace was already their pole (its 51,209 sync points in
+    one process, at whatever the options cost), and what branching saves is only the other cores'
+    replays, which competed with it. Splitting the TAS's own trace needs states it can't make for
+    itself any faster: a cheaper producer (no render, no outputs) whose states a pass with outputs
+    can load, so the counters, files and the fb column at a segment's start must not depend on the
+    outputs the producer skipped (not true today: the export's counts, present.cpp's state, the
+    frame the fb column hashes). verify gains more: its pole was a carrier of 59,400 frames
+    (fuzz-55800's TAS prefix and its own), now the TAS's own 57,465, with ~620,000 fewer frames
+    played beside it.
+  - phase.py 7 at its default 30 jobs, this change against the run of the same morning (M4's, the
+    runner caches cold in both but for this one's D1 references and part of M2, which a first,
+    interrupted attempt had made): M2 742 -> 387 s, M3 533 -> 533, M4 129 -> 125, M5 233 -> 230,
+    E3 128 -> 126, E4 1,420 -> 1,162, E5 399 -> 332 (E1 221 -> 528: its verify and stepped-gen
+    references ran cold here, cached there); the corpus stages (M2, E3, E4, E5) 2,689 -> 2,007 s.
+    Every verdict as before (M6 the user's).
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner

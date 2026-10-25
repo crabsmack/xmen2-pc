@@ -13,6 +13,7 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/game/runtime/native_rt.cpp"
     "${CMAKE_SOURCE_DIR}/game/runtime/export.cpp"
     "${CMAKE_SOURCE_DIR}/game/runtime/crash_win.cpp"
+    "${CMAKE_SOURCE_DIR}/game/runtime/state_place.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/machine.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/main.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/options.cpp"
@@ -96,7 +97,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 if(MSVC)
     target_compile_options(XMen2Native PRIVATE /W3 /WX- /utf-8 /wd4102 /wd4996)
-    target_link_options(XMen2Native PRIVATE "/MAP:$<TARGET_FILE_DIR:XMen2Native>/XMen2Native.map" "/CETCOMPAT:NO")
+    target_link_options(XMen2Native PRIVATE "/MAP:$<TARGET_FILE_DIR:XMen2Native>/XMen2Native.map" "/CETCOMPAT:NO"
+        "/ENTRY:xm_entry")   # state files in other processes: XMEN2_GS_COOKIE (game/runtime/state_place.cpp)
     add_custom_command(TARGET XMen2Native POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${RUNNER_ROOT}/external/SDL2/SDL2-2.28.5/lib/x64/SDL2.dll" "$<TARGET_FILE_DIR:XMen2Native>"

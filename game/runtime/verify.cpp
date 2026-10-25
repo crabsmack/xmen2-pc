@@ -125,7 +125,13 @@ struct Ctx {
 };
 
 std::unordered_map<uint32_t, const XmVerifyFn *> s_fns;
-std::unordered_map<uint32_t, Stat> s_stats;
+/* Static storage, not the heap: a test open across a frame's end refers to its Ctx and to its
+   function's Stat from the game fiber's stack, which a state file carries to another process
+   (game/runtime/state_place.cpp). One Stat per xm_verify_fns entry, in its order. */
+const int MAX_FNS = 4096;
+Stat s_stat_store[MAX_FNS];
+Ctx s_ctx_store[MAX_DEPTH];
+Stat &stat_of(const XmVerifyFn *fn) { return s_stat_store[fn - xm_verify_fns]; }
 std::unordered_map<uint32_t, SynSpec> s_synth;
 Ctx *s_ctx[MAX_DEPTH];
 int s_depth;
@@ -378,9 +384,9 @@ void write_report(const char *path)
     FILE *f = fopen(path, "w");
     if (!f) return;
     uint64_t tested = 0, checked = 0;
-    for (const auto &kv : s_stats) {
-        tested += kv.second.checked + kv.second.mismatches > 0;
-        checked += kv.second.checked;
+    for (int i = 0; i < xm_verify_fn_count; i++) {
+        tested += s_stat_store[i].checked + s_stat_store[i].mismatches > 0;
+        checked += s_stat_store[i].checked;
     }
     std::string stop = stopped_early();
     if (!stop.empty()) fprintf(stderr, "[verify] testing stopped early: %s\n", stop.c_str());
@@ -391,9 +397,7 @@ void write_report(const char *path)
     bool firstf = true;
     for (int i = 0; i < xm_verify_fn_count; i++) {
         uint32_t a = xm_verify_fns[i].addr;
-        auto it = s_stats.find(a);
-        Stat empty;
-        const Stat &st = it == s_stats.end() ? empty : it->second;
+        const Stat &st = s_stat_store[i];
         std::string first;
         for (char c : st.first) {
             if (c == '"' || c == '\\') first += '\\';
@@ -425,7 +429,7 @@ void report()
    reports when played from power-on. The tests open there keep their objects, and the functions
    their Stat (the game fiber's restored stack refers to both): their contents are copied back. */
 struct Kept {
-    std::unordered_map<uint32_t, Stat> stats;
+    std::vector<Stat> stats;
     std::vector<Ctx> ctx;
     int depth;
     uint32_t entering;
@@ -498,7 +502,7 @@ std::string compare(const Ctx &c, const XmVerifyFn *fn, const M68KState &r1, uin
 Ctx *push(const XmVerifyFn *fn, int mode)
 {
     Ctx *c = s_ctx[s_depth];
-    if (!c) c = s_ctx[s_depth] = new Ctx();
+    if (!c) c = s_ctx[s_depth] = &s_ctx_store[s_depth];
     c->fn = fn;
     c->mode = mode;
     c->logA.clear();
@@ -641,10 +645,10 @@ void run_synth(uint32_t addr, bool self)
 {
     for (auto &kv : s_synth) {
         if ((self && kv.first != addr) || (!self && !kv.second.at_any)) continue;
-        Stat &st = s_stats[kv.first];
+        const XmVerifyFn *fn = s_fns[kv.first];
+        Stat &st = stat_of(fn);
         if (st.synth_done) continue;
         st.synth_done = true;
-        const XmVerifyFn *fn = s_fns[kv.first];
         if (!fn || (!s_only.empty() && !s_only.count(kv.first))) continue;
         for (const SynCase &k : kv.second.cases) run_case(fn, st, k);
     }
@@ -667,7 +671,7 @@ extern "C" void xmen2_verify_branch_save(void)
 {
     if (!s_kept) s_kept = new Kept();
     Kept &k = *s_kept;
-    k.stats = s_stats;
+    k.stats.assign(s_stat_store, s_stat_store + xm_verify_fn_count);
     k.ctx.clear();
     for (int d = 0; d < s_depth; d++) k.ctx.push_back(*s_ctx[d]);
     k.depth = s_depth;
@@ -680,14 +684,9 @@ extern "C" void xmen2_verify_branch_save(void)
 extern "C" void xmen2_verify_branch_restore(void)
 {
     const Kept &k = *s_kept;
-    /* into the same map nodes: a test open across the branch point holds a reference to its
-       function's Stat on the restored stack. A node made during the branch has no such holder. */
-    for (auto it = s_stats.begin(); it != s_stats.end();) {
-        auto kt = k.stats.find(it->first);
-        if (kt == k.stats.end()) { it = s_stats.erase(it); continue; }
-        it->second = kt->second;
-        ++it;
-    }
+    /* into the same objects: a test open across the branch point holds a reference to its
+       function's Stat and its Ctx on the restored stack */
+    for (int i = 0; i < xm_verify_fn_count; i++) s_stat_store[i] = k.stats[(size_t)i];
     for (int d = 0; d < k.depth; d++) *s_ctx[d] = k.ctx[(size_t)d];
     s_depth = k.depth;
     s_entering = k.entering;
@@ -709,17 +708,151 @@ extern "C" void xmen2_verify_branch_end(const char *tag)
     write_report((dir + tag + ".json").c_str());
 }
 
-extern "C" int xmen2_verify_entry(uint32_t addr)
+/* At the first call of a function with C, or a state file's load (before anything else of it) */
+static void verify_init(void)
 {
     static bool init;
-    if (!init) {
-        init = true;
-        for (int i = 0; i < xm_verify_fn_count; i++) s_fns[xm_verify_fns[i].addr] = &xm_verify_fns[i];
-        load_only();
-        load_synth();
-        atexit(report);
-        xm_install_crash_report(crash_report);
+    if (init) return;
+    init = true;
+    if (xm_verify_fn_count > MAX_FNS) {
+        fprintf(stderr, "[verify] %d functions with C, room for %d (verify.cpp MAX_FNS)\n", xm_verify_fn_count, MAX_FNS);
+        exit(2);
     }
+    for (int i = 0; i < xm_verify_fn_count; i++) s_fns[xm_verify_fns[i].addr] = &xm_verify_fns[i];
+    for (int d = 0; d < MAX_DEPTH; d++) s_ctx[d] = &s_ctx_store[d];
+    load_only();
+    load_synth();
+    atexit(report);
+    xm_install_crash_report(crash_report);
+}
+
+/* State files (the engine's --state-at / --state-load, GameSpec.state_file_*: xmen2_spec.c): what
+   branch_save keeps, as bytes, for another process. At a frame's end every test open is a generated
+   run (C runs and synthetic cases are untimed: they never span one), so a Ctx's case pointers are
+   null there. */
+namespace {
+struct Out {
+    std::vector<uint8_t> b;
+    void raw(const void *p, size_t n) { b.insert(b.end(), (const uint8_t *)p, (const uint8_t *)p + n); }
+    void u64(uint64_t v) { raw(&v, 8); }
+    void str(const std::string &s) { u64(s.size()); raw(s.data(), s.size()); }
+};
+struct In {
+    const uint8_t *p, *end;
+    bool ok = true;
+    void raw(void *d, size_t n) { if ((size_t)(end - p) < n) { ok = false; memset(d, 0, n); return; } memcpy(d, p, n); p += n; }
+    uint64_t u64() { uint64_t v; raw(&v, 8); return v; }
+    std::string str() { uint64_t n = u64(); if (!ok || n > (size_t)(end - p)) { ok = false; return {}; } std::string s((const char *)p, (size_t)n); p += n; return s; }
+};
+const uint64_t STATE_MAGIC = 0x3176666972657658ull;   /* "Xverify1" */
+
+std::vector<uint8_t> state_bytes(void)
+{
+    Out o;
+    o.u64(STATE_MAGIC);
+    o.u64((uint64_t)xm_verify_fn_count);
+    for (int i = 0; i < xm_verify_fn_count; i++) {
+        const Stat &st = s_stat_store[i];
+        o.u64(st.checked); o.u64(st.mismatches); o.u64(st.irq); o.u64(st.seen); o.u64(st.synth); o.u64(st.synth_done);
+        o.str(st.first);
+        std::vector<uint32_t> cov(st.covered.begin(), st.covered.end());
+        std::sort(cov.begin(), cov.end());
+        o.u64(cov.size());
+        o.raw(cov.data(), cov.size() * 4);
+    }
+    o.u64((uint64_t)s_depth);
+    for (int d = 0; d < s_depth; d++) {
+        const Ctx &c = *s_ctx[d];
+        o.u64((uint64_t)(c.fn - xm_verify_fns)); o.u64((uint64_t)c.mode);
+        o.raw(c.pre, sizeof c.pre); o.raw(c.post, sizeof c.post);
+        for (const std::vector<Hw> *log : { &c.logA, &c.logB }) {
+            o.u64(log->size());
+            for (const Hw &h : *log) { o.u64(h.addr); o.u64((uint64_t)(int64_t)h.size); o.u64((uint64_t)(int64_t)h.write); o.u64(h.v); }
+        }
+        o.u64(c.readpos);
+        o.u64(c.cov.size());
+        o.raw(c.cov.data(), c.cov.size() * 4);
+        o.u64(c.supply_pos); o.u64(c.nreads); o.u64(c.irq0); o.u64(c.frame0); o.u64(c.doomed);
+        o.u64(c.supply != nullptr || c.pokes != nullptr);
+    }
+    o.u64(s_entering); o.u64(s_any_done); o.u64(s_refused); o.u64(s_refused_since);
+    return o.b;
+}
+}  /* namespace */
+
+extern "C" size_t xmen2_verify_state_save(void *dst, size_t cap)
+{
+    verify_init();
+    std::vector<uint8_t> b = state_bytes();
+    for (int d = 0; d < s_depth; d++)
+        if (s_ctx[d]->mode != 1 || s_ctx[d]->supply || s_ctx[d]->pokes) {
+            fprintf(stderr, "[verify] a state file inside a C run or a synthetic case of $%06X\n", (unsigned)s_ctx[d]->fn->addr);
+            return 0;
+        }
+    if (!dst) return b.size();
+    if (cap < b.size()) return 0;
+    memcpy(dst, b.data(), b.size());
+    return b.size();
+}
+
+extern "C" int xmen2_verify_state_load(const void *src, size_t len)
+{
+    verify_init();
+    In in{ (const uint8_t *)src, (const uint8_t *)src + len };
+    if (in.u64() != STATE_MAGIC || in.u64() != (uint64_t)xm_verify_fn_count) {
+        fprintf(stderr, "[verify] the state file's testing state is of another build\n");
+        return 0;
+    }
+    for (int i = 0; i < xm_verify_fn_count && in.ok; i++) {
+        Stat &st = s_stat_store[i];
+        st.checked = in.u64(); st.mismatches = in.u64(); st.irq = in.u64(); st.seen = in.u64(); st.synth = in.u64();
+        st.synth_done = in.u64() != 0;
+        st.first = in.str();
+        uint64_t n = in.u64();
+        if (!in.ok || n > len) { in.ok = false; break; }
+        std::vector<uint32_t> cov((size_t)n);
+        in.raw(cov.data(), cov.size() * 4);
+        st.covered = std::unordered_set<uint32_t>(cov.begin(), cov.end());
+    }
+    uint64_t depth = in.u64();
+    if (depth > (uint64_t)MAX_DEPTH) in.ok = false;
+    for (int d = 0; in.ok && d < (int)depth; d++) {
+        Ctx &c = *s_ctx[d];
+        uint64_t fi = in.u64();
+        if (fi >= (uint64_t)xm_verify_fn_count) { in.ok = false; break; }
+        c.fn = &xm_verify_fns[fi];
+        c.mode = (int)in.u64();
+        in.raw(c.pre, sizeof c.pre); in.raw(c.post, sizeof c.post);
+        for (std::vector<Hw> *log : { &c.logA, &c.logB }) {
+            uint64_t n = in.u64();
+            if (!in.ok || n > len) { in.ok = false; break; }
+            log->resize((size_t)n);
+            for (Hw &h : *log) { h.addr = (uint32_t)in.u64(); h.size = (int)(int64_t)in.u64(); h.write = (int)(int64_t)in.u64(); h.v = (uint16_t)in.u64(); }
+        }
+        c.readpos = (size_t)in.u64();
+        uint64_t n = in.u64();
+        if (!in.ok || n > len) { in.ok = false; break; }
+        c.cov.resize((size_t)n);
+        in.raw(c.cov.data(), c.cov.size() * 4);
+        c.supply_pos = (size_t)in.u64(); c.nreads = (size_t)in.u64(); c.irq0 = in.u64(); c.frame0 = in.u64(); c.doomed = in.u64() != 0;
+        c.supply = nullptr;
+        c.pokes = nullptr;
+        if (in.u64()) in.ok = false;
+    }
+    s_depth = (int)depth;
+    s_entering = (uint32_t)in.u64(); s_any_done = in.u64() != 0; s_refused = in.u64(); s_refused_since = in.u64();
+    if (!in.ok || in.p != in.end) {
+        fprintf(stderr, "[verify] the state file's testing state is malformed\n");
+        return 0;
+    }
+    g_xhw_hook = s_depth ? hw_hook : nullptr;
+    g_xinsn_hook = s_depth ? insn_hook : nullptr;
+    return 1;
+}
+
+extern "C" int xmen2_verify_entry(uint32_t addr)
+{
+    verify_init();
     if (s_entering == addr) { s_entering = 0; return 0; }   /* the generated run under test */
     auto it = s_fns.find(addr);
     if (it == s_fns.end() || (!s_only.empty() && !s_only.count(addr))) return 0;
@@ -740,7 +873,7 @@ extern "C" int xmen2_verify_entry(uint32_t addr)
        another test too: everything is put back) */
     if (!s_depth && !s_any_done) { s_any_done = true; run_synth(addr, false); }
     run_synth(addr, true);
-    Stat &st = s_stats[addr];
+    Stat &st = stat_of(fn);
     /* every call until 2000 have been checked, then one in 64. A call the sampling skips is
        still a probe while the function's checked calls haven't covered all its instructions
        (XMEN2_VERIFY_INSNS): its generated run is traced, and it is compared only if it reached an

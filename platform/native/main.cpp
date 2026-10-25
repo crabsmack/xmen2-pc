@@ -17,6 +17,8 @@
  *   --hash-out F         the [FBHASH] lines to F instead of stderr
  *   --branch-plan F      (--benchmark) other runs that start with this one's pads, played from saves of
  *                        this run (`AT TOTAL DIR SCRIPT`: see run_branches)
+ *   --state-at F         (--benchmark) states for other processes at runner frames (`AT PATH`: "State files")
+ *   --state-load F       (--benchmark) start from such a state, as the branch from there would
  *   --options K=V,...    the enhancement options (phase 6, options.cpp; also xmen2.ini beside the
  *                        runner); --options --json lists them and exits
  *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
@@ -38,6 +40,7 @@
 #include "native.h"
 #include "state.h"
 #include "xmen2_image.h"
+#include "state_place.h"
 
 extern "C" {
 #include "audio/event_queue.h"
@@ -276,6 +279,11 @@ static FILE *s_branch_log, *s_branch_stdout;
 static std::string s_branch_json;   /* the branch's own fields for its benchmark line */
 static bool branch_running(void) { return s_branch_on; }
 static void run_branches(void);
+static void save_states(void);   /* --state-at (see "State files" below run_branches) */
+static void state_file_load(const char *path);
+static void load_states(const char *path);
+static uint64_t s_loaded_at;
+static std::string s_loaded_json;
 
 extern "C" void plat_sync_row(uint64_t sync, uint64_t frame)
 {
@@ -335,6 +343,7 @@ static void at_sync_work(uint64_t sync);
 
 extern "C" void plat_at_sync(uint64_t sync)
 {
+    if (!s_branch_on) save_states();   /* --state-at: before a branch of the same frame */
     if (!s_branch_on && s_plan_next < s_plan.size()) run_branches();   /* --branch-plan: before this run's own work */
     at_sync_work(sync);
 }
@@ -607,18 +616,19 @@ extern "C" void plat_frame_end(uint64_t frame)
     if (s_benchmark && frame >= s_benchmark) {
         bool branch = branch_running();
         double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - (branch ? s_branch_t0 : s_t0)).count();
-        uint64_t played = branch ? frame - s_branch_at : frame;   /* a branch's own frames, timed */
+        uint64_t played = frame - (branch ? s_branch_at : s_loaded_at);   /* a branch's (a loaded run's) own frames, timed */
         FILE *o = branch ? s_branch_stdout : stdout;
         fprintf(o, "GENESISRECOMP_BENCHMARK {\"game\":\"xmen2\",\"frames\":%llu,\"seconds\":%.9f,\"fps\":%.3f,"
                 "\"ms_per_frame\":%.6f,\"requested_frames\":%llu,\"complete\":true,\"runner\":\"native\"%s}\n",
                 (unsigned long long)frame, s, s > 0 ? (double)played / s : 0.0, played ? s * 1000.0 / (double)played : 0.0,
-                (unsigned long long)s_benchmark, branch ? s_branch_json.c_str() : "");
+                (unsigned long long)s_benchmark, branch ? s_branch_json.c_str() : s_loaded_json.c_str());
         fflush(o);
         if (branch) {   /* --branch-plan: the run ends here; its process goes on with the plan */
             report_counters_to(s_branch_log);
             s_branch_done = true;
             return;
         }
+        save_states();   /* --state-at: this run's last frame */
         if (s_plan_next < s_plan.size()) run_branches();   /* the plan's branches at this run's last frame */
         exit(0);
     }
@@ -627,6 +637,9 @@ extern "C" void plat_frame_end(uint64_t frame)
 /* ---- --branch-plan (see the declarations above plat_sync_row) --------------------------------- */
 
 extern "C" void xm_export_branch(int save);
+extern "C" size_t xm_export_counts(void *buf, int get);
+extern "C" void xm_mem_counts(unsigned long long v[2], int get);
+extern "C" uint8_t *xm_arena;
 extern "C" void xm_mem_branch(int save);
 
 /* this run's files, by path, so a branch's copies start with its rows so far */
@@ -751,10 +764,273 @@ static void load_plan(const char *path)
     std::stable_sort(s_plan.begin(), s_plan.end(), [](const Branch &a, const Branch &b) { return a.at < b.at; });
 }
 
+/* ---- --state-at FILE, --state-load FILE (state files: a branch point for another process) -----------
+ * `--state-at FILE`: lines `AT PATH`; when runner frame AT is done (where --branch-plan would save,
+ * and before it; inside a state probe's window: at its start, as a branch point), everything a
+ * branch starts from goes to PATH (written as PATH.tmp, then renamed):
+ * the savestate with its counters, what run_branches keeps outside it, and where this run's files
+ * stand (path and length; flushed). `--state-load FILE`: this run starts there, as the branch would:
+ * its files begin with a copy of the saving run's up to that point, then its own rows; the run plays
+ * on to --benchmark. The fiber's stack holds host addresses: a file loads only in a process laid out
+ * as the one that saved it (state_place.h: the same executable at its preferred base, the same /GS
+ * cookie, the stack and the arena at their fixed places), with the same options and files, which
+ * the load checks. The benchmark line has the branch's `branched_at`. */
+struct StateAt { uint64_t at; std::string path; };
+static std::vector<StateAt> s_states;
+static size_t s_states_next;
+
+namespace {
+struct Out {
+    std::vector<uint8_t> b;
+    void raw(const void *p, size_t n) { b.insert(b.end(), (const uint8_t *)p, (const uint8_t *)p + n); }
+    void u64(uint64_t v) { raw(&v, 8); }
+    void bytes(const void *p, size_t n) { u64(n); raw(p, n); }
+    void str(const std::string &s) { bytes(s.data(), s.size()); }
+};
+struct In {
+    const uint8_t *p, *end;
+    bool ok;
+    void raw(void *d, size_t n) { if ((size_t)(end - p) < n) { ok = false; memset(d, 0, n); return; } memcpy(d, p, n); p += n; }
+    uint64_t u64() { uint64_t v; raw(&v, 8); return v; }
+    const uint8_t *bytes(size_t *n) {
+        uint64_t k = u64();
+        if (!ok || k > (uint64_t)(end - p)) { ok = false; *n = 0; return p; }
+        const uint8_t *at = p; p += k; *n = (size_t)k; return at;
+    }
+    std::string str() { size_t n; const uint8_t *at = bytes(&n); return std::string((const char *)at, n); }
+};
+const char STATE_MAGIC[8] = { 'X', 'N', 'S', 'T', 'A', 'T', 'E', '1' };
+}  // namespace
+
+/* this run's files, by kind: the open file (a reference, so a load can replace it) and its path */
+struct RunFile { const char *kind; FILE **f; std::string path; };
+static std::vector<RunFile> run_files(void)
+{
+    static FILE *present;
+    present = present_logging() ? present_log_file(nullptr) : nullptr;   /* taken out for now: put back by the caller */
+    return { { "sync", &s_sync, s_sync_path }, { "game", &s_game_rows, s_game_rows_path }, { "digest", &s_digest, s_digest_path },
+             { "probe", &s_probe_rows, s_probe_dir + "/probe.csv" }, { "probe_snap", &s_probe_snap, s_probe_dir + "/probe_snap.csv" },
+             { "hash", &s_hash_out, s_hash_path }, { "present", &present, s_present_path } };
+}
+static void run_files_done(std::vector<RunFile> &files)
+{
+    for (RunFile &r : files)
+        if (!strcmp(r.kind, "present") && *r.f) present_log_file(*r.f);
+}
+
+static XmPlace place_here(void)
+{
+    uintptr_t lo = 0, top = 0;
+    machine_fiber_range(&lo, &top);
+    XmPlace p;
+    xm_place_get(&p, lo, top, (uintptr_t)xm_arena);
+    return p;
+}
+
+static void state_file_write(const std::string &path)
+{
+    Out o;
+    o.raw(STATE_MAGIC, sizeof STATE_MAGIC);
+    XmPlace place = place_here();
+    o.raw(&place, sizeof place);
+    o.str(options_effective_json());
+    o.u64(machine_frame_no());
+    Snapshot snap;
+    std::vector<size_t> spans = state_reported_spans();
+    state_save(snap);
+    state_set_reported_spans(spans);   /* this save is not the run's own */
+    std::vector<uint8_t> blob;
+    state_serialize(snap, blob);
+    o.bytes(blob.data(), blob.size());
+    o.u64(spans.size());
+    for (size_t s : spans) o.u64(s);
+    o.u64(s_state_bytes);
+    o.u64(machine_stack_peak());
+    std::vector<uint8_t> part;
+    present_state_save(part);
+    o.bytes(part.data(), part.size());
+    part.clear();
+    capture_state_save(part);
+    o.bytes(part.data(), part.size());
+    std::string ws[3];
+    ws_strings(ws, 1);
+    for (const std::string &s : ws) o.str(s);
+    part.resize(xm_export_counts(nullptr, 1));
+    xm_export_counts(part.data(), 1);
+    o.bytes(part.data(), part.size());
+    unsigned long long mem[2];
+    xm_mem_counts(mem, 1);
+    o.u64(mem[0]);
+    o.u64(mem[1]);
+    std::vector<RunFile> files = run_files();
+    o.u64(files.size());
+    for (RunFile &r : files) {
+        o.str(r.kind);
+        long long len = -1;
+        if (*r.f) {
+            fflush(*r.f);
+            FILE *in = fopen(r.path.c_str(), "rb");
+            if (in && fseek(in, 0, SEEK_END) == 0) len = (long long)ftell(in);
+            if (in) fclose(in);
+            if (len < 0) { fprintf(stderr, "[state] cannot measure %s\n", r.path.c_str()); exit(2); }
+        }
+        o.str(r.path);
+        o.u64((uint64_t)len);
+    }
+    run_files_done(files);
+    if (int fi = state_section_index("fiber"); fi >= 0 && snap.spans[(size_t)fi].second > 48) {   /* XMEN2_STATE_SCAN */
+        const uint8_t *fb = snap.bytes.data() + snap.spans[(size_t)fi].first;   /* fiber_compat.c's header, context, span */
+        uint64_t span_lo, span_len;
+        uint32_t ctx;
+        memcpy(&span_lo, fb + 24, 8);
+        memcpy(&span_len, fb + 32, 8);
+        memcpy(&ctx, fb + 40, 4);
+        if (48 + (size_t)ctx + span_len <= snap.spans[(size_t)fi].second) {
+            xm_place_scan(fb + 48, ctx, 0, &place, "context");
+            xm_place_scan(fb + 48 + ctx, (size_t)span_len, span_lo, &place, "stack");
+        }
+    }
+    std::string tmp = path + ".tmp";
+    FILE *f = fopen(tmp.c_str(), "wb");
+    bool ok = f && fwrite(o.b.data(), 1, o.b.size(), f) == o.b.size();
+    if (f && fclose(f) != 0) ok = false;
+    remove(path.c_str());
+    if (!ok || rename(tmp.c_str(), path.c_str()) != 0) { fprintf(stderr, "[state] cannot write %s\n", path.c_str()); exit(2); }
+    fprintf(stderr, "[state] %llu %s\n", (unsigned long long)machine_frame_no(), path.c_str());
+    if (getenv("XMEN2_STATE_SECTIONS")) {   /* testing: each section's SHA-1 (a loaded run's later save vs the run's own) */
+        std::vector<std::string> names = state_section_names();
+        fprintf(stderr, "[state] sections %llu", (unsigned long long)machine_frame_no());
+        for (size_t i = 0; i < snap.spans.size() && i < names.size(); i++) {
+            uint8_t d[20];
+            xm_sha1(snap.bytes.data() + snap.spans[i].first, snap.spans[i].second, d);
+            fprintf(stderr, " %s=%02x%02x%02x%02x%02x%02x", names[i].c_str(), d[0], d[1], d[2], d[3], d[4], d[5]);
+        }
+        fprintf(stderr, "\n");
+    }
+}
+
+/* the states due at this runner frame (plat_at_sync, the benchmark's end) */
+static void save_states(void)
+{
+    uint64_t f = machine_frame_no();
+    while (s_states_next < s_states.size() && s_states[s_states_next].at == f) state_file_write(s_states[s_states_next++].path);
+}
+
+[[noreturn]] static void state_refuse(const char *path, const std::string &why)
+{
+    fprintf(stderr, "[state] %s: %s\n", path, why.c_str());
+    exit(2);
+}
+
+/* After machine_start (the fiber made at its place, painted), before the first tick */
+static void state_file_load(const char *path)
+{
+    std::vector<uint8_t> file;
+    if (FILE *f = fopen(path, "rb")) {
+        uint8_t buf[65536];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof buf, f)) > 0) file.insert(file.end(), buf, buf + n);
+        fclose(f);
+    } else state_refuse(path, "cannot read it");
+    In in{ file.data(), file.data() + file.size(), true };
+    char magic[8];
+    in.raw(magic, sizeof magic);
+    if (!in.ok || memcmp(magic, STATE_MAGIC, sizeof magic)) state_refuse(path, "not a state file of this runner");
+    XmPlace saved, mine = place_here();
+    in.raw(&saved, sizeof saved);
+    if (const char *why = xm_place_mismatch(&saved, &mine)) {
+        if (!getenv("XMEN2_STATE_PLACE_UNCHECKED")) state_refuse(path, why);   /* dev: what the check prevents */
+        fprintf(stderr, "[state] %s: %s (XMEN2_STATE_PLACE_UNCHECKED: loading it anyway)\n", path, why);
+    }
+    if (in.str() != options_effective_json()) state_refuse(path, "saved with other options");
+    uint64_t frame = in.u64();
+    size_t n;
+    const uint8_t *blob = in.bytes(&n);
+    Snapshot snap;
+    if (!in.ok || !state_deserialize(blob, n, snap)) state_refuse(path, "a malformed savestate");
+    state_load(snap, s_state_skip);   /* --state-skip: the negative control */
+    std::vector<size_t> spans((size_t)in.u64());
+    for (size_t &s : spans) s = (size_t)in.u64();
+    state_set_reported_spans(spans);
+    s_state_bytes = (size_t)in.u64();
+    machine_stack_set_peak(in.u64());
+    const uint8_t *part = in.bytes(&n);
+    if (!in.ok || !present_state_load(part, n)) state_refuse(path, "a malformed presentation state");
+    part = in.bytes(&n);
+    if (!in.ok || !capture_state_load(part, n)) state_refuse(path, "a malformed sound class table");
+    std::string ws[3];
+    for (std::string &s : ws) s = in.str();
+    ws_strings(ws, 0);
+    part = in.bytes(&n);
+    if (!in.ok || n != xm_export_counts(nullptr, 1)) state_refuse(path, "the export's counts are of another build");
+    xm_export_counts((void *)part, 0);
+    unsigned long long mem[2];
+    mem[0] = in.u64();
+    mem[1] = in.u64();
+    xm_mem_counts(mem, 0);
+    std::vector<RunFile> files = run_files();
+    uint64_t nfiles = in.u64();
+    if (nfiles != files.size()) state_refuse(path, "another set of files");
+    for (RunFile &r : files) {
+        std::string kind = in.str(), from = in.str();
+        long long len = (long long)in.u64();
+        if (!in.ok || kind != r.kind) state_refuse(path, "another set of files");
+        if ((len >= 0) != (*r.f != nullptr)) state_refuse(path, std::string("the run that saved it ") + (len >= 0 ? "wrote" : "did not write") + " the " + kind + " file, this one " + (len >= 0 ? "doesn't" : "does"));
+        if (len < 0) continue;
+        /* this run's file: the saving run's first `len` bytes (its header and rows so far), then its own */
+        fclose(*r.f);
+        FILE *src = fopen(from.c_str(), "rb"), *dst = fopen(r.path.c_str(), "wb");
+        if (!src || !dst) state_refuse(path, "cannot copy " + from + " to " + r.path);
+        char buf[65536];
+        for (long long left = len; left > 0; ) {
+            size_t k = fread(buf, 1, left < (long long)sizeof buf ? (size_t)left : sizeof buf, src);
+            if (!k) state_refuse(path, from + " is shorter than when the state was saved");
+            fwrite(buf, 1, k, dst);
+            left -= (long long)k;
+        }
+        fclose(src);
+        fclose(dst);
+        *r.f = fopen(r.path.c_str(), "a");   /* text mode, as this run's own files */
+        if (!*r.f) state_refuse(path, "cannot write " + r.path);
+        setvbuf(*r.f, nullptr, _IOFBF, 1 << 20);
+    }
+    run_files_done(files);
+    if (!in.ok || in.p != in.end) state_refuse(path, "malformed");
+    if (machine_frame_no() != frame) state_refuse(path, "the savestate is not at its frame");
+    s_loaded_at = frame;
+    s_loaded_json = ",\"branched_at\":" + std::to_string(frame);
+    fprintf(stderr, "[state] loaded %s: frame %llu\n", path, (unsigned long long)frame);
+}
+
+static void load_states(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    if (!f) { fprintf(stderr, "[native] cannot open the state list %s\n", path); exit(2); }
+    char line[2048];
+    while (fgets(line, sizeof line, f)) {
+        unsigned long long at = 0;
+        int used = 0;
+        if (sscanf(line, "%llu %n", &at, &used) != 1) continue;
+        std::string p = line + used;
+        while (!p.empty() && (p.back() == '\n' || p.back() == '\r')) p.pop_back();
+        if (!at || p.empty()) {
+            fprintf(stderr, "[native] state list %s: bad line: %s", path, line);
+            exit(2);
+        }
+        if (s_probe_every && at % s_probe_every) {   /* as load_plan: not inside a probe's window, its start */
+            uint64_t q = at - at % s_probe_every;
+            if (q && at <= q + s_probe_len) at = q;
+        }
+        s_states.push_back(StateAt{ at, p });
+    }
+    fclose(f);
+    std::stable_sort(s_states.begin(), s_states.end(), [](const StateAt &a, const StateAt &b) { return a.at < b.at; });
+}
+
 int main(int argc, char **argv)
 {
     const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".", *game_rows = nullptr;
-    const char *plan = nullptr, *hash_out = nullptr;
+    const char *plan = nullptr, *hash_out = nullptr, *states = nullptr, *state_in = nullptr;
     bool session = false, no_render = false, scan_first = false;
     uint64_t seed = 0;
     xm_install_crash_trace();   /* a host exception prints where and the stack (crash_win.cpp) */
@@ -765,6 +1041,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--hash-frames") && i + 1 < argc) s_hash_frames = (uint32_t)strtoul(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--hash-out") && i + 1 < argc) hash_out = argv[++i];
         else if (!strcmp(argv[i], "--branch-plan") && i + 1 < argc) plan = argv[++i];
+        else if (!strcmp(argv[i], "--state-at") && i + 1 < argc) states = argv[++i];
+        else if (!strcmp(argv[i], "--state-load") && i + 1 < argc) state_in = argv[++i];
         else if (!strcmp(argv[i], "--fresh-evidence")) {}
         else if (!strcmp(argv[i], "--no-render")) no_render = true;
         else if (!strcmp(argv[i], "--quit-after") && i + 1 < argc) s_quit_after = strtoull(argv[++i], nullptr, 10);
@@ -816,7 +1094,10 @@ int main(int argc, char **argv)
         machine_set_session(seed);
         audio_mixer_init();
     }
-    if (s_state_skip && !s_probe_every) { fprintf(stderr, "[native] --state-skip needs --state-probe\n"); return 2; }
+    if (s_state_skip && !s_probe_every && !state_in) {
+        fprintf(stderr, "[native] --state-skip needs --state-probe or --state-load\n");
+        return 2;
+    }
     if (s_probe_every) {
         std::string d = probe_out;
         s_probe_rows = fopen((d + "/probe.csv").c_str(), "w");
@@ -891,11 +1172,19 @@ int main(int argc, char **argv)
                         (unsigned long long)b.at, (unsigned long long)s_benchmark);
                 return 2;
             }
-        s_present_path = present_log ? present_log : "";
-        s_game_rows_path = game_rows ? game_rows : "";
-        s_digest_path = digest ? digest : "";
-        s_probe_dir = probe_out;
     }
+    if (states || state_in) {   /* state files: as a branch plan (see "State files") */
+        if (!s_benchmark || !script || s_flip || s_scan_hi || netplay_enabled() || (s_hash_frames && !hash_out)) {
+            fprintf(stderr, "[native] --state-at and --state-load need --benchmark and --input-script, --hash-out with "
+                            "--hash-frames, and no --flip, --flip-scan or --netplay\n");
+            return 2;
+        }
+        if (states) load_states(states);
+    }
+    s_present_path = present_log ? present_log : "";   /* every file of the run by path (branches, state files) */
+    s_game_rows_path = game_rows ? game_rows : "";
+    s_digest_path = digest ? digest : "";
+    s_probe_dir = probe_out;
     atexit(report_counters);
     xm_native_mem_init();
     g_machine.bus.pad_type[0] = g_machine.bus.pad_type[1] = 1;   /* 6-button pads, as the runners' settings */
@@ -917,6 +1206,18 @@ int main(int argc, char **argv)
         s_benchmark = 0;
         main_np_begin();
         netplay_run(frames);
+    }
+    if (state_in) {   /* from a saved frame: as the branch from there (run_branches) */
+        machine_start();
+        state_file_load(state_in);
+        if (s_loaded_at >= s_benchmark || (!s_plan.empty() && s_plan.front().at < s_loaded_at)
+            || (!s_states.empty() && s_states.front().at <= s_loaded_at)) {
+            fprintf(stderr, "[native] %s is of frame %llu: past this run's --benchmark, branches or states\n", state_in,
+                    (unsigned long long)s_loaded_at);
+            return 2;
+        }
+        at_sync_work(s_sync_rows);
+        machine_loop();
     }
     machine_run();   /* never returns: the game ends the process (the benchmark, a quit, a fatal) */
     return 4;

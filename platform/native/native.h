@@ -43,6 +43,12 @@ bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int
 void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
 std::string present_counters_json(void);
 #include <vector>
+/* --state-at / --state-load (main.cpp "State files"): host state outside the savestate, as bytes */
+void        present_state_save(std::vector<uint8_t> &out);       /* present_branch_save's, for another process */
+bool        present_state_load(const uint8_t *p, size_t n);
+void        ws_strings(std::string s[3], int get);                /* widescreen.cpp's counter strings, got (1) / set (0) */
+void        capture_state_save(std::vector<uint8_t> &out);       /* capture.cpp: the songs' classes so far */
+bool        capture_state_load(const uint8_t *p, size_t n);
 void        ws_digest_fields(std::vector<uint8_t> *out);   /* widescreen.cpp: its part of the canonical digest */
 /* players.cpp (phase 7: four players on the platform side, the mp counters) */
 void        players_spr_owner(const void *owner, int idx);
@@ -81,6 +87,7 @@ void xm_vint_handler(void);              /* Irq_VBlankVector: the level-6 vector
 void     machine_power_on(void);         /* power-on, then runner frame 1 begins */
 void     machine_run(void);              /* the game on its fiber, the host between its sync points; never returns */
 void     machine_start(void);            /* the game's fiber, made (netplay runs the ticks itself) */
+void     machine_loop(void);             /* tick after tick from where the game is (machine_run's loop); never returns */
 void     machine_set_render(int on);     /* 0: ticks render no frame (a rollback's replay) */
 void     machine_render_off(void);       /* --no-render: no tick renders a frame (traces without a picture) */
 uint16_t machine_peek16(uint32_t a);     /* a word of the 68000 bus (ROM, work RAM, players 3-4's region) */
@@ -90,7 +97,9 @@ uint64_t machine_digest(void);           /* the canonical digest of the state no
 void     machine_mask_picture(uint8_t *ram, uint8_t *vram);   /* zero what only the picture depends on (R8, P7 R12) */
 void     machine_digest_parts(uint64_t out[3]);   /* the last digest's partitions: work RAM, the VDP, the rest */
 uint64_t machine_stack_peak(void);       /* the game fiber's deepest stack use, bytes */
+int      machine_fiber_range(uintptr_t *lo, uintptr_t *top);   /* the game fiber's stack (state files' layout) */
 void     machine_stack_repaint(uint64_t peak);   /* --branch-plan: the paint below that depth put back */
+void     machine_stack_set_peak(uint64_t peak);  /* --state-load: the paint as a run's whose deepest was that */
 void     machine_set_session(uint64_t seed);   /* the session machine (P7 "Definitions") */
 int      machine_session(void);
 uint64_t machine_session_seed(void);

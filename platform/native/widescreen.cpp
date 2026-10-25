@@ -187,6 +187,13 @@ void ws_branch(int save)
     else { s_screens_json = kept[0]; s_first_error = kept[1]; s_first_lost = kept[2]; }
 }
 
+/* --state-at / --state-load (main.cpp "State files"): the same strings, got (1) / set (0) */
+void ws_strings(std::string s[3], int get)
+{
+    if (get) { s[0] = s_screens_json; s[1] = s_first_error; s[2] = s_first_lost; }
+    else { s_screens_json = s[0]; s_first_error = s[1]; s_first_lost = s[2]; }
+}
+
 static void note_screen(void)
 {
     screen_now();

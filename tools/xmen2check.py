@@ -466,7 +466,26 @@ def copy_runner(src: Path, run_dir: Path) -> None:
     for f in src.parent.iterdir():
         if f.is_file() and (f.name == src.name or f.suffix.lower() == ".dll" or f.name == src.stem + ".pdb"):
             shutil.copy2(f, run_dir / f.name)
+    fixed_base(run_dir / src.name)
     (run_dir / "settings.ini").write_text(SETTINGS)
+
+
+def fixed_base(exe: Path) -> None:
+    """A runner copy that Windows loads at its preferred base: the PE header's DYNAMICBASE flag
+    cleared (no ASLR for this copy). A state file holds the game fiber's raw stack, return addresses
+    included, so it loads only into a process with the executable where the saving one had it
+    (game/runtime/state_place.cpp; the build's own runners keep ASLR)."""
+    if sys.platform != "win32":
+        return
+    b = bytearray(exe.read_bytes())
+    pe = int.from_bytes(b[0x3C:0x40], "little")
+    at = pe + 24 + 70   # IMAGE_OPTIONAL_HEADER64.DllCharacteristics
+    if b[pe:pe + 4] != b"PE\0\0" or int.from_bytes(b[pe + 24:pe + 26], "little") != 0x20B:
+        sys.exit(f"{exe}: not a 64-bit PE image")
+    ch = int.from_bytes(b[at:at + 2], "little")
+    if ch & 0x40:
+        b[at:at + 2] = (ch & ~0x40).to_bytes(2, "little")
+        exe.write_bytes(bytes(b))
 
 
 def drop_runner(a, run_dir: Path, res: dict) -> dict:
@@ -485,12 +504,14 @@ def drop_runner(a, run_dir: Path, res: dict) -> dict:
 def cmd_trace_group(a) -> dict:
     """Native traces of many corpus runs at once, each as `trace --mode native --run R --input I
     --replay D --out O` with this command's flags would write it (O's files, the per-run JSON in
-    the result), played as few processes as can: a run whose runner-frame pads start with the
-    TAS's for BRANCH_MIN frames or more is a branch of a process playing the TAS (the runner's
-    --branch-plan: from a save at the last frame they share, not from power-on), grouped by
-    pack_branches. --runs FILE: a JSON list of {"run", "input", "replay", "out"}; the TAS's own
-    entry (run "tas") is its carrier, else --tas-input/--tas-replay give it. --no-branch: every run
-    alone (the control). Prints {run: result or {"error": why}}; exits 1 when any failed."""
+    the result), without replaying the TAS: a run whose runner-frame pads start with the TAS's for
+    BRANCH_MIN frames or more branches from the TAS at the last frame they share, not from power-on.
+    By default each such run is a process of its own that starts from a state file the TAS run saved
+    there (the runner's --state-at / --state-load: state_units); --in-process: a branch of a process
+    playing the TAS (--branch-plan: from a save in the same process), grouped by pack_branches.
+    --runs FILE: a JSON list of {"run", "input", "replay", "out"}; the TAS's own entry (run "tas") is
+    the producer (its carrier), else --tas-input/--tas-replay give it. --no-branch: every run alone
+    (the control). Prints {run: result or {"error": why}}; exits 1 when any failed."""
     import concurrent.futures
     import os
     import tempfile
@@ -534,11 +555,20 @@ def cmd_trace_group(a) -> dict:
         elif r != "tas":
             plain.append((None, frames[r], r))
     own = (None, frames["tas"], "tas") if "tas" in runs else None
-    units = pack_branches(branches, own, plain, None, max(frames.values(), default=0), a.jobs)
+    if a.in_process:
+        units = pack_branches(branches, own, plain, None, max(frames.values(), default=0), a.jobs)
+    else:
+        units = state_units(branches, own, plain, carrier_script)
+    states = StateFiles(work / "states") if any(u.get("states") for u in units) else None
     gate = common.MemGate()
     results: dict[str, dict] = {}
+    done: list[tuple] = []   # each process's outputs: read when every process has ended (a state's file copies)
 
     def one(u: dict) -> None:
+        if "load" in u and not states.wait(u["load"], None):   # a branch: its state first, outside the gate
+            results[u["run"]] = {"error": f"the TAS run ended before saving frame {u['load']}; see "
+                                          f"{(Path(runs['tas']['out']).resolve() if own else work / units[0]['name']) / 'runner.log'}"}
+            return
         with gate:
             play(u)
 
@@ -555,15 +585,23 @@ def cmd_trace_group(a) -> dict:
         env = {**os.environ, "GENESIS_NO_LAUNCHER": "1", "SDL_AUDIODRIVER": "dummy", "XMEN2_SYNC_CSV": str(d / "sync.csv"),
                **crash_env(src)}
         env.pop("GENESIS_REPLAY_IN", None)
+        hash_out = bool(u["branches"]) or states is not None   # the [FBHASH] lines in a file: branches copy it
         cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(u["frames"]), "--input-script", str(script),
-               "--fresh-evidence", *stepped_args(a, d, d / "fbhash.log" if u["branches"] else None)]
+               "--fresh-evidence", *stepped_args(a, d, d / "fbhash.log" if hash_out else None)]
+        if states:   # state files: every process of the group with one /GS cookie
+            env["XMEN2_GS_COOKIE"] = states.cookie
+        if u.get("states"):   # the runner's --state-at: FRAME PATH
+            cmd += ["--state-at", str(states.plan(u["states"], d / "states.txt"))]
+        if "load" in u:
+            cmd += ["--state-load", str(states.path(u["load"]))]
         if u["branches"]:
             plan = d / "branches.txt"
             plan.write_text("".join(f"{at} {at + n} {Path(runs[r]['out']).resolve()} "
                                     f"{Path(runs[r]['out']).resolve() / 'input.input'}\n"
                                     for at, n, r, _p in u["branches"]), newline="\n")
             cmd += ["--branch-plan", str(plan)]
-        log(f"trace-group {u['name']}: {u['frames']} frames" + (f" + {len(u['branches'])} branches" if u["branches"] else ""))
+        log(f"trace-group {u['name']}: {u['frames']} frames" + (f" + {len(u['branches'])} branches" if u["branches"] else "")
+            + (f", {len(u['states'])} states" if u.get("states") else "") + (f" from frame {u['load']}" if "load" in u else ""))
         with open(d / "runner.log", "w", encoding="utf-8", errors="replace") as lf:
             try:
                 r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
@@ -571,10 +609,18 @@ def cmd_trace_group(a) -> dict:
                 code, stdout = r.returncode, r.stdout
             except subprocess.TimeoutExpired:
                 code, stdout = -1, ""
+            finally:
+                if u.get("states"):
+                    states.producer_done.set()
         if mine:
             (d / "runner.stdout").write_text(stdout, encoding="utf-8")
+        done.append((u, code, stdout, d, run_dir))
+
+    def finish(u: dict, code: int, stdout: str, d: Path, run_dir: Path) -> None:
+        mine = u["run"]
         stderr = (d / "runner.log").read_text(errors="replace")
-        outs = ([(mine, d, stdout, stderr, stderr if not u["branches"] else
+        hash_out = bool(u["branches"]) or states is not None
+        outs = ([(mine, d, stdout, stderr, stderr if not hash_out else
                   (d / "fbhash.log").read_text(errors="replace") if (d / "fbhash.log").exists() else "")] if mine else [])
         for _at, _n, r, _p in u["branches"]:
             o = Path(runs[r]["out"]).resolve()
@@ -599,13 +645,17 @@ def cmd_trace_group(a) -> dict:
         if code == 0 and not keep:
             shutil.rmtree(run_dir, ignore_errors=True)
 
-    order = sorted(units, key=lambda u: -u["cost"])
+    order = units if states else sorted(units, key=lambda u: -u["cost"])   # state_units: already in order
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(a.jobs, len(units)))) as ex:
         list(ex.map(one, order))
+    for args in done:   # sync.csv gets its fb column only now: a branch's process copies the TAS run's rows
+        finish(*args)
     shutil.rmtree(work, ignore_errors=True)
     failed = sorted(r for r in runs if "error" in results.get(r, {"error": "not played"}))
     out = {"runs": len(runs), "processes": [{"name": u["name"], "frames": u["frames"],
-                                             "branches": [b[2] for b in u["branches"]]} for u in units],
+                                             "branches": [b[2] for b in u["branches"]],
+                                             **({"states": u["states"]} if u.get("states") else {}),
+                                             **({"loaded_at": u["load"]} if "load" in u else {})} for u in units],
            "failed": failed, "per_run": {r: results.get(r, {"error": "not played"}) for r in runs}}
     if failed:
         print(json.dumps(out))
@@ -639,18 +689,21 @@ def code_addrs_by_function() -> dict[str, list[int]]:
 BRANCH_MIN = 600   # frames of the TAS's input a run must start with to branch from a TAS run
 
 
-def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int) -> list[dict]:
+def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int, states: bool = True) -> list[dict]:
     """The runner processes a verify plays: {"input", "frames", "run" (the run whose results the
-    process's own JSON are, or None), "branches": [(at, frames, run, input)]}.
+    process's own JSON are, or None), "branches": [(at, frames, run, input)]}, and in states mode
+    "states" (the frames a process saves states at) or "load" (the frame it starts from).
 
     A run whose input starts with the TAS's first `at` >= BRANCH_MIN frames (the fuzz runs, most
-    scenarios) is played as a branch of a process playing the TAS (the runner's --branch-plan:
-    snapshot at `at`, the run's remaining frames, back to the snapshot), not from power-on: same
-    results (verify.cpp keeps its testing state across the branch), without replaying the prefix.
-    A process playing the TAS for branches stops at its last one, unless it is the TAS run itself.
-    Grouping: branches latest first, each into the TAS run or the last process opened if that keeps
-    it within a bound T, else into a new process; T is the one (from the longest run's frames up)
-    whose processes, longest first on `jobs` workers, finish first (pack_branches)."""
+    scenarios) branches from the TAS at `at`, not from power-on: same results (verify.cpp's testing
+    state goes with the machine's), without replaying the prefix. states (the default): a process
+    playing the TAS saves a state file at every such frame (the runner's --state-at) and each branch
+    is a process of its own from its state (--state-load), started as soon as the file is there
+    (state_units). Else in-process (the runner's --branch-plan: snapshot at `at`, the run's remaining
+    frames, back to the snapshot): a process playing the TAS for branches stops at its last one,
+    unless it is the TAS run itself; branches latest first, each into the TAS run or the last process
+    opened if that keeps it within a bound T, else into a new process; T is the one (from the longest
+    run's frames up) whose processes, longest first on `jobs` workers, finish first (pack_branches)."""
     want = {p: min(cap, script_frames(p)) if cap else script_frames(p) for p in inputs}
     branches, plain = [], []
     tas_pads = input_pads(tas) if tas else []
@@ -668,8 +721,68 @@ def verify_units(inputs: list[Path], tas: Path | None, cap: int, jobs: int) -> l
             plain.append(p)
     tas_run = next((p for p in plain if p.stem == "tas"), None)
     plain = [p for p in plain if p is not tas_run]
-    return pack_branches(branches, (tas_run, want[tas_run], "tas") if tas_run else None,
-                         [(p, want[p], p.stem) for p in plain], tas, max([want[p] for p in inputs], default=0), jobs)
+    own = (tas_run, want[tas_run], "tas") if tas_run else None
+    if states:
+        return state_units(branches, own, [(p, want[p], p.stem) for p in plain], tas)
+    return pack_branches(branches, own, [(p, want[p], p.stem) for p in plain], tas,
+                         max([want[p] for p in inputs], default=0), jobs)
+
+
+def state_units(branches: list[tuple], own: tuple | None, plain: list[tuple], carrier) -> list[dict]:
+    """verify_units' (and trace-group's) processes in states mode: the TAS run `own` (input, frames,
+    run), or with no TAS run a carrier playing `carrier`, the TAS's input, up to the last branch
+    frame, saves a state at every frame a branch (at, frames after it, run, input) starts from; each
+    branch is a process of its own from its state ("load"); `plain` runs play alone. Order: the
+    producer, the plain runs longest first, the branches by frame (each waits for its state)."""
+    ats = sorted({b[0] for b in branches})
+    units = []
+    if own or ats:
+        units.append({"input": own[0] if own else carrier, "frames": own[1] if own else ats[-1],
+                      "run": own[2] if own else None, "branches": [], "states": ats,
+                      "name": own[2] if own else f"tas-to-{ats[-1]}"})
+    units += sorted(({"input": p, "frames": n, "run": r, "branches": [], "name": r} for p, n, r in plain),
+                    key=lambda u: -u["frames"])
+    units += [{"input": p, "frames": at + n, "run": r, "branches": [], "load": at, "name": r}
+              for at, n, r, p in sorted(branches, key=lambda b: (b[0], b[2]))]
+    for u in units:
+        u["cost"] = u["frames"] - u.get("load", 0)
+    return units
+
+
+class StateFiles:
+    """The state files of a states-mode group (state_units): one per branch frame, under `root`; a
+    branch's process waits for its file (or the producer's end, or a stop) before it starts. One
+    /GS cookie for every process of the group (XMEN2_GS_COOKIE: game/runtime/state_place.cpp)."""
+
+    def __init__(self, root: Path):
+        import secrets
+        import threading
+        self.root = root
+        self.cookie = secrets.token_hex(6)
+        self.producer_done = threading.Event()
+        if root.exists():
+            shutil.rmtree(root)
+        root.mkdir(parents=True)
+
+    def path(self, at: int) -> Path:
+        return self.root / f"{at}.state"
+
+    def plan(self, ats: list[int], out: Path) -> Path:
+        out.write_text("".join(f"{at} {self.path(at)}\n" for at in ats), newline="\n")
+        return out
+
+    def wait(self, at: int, stop) -> Path | None:
+        """The state of frame `at` once written; None when the producer ended without it or `stop` is set."""
+        import time
+        p = self.path(at)
+        while not p.exists():
+            if (stop is not None and stop.is_set()) or self.producer_done.is_set():
+                return p if p.exists() else None
+            time.sleep(0.2)
+        return p
+
+    def done(self) -> None:
+        shutil.rmtree(self.root, ignore_errors=True)
 
 
 def pack_branches(branches: list[tuple], own: tuple | None, plain: list[tuple], carrier, longest: int,
@@ -722,8 +835,8 @@ def cmd_verify(a) -> dict:
     Exits non-zero, naming the run and why, when a run fails, plays short, or stopped testing
     early (its JSON's `stopped_early`); the output adds `per_run` (frames, functions_tested,
     calls_checked, calls_refused, seconds) and `processes` (how the runs were played: runs that
-    start with the TAS's input branch from a TAS run, verify_units; --no-branch: each from
-    power-on, the control)."""
+    start with the TAS's input branch from a TAS run, from its state files or, --in-process, as its
+    branches (verify_units); --no-branch: each from power-on, the control)."""
     import os
     common.ensure_rom()
     src = exe_path(VERIFY_EXE)
@@ -742,7 +855,9 @@ def cmd_verify(a) -> dict:
     out = Path(a.out).resolve() if a.out else BUILD / "verify"
     out.mkdir(parents=True, exist_ok=True)
     tas = Path(a.inputs) / "tas.input"
-    units = verify_units(inputs, None if a.no_branch or not tas.is_file() else tas, a.frames, a.jobs)
+    units = verify_units(inputs, None if a.no_branch or not tas.is_file() else tas, a.frames, a.jobs,
+                         states=not a.in_process)
+    states = StateFiles(out / "states") if any(u.get("states") for u in units) else None
     jobs = max(1, min(a.jobs, len(units)))
     free: "queue.Queue[Path]" = queue.Queue()
     for k in range(jobs):   # one runner copy per worker: settings.ini and evidence files stay apart
@@ -812,6 +927,12 @@ def cmd_verify(a) -> dict:
             env["XMEN2_VERIFY_ONLY"] = a.functions
         cmd = [src.name, str(common.ROM), "--benchmark", str(u["frames"]),
                "--input-script", str(script_of(u["input"])), "--fresh-evidence"]
+        if states:   # state files: every process of the group with one /GS cookie
+            env["XMEN2_GS_COOKIE"] = states.cookie
+        if u.get("states"):   # the runner's --state-at: FRAME PATH
+            cmd += ["--state-at", str(states.plan(u["states"], out / f"{name}.states"))]
+        if "load" in u:
+            cmd += ["--state-load", str(states.path(u["load"]))]
         if u["branches"]:   # the runner's --branch-plan: FRAME FRAMES TAG SCRIPT
             plan = out / f"{name}.branches"
             plan.write_text("".join(f"{at} {n} {run} {script_of(inp)}\n" for at, n, run, inp in u["branches"]),
@@ -827,7 +948,9 @@ def cmd_verify(a) -> dict:
             cmd[0] = str(run_dir / src.name)
             log(f"verify {name}: {u['frames']} frames" + (f" + {len(u['branches'])} branches "
                                                           f"({sum(b[1] for b in u['branches'])} frames)"
-                                                          if u["branches"] else ""))
+                                                          if u["branches"] else "")
+                + (f", {len(u['states'])} states" if u.get("states") else "")
+                + (f" from frame {u['load']}" if "load" in u else ""))
             with open(logf, "w", encoding="utf-8", errors="replace") as lf:
                 p = subprocess.Popen(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
                                      errors="replace")
@@ -844,6 +967,8 @@ def cmd_verify(a) -> dict:
                         live.pop(name, None)
         finally:
             free.put(run_dir)
+            if u.get("states"):
+                states.producer_done.set()
         secs = round(time.time() - t0, 1)
         if name in killed:
             return [(r, None, None, secs) for r in runs]
@@ -881,16 +1006,23 @@ def cmd_verify(a) -> dict:
     per_run: dict[str, dict] = {}
     # the longest processes start first, so the last ones to finish are short; the merge stays
     # in run order
-    order = sorted(units, key=lambda u: -u["cost"])
+    order = units if states else sorted(units, key=lambda u: -u["cost"])   # state_units: already in order
     gate = common.MemGate()
 
     def gated(u: dict) -> list[tuple]:
+        if "load" in u and not states.wait(u["load"], stop):   # a branch: its state first, outside the gate
+            if stop.is_set():
+                return [(u["run"], None, None, None)]
+            return [(u["run"], None, fail(u["run"], f"verify {u['run']}: the TAS run ended before saving frame "
+                                                     f"{u['load']}; see {out / (units[0]['name'] + '.log')}"), None)]
         with gate:
             return one(u)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
         futs = [ex.submit(gated, u) for u in order]
         by_run = {r[0]: r for f in futs for r in f.result()}
+    if states:
+        states.done()
     results = [by_run[p.stem] for p in inputs]
     errs = [err for _run, _data, err, _s in results if err]
     if errs:
@@ -923,7 +1055,9 @@ def cmd_verify(a) -> dict:
         if 0 < len(unc) <= 64:   # for P4-decomp.md decisions 10, 13 (listed unreachable instructions)
             funcs[addr]["uncovered_pcs"] = [f"{pc:06X}" for pc in unc]
     processes = [{"name": u["name"], "input": u["input"].stem, "frames": u["frames"], "run": u["run"],
-                  "branches": [f"{run}@{at}" for at, _n, run, _i in u["branches"]], "cost": u["cost"]} for u in units]
+                  "branches": [f"{run}@{at}" for at, _n, run, _i in u["branches"]], "cost": u["cost"],
+                  **({"states": u["states"]} if u.get("states") else {}),
+                  **({"loaded_at": u["load"]} if "load" in u else {})} for u in units]
     return {"runs": len(inputs), "per_run": per_run, "processes": processes, "functions": funcs}
 
 
@@ -1528,6 +1662,8 @@ def main() -> int:
     p.add_argument("--no-branch", action="store_true",
                    help="play every run from power-on (the control: by default runs that start with the TAS's "
                         "input branch from a TAS run at the frame they leave it)")
+    p.add_argument("--in-process", action="store_true",
+                   help="branches inside TAS processes (--branch-plan), not from the TAS run's state files (the control)")
     for name in ("gen", "build", "trace"):
         p = sub.add_parser(name)
         p.add_argument("--json", action="store_true")
@@ -1582,6 +1718,8 @@ def main() -> int:
     p.add_argument("--tas-replay", default="", help="the TAS's D1 trace dir, when its run is not in --runs")
     p.add_argument("--jobs", type=int, default=0, help="processes at once (default: the cores less two)")
     p.add_argument("--no-branch", action="store_true", help="every run from power-on (the control)")
+    p.add_argument("--in-process", action="store_true",
+                   help="branches inside TAS processes (--branch-plan), not from the TAS run's state files (the control)")
     p.add_argument("--timeout", type=int, default=7200)
     p.add_argument("--keep-runner", action="store_true")
     p.add_argument("--fb", action="store_true")
