@@ -112,8 +112,12 @@ extern "C" void capture_sound_command(uint8_t c, const uint8_t *a)
    music stem too). A play command of an effect, `$FF $10 id` in the ring, is made `$FF $12 id` (a
    stop of what isn't playing) as its id byte arrives: the game holds the Z80's bus through
    Snd_Play, so the driver reads none of it before. The bytes are followed in the order the game
-   writes them (Snd_PutByte publishes the index after each one). The game may differ from the take's
-   from then on: for the music alone. machine.cpp's plat_z80_ram_write8 calls this for each byte. */
+   writes them (Snd_PutByte publishes the index after each one). An effect that does more than play
+   notes (sound_song_controls: it starts or stops songs, sets the tempo, a variable, the master volume)
+   still plays, as on the music machines; with XMEN2_SOLO not naming it, its tracks are muted. So the
+   bed with a solo of the part songs (or of the music) is the first machine's reference for the music
+   machines (tools/soundcheck.py). The game may differ from the take's from then on (soundcheck.py
+   compares the digests): for the music alone. machine.cpp's plat_z80_ram_write8 calls this for each byte. */
 #define RING 0x1B40u   /* the command ring (Snd_PutByte), its write index at $36 (sound2.cpp) */
 static bool is_music(uint8_t id, uint64_t frame);
 extern "C" void capture_ring_write(uint8_t *ram, uint32_t off, uint8_t v)
@@ -131,7 +135,7 @@ extern "C" void capture_ring_write(uint8_t *ram, uint32_t off, uint8_t v)
         return;
     }
     uint64_t f = machine_frame_no();
-    if (f != stopall && !is_music(v, f)) ram[cmd_off] = 0x12;
+    if (f != stopall && !is_music(v, f) && !sound_song_controls(v)) ram[cmd_off] = 0x12;
     state = 0;
 }
 

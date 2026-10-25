@@ -1726,7 +1726,9 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
   - Every stage input + boot, `players` 2 and 4 (46 runs): every song the first machine keys on
     is an effect (heard there) or plays on a music machine, but one `$51` blip (one 2 ms note in
     scene26 with four players: the game stops and restarts it within a frame, which the first
-    machine, a frame ahead, catches).
+    machine, a frame ahead, catches). That checked only that each song plays somewhere, not how
+    much of it: a part with none of its tracks started was missed ("Track slots" below has the
+    note-for-note check).
   - The game: canonical digests equal with the option on and off (3,400 sync points). Two seats
     on loopback, one with `music_voices=0`: 0 desyncs against the offline digests under `mid`
     and under `bad` (8 rollbacks).
@@ -1737,6 +1739,43 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
 - **The capture** with it on: `XMEN2_STEM=music` = the music machines (the first machine silent),
   `sfx` = the first machine's effects (the others muted); `XMEN2_SOLO` mutes the music machines'
   other songs too. A music bed no longer needs `XMEN2_SOLO` layers or `XMEN2_BED`.
+- **Track slots** (2026-10-25; the user heard player 2's part missing in a four-player Siberia,
+  P1 Gambit, P2 Wolverine, P3 Nightcrawler, P4 Psylocke). The driver has 16 track slots, and a song's
+  tracks beyond the free ones are not started (P7-kickoff.md section 1). A muted track takes no voice
+  but holds its slot, and with four players' effects the parts machine's slots were full of the
+  effects' muted tracks when Siberia's dispatchers started the parts at tick 480: boot.input, session
+  40, `players=4,start_char=gambit,lives=inf,full_rate_2p=1`, `$2B` got three slots and Wolverine's
+  `$2D` none of its four. The first machine loses it too in that run (the original's limit: `$2D`
+  got one slot there, a track without notes), and so did the old reference (`music_voices=0`,
+  `XMEN2_SOLO=2B,2D`: `$2B` 80, no `$2D`), so it is not a copy's error but the slots. Now the music
+  machines don't start an effect that only plays notes: `song_controls` (sound2.cpp) scans the
+  sequence bank (GEMS 2.8, `$1641BE`) for any command that acts beyond its own track, decoded from
+  the driver's dispatch at Z80 `$0537`: `$68` tempo, `$6B` start a song, `$6E` the DAC rate, `$70`
+  store a variable, `$72` 0-4 (stop a song, `$0CAA`/`$0B50` on a song, the master volume at `$15AE`
+  that every note adds; `$72 5` is the track's own volume). 78 of the 256 songs have one, among the
+  effects `$20`, `$21`, `$45`, `$46`, `$73`, `$D1`, `$F6` and `$F7`; the other effects start no
+  tracks on the music machines. All 256 songs' tracks parse to their `$60` with the driver's argument counts, and no
+  song has a goto. `XMEN2_BED` lets those effects through too (muted under `XMEN2_SOLO`), so a bed
+  with a solo is the first machine's reference for the music machines.
+  - The failing runs: session 40 with `full_rate_2p=1`, parts `$2B` 38 + `$2D` 60 (were `$2B` 75,
+    no `$2D`), and session 78 at 30 Hz, `$2B` 74 + `$2D` 121: both the references' (the bed and
+    `XMEN2_SOLO=2B,2D`; session 78's plain solo too). The lineups of the backlog's seeds have moved
+    with boot.input's remake (a0fd6f9): session 40 at 30 Hz is now P2 Beast, and its parts play.
+  - The check, `uv run tools/soundcheck.py` (every stage input; `--players 4,3`, `--seeds 1,40,78`,
+    30 and 60 Hz: 276 cases, 6 min at 30 jobs): each part song's notes on the parts machine and the
+    second against the first machine and the second in a bed with a solo of the parts, note for note
+    within 8 frames (`XMEN2_KEYON_LOG`, every note counted: machine, frame, song). 273 pass; the
+    three others are scene42 (cloneA5) with `players=4` at 30 Hz, where the game itself differs run
+    to run from sync 1649 (two bytes at `$FF6B4E` first, then everything), with the option on or
+    off and without this change: no reference there. The same sweep before the change fails on the
+    parts (`$2D` 0 vs 60, `$2B` 75 vs 38, `$28` 350 vs 351). `--players 2` on the four part stages:
+    24 of 24. The music machine's other songs are compared too, and printed, not counted: a driver
+    polls its command ring between tempo ticks, so a command lands up to a few frames before or after
+    the first machine's (a stop-all three frames late: five more notes of `$08` before scene10's
+    briefing ends), and PSG notes (a volume on a silent channel) merge or split with the timing.
+  - Canonical digests on and off equal (boot sessions 3, 40, 78; scene18, 26, 38 four players,
+    scene24 three); `--state-probe 300:60` on session 40 at 60 Hz: 11 save points exact, and with
+    `--state-skip snd_parts` all 11 resaved snapshots differ; `tools/gate.py --mode native` passes.
 
 ## Open questions
 

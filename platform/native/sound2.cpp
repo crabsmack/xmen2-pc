@@ -20,7 +20,9 @@
  * machine gets every command the game sends, as it is, and keeps the effects' tracks (capture.cpp's
  * classes: music is a song the game starts with a stop-all or in its survey list, or one the driver
  * starts from inside another) and the part songs' muted in its track slots: a muted track takes no
- * voice, but what it does besides notes is done (some effects start or stop music). The parts machine
+ * voice, but what it does besides notes is done (some effects start or stop music); an effect that does
+ * nothing besides notes (song_controls) is not started there at all, since its muted tracks would
+ * hold the driver's track slots that the songs need. The parts machine
  * gets the same and plays only players 1's and 2's part songs (every other track muted). So the
  * three drivers run the same songs; each sounds its own. The first machine runs as always (its RAM, chips'
  * registers and timers: the game and the canonical digest are the original's), and its music voices
@@ -127,6 +129,41 @@ static int dispatch_base(uint8_t id)
     }
 }
 
+/* Does song s do anything besides its own tracks' notes? The sequence bank (Snd_Init's, GEMS 2.8: 256
+   16-bit song offsets, a song = a track count and 24-bit track offsets), every track's commands: the
+   tempo ($68), start a song ($6B), the DAC rate ($6E), store a variable ($70), and $72 0-4 (stop a song,
+   $0CAA and $0B50 on a song, $0CAA of variable 0, the master volume at $15AE that every note adds);
+   the rest act on their own track ($69 mutes a track of its own song, $72 5 is the track's volume).
+   The arguments' counts are the driver's (its dispatch at Z80 $0537), $00-$5F notes, $80-$FF
+   durations and delays; no song in the bank has a goto ($6F), which this follows anyway. */
+#define SEQ_BANK 0x1641BEu
+static bool song_controls(uint8_t s)
+{
+    static const uint8_t args[19] = { 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 2, 0, 1, 2, 2, 4, 2 };   /* $60-$72 */
+    static int8_t memo[256];   /* 0 not yet, 1 no, 2 yes */
+    if (memo[s]) return memo[s] == 2;
+    const uint8_t *seq = &g_rom[SEQ_BANK];
+    uint32_t song = (uint32_t)(seq[2 * s] | seq[2 * s + 1] << 8);
+    bool ctl = false;
+    for (int t = 0; t < seq[song] && !ctl; t++) {
+        const uint8_t *tp = &seq[song + 1 + 3 * t];
+        uint32_t p = SEQ_BANK + (uint32_t)(tp[0] | tp[1] << 8 | tp[2] << 16);
+        for (int n = 0; n < 0x10000 && p + 5 < sizeof g_rom; n++) {   /* the longest track is a few KB */
+            uint8_t c = g_rom[p];
+            if (c < 0x60 || c >= 0x80) { p++; continue; }
+            if (c > 0x72) { ctl = true; break; }   /* not a command of the driver's: keep the song */
+            const uint8_t *a = &g_rom[p + 1];
+            p += 1u + args[c - 0x60];
+            if (c == 0x60) break;
+            if (c == 0x68 || c == 0x6B || c == 0x6E || c == 0x70 || (c == 0x72 && a[0] <= 4)) { ctl = true; break; }
+            if (c == 0x6F) p += (uint32_t)(int16_t)(a[0] | a[1] << 8);
+        }
+    }
+    memo[s] = ctl ? 2 : 1;
+    return ctl;
+}
+extern "C" bool sound_song_controls(uint8_t s) { return song_controls(s); }
+
 /* the song of the track that holds the voice of channel ch in a pool of Z80 RAM (-1: none found) */
 static int owner_song(const uint8_t *ram, uint16_t pool, int entries, int ch)
 {
@@ -196,23 +233,36 @@ static void vs_reset(VoiceStats *V)
     for (int c = 0; c < 12; c++) { V->since[c] = ~0ull; V->owner[c] = -1; }
 }
 
+/* XMEN2_KEYON_LOG=FILE: every note counted, `machine,frame,fm|psg,song` (song -1: no owner found), for
+   tools/soundcheck.py's first difference. A replayed frame (a rollback) is logged again. */
+static void vs_log(const char *who, const char *kind, int song)
+{
+    static FILE *f = [] {
+        const char *p = getenv("XMEN2_KEYON_LOG");
+        FILE *o = p && *p ? fopen(p, "w") : nullptr;
+        if (p && *p && !o) { fprintf(stderr, "[sound] cannot write %s\n", p); exit(2); }
+        return o;
+    }();
+    if (f) fprintf(f, "%s,%llu,%s,%d\n", who, (unsigned long long)machine_frame_no(), kind, song);
+}
+
 /* now: master clocks since the machine's counting began (its frames and the stamp in the frame) */
-static void vs_ym_write(VoiceStats *V, const uint8_t *ram, unsigned port, uint8_t v, uint32_t stamp)
+static void vs_ym_write(VoiceStats *V, const char *who, const uint8_t *ram, unsigned port, uint8_t v, uint32_t stamp)
 {
     if (port == 0) V->sel = v;
     else if (port == 1 && V->sel == 0x28) {
         int ch = v & 7, song = (v & 0xF0) ? owner_song(ram, FM_POOL, 6, ch) : -1;
         vs_time(V, ch, V->frames * FRAME_CLOCKS + stamp, (v & 0xF0) != 0, song);
-        if (v & 0xF0) V->fm[song < 0 ? 256 : song]++;
+        if (v & 0xF0) { V->fm[song < 0 ? 256 : song]++; vs_log(who, "fm", song); }
     }
 }
 
-static void vs_psg_write(VoiceStats *V, const uint8_t *ram, uint8_t v, uint32_t stamp)
+static void vs_psg_write(VoiceStats *V, const char *who, const uint8_t *ram, uint8_t v, uint32_t stamp)
 {
     if ((v & 0x90) != 0x90) return;
     int ch = v >> 5 & 3, att = v & 0x0F;
     int song = ch == 3 ? owner_song(ram, NOISE_POOL, 1, 3) : owner_song(ram, PSG_POOL, 3, ch);
-    if (att != 0x0F && V->att[ch] == 0x0F) V->psg[song < 0 ? 256 : song]++;
+    if (att != 0x0F && V->att[ch] == 0x0F) { V->psg[song < 0 ? 256 : song]++; vs_log(who, "psg", song); }
     vs_time(V, 8 + ch, V->frames * FRAME_CLOCKS + stamp, att != 0x0F, song);
     V->att[ch] = (uint8_t)att;
 }
@@ -248,8 +298,8 @@ extern "C" void snd_m1_ram_write(const uint8_t *ram, uint32_t off, uint8_t v)
 extern "C" void snd_m1_audio_write(const uint8_t *ram, int port, uint8_t v, uint32_t stamp)
 {
     if (!machine_session()) return;
-    if (port == PLAT_AUDIO_PSG) vs_psg_write(&s_m1, ram, v, stamp);
-    else vs_ym_write(&s_m1, ram, (unsigned)port, v, stamp);
+    if (port == PLAT_AUDIO_PSG) vs_psg_write(&s_m1, "m1", ram, v, stamp);
+    else vs_ym_write(&s_m1, "m1", ram, (unsigned)port, v, stamp);
 }
 
 static int arg_count(uint8_t c);
@@ -369,7 +419,7 @@ struct Machine {
     void ym_write(unsigned port, uint8_t v)
     {
         ym_timers(S.znow, port, v);
-        vs_ym_write(&V, S.ram, port, v, S.zstamp);
+        vs_ym_write(&V, name, S.ram, port, v, S.zstamp);
         if (!(port & 1)) S.ym_sel[port >> 1 & 1] = v;
         else {
             unsigned r = (port >> 1 & 1) << 8 | S.ym_sel[port >> 1 & 1];
@@ -381,7 +431,7 @@ struct Machine {
 
     void psg_write(uint8_t v)
     {
-        vs_psg_write(&V, S.ram, v, S.zstamp);
+        vs_psg_write(&V, name, S.ram, v, S.zstamp);
         if (v & 0x80) S.psg_latch = (uint8_t)(v >> 4 & 7);
         if ((v & 0x90) == 0x90) {   /* a volume: a note sounds when its channel was silent */
             int ch = v >> 5 & 3, att = v & 0x0F;
@@ -560,7 +610,10 @@ struct Machine {
        play and stop, stop all, pause, resume and the variables. The music machines take every command
        as it is, the effects' too: an effect's tracks are muted there (muted_song), but what they do
        besides notes is done, as on the first machine (some start or stop music: $45 stops SavageA4's
-       $42 and starts $43, $73 the Brood's $30 for $72; and the variables, the tempo) */
+       $42 and starts $43, $73 the Brood's $30 for $72; and the variables, the tempo). But an effect
+       that only plays notes (song_controls) is not started there: muted, it would do nothing but hold
+       track slots, of the driver's 16, and a song's tracks beyond them are not started (with four
+       players' effects, Wolverine's part in Siberia lost all four of its tracks on the parts machine) */
     void command(uint8_t c, const uint8_t *a)
     {
         if (role != ROLE_P34) {
@@ -568,6 +621,7 @@ struct Machine {
             if (c == 0x1B && a[0] < 32) { S.param[a[0]] = a[1]; S.param_set[a[0] >> 3] |= (uint8_t)(1 << (a[0] & 7)); }
             if (c == 0x10 && !capture_song_effect(a[0])) S.song = a[0];
             if (c == 0x16) S.song = -1;
+            if (c == 0x10 && capture_song_effect(a[0]) && !song_controls(a[0])) return;
             if (S.active) cmd(c, a, arg_count(c));
             return;
         }
@@ -879,10 +933,18 @@ std::string snd2_counters_json(void)
     return s + "}}";
 }
 
-/* the counters line's "sound": every machine's key-ons and stolen voices by song (the session machine's) */
+/* the counters line's "sound": every machine's key-ons and stolen voices by song (the session machine's),
+   and the songs the game started as effects (capture.cpp's class, the music machines' mutes) */
 std::string sound_counters_json(void)
 {
+    std::string fx;
+    for (int i = 0; i < 256; i++)
+        if (capture_song_effect((uint8_t)i)) {
+            char id[8];
+            snprintf(id, sizeof id, "%s\"%02X\"", fx.empty() ? "" : ", ", i);
+            fx += id;
+        }
     return std::string("{\"music_voices\": ") + (g_opt.music_voices ? "1" : "0") + ", \"m1\": " + vs_json(s_m1) +
            ", \"music\": " + vs_json(M[ROLE_MUSIC].V) + ", \"parts\": " + vs_json(M[ROLE_PARTS].V) +
-           ", \"snd2\": " + vs_json(P34.V) + "}";
+           ", \"snd2\": " + vs_json(P34.V) + ", \"effects\": [" + fx + "]}";
 }

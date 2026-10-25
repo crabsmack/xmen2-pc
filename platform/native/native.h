@@ -106,8 +106,10 @@ void     snd2_ring_write(const uint8_t *ram, uint32_t off, uint8_t v);   /* soun
 void     snd2_frame(void);                /* ... the first machine's Z80 frame is done: the others' */
 void     sound_mix(int16_t *fm, size_t fm_n, int16_t *psg, size_t psg_n, int mute);   /* host_audio */
 void     snd2_state_init(void);
-bool     sound_music_voices(void);        /* music_voices: the music machines play (the first's music is dropped) */void     snd_m1_ram_write(const uint8_t *ram, uint32_t off, uint8_t v);   /* machine.cpp: the first's driver, for the counters */
+bool     sound_music_voices(void);        /* music_voices: the music machines play (the first's music is dropped) */
+void     snd_m1_ram_write(const uint8_t *ram, uint32_t off, uint8_t v);   /* machine.cpp: the first's driver, for the counters */
 void     snd_m1_audio_write(const uint8_t *ram, int port, uint8_t v, uint32_t stamp);
+bool     sound_song_controls(uint8_t s);  /* the song does more than its own tracks' notes (start, stop, tempo, variables) */
 
 /* capture.cpp: recording the port for showing it (inputs, a lossless picture, music/SFX stems) */
 void capture_sound_command(uint8_t c, const uint8_t *a);   /* sound2.cpp's ring parser: a command */
