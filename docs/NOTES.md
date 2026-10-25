@@ -1642,6 +1642,30 @@ player 3-4's context (its own objects) calls the other one's as is. By how each 
   scoring prefers survival, so retreat among them won sentinelsB1 and avalon while exploring nothing).
   14 of the 23 files are unchanged; boot, cloneA5 and seven others changed with R11 (c). Regenerating takes ~13 min (23 inputs, 12 at a time).
 
+### Player 2's character with players 3-4 (2026-10-25)
+
+- **The bug**: Player2_StartLife's random pick (game/c/0062E4.c) avoids only player 1's character,
+  as in the original, and in SiberiaB1's opening pads 3-4 may join before pad 2 (boot.input has 1, 3,
+  4, then 2, and the opening ends when player 2 joins), so player 2 could take player 3's or 4's
+  (P34_StartLife already avoids every other player's). Two players with one character also play one
+  part song (music_voices), so a part was missing. boot.input with `players=4,start_char=gambit`:
+  16 of seeds 1-40 had a duplicate (e.g. seed 1 P2 and P3 both Psylocke, seed 10 P2 and P4 both
+  Psylocke).
+- **The fix** (native only, `g_opt.players > 2`, the original loop untouched): after it,
+  `P34_Player2Pick` (players34.cpp) draws again while the pick is also a player 3-4's, in the same
+  Rand_Next sequence, so a lineup with no clash is the one it was, and `players=2` draws exactly as
+  before. Measured with the digest dump at runner frame 600 (`XMEN2_DIGEST_DUMP`), boot.input,
+  `start_char=gambit,lives=inf`, seeds 1-400: duplicates 153 -> 0 with `players=4`, 84 -> 0 with
+  `players=3`.
+- **The stage inputs' lineups change with players 3-4**: boot.input's runs with three or four
+  players give player 2 another character wherever the old pick clashed (session 1 with `players=4`:
+  the digests part at sync 475, player 2's join; `players=3` session 1 had no clash). The scene
+  inputs (`--scene`) start past the opening and are unchanged; with `players=2` every stage input's
+  digest is byte-identical to the build before the fix (sessions 1). `mp_inputs.py --check`: 23 of
+  23 meet M4 (boot with four: in play 100%, 87%, 89%, 88%); loopback four-seat sessions of
+  boot.input (session 1, and session 5 with start_char=gambit over a 30 ms / 10 ms jitter / 2% loss
+  link) agree on every seat.
+
 ### R12: each seat's own 16:9 view (2026-10-23)
 
 The user's ruling R12 (P7-multiplayer.md) follows phase 6's R8 and R10's note: online, a

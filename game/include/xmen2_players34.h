@@ -83,6 +83,7 @@ short P34_MusicCount(short n);		/* Music_SetPlayerParams's $A: n with players 3-
 void P34_ScrollPush(short step, short limit);	/* CloneA5's arena scroll pushes them too */
 int  P34_StartPressed(void);		/* the first player 3-4 whose Start was pressed this frame, else 0 */
 char P34_StartLife(int k);		/* as Player2_StartLife (the SiberiaB1 opening only) */
+short P34_Player2Pick(short me, short other);	/* Player2_StartLife's draw: redrawn while other's or a 3-4's */
 /* the group (g_opt.players of them) */
 int  P34_OthersAlive(const void *self, XPlayer **list);	/* the players in play but self (up to 3) */
 XPlayer *P34_FirstAlive(void);

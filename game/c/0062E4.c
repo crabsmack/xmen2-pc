@@ -3,6 +3,7 @@
  *
  * Only while g_SiberiaIntro is set (else nothing, 0). The character index is
  * Player_CharIndexOf's (g_P2CharIndex keeps it); an index past 5 (Magneto) makes Wolverine.
+ * NATIVE: with players 3-4, the random pick is none of theirs either.
  * Returns 1. */
 #include "xmen2.h"
 
@@ -18,6 +19,10 @@ char Player2_StartLife(void)
 		do
 			me = (unsigned short)Rand_Next() % 6;
 		while (other == me);
+#if defined(XMEN2_NATIVE)
+		if (g_opt.players > 2)	/* phase 7: not player 3's or 4's either */
+			me = P34_Player2Pick(me, other);
+#endif
 	}
 	g_P2Health = 0x700;
 	switch (me) {

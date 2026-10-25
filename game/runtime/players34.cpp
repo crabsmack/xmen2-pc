@@ -236,6 +236,19 @@ extern "C" char P34_StartLife(int k)
 	return 1;
 }
 
+/* Player2_StartLife's random pick with players 3-4: its draw (already not other, player 1's) drawn
+   again, in the same Rand_Next sequence, while it is also a player 3-4's character. pads 3-4 may join
+   the SiberiaB1 opening before pad 2 does. */
+extern "C" short P34_Player2Pick(short me, short other)
+{
+	for (;;) {
+		bool clash = me == other;
+		for (int j = 3; j <= 2 + P34_COUNT; j++) clash |= Player_CharIndexOf(PLAYER34(j)->cls) == me;
+		if (!clash) return me;
+		me = (unsigned short)Rand_Next() % 6;
+	}
+}
+
 /* ---- the group (the camera, the tether: R7 "the camera keeps the group in view, players are held at
    the screen edges as in two-player") ------------------------------------------------------------- */
 
