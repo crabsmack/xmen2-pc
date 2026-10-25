@@ -11,9 +11,10 @@ level loop and players in play. The presses that count are those up to the last 
 all four players are in play (the briefing's pages, the select's joins and confirms; for boot.input
 the SiberiaB1 opening, where players join with Start); later ones would pause the game. The input is
 those presses, then from the frame all four are in, --play frames of each pad walking right with the
-attacks and jumps of ws_warp.py's walker (or one of two other patterns), each pad on its own phase or
-all four in step; the one kept is the one that meets M4's shares (run with players 4 and with players 3,
-as M4 runs it), else whose worst-off player does best
+attacks and jumps of ws_warp.py's walker (or one of two other patterns, or FALLBACK), each pad on its own phase or
+all four in step; the one kept is the one that meets M4's bounds (run with players 4 and with players 3,
+as M4 runs it, and with players 2 for R11's off-view and HUD references), else whose worst-off player
+does best
 (and on a stage where none does, the longest of a few shorter plays that does: SHORTER). --check runs
 the inputs written
 and prints each one's `mp` counters.
@@ -45,6 +46,9 @@ FIGHT = [("10", 4), ("0", 6), ("10", 4), ("0", 6), ("8", 12), ("10", 4), ("0", 6
 CAREFUL = [("8", 20), ("10", 4), ("0", 4), ("10", 4), ("0", 4), ("10", 4), ("0", 20), ("28", 6), ("8", 14),
            ("10", 4), ("0", 30)]   # a few steps, three attacks, a wait, a jump forward
 PATTERNS = {"walk": WALK, "fight": FIGHT, "careful": CAREFUL}
+# the last resort, tried only where no pattern above meets M4 at any length (it explores nothing): left,
+# an attack now and then, away from a boss on the right (cloneA5's Brood, which aims at all four: R11 (c))
+FALLBACK = {"retreat": [("4", 40), ("14", 4), ("0", 6)]}
 PHASES = (37, 0)   # frames between pads in the pattern: each its own, or all four together (one group)
 LOG = re.compile(r"^\[mp\] frame (\d+) scene (-?\d+) loop (\d) alive ([0-9a-f]+)", re.M)
 
@@ -111,16 +115,19 @@ def make(name: str, scene: int | None, play: int, out: Path) -> str:
     head = presses(cut, order) + [[0, 0, 0, 0] for _ in range(allin - cut)]
     path = out / ("boot.input" if scene is None else f"scene{scene}.input")
     best = None
-    for length in [play] + [n for n in SHORTER if n < play]:
-        for (pname, pat), step in itertools.product(PATTERNS.items(), PHASES):
+    lengths = [play] + [n for n in SHORTER if n < play]
+    for length, pats in [(n, PATTERNS) for n in lengths] + [(n, FALLBACK) for n in lengths]:
+        for (pname, pat), step in itertools.product(pats.items(), PHASES):
             seq = [int(m, 16) for m, n in pat for _ in range(n)]
             frames = head + [[seq[(i + step * p) % len(seq)] for p in range(4)] for i in range(length)]
             write_input(path, frames)   # each pad on its own phase of the pattern (0: all in step)
             mp = counters(path, scene)
             if not mp:
                 continue
-            worst = min(min(m["in_play"][p], m["drawn"][p] * 2) - 100 * m["off_view"][p]
-                        for n, m in mp.items() for p in range(n)) / (min(m["gameplay_frames"] for m in mp.values()) or 1)
+            slack = off_view_allowed(mp[2]) - 0.01   # R11 (a): off view past what the original has
+            worst = min(min(m["in_play"][p], m["drawn"][p] * 2) - 100 * max(0.0, m["off_view"][p] - slack * m["in_play"][p])
+                        for n, m in mp.items() if n != 2 for p in range(n)) / (
+                min(m["gameplay_frames"] for m in mp.values()) or 1)
             if best is None or (meets(mp), worst) > (meets(best[3]), best[0]):
                 best = (worst, f"{pname}/{step}, {length} frames of play", frames, mp)
         if meets(best[3]) if best else False:
@@ -130,7 +137,7 @@ def make(name: str, scene: int | None, play: int, out: Path) -> str:
     write_input(path, best[2])
     mp = best[3]
     ip = "; ".join(f"players {n} " + ", ".join(f"{v / (m['gameplay_frames'] or 1):.0%}" for v in m["in_play"][:n])
-                   for n, m in mp.items())
+                   for n, m in mp.items() if n != 2)
     return (f"{name}: {path.name} written ({best[1]}{'' if meets(mp) else '; short of M4'}): presses to {cut},"
             f" all four in at {allin}, {len(best[2])} frames; in play {ip}; off view {mp[4]['off_view']}")
 
@@ -141,14 +148,53 @@ def make(name: str, scene: int | None, play: int, out: Path) -> str:
 SHORTER = (2000, 1400, 900)
 
 
+def off_view_allowed(mp2: dict) -> float:
+    """R11 (a): a player's off-view share may be the larger of players 1-2's in the players 2 run of the
+    same input, plus 1%."""
+    return max((mp2["off_view"][p] / mp2["in_play"][p] if mp2["in_play"][p] else 0.0) for p in range(2)) + 0.01
+
+
+def hud_counted(mp: dict, mp2: dict) -> list[list[int]]:
+    """R11 (b): the missing panels that count, [frame, player]: not on the first frame of the player's
+    stretch in play, and only where the players 2 run of the same input draws that player's panel at that
+    frame. Players 3-4 have no panel in the original: theirs count wherever they miss (join frames aside)."""
+    drawn = {}
+    for p, a, b in mp2["hud_panels"]:
+        drawn.setdefault(p, []).append((a, b))
+    return [[f, p] for f, p, join in mp["hud_missing_at"]
+            if not join and (p > 2 or any(a <= f <= b for a, b in drawn.get(p, ())))]
+
+
+def problems(n: int, mp: dict, mp2: dict) -> list[str]:
+    """M4's bounds for the players `n` run of an input, against its players 2 run (phase.py's check)."""
+    gp, out = mp["gameplay_frames"], []
+    allow = off_view_allowed(mp2)
+    for p in range(n):
+        ip = mp["in_play"][p]
+        if gp == 0 or ip < 0.5 * gp:
+            out.append(f"player {p + 1} in play {ip}/{gp}")
+            continue
+        if mp["drawn"][p] < 0.5 * ip:
+            out.append(f"player {p + 1} drawn {mp['drawn'][p]}/{ip}")
+        if mp["off_view"][p] > allow * ip:
+            out.append(f"player {p + 1} off view {mp['off_view'][p]}/{ip} (allowed {allow:.1%})")
+    if mp["hud_lists_full"] or mp2["hud_lists_full"]:
+        out.append("hud lists full")
+    hud = hud_counted(mp, mp2)
+    if hud:
+        out.append(f"hud missing {len(hud)} (first: frame {hud[0][0]} player {hud[0][1]})")
+    if mp["sprites_dropped"]:
+        out.append(f"sprites_dropped {mp['sprites_dropped']}")
+    return out
+
+
 def meets(mps: dict[int, dict]) -> bool:
-    """M4's shares, for every player of each run (players 4 and 3: phase.py runs the input with both)."""
-    return all(bool(mp["gameplay_frames"]) and mp["hud_missing"] == 0 and mp["sprites_dropped"] == 0 and all(
-        mp["in_play"][p] >= 0.5 * mp["gameplay_frames"] and mp["drawn"][p] >= 0.5 * mp["in_play"][p]
-        and mp["off_view"][p] <= 0.01 * mp["in_play"][p] for p in range(n)) for n, mp in mps.items())
+    """M4's bounds for every player of each run (players 4 and 3: phase.py runs the input with both,
+    and with players 2 for R11's references)."""
+    return all(not problems(n, mp, mps[2]) for n, mp in mps.items() if n != 2)
 
 
-PLAYERS = (4, 3)   # the runs M4 makes of each input
+PLAYERS = (4, 3, 2)   # the runs M4 makes of each input (2: R11's references)
 
 
 def counters(path: Path, scene: int | None) -> dict[int, dict] | None:
@@ -172,8 +218,10 @@ def check(name: str, scene: int | None, out: Path) -> str:
     if not mps:
         return f"{name}: a run failed"
     keys = ("gameplay_frames", "in_play", "drawn", "off_view", "hud_missing", "sprites_dropped")
-    return f"{name}: meets M4 {meets(mps)}; " + "; ".join(
-        f"players {n} " + json.dumps({k: mp[k] for k in keys}) for n, mp in mps.items())
+    probs = [f"players {n}: {'; '.join(problems(n, mp, mps[2]))}" for n, mp in mps.items() if n != 2 and problems(n, mp, mps[2])]
+    return f"{name}: meets M4 {meets(mps)}" + (f" ({'; '.join(probs)})" if probs else "") + "; " + "; ".join(
+        f"players {n} " + json.dumps({**{k: mp[k] for k in keys}, "hud_counted": len(hud_counted(mp, mps[2]))})
+        for n, mp in mps.items())
 
 
 def main() -> int:

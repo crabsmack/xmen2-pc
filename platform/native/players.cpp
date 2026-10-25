@@ -9,6 +9,13 @@
  *   drawn[4]          of those, frames where it drew a sprite (the draw list's owner marks, phase 6 R4)
  *   off_view[4]       of those, frames with its position outside the camera's view
  *   hud_missing       gameplay frames where a player in play has no HUD panel in the sprite table
+ *   hud_missing_at    [frame, player, join]: the first HUD_LIST such (runner frame, player) pairs, join 1
+ *                     on the first game frame (g_LevelFrame) of the player's stretch in play (R11 (b):
+ *                     the check skips them; a join that makes two players in play turns the game to
+ *                     30 Hz, so that frame is shown on two sync points)
+ *   hud_panels        [player, first, last]: the stretches of runner frames where a player in play has
+ *                     its panel drawn (R11 (b): a players 4 run's missing panel counts only where the
+ *                     players 2 run of the same input draws it); hud_lists_full when a list was cut
  *   sprites_dropped   sprite pieces the game's stop dropped (the emitters report them)
  *   snd2              the second sound machine (sound2.cpp)
  */
@@ -329,9 +336,16 @@ void players_spr_owner(const void *owner, int idx) { s_marks.push_back({ addr68(
 
 /* ---- counters ------------------------------------------------------------------------------------- */
 
+enum { HUD_LIST = 256 };
+
 static struct {
     uint64_t gameplay, in_play[4], drawn[4], off_view[4], hud_missing, dropped;
     uint64_t players_max;
+    uint32_t miss[HUD_LIST][3], n_miss;      /* hud_missing_at */
+    uint32_t panel[HUD_LIST][3], n_panel;    /* hud_panels */
+    uint32_t open_panel[4];                  /* each player's stretch in panel[] still growing: index + 1, 0 none */
+    uint32_t in_play_prev, lists_full;       /* the players in play on the sync point before (bits 0-3) */
+    uint16_t join_frame[4];                  /* g_LevelFrame on the first sync point of each one's stretch in play */
 } C;
 
 void players_spr_dropped(int n) { if (n > 0) C.dropped += (uint64_t)n; }
@@ -400,12 +414,16 @@ void players_sync_row(void)
         }
         int ml = plat_ws_left(), mr = plat_ws_right();   /* the drawn window (R8: its sides differ at an edge) */
         uint64_t n = 0;
-        bool hud_ok = true;
+        bool hud_ok = true, hud_on = xm_ram_peek8(0xC94C) != 0;
+        uint32_t frame = (uint32_t)machine_frame_no(), in_play = 0;
+        uint16_t level_frame = (uint16_t)ram_be(0xC7DC, 2);   /* g_LevelFrame: one per pass of Level_FrameLoop */
         for (int p = 1; p <= 4; p++) {
             if (p > 2 && g_opt.players < p) continue;
             if (!alive(p)) continue;
             n++;
             C.in_play[p - 1]++;
+            in_play |= 1u << (p - 1);
+            if (!(C.in_play_prev >> (p - 1) & 1)) C.join_frame[p - 1] = level_frame;
             bool drew = false;
             if (p <= 2) {
                 for (size_t j = 0; j < s_marks.size(); j++)
@@ -433,13 +451,33 @@ void players_sync_row(void)
             if (!hud_panel(p)) {
                 hud_ok = false;
                 static const char *hdbg = getenv("XMEN2_MP_HUD");   /* diagnosing hud_missing: which panel, when */
-                if (hdbg && xm_ram_peek8(0xC94C))
+                if (hdbg && hud_on)
                     fprintf(stderr, "[mp] frame %llu: player %d's HUD panel missing (scene %d)\n",
                             (unsigned long long)machine_frame_no(), p, (int)(int16_t)ram_be(0xCC64, 2));
+                if (hud_on && C.n_miss < HUD_LIST) {
+                    uint32_t *m = C.miss[C.n_miss++];
+                    m[0] = frame, m[1] = (uint32_t)p, m[2] = level_frame == C.join_frame[p - 1] ? 1 : 0;
+                } else if (hud_on) {
+                    C.lists_full = 1;
+                }
+            } else if (hud_on) {   /* a stretch of frames with the panel: the last one grown, else a new one */
+                uint32_t k = C.open_panel[p - 1];
+                if (k && C.panel[k - 1][2] + 1 == frame) {
+                    C.panel[k - 1][2] = frame;
+                } else if (C.n_panel < HUD_LIST) {
+                    uint32_t *s = C.panel[C.n_panel++];
+                    s[0] = (uint32_t)p, s[1] = frame, s[2] = frame;
+                    C.open_panel[p - 1] = C.n_panel;
+                } else {
+                    C.lists_full = 1;
+                }
             }
         }
         if (n > C.players_max) C.players_max = n;
-        if (!hud_ok && xm_ram_peek8(0xC94C)) C.hud_missing++;
+        if (!hud_ok && hud_on) C.hud_missing++;
+        C.in_play_prev = in_play;
+    } else {
+        C.in_play_prev = 0;
     }
     s_marks.clear();
 }
@@ -460,7 +498,17 @@ std::string players_counters_json(void)
              (unsigned long long)C.gameplay, (unsigned long long)C.players_max, l4(C.in_play).c_str(),
              l4(C.drawn).c_str(), l4(C.off_view).c_str(), (unsigned long long)C.hud_missing,
              (unsigned long long)C.dropped);
-    return std::string(b) + snd2_counters_json() + "}";
+    auto list = [](const uint32_t (*v)[3], uint32_t n) {
+        std::string s = "[";
+        char t[48];
+        for (uint32_t i = 0; i < n; i++) {
+            snprintf(t, sizeof t, "%s[%u, %u, %u]", i ? ", " : "", (unsigned)v[i][0], (unsigned)v[i][1], (unsigned)v[i][2]);
+            s += t;
+        }
+        return s + "]";
+    };
+    return std::string(b) + snd2_counters_json() + ", \"hud_missing_at\": " + list(C.miss, C.n_miss)
+           + ", \"hud_panels\": " + list(C.panel, C.n_panel) + ", \"hud_lists_full\": " + (C.lists_full ? "1" : "0") + "}";
 }
 
 void players_state_init(void)

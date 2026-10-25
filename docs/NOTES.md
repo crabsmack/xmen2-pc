@@ -1611,6 +1611,37 @@ player 3-4's context (its own objects) calls the other one's as is. By how each 
   gameplay frames (before, the Brood went for players 1-2 only). The stage inputs change who dies:
   part 2 regenerates them.
 
+### R11 (a), (b): M4 against the original; the stage inputs remade (2026-10-25)
+
+- **The counters** (players.cpp, P7-multiplayer.md's counter table): next to `hud_missing`,
+  `hud_missing_at` lists `[frame, player, join]` for each player in play with no panel (runner
+  frames, the first 256) and `hud_panels` the stretches `[player, first, last]` where a player in play
+  has its panel (both on gameplay frames with the HUD on; `hud_lists_full` when either list was cut,
+  which fails the check). In the snapshot's counters, not in the state or the digest.
+- **`join`** is 1 on the first *game* frame of the player's stretch in play (`g_LevelFrame` at the
+  stretch's first sync point), not its first sync point: a join that makes two players in play turns
+  the game to 30 Hz, so the join frame, whose HUD was drawn before Pause_Check read the Start, is
+  shown on two sync points. That was boot's player 3 (the first to join: missing at 425 and 426,
+  the panel from 427); players 4 and 2, joining at 30 Hz already, miss one.
+- **The check** (phase.py M4, and mp_inputs.py's `problems`, the same rules): each input also runs
+  with `players=2`; off view passes at up to the larger of players 1-2's shares there + 1%; a
+  missing panel counts unless `join`, and for players 1-2 only where the players 2 run has that
+  player's panel at that frame. Players 3-4 have no panel in the original, so theirs count wherever
+  they miss (join frames aside): the strict reading, as R11 (b) names no reference for them.
+  Measured: boot's 106 missing (105 with three) count 0 (102 are player 1's, frames 300-401 of the
+  opening, which the players 2 run misses too; 4 are join frames); boot's players 2 run has player 1
+  off view 15.5% of its in-play frames (the snow drifts), so up to 16.5% passes (players 4: at most
+  8.6%); avalon's opening pan 6.4% in both runs; spaceA1's player 2 1.6% against 1.2% + 1%.
+- **The stage inputs, remade** (`tools/mp_inputs.py`, the R11 (c) enemies): 23 of 23 meet every
+  bound with players 4 and 3 (`--check`). boot: player 1 in play 100% (was 44%), the others 87-89%.
+  cloneA5: the Brood aiming at all four killed all four within ~450 frames whatever the walker,
+  fight or careful patterns did (36% in play at 900 frames, 44% at 600: the select's frames count as
+  gameplay too); a fourth pattern, `retreat` (left, an attack now and then, away from the boss), tried
+  only where none of the three meets at any length (FALLBACK), keeps them in: 1,400 frames of play,
+  54-63% in play with four, 52-70% with three. Every other input comes from the three patterns (the
+  scoring prefers survival, so retreat among them won sentinelsB1 and avalon while exploring nothing).
+  14 of the 23 files are unchanged; boot, cloneA5 and seven others changed with R11 (c). Regenerating takes ~13 min (23 inputs, 12 at a time).
+
 ### R12: each seat's own 16:9 view (2026-10-23)
 
 The user's ruling R12 (P7-multiplayer.md) follows phase 6's R8 and R10's note: online, a
