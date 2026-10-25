@@ -26,8 +26,8 @@ void Cam_TrackBoth(Camera *self)
 		return;
 	}
 #if defined(XMEN2_NATIVE)
-	if (g_opt.players > 2)	/* phase 7: the extents of the group in play */
-		P34_Extents(&x1, &x2, &y1, &y2);
+	if (g_opt.players > 2 && P34_Extents(&x1, &x2, &y1, &y2))	/* phase 7: the extents of the group in play */
+		;	/* none in play (g_PlayersAlive 0): players 1-2's, as the original */
 	else
 #endif
 	{

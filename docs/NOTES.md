@@ -1883,7 +1883,7 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
     within 8 frames (`XMEN2_KEYON_LOG`, every note counted: machine, frame, song). 273 pass; the
     three others are scene42 (cloneA5) with `players=4` at 30 Hz, where the game itself differs run
     to run from sync 1649 (two bytes at `$FF6B4E` first, then everything), with the option on or
-    off and without this change: no reference there. The same sweep before the change fails on the
+    off and without this change: no reference there (fixed since: "scene42" below). The same sweep before the change fails on the
     parts (`$2D` 0 vs 60, `$2B` 75 vs 38, `$28` 350 vs 351). `--players 2` on the four part stages:
     24 of 24. The music machine's other songs are compared too, and printed, not counted: a driver
     polls its command ring between tempo ticks, so a command lands up to a few frames before or after
@@ -1892,6 +1892,46 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
   - Canonical digests on and off equal (boot sessions 3, 40, 78; scene18, 26, 38 four players,
     scene24 three); `--state-probe 300:60` on session 40 at 60 Hz: 11 save points exact, and with
     `--state-skip snd_parts` all 11 resaved snapshots differ; `tools/gate.py --mode native` passes.
+
+### scene42: Cam_TrackBoth with none in play (2026-10-25)
+
+- **The bug**: scene42 (cloneA5) with `players=4` at 30 Hz played differently run to run from sync
+  1649 (soundcheck's three failures above), at 84f0dd7 and bada2e6 (12 of 12 and 6 of 6 runs each
+  their own row 1649). The first byte to differ is `$FF6B4F`, the low byte of the CloneA5 camera's
+  `y` (+$32; the camera at `$FF6B1C`, `track` = Cam_TrackBoth). With three or more players
+  Cam_TrackBoth (game/c/16103C.c) took the group's extents from `P34_Extents`, which sets nothing
+  when no player is in play. g_PlayersAlive was then 0, not 1, so the function went on and computed
+  `x`/`y` from four uninitialized locals: whatever the stack held. The other two callers (0998E6.c,
+  0B632E.c) already fell back to the original's players 1-2 code on a 0.
+- **Why it stopped showing**: a75623b (state files) maps the game's fiber stack at a fixed place
+  (`XM_FIBER_BASE`). The stale bytes became the same every run, but they are still stale: another
+  build, or Linux (where the place is only a hint), plays it differently. Netplay between them
+  desyncs. HEAD with the stack where the OS puts it (`XMEN2_FIBER_ANYWHERE=1`, new, machine.cpp)
+  fails again: 6 of 6 runs differ at 1649. The arena's place (native_rt.cpp) was ruled out (8 of 8
+  runs equal with it moved).
+- **The fix**: `if (g_opt.players > 2 && P34_Extents(...)) ; else` + the original's code, as the
+  other callers do. With none in play the camera reads players 1-2 as the original does.
+  NATIVE-only branch: MPW still byte-matches.
+- **Measured** (every stage input + boot, `players` 4 and 3, sessions 1, 40, 78, two runs each:
+  138 cases):
+  - With `XMEN2_FIBER_ANYWHERE=1`: 138 of 138 runs equal, at 30 Hz and with `full_rate_2p=1`.
+    Control, the same build without the fix: 135 of 138, the failures exactly scene42 `players=4`
+    sessions 1, 40, 78.
+  - Placement independent: the fixed build's rows are byte-identical pinned and unpinned (138 of
+    138).
+  - Against the build before the fix (pinned), the rows differ only where the bug fired: scene14
+    `players=3` (from sync 1824) and `players=4` (1849), and scene42 `players=4` (1647). In scene14
+    the stale bytes did not depend on the stack's place (equal run to run even unpinned), so only
+    this comparison shows it.
+  - Other checks:
+    - `tools/soundcheck.py`: 276 of 276 cases (was 273); `--only 14,42`: 24 of 24.
+    - `mp_inputs.py --check --only 14,42`: both meet M4.
+    - `tools/gate.py` (native and handc): pass.
+    - A four-seat loopback session of scene42 (`players=4`, session 1, hub, 30 ms / 10 ms jitter /
+      2% loss), every seat with `XMEN2_FIBER_ANYWHERE=1`: the four digest files are identical
+      (1,909 rows).
+- `XMEN2_FIBER_ANYWHERE=1` is the check for this kind of bug: run a case twice and compare the
+  game rows. A state file can't be loaded across processes with it set.
 
 ## Open questions
 

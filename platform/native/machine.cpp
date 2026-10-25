@@ -975,7 +975,10 @@ extern "C" void machine_stack_set_peak(uint64_t peak)
 extern "C" void machine_start(void)
 {
     s_host_fiber = fiber_convert_thread();
-    fiber_set_placement((uintptr_t)XM_FIBER_BASE);   /* --state-load: the stack's addresses (state_place.h) */
+    /* --state-load: the stack's addresses (state_place.h). XMEN2_FIBER_ANYWHERE=1 (diagnosing): where
+       the OS puts it, a new place each run, so a game that reads stale stack bytes plays differently
+       run to run (the fixed place hid Cam_TrackBoth's with none in play: NOTES "scene42") */
+    fiber_set_placement(getenv("XMEN2_FIBER_ANYWHERE") ? 0 : (uintptr_t)XM_FIBER_BASE);
     s_game_fiber = fiber_create(GAME_STACK, GAME_STACK, game_main, nullptr);
     if (!s_host_fiber || !s_game_fiber) machine_fatal("cannot make the game's fiber");
     paint_stack();
