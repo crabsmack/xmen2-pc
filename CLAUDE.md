@@ -38,7 +38,16 @@ Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
 - **Discovery comes from the disassembly** (#16): change it in xmen2disasm, bump the
   submodule, `uv run tools/sync_disasm.py`. Never seed from `dispatch_misses.toml` alone.
 - **Commit order** (#20): m68k-recomp-core fork -> engine fork (submodule pointer) -> this
-  repo (submodule pointer). Never push a pointer to a commit that isn't pushed.
+  repo (submodule pointer). Never push a pointer to a commit that isn't pushed. Other projects
+  push to the engine fork's master too: when it has moved past the commit tested here, merge on
+  the fork's master and keep this repo's pin on the tested commit (reachable from master); run
+  phase.py's smoke stage before pinning a moved master. New exact-mode statics belong in
+  exact_sched.c's `k_exact_rb` (`GENESIS_RB_PROBE=997:64` over the TAS catches a missing one).
+- **Git in worktrees.** Never `git submodule deinit` in a linked worktree: it edits the shared
+  `.git/config` and unregisters the main checkout's submodules too (repair: `git submodule init`
+  there). A worktree whose submodules were initialized needs `git worktree remove --force`. A
+  0-byte `index.lock` (in `.git/`, `.git/worktrees/<name>/` or `.git/modules/<sub>/`) seconds old
+  is a live status poll: wait. An old one with no `git.exe` running is stale: delete it.
 - `tier3_floor_default` stays 0: a dispatch miss must be loud (K7 needs 0 misses, 0
   interpreter instructions).
 - One runner at a time (#24); kill a stuck one **by PID**, never by image name. (A phase-2
@@ -80,7 +89,10 @@ Runners: `XMen2Recomp` (timed, all generated), `XMen2Stepped` (untimed, replay b
 position, C where it exists), `XMen2Verify` (timed + C as shadow tests). With no
 `GENESIS_REPLAY_IN`, `build\Release\XMen2Stepped.exe game\xmen2.bin` runs frame-synchronous with
 all hand C and live input: the D8 playtest build (only the user writes `handc-verified:` in
-`docs/USER_VERIFIED.md`).
+`docs/USER_VERIFIED.md`). In exact mode (the timed and verification runners), C that calls 68000
+code and wants control back at its RTS wraps the call in `XCALL_BEGIN(XAWAIT_ANY)` /
+`XCALL_END()` (handc_rt.cpp CALL_FROM_C, verify.cpp run_gen); otherwise an RTS that returns
+further out runs the game on from there.
 ```
 uv run tools/xmen2check.py build                          # all five runners (+ bridge, export table)
 uv run tools/xmen2check.py trace --run tas --input X --out D --sync         # D1: + sync.csv, replay.bin
@@ -102,7 +114,9 @@ in host byte order (`game/runtime/native_rt.cpp`), calls through stored pointers
 `platform/native/machine.cpp`; the recomp runners use `platform/plat_engine.cpp`), the host side in
 `platform/native/main.cpp` + `host_sdl.cpp` (SDL2 window, pads, sound). Its sync rows are the CRCs
 of the exported 68000 image (`game/runtime/export.cpp`). With no `--benchmark` it is played:
-`build\Release\XMen2Native.exe game\xmen2.bin`. Notes: docs/NOTES.md "Phase 5".
+`build\Release\XMen2Native.exe game\xmen2.bin`. Notes: docs/NOTES.md "Phase 5". platform/native and
+game/runtime are one link: a file-local type goes in an anonymous namespace (two namespace-scope
+`struct Mark`s once shared one `std::vector` reallocation and corrupted a vector).
 ```
 uv run tools/xmen2check.py package [--platform linux] --json   # P8/P9: the ROM-free zip, scanned (tools/romscan.py) and smoke-tested
 uv run tools/xmen2check.py native-build --json                 # XMen2Native alone (CMake XMEN2_NATIVE_ONLY): the Linux build
@@ -124,6 +138,11 @@ xmen2disasm fetches emu/gpgx from GitHub and fails offline; nothing here needs i
 `XMEN2_ROM` set to the ROM; its first gate run builds everything (~5 min). The
 runners are reproducible (CMakeLists `XMEN2_REPRODUCIBLE`, /Brepro): same sources, same SHA-1, so
 stepped-gen reference rows are cached by runner hash in `.git/xmen2-cache` (all worktrees).
+phase.py runs from the main xmen2disasm checkout (its `build/phase_traces` holds the references and
+caches; a fresh disasm worktree has none) with `XMEN2_RECOMP` = this worktree and `XMEN2_DISASM` /
+`XMEN2_REFS` set (else P9 looks for the corpus beside the worktree); stage lines go to
+`build/phaseN.log`. Its jobs follow the threads (cores less two; `PHASE_JOBS` overrides) and each
+pool waits while free RAM is under 3 GB (`PHASE_MIN_FREE_GB`), so don't lower `PHASE_JOBS` for memory.
 ```
 uv run tools/gate.py [--files game/c/A.c ...] [--mode native]   # worker batch gate, own build dir: build,
     # pccheck, MPW match (docs/p4_mpw_matched.txt), verify + 6,000-frame TAS trace; fail-fast, one line per step
