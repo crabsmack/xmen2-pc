@@ -18,7 +18,8 @@
  *   --branch-plan F      (--benchmark) other runs that start with this one's pads, played from saves of
  *                        this run (`AT TOTAL DIR SCRIPT`: see run_branches)
  *   --state-at F         (--benchmark) states for other processes at runner frames (`AT PATH`: "State files")
- *   --state-load F       (--benchmark) start from such a state, as the branch from there would
+ *   --state-load F       (--benchmark) start from such a state, as the branch from there would (with
+ *                        --flip / --flip-scan: a state of a frame before the first flipped one)
  *   --options K=V,...    the enhancement options (phase 6, options.cpp; also xmen2.ini beside the
  *                        runner); --options --json lists them and exits
  *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
@@ -1174,9 +1175,9 @@ int main(int argc, char **argv)
             }
     }
     if (states || state_in) {   /* state files: as a branch plan (see "State files") */
-        if (!s_benchmark || !script || s_flip || s_scan_hi || netplay_enabled() || (s_hash_frames && !hash_out)) {
+        if (!s_benchmark || !script || (states && (s_flip || s_scan_hi)) || netplay_enabled() || (s_hash_frames && !hash_out)) {
             fprintf(stderr, "[native] --state-at and --state-load need --benchmark and --input-script, --hash-out with "
-                            "--hash-frames, and no --flip, --flip-scan or --netplay\n");
+                            "--hash-frames, and no --netplay; --state-at no --flip or --flip-scan\n");
             return 2;
         }
         if (states) load_states(states);
@@ -1214,6 +1215,13 @@ int main(int argc, char **argv)
             || (!s_states.empty() && s_states.front().at <= s_loaded_at)) {
             fprintf(stderr, "[native] %s is of frame %llu: past this run's --benchmark, branches or states\n", state_in,
                     (unsigned long long)s_loaded_at);
+            return 2;
+        }
+        /* phase 6 E4's probes: a run that differs from the saving one only from its flip on (the
+           first flipped frame, the scan's first) starts from a frame before that */
+        if ((s_flip && s_flip <= s_loaded_at) || (s_scan_hi && s_scan_lo <= s_loaded_at)) {
+            fprintf(stderr, "[native] %s is of frame %llu: not before this run's first flipped frame %llu\n", state_in,
+                    (unsigned long long)s_loaded_at, (unsigned long long)(s_flip ? s_flip : s_scan_lo));
             return 2;
         }
         at_sync_work(s_sync_rows);

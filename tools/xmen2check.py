@@ -355,6 +355,64 @@ def stepped_result(a, src: Path, out: Path, b: dict, c: dict, fb_text: str) -> d
     return res
 
 
+def script_rows(path: Path) -> list[str]:
+    """An input script's pads by runner frame, every column (index 0 = frame 1)."""
+    rows, cur = [], ""
+    for line in path.read_text().splitlines():
+        w = line.split()
+        if not w or w[0].startswith("#"):
+            continue
+        if w[0].upper() == "PADS":
+            cur = " ".join(w[1:])
+        elif w[0].upper() == "WAIT":
+            rows += [cur] * int(w[1], 0)
+    return rows
+
+
+def trace_states(a, src: Path, out: Path, script: Path, frames: int, env: dict) -> tuple[list[str], dict]:
+    """trace --save-states K / --load-states DIR (native, phase 6 E4): the runner's --state-at /
+    --state-load and this trace's JSON fields. --save-states K: a state file every K runner frames
+    before the last, in OUT/states, with OUT/states/states.json (the frames, the /GS cookie every
+    loading process takes, the runner's hash, the options, the script). --load-states DIR (such a
+    directory): the run starts from DIR's last state before the first frame it differs from the
+    saving run in: its first flipped frame (--flip N, --flip-scan's LO) or the first frame its pads
+    differ; with none there, from power-on. The saving run's files must stay where they are: a
+    loaded run's begin with a copy of their rows up to the state (main.cpp "State files")."""
+    import secrets
+    if a.save_states:
+        d = out / "states"
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir()
+        cookie = secrets.token_hex(6)
+        env["XMEN2_GS_COOKIE"] = cookie
+        ats = list(range(a.save_states, frames, a.save_states))
+        plan = out / "states.txt"
+        plan.write_text("".join(f"{at} {d / f'{at}.state'}\n" for at in ats), newline="\n")
+        return ["--state-at", str(plan)], {"states": {"every": a.save_states, "frames": ats, "cookie": cookie}}
+    d = Path(a.load_states).resolve()
+    meta_p = d / "states.json"
+    if not meta_p.is_file():
+        sys.exit(f"--load-states {d}: no states.json (a `trace --save-states K` run's OUT/states)")
+    meta = json.loads(meta_p.read_text())
+    if meta["exe_sha1"] != common.sha1(src):
+        sys.exit(f"--load-states {d}: saved by another runner ({meta['exe_sha1'][:12]}, this {common.sha1(src)[:12]})")
+    if meta["options"] != a.options:
+        sys.exit(f"--load-states {d}: saved with --options '{meta['options']}', this trace '{a.options}'")
+    first = frames + 1   # the first runner frame this run plays unlike the saving one
+    if a.flip:
+        first = min(first, a.flip)
+    if a.flip_scan:
+        first = min(first, int(a.flip_scan.split(":")[0]))
+    mine, theirs = script_rows(script), script_rows(Path(meta["script"]))
+    first = min(first, next((i + 1 for i, (x, y) in enumerate(zip(mine, theirs)) if x != y), first))
+    at = max((f for f in meta["frames"] if f < first and f < frames and f <= len(theirs)), default=None)
+    if at is None:
+        return [], {"loaded_at": None}
+    env["XMEN2_GS_COOKIE"] = meta["cookie"]
+    return ["--state-load", str(d / f"{at}.state")], {"loaded_at": at}
+
+
 def cmd_trace(a) -> dict:
     """recomp: the timed runner plays the input (phase 2); --sync adds sync.csv and the
     replay log (phase 4 D1). stepped / stepped-gen: the frame-synchronous untimed runner, with
@@ -384,6 +442,10 @@ def cmd_trace(a) -> dict:
         sys.exit("--session, --scene, --digest, --state-probe, --state-skip: only the native runner has them (phase 7)")
     if a.state_skip and not a.state_probe:
         sys.exit("--state-skip needs --state-probe")
+    if (a.save_states or a.load_states) and (a.mode != "native" or a.fb or a.save_states and a.load_states):
+        sys.exit("--save-states, --load-states: native only, one of them, and no --fb")
+    if a.save_states and (a.flip or a.flip_scan):
+        sys.exit("--save-states: no --flip or --flip-scan (the runs that load the states flip)")
     common.ensure_rom()
     src = exe_path(globals()[STEPPED_MODES[a.mode]] if a.mode in STEPPED_MODES else common.EXE_NAME)
     if not src.is_file():
@@ -416,6 +478,9 @@ def cmd_trace(a) -> dict:
         env.pop("GENESIS_REPLAY_IN", None)
         cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(frames),
                "--input-script", str(script), "--fresh-evidence", *stepped_args(a, out)]
+        if a.save_states or a.load_states:
+            more, states_res = trace_states(a, src, out, script, frames, env)
+            cmd += more
     else:
         frames = a.frames or script_frames(Path(a.input))
         # --benchmark N ends the run after N frames and prints the counters; an EXIT directive
@@ -446,7 +511,16 @@ def cmd_trace(a) -> dict:
         sys.exit(f"runner failed ({r.returncode}){crash_note(stderr)}; see {out / 'runner.log'}")
     b, c = json.loads(bench.group(1)), json.loads(counters.group(1))
     if a.mode in STEPPED_MODES:
-        return drop_runner(a, run_dir, stepped_result(a, src, out, b, c, stderr))
+        res = stepped_result(a, src, out, b, c, stderr)
+        if a.save_states:   # the frames whose files are there, for --load-states
+            st = states_res["states"]
+            st["frames"] = [f for f in st["frames"] if (out / "states" / f"{f}.state").is_file()]
+            (out / "states" / "states.json").write_text(json.dumps(
+                {**st, "exe_sha1": res["exe_sha1"], "options": a.options, "script": str(script)}, indent=1))
+            res["states"] = {"every": st["every"], "saved": len(st["frames"])}
+        if a.load_states:
+            res.update(states_res)
+        return drop_runner(a, run_dir, res)
     res = {"dispatch_misses": c["dispatch_misses"], "interp_instructions": c["interp_instructions"],
            "stub_hits": c["stub_hits"], "fps": b["fps"], "exe": str(src), "exe_sha1": common.sha1(src)}
     res.update(frames=csv_rows(out / "frames.csv"), complete=b["complete"])
@@ -1710,6 +1784,11 @@ def main() -> int:
                            help="native (phase 7 M2) P:L: every P-th sync point save, run L, restore, run L again")
             p.add_argument("--state-skip", default="",
                            help="native (phase 7 M2): leave this section out of every restore (negative control)")
+            p.add_argument("--save-states", type=int, default=0,
+                           help="native (phase 6 E4) K: a state file every K runner frames in OUT/states (trace_states)")
+            p.add_argument("--load-states", default="",
+                           help="native (phase 6 E4) DIR: start from DIR's last state before this run first differs "
+                                "from the run that saved it (its first flipped frame or pads)")
     p = sub.add_parser("trace-group")   # many native traces, the fuzz runs as branches of TAS runs
     p.add_argument("--json", action="store_true")
     p.add_argument("--mode", default="native")
