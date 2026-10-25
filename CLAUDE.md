@@ -131,4 +131,16 @@ uv run tools/bench.py [--quick]          # the P0 gates -> docs/bench.json (clea
 uv run tools/pccheck.py --all            # all game/c on 32 threads (~80 s; one file ~1 s)
 xmen2check.py verify ... [--keep-going]  # fails (exit 1, names the run) when a run's testing stopped early
 xmen2check.py trace ... [--keep-runner]  # a passed trace deletes OUT/runner (XMEN2_KEEP_RUNNER=1 keeps it)
+xmen2check.py trace ... [--render]       # stepped/native traces comparing no picture skip the render; --render keeps it (control)
+uv run tools/xmen2check.py trace-group --runs RUNS.json [--fb|--options ...|--state-probe P:L]   # many native traces
+#   verify and trace-group play each run that branches from the TAS as its own process from a TAS state file
+#   (runners' --state-at/--state-load); --in-process / --no-branch are the controls. Only the harness's runner
+#   copies (fixed base, one XMEN2_GS_COOKIE per group) can load a state; a runner started by hand can't.
+uv run tools/statecheck.py               # cross-process state loads + negative control (~40 min)
+uv run tools/soundcheck.py [--only boot,18] [--players 4,3] [--seeds 1,40,78]   # music_voices: each part song's
+#   notes on the music machines vs a reference, note for note (276 cases ~6 min); XMEN2_KEYON_LOG=FILE logs the notes
 ```
+`music_voices` (default on) is sound only: sound2.cpp's music and parts machines, not in the digest. The
+counters line's `"sound"` (per machine and song: key-ons, stolen voices, sounding ms) is the measure
+for sound work. `tools/capture.py render` on a take without a `runner frames:` header runs unbounded:
+pass `--frames N`. phase.py 7 runs phase 6, which runs phase 5: run only the highest phase you need.
