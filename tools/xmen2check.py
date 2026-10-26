@@ -1583,8 +1583,12 @@ Licenses of the parts it is built from: LICENSES/.
 def cmd_native_build(a) -> dict:
     """Phase 5: XMen2Native alone, with this platform's compiler (P9: the Linux build in WSL): the
     snapshot, the bridges and the export table as `build` makes them, then CMake with
-    XMEN2_NATIVE_ONLY (no recompiler, no generated code, no recomp runners) and the one target."""
-    common.ensure_rom()
+    XMEN2_NATIVE_ONLY (no recompiler, no generated code, no recomp runners) and the one target.
+    --wsl: the build in WSL that `package --platform linux` and `netplay --linux-seats` use (phase.py
+    makes it while its other stages run, not inside a session)."""
+    common.ensure_rom()   # (game/xmen2.bin: WSL's build finds it there)
+    if a.wsl:
+        return {"ok": True, "dir": linux_native_build()}
     snap = snapshot_handc()
     for mode, d in (("stepped", "bridge"), ("native", "bridge_native")):
         r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "bridge.py"), "--out", str(BUILD / d),
@@ -2090,6 +2094,7 @@ def main() -> int:
     p.add_argument("--platform", default="windows", choices=["windows", "linux"])
     p = sub.add_parser("native-build")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--wsl", action="store_true", help="the Linux build in this machine's WSL")
     a = ap.parse_args()
     res = {"gen": cmd_gen, "build": cmd_build, "trace": cmd_trace, "trace-group": cmd_trace_group, "types": cmd_types,
            "handc": cmd_handc, "lint": cmd_lint, "verify": cmd_verify, "package": cmd_package,
