@@ -901,6 +901,28 @@ of the time (noted where it mattered).
     are split, cold (a new runner hash), against 2026-10-25's phase 6 log: E3 128 -> 75 s, E5
     399 -> 234 s; E4's corpus passes ~470 -> ~270 s (its TAS traces 188 s, flip scans 238 s,
     probes 7 s, as before).
+- **Phase 7's own stages (2026-10-26).** With phase 6 split, M2 and M3 were phase 7's longest
+  stages after M1 (596 and 537 s cold). From the traces' file times:
+  - M2's negative control played the whole TAS for each section (10 at once, 245 s each, after a
+    163 s whole baseline and a scene1 one, in series), but every section is caught by sync point
+    2,100: arena, machine and platform at 300, the four sound sections at 300 (snapshot bytes),
+    fiber at 2,100 (snapshot), players34 and p34video only on scene1 (1,200 and 1,500). phase.py
+    now plays every control run and its baseline to runner frame 3,000 first (`M2_CUT`), scene1
+    before the TAS, and the whole input only for a section the cut runs don't catch: a cut run
+    is the whole one's prefix, so the verdict is the same. P7-multiplayer.md's measurement says so.
+  - Sessions play in real time, 4 at a time in plan order: om-linux (254 s) started last, and it
+    spent 113 s of that in WSL's `native-build` beside three real-time sessions. phase.py now
+    starts `native-build --wsl` (new here) and the D1 references of the runs other than the
+    TAS's beside the smoke stage, starts a plan's sessions longest first (the offline run's sync
+    points by the link: `bad` x1.45), and plays 8 at a time (`PHASE_SESSION_JOBS`). The 10-22
+    lateness at 11 at once had the WSL build running beside the seats; at 8 every `mid` seat was
+    as late as at 4 (at most 0.41% and 0.34% of its frames, the bound 1%; the same world seats
+    ~11 late frames both ways). A second run at 8: at most 0.34%, M3 207 s, M5 141 s.
+  - Cold (native traces, sessions, D1 and stepped-gen references dropped from the cache, as in
+    the split runs' gate), against that gate: smoke and D1 404 -> 315 s, M2 596 -> 170 s, M3 537
+    -> 430 s (4 at a time) -> 206 s (8), M5 234 -> 187 -> 141 s, M4 and M1 as before; phase 7
+    without its build 3,324 -> 2,678 s at 4 at a time, ~2,400 s at 8. Every verdict as before
+    (6/7, M6 the user's).
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner
