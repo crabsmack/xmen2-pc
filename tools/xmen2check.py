@@ -583,12 +583,16 @@ def cmd_trace_group(a) -> dict:
     By default each such run is a process of its own that starts from a state file the TAS run saved
     there (the runner's --state-at / --state-load: state_units); --in-process: a branch of a process
     playing the TAS (--branch-plan: from a save in the same process), grouped by pack_branches.
+    A trace with pictures also splits the TAS's own (split_units): a --no-pixels producer saves the
+    states, segments of --segment-frames each play part of the TAS from them, and split_finish puts
+    the TAS run's files together (--segment-frames 0: the TAS run in one process, the control).
     --runs FILE: a JSON list of {"run", "input", "replay", "out"}; the TAS's own entry (run "tas") is
     the producer (its carrier), else --tas-input/--tas-replay give it. --no-branch: every run alone
     (the control). Prints {run: result or {"error": why}}; exits 1 when any failed."""
     import concurrent.futures
     import os
     import tempfile
+    import time
     if a.mode != "native":
         sys.exit("trace-group: --mode native only (the runner with --branch-plan)")
     a.jobs = a.jobs or max(1, (os.cpu_count() or 2) - 2)
@@ -629,8 +633,25 @@ def cmd_trace_group(a) -> dict:
         elif r != "tas":
             plain.append((None, frames[r], r))
     own = (None, frames["tas"], "tas") if "tas" in runs else None
+    line = frames["tas"] if own else max((b[0] for b in branches), default=0)
+    split = (not a.in_process and not a.no_branch and a.segment_frames > 0 and carrier_script is not None
+             and line > 0 and not picture_free(a))   # a trace without pictures: its producer would cost as much
+    lines: list[dict] = []
     if a.in_process:
         units = pack_branches(branches, own, plain, None, max(frames.values(), default=0), a.jobs)
+    elif split:   # the TAS's line, and every other run long enough for two segments
+        lines = [{"name": "", "run": "tas" if own else None, "input": carrier_script, "start": 0, "frames": line,
+                  "bounds": segment_bounds(0, line, a.segment_frames, a.jobs, a.state_probe)}]
+        rest_b, rest_p = [], []
+        for start, n, r, keep in [(b[0], b[0] + b[1], b[2], (rest_b, b)) for b in branches] + \
+                                 [(0, p[1], p[2], (rest_p, p)) for p in plain]:
+            bounds = segment_bounds(start, n, a.segment_frames, a.jobs, a.state_probe)
+            if bounds:
+                lines.append({"name": r, "run": r, "input": Path(runs[r]["out"]).resolve() / "input.input",
+                              "start": start, "frames": n, "bounds": bounds})
+            else:
+                keep[0].append(keep[1])
+        units = split_units(lines, rest_b, rest_p)
     else:
         units = state_units(branches, own, plain, carrier_script)
     states = StateFiles(work / "states") if any(u.get("states") for u in units) else None
@@ -639,9 +660,11 @@ def cmd_trace_group(a) -> dict:
     done: list[tuple] = []   # each process's outputs: read when every process has ended (a state's file copies)
 
     def one(u: dict) -> None:
-        if "load" in u and not states.wait(u["load"], None):   # a branch: its state first, outside the gate
-            results[u["run"]] = {"error": f"the TAS run ended before saving frame {u['load']}; see "
-                                          f"{(Path(runs['tas']['out']).resolve() if own else work / units[0]['name']) / 'runner.log'}"}
+        tag = u.get("from", "")
+        if "load" in u and not states.wait(u["load"], None, tag):   # a branch: its state first, outside the gate
+            p = next(x for x in units if x.get("states") and x.get("producer", "") == tag)
+            results[u["run"] or u["name"]] = {"error": f"the run saving its states ended before frame {u['load']}; see "
+                                                       f"{(Path(runs[p['run']]['out']).resolve() if p['run'] else work / p['name']) / 'runner.log'}"}
             return
         with gate:
             play(u)
@@ -650,7 +673,7 @@ def cmd_trace_group(a) -> dict:
         mine = u["run"]
         d = Path(runs[mine]["out"]).resolve() if mine else work / u["name"]
         d.mkdir(parents=True, exist_ok=True)
-        script = d / "input.input" if mine else carrier_script
+        script = u["input"] if u.get("input") else d / "input.input" if mine else carrier_script   # split_units': its line's
         run_dir = d / "runner"
         if run_dir.exists():
             shutil.rmtree(run_dir)
@@ -662,12 +685,17 @@ def cmd_trace_group(a) -> dict:
         hash_out = bool(u["branches"]) or states is not None   # the [FBHASH] lines in a file: branches copy it
         cmd = [str(run_dir / src.name), str(common.ROM), "--benchmark", str(u["frames"]), "--input-script", str(script),
                "--fresh-evidence", *stepped_args(a, d, d / "fbhash.log" if hash_out else None)]
+        if "producer" in u:   # split_units: the states, not the pictures
+            cmd += ["--no-pixels"]
+        if "segment" in u:   # line_result: the render times of every segment for the line's p99
+            env["XMEN2_RENDER_US"] = str(d / "render_us.bin")
         if states:   # state files: every process of the group with one /GS cookie
             env["XMEN2_GS_COOKIE"] = states.cookie
+        tag = u.get("producer", "")   # the producer's line: its states' names
         if u.get("states"):   # the runner's --state-at: FRAME PATH
-            cmd += ["--state-at", str(states.plan(u["states"], d / "states.txt"))]
+            cmd += ["--state-at", str(states.plan(u["states"], d / "states.txt", tag))]
         if "load" in u:
-            cmd += ["--state-load", str(states.path(u["load"]))]
+            cmd += ["--state-load", str(states.path(u["load"], u.get("from", "")))]
         if u["branches"]:
             plan = d / "branches.txt"
             plan.write_text("".join(f"{at} {at + n} {Path(runs[r]['out']).resolve()} "
@@ -676,6 +704,7 @@ def cmd_trace_group(a) -> dict:
             cmd += ["--branch-plan", str(plan)]
         log(f"trace-group {u['name']}: {u['frames']} frames" + (f" + {len(u['branches'])} branches" if u["branches"] else "")
             + (f", {len(u['states'])} states" if u.get("states") else "") + (f" from frame {u['load']}" if "load" in u else ""))
+        t_start = time.time()
         with open(d / "runner.log", "w", encoding="utf-8", errors="replace") as lf:
             try:
                 r = subprocess.run(cmd, cwd=run_dir, env=env, stdout=subprocess.PIPE, stderr=lf, text=True,
@@ -685,7 +714,8 @@ def cmd_trace_group(a) -> dict:
                 code, stdout = -1, ""
             finally:
                 if u.get("states"):
-                    states.producer_done.set()
+                    states.end(tag).set()
+        u["wall"] =[round(t_start - t_group, 1), round(time.time() - t_start, 1)]   # started at, seconds
         if mine:
             (d / "runner.stdout").write_text(stdout, encoding="utf-8")
         done.append((u, code, stdout, d, run_dir))
@@ -720,14 +750,21 @@ def cmd_trace_group(a) -> dict:
             shutil.rmtree(run_dir, ignore_errors=True)
 
     order = units if states else sorted(units, key=lambda u: -u["cost"])   # state_units: already in order
+    t_group = time.time()
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(a.jobs, len(units)))) as ex:
         list(ex.map(one, order))
+    if split:   # the TAS line from its segments; the producer's rows in the loaded runs replaced by its
+        split_finish(a, src, units, done, runs, results, lines)
+        done = [x for x in done if not (x[0]["run"] and x[0]["run"] in results)]
     for args in done:   # sync.csv gets its fb column only now: a branch's process copies the TAS run's rows
         finish(*args)
     shutil.rmtree(work, ignore_errors=True)
     failed = sorted(r for r in runs if "error" in results.get(r, {"error": "not played"}))
     out = {"runs": len(runs), "processes": [{"name": u["name"], "frames": u["frames"],
                                              "branches": [b[2] for b in u["branches"]],
+                                             **({"producer": True} if u.get("producer") else {}),
+                                             **({"segment": u["segment"]} if "segment" in u else {}),
+                                             **({"wall": u["wall"]} if "wall" in u else {}),
                                              **({"states": u["states"]} if u.get("states") else {}),
                                              **({"loaded_at": u["load"]} if "load" in u else {})} for u in units],
            "failed": failed, "per_run": {r: results.get(r, {"error": "not played"}) for r in runs}}
@@ -826,7 +863,9 @@ def state_units(branches: list[tuple], own: tuple | None, plain: list[tuple], ca
 class StateFiles:
     """The state files of a states-mode group (state_units): one per branch frame, under `root`; a
     branch's process waits for its file (or the producer's end, or a stop) before it starts. One
-    /GS cookie for every process of the group (XMEN2_GS_COOKIE: game/runtime/state_place.cpp)."""
+    /GS cookie for every process of the group (XMEN2_GS_COOKIE: game/runtime/state_place.cpp).
+    split_units has a producer per line: its states and its end go by the line's name (`tag`; the
+    TAS's is "", producer_done)."""
 
     def __init__(self, root: Path):
         import secrets
@@ -834,29 +873,243 @@ class StateFiles:
         self.root = root
         self.cookie = secrets.token_hex(6)
         self.producer_done = threading.Event()
+        self.ended = {"": self.producer_done}
+        self.lock = threading.Lock()
         if root.exists():
             shutil.rmtree(root)
         root.mkdir(parents=True)
 
-    def path(self, at: int) -> Path:
-        return self.root / f"{at}.state"
+    def path(self, at: int, tag: str = "") -> Path:
+        return self.root / (f"{tag}@{at}.state" if tag else f"{at}.state")
 
-    def plan(self, ats: list[int], out: Path) -> Path:
-        out.write_text("".join(f"{at} {self.path(at)}\n" for at in ats), newline="\n")
+    def plan(self, ats: list[int], out: Path, tag: str = "") -> Path:
+        out.write_text("".join(f"{at} {self.path(at, tag)}\n" for at in ats), newline="\n")
         return out
 
-    def wait(self, at: int, stop) -> Path | None:
+    def end(self, tag: str = ""):
+        """The event set when the producer of `tag`'s states has ended."""
+        import threading
+        with self.lock:
+            return self.ended.setdefault(tag, threading.Event())
+
+    def wait(self, at: int, stop, tag: str = "") -> Path | None:
         """The state of frame `at` once written; None when the producer ended without it or `stop` is set."""
         import time
-        p = self.path(at)
+        p, ended = self.path(at, tag), self.end(tag)
         while not p.exists():
-            if (stop is not None and stop.is_set()) or self.producer_done.is_set():
+            if (stop is not None and stop.is_set()) or ended.is_set():
                 return p if p.exists() else None
             time.sleep(0.2)
         return p
 
     def done(self) -> None:
         shutil.rmtree(self.root, ignore_errors=True)
+
+
+SEGMENT_FRAMES = 4000   # trace-group: runner frames per segment of the TAS's own trace (split_units)
+# a native trace's files by the runner's kind (main.cpp run_files), and the kinds with no picture in them
+RUN_FILES = {"sync": "sync.csv", "game": "game.csv", "digest": "digest.csv", "probe": "probe.csv",
+             "probe_snap": "probe_snap.csv", "hash": "fbhash.log", "present": "present.csv"}
+PICTURE_FREE_FILES = ("sync", "game", "digest")
+STATE_PREFIX = re.compile(r"^\[state\] prefix (\w+) (\d+)$", re.M)
+
+
+def segment_bounds(start: int, end: int, every: int, jobs: int, probe: str) -> list[int]:
+    """split_units' segment starts in a line's frames after `start` up to `end`: about `every` apart
+    (at most `jobs` segments), none inside a state probe's window (--state-probe P:L: a multiple of
+    P, where a state is saved before that probe and the segment before it has all of its own)."""
+    n = end - start
+    k = max(1, min(jobs, -(-n // max(1, every))))
+    p = int(probe.split(":")[0]) if probe else 1
+    return sorted({b - b % p for b in (start + n * i // k for i in range(1, k)) if b - b % p > start})
+
+
+def split_units(lines: list[dict], branches: list[tuple], plain: list[tuple]) -> list[dict]:
+    """state_units' processes with the long runs split. A line ({"name", "run" or None, "input",
+    "start", "frames", "bounds"}; the TAS's, named "", first and from power-on; the others the
+    corpus runs long enough to split, from power-on or from the TAS's state where they branch) has a
+    producer, which plays its input with --no-pixels from its start to the last state anyone loads
+    from it, saving one at each of its segment starts (the TAS's: at every branch frame too), and
+    segments: segment k plays the line's frames from its start (segment 0: the line's) up to the
+    next, with the run's outputs. The producer skips only the pictures, so its states are the
+    drawing run's (main.cpp --no-pixels); the rows a loaded process copies from a producer carry 0
+    for every picture hash, and split_finish puts the segments' in their place. `branches` (at,
+    frames after it, run, input) not split load the TAS's states, `plain` runs play alone. Order:
+    the producers, the segments from power-on, the plain runs longest first, then by the frame each
+    loads (segments first)."""
+    units, first, later = [], [], []
+    starts_of_lines = {m["start"] for m in lines if m["start"]}
+    for l in lines:
+        ats = sorted(set(l["bounds"]) | ({b[0] for b in branches} | starts_of_lines if l["name"] == "" else set()))
+        name = l["name"] or "tas"
+        if ats:
+            units.append({"input": l["input"], "frames": ats[-1], "run": None, "branches": [], "states": ats,
+                          "producer": l["name"], "name": f"{name}-producer",
+                          **({"load": l["start"], "from": ""} if l["start"] else {})})
+        starts = [l["start"], *l["bounds"]]
+        for k, s in enumerate(starts):
+            u = {"input": l["input"], "frames": (starts + [l["frames"]])[k + 1], "run": None, "branches": [],
+                 "line": l["name"], "segment": k, "name": f"{name}-seg{k}"}
+            if s:
+                u.update({"load": s, "from": l["name"] if k else ""})
+            (later if s else first).append(u)
+    units += first
+    units += sorted(({"input": p, "frames": n, "run": r, "branches": [], "name": r} for p, n, r in plain),
+                    key=lambda u: -u["frames"])
+    later += [{"input": p, "frames": at + n, "run": r, "branches": [], "load": at, "from": "", "name": r}
+              for at, n, r, p in branches]
+    units += sorted(later, key=lambda u: (u["load"], "segment" not in u, u["name"]))
+    for u in units:
+        u["cost"] = u["frames"] - u.get("load", 0)
+    return units
+
+
+def state_prefix(log_text: str) -> dict[str, int]:
+    """A loaded run's copied rows: bytes of each file from the saving run (main.cpp state_file_load)."""
+    return {m.group(1): int(m.group(2)) for m in STATE_PREFIX.finditer(log_text)}
+
+
+def merge_line(segs: list[tuple[Path, str]]) -> dict[str, bytes]:
+    """A line's files from its segments (split_units), as one process writes them: segment 0's
+    whole, then each later one's own rows (after the rows it copied from the producer, which must
+    be as many bytes as the segments before wrote, and for the kinds with no picture the same
+    bytes: the producer's game equals the drawing run's). segs: (dir, log text)."""
+    merged: dict[str, bytes] = {}
+    for k, (d, log_text) in enumerate(segs):
+        pre = state_prefix(log_text) if k else {}
+        kinds = [kind for kind, name in RUN_FILES.items() if (d / name).exists()]
+        if k and sorted(pre) != sorted(kinds):
+            raise ValueError(f"segment {k} ({d}): copied {sorted(pre)}, wrote {sorted(kinds)}")
+        if k and sorted(kinds) != sorted(merged):
+            raise ValueError(f"segment {k} ({d}): files {sorted(kinds)}, segment 0 {sorted(merged)}")
+        for kind in kinds:
+            data = (d / RUN_FILES[kind]).read_bytes()
+            if not k:
+                merged[kind] = data
+                continue
+            n = pre[kind]
+            if n != len(merged[kind]):
+                raise ValueError(f"segment {k}: its {RUN_FILES[kind]} starts with the producer's {n} bytes, "
+                                 f"the segments before wrote {len(merged[kind])}")
+            if kind in PICTURE_FREE_FILES and data[:n] != merged[kind]:
+                raise ValueError(f"segment {k}: the producer's {RUN_FILES[kind]} differs from the segments' "
+                                 f"(at byte {next(i for i, (x, y) in enumerate(zip(data, merged[kind])) if x != y)})")
+            merged[kind] += data[n:]
+    return merged
+
+
+def patch_prefix(o: Path, log_text: str, merged: dict[str, bytes]) -> None:
+    """A run loaded from the TAS producer's state: the rows it copied from the producer replaced by
+    the TAS line's (merge_line), the same rows with the picture hashes in them (the same bytes where
+    no picture is: checked)."""
+    for kind, n in state_prefix(log_text).items():
+        f = o / RUN_FILES[kind]
+        data, line = f.read_bytes(), merged.get(kind, b"")
+        if len(line) < n or data[:n].count(b"\n") != line[:n].count(b"\n"):
+            raise ValueError(f"{f}: its {n} bytes copied from the producer are not the TAS line's rows")
+        if kind in PICTURE_FREE_FILES and data[:n] != line[:n]:
+            raise ValueError(f"{f}: the rows copied from the producer differ from the TAS line's")
+        f.write_bytes(line[:n] + data[n:])
+
+
+def split_finish(a, src: Path, units: list[dict], done: list[tuple], runs: dict, results: dict,
+                 lines: list[dict]) -> None:
+    """trace-group with split_units, every process ended (done: (unit, exit code, stdout, dir,
+    runner dir)): each line's files from its segments (merge_line; a line from a TAS state first
+    gets the TAS line's rows in its segment 0, patch_prefix), the run's own (its files, its JSON from
+    the last segment's counters with the render p99 over every segment and the deepest stack of
+    any, its fps over the segments' own frames), and each other run loaded from the TAS producer's
+    state with its copied rows replaced (patch_prefix). Sets results[run] for every run of a line
+    and for each loaded run that failed here; the others are left to trace-group's finish."""
+    by = {x[0]["name"]: x for x in done}
+    logs = {n: (x[3] / "runner.log").read_text(errors="replace") for n, x in by.items() if not x[0]["run"]}
+    merged_of: dict[str, dict[str, bytes]] = {}
+    err_of: dict[str, str] = {}
+    for l in lines:   # the TAS's first: the others' segment 0 may start with its rows
+        mine = sorted((u for u in units if u.get("line") == l["name"]), key=lambda u: u["segment"])
+        prod = next((u for u in units if u.get("producer") == l["name"]), None)
+        segs = [by.get(u["name"]) for u in mine]
+        err = None
+        if any(x is None for x in segs) or (prod is not None and prod["name"] not in by):
+            err = f"the line {l['name'] or 'tas'}'s processes did not all run"
+        else:
+            bad = next((x for x in [by[prod["name"]] if prod else None, *segs] if x is not None and x[1] != 0), None)
+            if bad:
+                err = (f"the line {l['name'] or 'tas'}'s {bad[0]['name']} failed ({bad[1]})"
+                       f"{crash_note(logs[bad[0]['name']])}; see {bad[3] / 'runner.log'}")
+            elif l["start"] and "" in err_of:
+                err = err_of[""]
+        if err is None:
+            try:
+                if l["start"]:   # segment 0 from the TAS producer's state
+                    patch_prefix(segs[0][3], logs[segs[0][0]["name"]], merged_of[""])
+                merged_of[l["name"]] = merge_line([(x[3], logs[x[0]["name"]]) for x in segs])
+            except ValueError as e:
+                err = f"the line {l['name'] or 'tas'}: {e}"
+        if err is not None:
+            err_of[l["name"]] = err
+        if l["run"]:
+            results[l["run"]] = {"error": err} if err else line_result(a, src, l, segs, logs, merged_of[l["name"]],
+                                                                       Path(runs[l["run"]]["out"]).resolve())
+    for u, code, _stdout, d, _rd in done:   # the runs not split, loaded from the TAS producer's states
+        if not (u["run"] and "load" in u) or code != 0:
+            continue
+        if "" in err_of:
+            results[u["run"]] = {"error": err_of[""]}
+            continue
+        try:
+            patch_prefix(d, (d / "runner.log").read_text(errors="replace"), merged_of[""])
+        except ValueError as e:
+            results[u["run"]] = {"error": f"the TAS line's rows: {e}"}
+
+
+def line_result(a, src: Path, l: dict, segs: list[tuple], logs: dict, merged: dict[str, bytes], o: Path) -> dict:
+    """split_finish: a split run's files and JSON in its directory, as the run in one process."""
+    for kind, data in merged.items():
+        (o / RUN_FILES[kind]).write_bytes(data)
+    benches, counters = [], []
+    for u, _code, stdout, d, _rd in segs:
+        b = re.search(r"GENESISRECOMP_BENCHMARK (\{.*\})", stdout)
+        c = re.search(r"\[xmen2\] counters (\{.*\})", logs[u["name"]])
+        if not b or not c:
+            return {"error": f"the line {l['name'] or 'tas'}'s {u['name']} reported nothing; see {d / 'runner.log'}"}
+        benches.append(json.loads(b.group(1)))
+        counters.append(json.loads(c.group(1)))
+    c = counters[-1]   # the last segment's: the counters go with the states, from power-on
+    peaks = [(x.get("state") or {}).get("fiber_stack_peak") for x in counters]
+    if isinstance(c.get("state"), dict) and all(p is not None for p in peaks):
+        c["state"]["fiber_stack_peak"] = max(peaks)
+    pr = (c.get("enhance") or {}).get("present")
+    if isinstance(pr, dict) and "render_us_p99" in pr:
+        pr["render_us_p99"] = render_p99([x[3] / "render_us.bin" for x in segs])
+    secs, own = sum(b["seconds"] for b in benches), l["frames"] - l["start"]
+    b = {"game": "xmen2", "frames": l["frames"], "seconds": secs, "fps": own / secs if secs else 0.0,
+         "requested_frames": l["frames"], "complete": all(x.get("complete") for x in benches), "runner": "native",
+         "segments": [x[0]["name"] for x in segs], **({"branched_at": l["start"]} if l["start"] else {})}
+    (o / "runner.stdout").write_text(f"GENESISRECOMP_BENCHMARK {json.dumps(b)}\n", encoding="utf-8")
+    (o / "runner.log").write_text(f"[xmen2] counters {json.dumps(c)}\n"   # the run's, first: what a reader finds
+                                  + "".join(f"[split] {x[0]['name']}{' from frame ' + str(x[0]['load']) if 'load' in x[0] else ''}"
+                                            f" to {x[0]['frames']}\n{logs[x[0]['name']]}" for x in segs), encoding="utf-8")
+    try:
+        res = stepped_result(a, src, o, b, c, merged.get("hash", b"").decode())
+    except SystemExit as e:
+        return {"error": str(e)}
+    res["process"] = ",".join(x[0]["name"] for x in segs)
+    (o / "trace.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
+    return res
+
+
+def render_p99(paths: list[Path]) -> int:
+    """present.cpp present_counters_json's render_us_p99 over the render times of several processes
+    (XMEN2_RENDER_US files): the time at index (n - 1) x 0.99 in order."""
+    import array
+    v = array.array("I")
+    for p in paths:
+        if p.exists():
+            v.frombytes(p.read_bytes())
+    if not len(v):
+        return 0
+    return sorted(v)[int((len(v) - 1) * 0.99)]
 
 
 def pack_branches(branches: list[tuple], own: tuple | None, plain: list[tuple], carrier, longest: int,
@@ -1799,6 +2052,9 @@ def main() -> int:
     p.add_argument("--no-branch", action="store_true", help="every run from power-on (the control)")
     p.add_argument("--in-process", action="store_true",
                    help="branches inside TAS processes (--branch-plan), not from the TAS run's state files (the control)")
+    p.add_argument("--segment-frames", type=int, default=SEGMENT_FRAMES,
+                   help="the TAS's own trace in segments of about N runner frames, from a --no-pixels producer's "
+                        "state files (split_units); 0: one process (the control)")
     p.add_argument("--timeout", type=int, default=7200)
     p.add_argument("--keep-runner", action="store_true")
     p.add_argument("--fb", action="store_true")

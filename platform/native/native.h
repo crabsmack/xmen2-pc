@@ -42,6 +42,7 @@ uint64_t    present_scan_found(void);               /* that flip's frame, or 0 *
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
 void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
 std::string present_counters_json(void);
+void        present_render_us_write(const char *path);   /* XMEN2_RENDER_US: the render times, uint32 each */
 #include <vector>
 /* --state-at / --state-load (main.cpp "State files"): host state outside the savestate, as bytes */
 void        present_state_save(std::vector<uint8_t> &out);       /* present_branch_save's, for another process */
@@ -90,6 +91,8 @@ void     machine_start(void);            /* the game's fiber, made (netplay runs
 void     machine_loop(void);             /* tick after tick from where the game is (machine_run's loop); never returns */
 void     machine_set_render(int on);     /* 0: ticks render no frame (a rollback's replay) */
 void     machine_render_off(void);       /* --no-render: no tick renders a frame (traces without a picture) */
+void     machine_pixels_off(void);       /* --no-pixels: the run as asked, its pictures not drawn (a state producer) */
+int      machine_pixels(void);           /* 0 with --no-pixels: every picture hash is 0 */
 uint16_t machine_peek16(uint32_t a);     /* a word of the 68000 bus (ROM, work RAM, players 3-4's region) */
 void     machine_tick(void);             /* the host: one more runner frame, to the game's next sync point */
 void     machine_state_init(void);       /* register the snapshot's sections (state.cpp) */

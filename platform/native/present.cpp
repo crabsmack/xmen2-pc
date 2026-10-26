@@ -372,7 +372,7 @@ bool present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, boo
 {
     if (!s_log && !g_opt.high_fps) return false;
     bool gameplay = m8(0xFFC942) && !m8(0xFFC7FE);
-    log_row(k, (double)k * T_US, true, gameplay, s_log ? fnv(fb, stride, w, h) : 0);
+    log_row(k, (double)k * T_US, true, gameplay, s_log && machine_pixels() ? fnv(fb, stride, w, h) : 0);
     if (interactive && g_opt.high_fps) {
         host_present_at(fb, stride, w, h, (double)(k + s_extra) * T_US);
         return true;
@@ -487,18 +487,20 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
         }
         for (int slot = 0; slot < 80; slot++)
             if (counted[slot] && own[slot]) plan.push_back({ slot, ownx[slot], owny[slot] });
+        const bool draw = machine_pixels();
         for (double j = (double)(int64_t)(t0 / step) + 1; j * step < t1 - 0.5; j++) {
             double t = j * step, a = (t - t0) / (t1 - t0);
             if (t <= t0 + 0.5) continue;
             /* the scroll: every line's A and B words, the VSRAM entries */
-            for (int i = 0; i < 0x400; i += 2) {
+            for (int i = 0; i < 0x400 && draw; i += 2) {
                 int p = w16(s_prev.hscroll + i), c = w16(s_cur.hscroll + i);
                 put16(&v->vram[(uint16_t)(hb + (uint32_t)i)], (c & 0xFC00) | lerp_wrap(p & 0x3FF, c & 0x3FF, a, 1024));
             }
-            for (int i = 0; i < GVDP_VSRAM_ENTRIES; i++)
+            for (int i = 0; i < GVDP_VSRAM_ENTRIES && draw; i++)
                 v->vsram[i] = (uint16_t)((s_cur.vsram[i] & 0xFC00) | lerp_wrap(s_prev.vsram[i] & 0x3FF, s_cur.vsram[i] & 0x3FF, a, 1024));
             /* the sprites: back from R_k's position by (1 - a) of their step */
-            for (const Plan &pl : plan) {
+            for (size_t q = 0; q < plan.size() && draw; q++) {
+                const Plan &pl = plan[q];
                 const uint8_t *c = s_cur.sat + pl.slot * 8;
                 uint8_t *dst = &v->vram[(uint16_t)(sb + (uint32_t)pl.slot * 8u)];
                 double back = 1.0 - a;
@@ -518,6 +520,10 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
                     if (!own[slot]) s_unmatched[why[slot]]++;
                 }
                 s_matched += plan.size();
+            }
+            if (!draw) {   /* --no-pixels: the frame planned and counted, VRAM untouched, nothing drawn */
+                log_row(k, t, false, s_gameplay, 0);
+                continue;
             }
             auto r0 = std::chrono::steady_clock::now();
             plat_scan_target(ifb);
@@ -549,6 +555,14 @@ void present_reset(void)
 {
     s_prev.valid = false;
     s_marks.clear();
+}
+
+void present_render_us_write(const char *path)
+{
+    FILE *f = fopen(path, "wb");
+    if (!f) { fprintf(stderr, "[native] cannot write XMEN2_RENDER_US %s\n", path); return; }
+    if (!s_render_us.empty()) fwrite(s_render_us.data(), sizeof s_render_us[0], s_render_us.size(), f);
+    fclose(f);
 }
 
 std::string present_counters_json(void)

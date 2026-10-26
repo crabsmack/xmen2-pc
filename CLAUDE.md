@@ -158,6 +158,8 @@ uv run tools/xmen2check.py trace-group --runs RUNS.json [--fb|--options ...|--st
 #   verify and trace-group play each run that branches from the TAS as its own process from a TAS state file
 #   (runners' --state-at/--state-load); --in-process / --no-branch are the controls. Only the harness's runner
 #   copies (fixed base, one XMEN2_GS_COOKIE per group) can load a state; a runner started by hand can't.
+#   A group with pictures also splits every run over --segment-frames (4000; 0 = the control): a --no-pixels
+#   producer saves the states, segments play from them, the harness joins the files (NOTES "Split runs").
 uv run tools/statecheck.py               # cross-process state loads + negative control (~40 min)
 uv run tools/soundcheck.py [--only boot,18] [--players 4,3] [--seeds 1,40,78]   # music_voices: each part song's
 #   notes on the music machines vs a reference, note for note (276 cases ~6 min); XMEN2_KEYON_LOG=FILE logs the notes

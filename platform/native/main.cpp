@@ -14,6 +14,10 @@
  *                        the framebuffer's active region, as main.c framebuf_active_hash)
  *   --fresh-evidence     accepted (nothing is written beside the runner)
  *   --no-render          (--benchmark) the sync points render no frame: a trace that compares no picture
+ *   --no-pixels          (--benchmark) the run as asked, all of it but the pixels: no frame is drawn and
+ *                        every picture hash (the [FBHASH] lines, present.csv, probe.csv) is 0. The state
+ *                        files of a run with outputs, from a run that skips its pictures (--state-at:
+ *                        trace-group's producer; the rest of a state is the same as the drawing run's)
  *   --hash-out F         the [FBHASH] lines to F instead of stderr
  *   --branch-plan F      (--benchmark) other runs that start with this one's pads, played from saves of
  *                        this run (`AT TOTAL DIR SCRIPT`: see run_branches)
@@ -25,7 +29,8 @@
  *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
  *                        (capture.cpp; also XMEN2_CAPTURE, XMEN2_STEM, XMEN2_SND_LOG there)
  * Environment: XMEN2_SYNC_CSV=path (sync rows from the export image), XMEN2_SYNC_DUMP=n,m +
- * XMEN2_DUMP_DIR (sNNNNNN.ram/.vram), XMEN2_STACK_LOW (as game/xmen2_spec.c).
+ * XMEN2_DUMP_DIR (sNNNNNN.ram/.vram), XMEN2_STACK_LOW (as game/xmen2_spec.c), XMEN2_RENDER_US=path
+ * (at exit: the render times behind the counters' render_us_p99, uint32 each, a loaded run's own).
  * At exit stderr gets `[xmen2] counters {...}` with the export's counts.
  */
 #include <algorithm>
@@ -415,7 +420,11 @@ static void report_counters_to(FILE *out)
     fflush(out);
 }
 
-static void report_counters(void) { report_counters_to(stderr); }
+static void report_counters(void)
+{
+    report_counters_to(stderr);
+    if (const char *p = getenv("XMEN2_RENDER_US"); p && *p) present_render_us_write(p);
+}
 
 /* ---- the picture ---------------------------------------------------------------------------- */
 
@@ -438,6 +447,7 @@ extern "C" void plat_scan_target(uint32_t *fb) { s_target = fb ? (uint32_t (*)[F
 
 static uint64_t fb_hash(int w, int h)
 {
+    if (!machine_pixels()) return 0;   /* --no-pixels: nothing drawn */
     uint64_t x = 0xCBF29CE484222325ULL;
     for (int y = 0; y < h && y < FB_H; y++) {
         const uint8_t *p = (const uint8_t *)s_fb[y];
@@ -978,6 +988,7 @@ static void state_file_load(const char *path)
         if (!in.ok || kind != r.kind) state_refuse(path, "another set of files");
         if ((len >= 0) != (*r.f != nullptr)) state_refuse(path, std::string("the run that saved it ") + (len >= 0 ? "wrote" : "did not write") + " the " + kind + " file, this one " + (len >= 0 ? "doesn't" : "does"));
         if (len < 0) continue;
+        fprintf(stderr, "[state] prefix %s %lld\n", kind.c_str(), len);   /* trace-group --segment-frames: where the own rows start */
         /* this run's file: the saving run's first `len` bytes (its header and rows so far), then its own */
         fclose(*r.f);
         FILE *src = fopen(from.c_str(), "rb"), *dst = fopen(r.path.c_str(), "wb");
@@ -1032,7 +1043,7 @@ int main(int argc, char **argv)
 {
     const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".", *game_rows = nullptr;
     const char *plan = nullptr, *hash_out = nullptr, *states = nullptr, *state_in = nullptr;
-    bool session = false, no_render = false, scan_first = false;
+    bool session = false, no_render = false, no_pixels = false, scan_first = false;
     uint64_t seed = 0;
     xm_install_crash_trace();   /* a host exception prints where and the stack (crash_win.cpp) */
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
@@ -1046,6 +1057,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--state-load") && i + 1 < argc) state_in = argv[++i];
         else if (!strcmp(argv[i], "--fresh-evidence")) {}
         else if (!strcmp(argv[i], "--no-render")) no_render = true;
+        else if (!strcmp(argv[i], "--no-pixels")) no_pixels = true;
         else if (!strcmp(argv[i], "--quit-after") && i + 1 < argc) s_quit_after = strtoull(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
@@ -1146,6 +1158,15 @@ int main(int argc, char **argv)
             return 2;
         }
         machine_render_off();
+    }
+    if (no_pixels) {   /* a state producer: everything a render does but its pixels */
+        const char *shots = getenv("XMEN2_SHOTS"), *cap = getenv("XMEN2_CAPTURE");
+        if (!s_benchmark || no_render || s_flip || s_scan_hi || netplay_enabled() || (shots && *shots) || (cap && *cap)) {
+            fprintf(stderr, "[native] --no-pixels needs --benchmark, and no --no-render, --flip, --flip-scan, --netplay, "
+                            "XMEN2_SHOTS or XMEN2_CAPTURE\n");
+            return 2;
+        }
+        machine_pixels_off();
     }
     crc_init();
     if (const char *sl = getenv("XMEN2_STACK_LOW"); sl && *sl) s_stack_low = (uint32_t)strtoul(sl, nullptr, 0);

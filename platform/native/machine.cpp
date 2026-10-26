@@ -868,6 +868,7 @@ static void frame_begin(void)
    pads and Z80 frame: machine_run), then the V-int and the picture it shows. */
 static int s_no_render;   /* a rollback's replay: nobody sees its frames (machine_set_render) */
 static int s_render_off;  /* --no-render: a headless trace that compares no picture (machine_render_off) */
+static int s_pixels_off;  /* --no-pixels: all of a render's work but the pixels (machine_pixels_off) */
 
 extern "C" void plat_sync_point(void)
 {
@@ -880,7 +881,8 @@ extern "C" void plat_sync_point(void)
         return;
     }
     players_frame_setup();   /* phase 7: three or more players' sprites past the hardware's 80 */
-    if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
+    if (s_pixels_off) {}   /* the frame's pixels only: present.cpp's frames in between are planned and counted */
+    else if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
         auto r0 = std::chrono::steady_clock::now();
         render_frame();
         present_note_render(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - r0).count());
@@ -899,6 +901,8 @@ extern "C" void machine_render(void)
 }
 extern "C" void machine_set_render(int on) { s_no_render = !on; }
 extern "C" void machine_render_off(void) { s_render_off = 1; }
+extern "C" void machine_pixels_off(void) { s_pixels_off = 1; }
+extern "C" int machine_pixels(void) { return !s_pixels_off; }
 
 /* ======================================================================== */
 /* The host's loop                                                           */
