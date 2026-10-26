@@ -128,6 +128,9 @@ uv run tools/xmen2check.py trace --mode native --run R --input F --replay REFDIR
 uv run tools/synccorpus.py --refs PHASE_TRACES --mode stepped-gen --fb --out REF --jobs 24   # references, this engine
 uv run tools/synccorpus.py --refs PHASE_TRACES --mode native --fb --against REF --out D --jobs 24   # all runs vs them
 XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the image zeroed
+XMEN2_FIBER_ANYWHERE=1   # XMen2Native: the game's fiber stack where the OS puts it, not XM_FIBER_BASE
+#   the check for stale-stack reads, which the fixed place makes repeatable (NOTES "scene42"): two runs
+#   of a case must give equal game rows. No state-file loads with it set.
 ```
 
 Harness (NOTES.md "Phase 5 harness"). `XMEN2_REFS` = the phase-4 `build/phase_traces` (inputs and
