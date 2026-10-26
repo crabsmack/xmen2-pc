@@ -843,6 +843,64 @@ of the time (noted where it mattered).
     E4 was 1,258 s in the control (its corpus passes 470 s, cold), 448 s with states (those
     cached).
     Every verdict as before (M6 the user's).
+- **Split runs: segments from a --no-pixels producer's states (2026-10-26).** With the branches
+  in processes of their own, a native pass was still bound by the TAS's own trace (51,209 sync
+  points in one process), and behind it by idle (33,001 frames) and scenario-continue /
+  game-over (30,412 and 27,135 after their branch frame). A trace-group with pictures now
+  splits every run longer than `--segment-frames` (4,000; `0` is the control, the run in one
+  process). A line (the TAS's, or such a run) has:
+  - a producer that plays its input with the runner's `--no-pixels`: everything a render does
+    but its pixels. The sync point still sets up and puts back players 3-4's sprite chain and
+    the widescreen shift, present.cpp still plans and counts its frames in between (without
+    writing VRAM), and every picture hash is 0 (the [FBHASH] lines, present.csv, probe.csv). It
+    saves a state at each of the line's segment starts (the TAS's: at every branch frame and
+    every other line's start too). A long run that branches from the TAS loads the TAS
+    producer's state first;
+  - segments: segment k plays from its start to the next with the run's outputs, segment 0 from
+    the line's start (power-on, or the TAS producer's state).
+  - The state a producer saves is the drawing run's: nothing a state holds comes from pixels.
+    The counters, present.cpp's frame-to-frame state and the export's counts all come from the
+    game's memory and the VDP's. Only the render times differ: a producer notes none, so each
+    segment's `XMEN2_RENDER_US` file has its own, and the run's `render_us_p99` is computed over
+    all of its segments (as present.cpp does: index (n - 1) x 0.99). `fiber_stack_peak` is the
+    deepest of any segment.
+  - `split_finish` joins a line's files: segment 0's whole, then each later one's own rows. A
+    loaded run's files start with the bytes it copied from the producer (the runner prints
+    `[state] prefix KIND LEN` at a load), and the picture hashes in those rows are 0. Checked as
+    the files are joined:
+    - each segment's copied prefix is exactly as many bytes as the segments before it wrote;
+    - the producer's sync, game and digest rows (no picture in them) are byte-identical to the
+      drawing segments'. This proves the producer's game is the drawing run's at every sync
+      point.
+    A run that is not split but loads a TAS producer's state gets the TAS line's rows in place
+    of the copied ones (`patch_prefix`), with the same two checks. A line from the TAS's state
+    gets them in its segment 0 first. The run's JSON is built from its last segment's counters,
+    which go with the states from power-on.
+  - Not split: a pass without pictures (the plain pass: its producer would cost as much as the
+    run), verify (its cost is the testing; a producer without it would give other testing state
+    at each start, other sampling, other results), and the engine runners' D1 and stepped-gen
+    references. Those are cached by runner hash and run cold only after an engine change; in the
+    phase 7 log their stage is 20-190 s, cached. Their CSVs refuse to load from states anyway.
+  - The other runs' `render_us_p99` now covers their own frames only (a run loaded from the
+    TAS's drawing state also counted the TAS's renders before its branch). phase.py reads only
+    the TAS's.
+  - Proof, all 76 runs, 30 jobs, on this runner: split against `--segment-frames 0`, every file
+    byte-identical (sync.csv with the fb column, present.csv, game.csv, digest.csv, probe.csv,
+    fbhash.log) and the JSON equal less timings and `fiber_stack_peak`; each probe_snap.csv's
+    saves equal their re-saves. The unsplit outputs equal phase.py's cached traces of the runner
+    before the change, byte for byte (sync, present, game and probe files of all 76 runs). Option
+    sets: `--fb`, `--fb` full_rate_2p, 120 and 144 Hz with the present log, 16:9 presentation with
+    game rows, widescreen_gameplay, widescreen=0 with game rows, `--fb` with the state probe.
+  - Time, wall per pass, unsplit -> split: 105 -> 52 s, 105 -> 52, 250 -> 105, 279 -> 115,
+    127 -> 68, 111 -> 55, 102 -> 57, 128 -> 62; the eight passes 1,207 -> 566 s. A split pass
+    plays 129 processes (11 producers, 53 segments). It ends close to its work on 30 jobs: `--fb`
+    at 42 s (37 s), 144 Hz at 108 s (98 s); the harness adds ~10 s. The TAS producer takes
+    32-39 s to frame 49,569 (54 s at 16:9, whose producer runs the widescreen checks too). It
+    bounds the last branches, which load near its end, and the 16:9 passes.
+  - phase.py 7 on this runner: 6/7 as before (M1-M5 pass; M6 the user's). The stages that
+    are split, cold (a new runner hash), against 2026-10-25's phase 6 log: E3 128 -> 75 s, E5
+    399 -> 234 s; E4's corpus passes ~470 -> ~270 s (its TAS traces 188 s, flip scans 238 s,
+    probes 7 s, as before).
 - **Disk.** A trace used to copy every runner (70 MB) to `OUT/runner` and keep it: 5.3 GB per
   mode over the corpus (phase4-decomp's `build/phase_traces` holds 27 GB, mostly these); the
   phase-4-way measurement above left 456 such copies, 31.9 GB. Now a trace copies its own runner
