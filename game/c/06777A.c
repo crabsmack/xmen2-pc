@@ -14,7 +14,7 @@ short PortraitActor_StartFlyOut(register ScalingActor *self)
 
 	PlayerSelect_CalcPortraitPos(self);
 	self->fromX = self->homeX + self->offX;
-	self->fromY = self->offY + 0xAE;
+	self->fromY = self->offY + SELECT_HOME_Y;
 	self->toX = slot->cursorX + 12 + (self->offX >> 1);
 	self->toY = slot->cursorY + 26 + (self->offY >> 1);
 	t = self->picW;

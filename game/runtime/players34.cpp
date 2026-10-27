@@ -101,32 +101,281 @@ extern "C" PlayerX *P34_SlotX(const BigSprite *slot)
 	return slot->player >= 3 && slot->player <= 4 ? &g_PX[slot->player - 3] : nullptr;
 }
 
-/* As the portrait's flight ends (PortraitActor_StateSwapChar / _StateFirstChar): the character asked
-   for is the slot's, the cursor on it, input free again */
-extern "C" void P34_SlotChanged(BigSprite *slot)
+/* The player select with three or more players (the user, 2026-10-27): four fixed columns, players
+   1-4 from the left as the HUD is, each with its character's portrait flying in and out as players 1-2's
+   do (players 3-4's slots use players 1-2's character areas, unused on a Cerebro screen: the
+   portrait's tiles are g_PlayerTiles at most), "PRESS"/"START" under it, "READY" once confirmed, the
+   cursor boxes with the player's digit on its side of the screen, players 3-4 in light blue and
+   yellow (palette line 2, black and unused on a Cerebro screen), and the lives in the frame's two
+   boxes: "L n" for players 1-2 in the left one, 3-4 in the right. */
+#define g_P1Slot	(*(PTR(BigSprite) *)g_SceneVar3B28)	/* scene variable: player 1's select slot */
+#define g_P2Slot	(*(PTR(BigSprite) *)g_SceneVar3B2C)	/* scene variable: player 2's select slot */
+#define VRAM_WRITE(a)	((((a) & 0x3FFF) << 16) + 0x40000000 + ((unsigned long)((a) & 0xC000) >> 14))
+#define TEXT_CELL(row, col)	(((row) << 7) + 0xE000 + ((col) << 1))	/* Cerebro_PrintText's plane */
+/* players 2-4's cursor boxes, 16 tiles each, at VRAM $F800-$FDFF: past the sprite table ($F000) and the
+   line scroll table ($F400, 224 lines), the HUD's in a level, unused on a Cerebro screen */
+#define BOX_TILE	0x7C0
+
+static const BigSprite *select_slot(int p)
 {
-	if (!slot->changing) return;
-	PlayerSelect_RevertCursor(slot);
-	slot->busy = 0;
+	return p == 1 ? (const BigSprite *)g_P1Slot : p == 2 ? (const BigSprite *)g_P2Slot : &g_P34Slot[p - 3];
 }
 
-/* PlayerSelect_Run's frame: "LIVES n" for each player 3-4 with a character, as players 1 and 2's
-   (font banks: player 3 white as player 1, player 4 blue as player 2), 16 px above them */
+/* PortraitActor_StateInit: where player p's portrait stands, the middle of its column */
+extern "C" short P34_SelectHomeX(short p)
+{
+	static const unsigned char x[4] = { 0x44, 0x82, 0xBF, 0xFD };
+	return x[p - 1];
+}
+
+/* CursorInput_StatePoll / PortraitActor_StateWaitTurn: a player 3-4's input or flight is being carried
+   out (players 1-2's slots are tested beside it) */
+extern "C" char P34_AnyBusy(void)
+{
+	for (int k = 0; k < P34_COUNT; k++)
+		if (g_P34Slot[k].busy) return 1;
+	return 0;
+}
+
+/* CursorInput_StatePoll: a Start of player p (this frame's press, or one kept from a frame where a slot
+   was busy) to act on now. With four players a portrait is flying much of the time, and the original
+   drops a Start pressed meanwhile: here it waits instead, so a join or a confirm is never lost. */
+extern "C" char P34_TakeStart(const BigSprite *slot, int pressed, char busy)
+{
+	int i = slot->player - 1;
+	if (slot->confirmed) {
+		g_P34StartWait[i] = 0;
+		return 0;
+	}
+	if (pressed)
+		g_P34StartWait[i] = 1;
+	if (busy || !g_P34StartWait[i])
+		return 0;
+	g_P34StartWait[i] = 0;
+	return 1;
+}
+
+/* Line 2 from line 3's (Cerebro_AnimatePalettes' glow on colours 8-11, players 1-2's box borders and
+   "PRESS START"; 12-15 fixed): player 3's in light blue at the same brightness as player 1's green,
+   player 4's in yellow as player 2's red. Colour 1 black (the outlines). */
+static unsigned short blue_of(unsigned short green)
+{
+	int g = (green >> 5) & 7;
+	return (unsigned short)(7 << 9 | (g > 1 ? g - 1 : 0) << 5 | (g > 3 ? g - 3 : 0) << 1);
+}
+
+static unsigned short yellow_of(unsigned short red)
+{
+	int r = (red >> 1) & 7;
+	return (unsigned short)((r < 6 ? r + 1 : 7) << 5 | 7 << 1);
+}
+
+static void select_palette(void)
+{
+	unsigned short want[16] = { 0, 0, 0, 0, 0, 0, 0, 0,
+		yellow_of(g_PalBase[0x38]), yellow_of(g_PalBase[0x39]), blue_of(g_PalBase[0x3A]), blue_of(g_PalBase[0x3B]),
+		yellow_of(0x0A), yellow_of(0x0C), blue_of(0xA0), blue_of(0xC0) };
+	for (int i = 0; i < 16; i++)
+		if (g_PalBase[0x20 + i] != (short)want[i]) {
+			g_PalBase[0x20 + i] = (short)want[i];
+			g_PalBaseDirty = 1;
+		}
+}
+
+/* The cursor boxes (Tbl_CerebroVdp frames 7 and 8: player 1's green, digit "1" left; player 2's red,
+   "2" right) for players 2-4 at BOX_TILE: player 2's with its digit moved left, player 3's from player
+   1's border with a "3" right, player 4's from player 2's with a "4" right (the game's font,
+   Art_RegionFont, outlined); 3-4's colours are line 2's. */
+static void box_art(int frame, unsigned char px[32][32])
+{
+	const unsigned char *def = (const unsigned char *)CODEPTR(Tbl_CerebroVdp);
+	const unsigned char *fr = def + 0x24 + 0x14 * frame;
+	const unsigned char *piece = def + (fr[0x12] << 8 | fr[0x13]);
+	const unsigned char *art = def + (piece[6] << 8 | piece[7]);
+	for (int t = 0; t < 16; t++)
+		for (int y = 0; y < 8; y++)
+			for (int x = 0; x < 8; x++) {
+				unsigned char b = art[t * 32 + y * 4 + x / 2];
+				px[(t % 4) * 8 + y][(t / 4) * 8 + x] = (unsigned char)(x % 2 ? b & 15 : b >> 4);
+			}
+}
+
+struct Box { int x0, y0, x1, y1; };
+
+static Box digit_of(unsigned char px[32][32])	/* the digit: what is inside the 2-pixel border */
+{
+	Box b = { 32, 32, -1, -1 };
+	for (int y = 2; y < 30; y++)
+		for (int x = 2; x < 30; x++)
+			if (px[y][x]) {
+				b.x0 = x < b.x0 ? x : b.x0, b.x1 = x > b.x1 ? x : b.x1;
+				b.y0 = y < b.y0 ? y : b.y0, b.y1 = y > b.y1 ? y : b.y1;
+			}
+	return b;
+}
+
+static void clear_digit(unsigned char px[32][32])
+{
+	for (int y = 2; y < 30; y++)
+		for (int x = 2; x < 30; x++) px[y][x] = 0;
+}
+
+static void draw_digit(unsigned char px[32][32], char ch, int right, int bottom, unsigned char colour)
+{
+	const unsigned char *g = (const unsigned char *)CODEPTR(Art_RegionFont) + (ch - 0x20) * 8;
+	bool on[10][10] = {};
+	for (int y = 0; y < 8; y++)
+		for (int x = 0; x < 8; x++)
+			if (g[y] & (0x80 >> x)) on[y + 1][x + 1] = true;
+	int gx1 = 0;
+	for (int y = 0; y < 10; y++)
+		for (int x = 0; x < 10; x++)
+			if (on[y][x] && x > gx1) gx1 = x;
+	int ox = right - (gx1 + 1), oy = bottom - 9;	/* its outline's right column at `right` */
+	for (int y = 0; y < 10; y++)
+		for (int x = 0; x < 10; x++) {
+			bool edge = false;
+			for (int dy = -1; dy <= 1; dy++)
+				for (int dx = -1; dx <= 1; dx++) {
+					int yy = y + dy, xx = x + dx;
+					edge |= yy >= 0 && yy < 10 && xx >= 0 && xx < 10 && on[yy][xx];
+				}
+			if (on[y][x]) px[oy + y][ox + x] = colour;
+			else if (edge) px[oy + y][ox + x] = 1;
+		}
+}
+
+static void make_boxes(void)
+{
+	unsigned char p1[32][32], p2[32][32], box[3][32][32];
+	box_art(7, p1);
+	box_art(8, p2);
+	Box d1 = digit_of(p1), d2 = digit_of(p2);
+	memcpy(box[0], p2, sizeof p2);	/* player 2: its "2" where player 1's "1" is */
+	clear_digit(box[0]);
+	for (int y = d2.y0; y <= d2.y1; y++)
+		for (int x = d2.x0; x <= d2.x1; x++) box[0][y][d1.x0 + x - d2.x0] = p2[y][x];
+	memcpy(box[1], p1, sizeof p1);	/* player 3: "3" right, in player 1's digit colour ($F) */
+	clear_digit(box[1]);
+	draw_digit(box[1], '3', d2.x1, d2.y1, 0xF);
+	memcpy(box[2], p2, sizeof p2);	/* player 4: "4" right, in player 2's ($D) */
+	clear_digit(box[2]);
+	draw_digit(box[2], '4', d2.x1, d2.y1, 0xD);
+	VDP_CTRL32 = VRAM_WRITE(BOX_TILE * 32);
+	for (int b = 0; b < 3; b++)
+		for (int t = 0; t < 16; t++)
+			for (int y = 0; y < 8; y++)
+				for (int x = 0; x < 8; x += 4) {
+					const unsigned char *r = &box[b][(t % 4) * 8 + y][(t / 4) * 8 + x];
+					VDP_DATA = (unsigned short)(r[0] << 12 | r[1] << 8 | r[2] << 4 | r[3]);
+				}
+}
+
+static void put_text(short row, short col, const char *s, unsigned short base)
+{
+	VDP_CTRL32 = VRAM_WRITE(TEXT_CELL(row, col));
+	for (; *s; s++)
+		VDP_DATA = (unsigned short)(*s + base - 0x20);
+}
+
+/* Player p's text under its column: "PRESS"/"START" in the font PlayerSelect_Run prints "PRESS START"
+   in (players 1-2 line 3, as the original; 3-4 line 2), or "READY" (the original's "SELECTED", which
+   four columns have no room for) in the one CursorInput_Confirm prints "SELECTED" in */
+extern "C" void P34_SelectText(short p, char ready)
+{
+	static const short col[4] = { 6, 14, 21, 29 };
+	static const unsigned short press[4] = { 0xE640, 0xE600, 0xC640, 0xC600 };
+	static const unsigned short sel[4] = { 0xE6C0, 0xE680, 0xC6C0, 0xC680 };
+	short c = col[p - 1];
+	if (ready) {
+		put_text(0x15, c, "READY", sel[p - 1]);
+		put_text(0x16, c, "     ", sel[p - 1]);
+	} else {
+		put_text(0x15, c, "PRESS", press[p - 1]);
+		put_text(0x16, c, "START", press[p - 1]);
+	}
+}
+
+/* PlayerSelect_Run with three or more players, once players 1-2's slots are made: line 2, the boxes,
+   players 3-4's slots (a cursor and a portrait each, as players 1-2's: the portrait's tiles in player
+   1's and 2's character areas), and "PRESS"/"START" under each player who has lives or a character */
+extern "C" void P34_SelectStart(short tiles)
+{
+	if (tiles > g_PlayerTiles)
+		xm::fatal("PlayerSelect_Run: a portrait takes %d tiles, players 1-2's areas have %d", tiles, (int)g_PlayerTiles);
+	select_palette();
+	make_boxes();
+	for (int i = 0; i < 4; i++)
+		g_P34StartWait[i] = 0;
+	for (int k = 0; k < P34_COUNT; k++) {
+		BigSprite *s = &g_P34Slot[k];
+		s->player = (u8)(3 + k);
+		s->charIndex = g_PX[k].charIndex;
+		s->savedChar = -1;
+		s->frameSpr = (u8)(7 + k);
+		s->busy = 0;
+		s->hidden = 0;
+		s->confirmed = 0;
+		s->big = 0;
+		s->changing = 0;
+		s->moveDelay = 0;
+		s->params = g_ScaleParamsPtr;
+		s->tiles = tiles;
+		s->tileBase = k ? g_P2VramTile : g_P1VramTile;
+		s->pal = 1;
+		PlayerSelect_PlaceCursor(s);
+		(*CLASS(Tbl_BoxInputActor_vtable)->method[2])(0, CLASS(Tbl_BoxInputActor_vtable), 0, 0, s);
+		(*CLASS(Tbl_ScalingActor_vtable)->method[2])(0, CLASS(Tbl_ScalingActor_vtable), 0, 0, s);
+	}
+	for (int p = 1; p <= 2 + P34_COUNT; p++) {
+		short lives = p == 1 ? g_P1Lives : p == 2 ? g_P2Lives : g_PX[p - 3].lives;
+		if (lives || select_slot(p)->charIndex != -1)
+			P34_SelectText((short)p, 0);
+	}
+	g_P34SelectOn = 1;
+}
+
+/* PlayerSelect_Run's frame, after the frame hook: line 2 follows line 3's glow (not while a fade runs) */
+extern "C" void P34_SelectFrame(void)
+{
+	if (!g_PalFadeActive)
+		select_palette();
+}
+
+/* BoxInputActor_Draw: player 2-4's cursor box (as PlayerSelect_DrawFrame draws player 1's: 2 px up, 4
+   left of the portrait frame, in front) */
+extern "C" void P34_DrawBox(const BigSprite *slot)
+{
+	g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
+	g_SprWritePtr->y = slot->cursorY + 0x7E;
+	g_SprWritePtr->size = 0xF;
+	g_SprWritePtr->attr = (short)(0x8000 | (slot->player == 2 ? 3 : 2) << 13 | (BOX_TILE + 16 * (slot->player - 2)));
+	g_SprWritePtr->x = slot->cursorX + 0x7C;
+}
+
+/* PlayerSelect_Run's frame: the lives of each player with a character, "L n" (at most 99, as the
+   original's "LIVES n") in sprites in the frame's two boxes, each player in its half (players 1-2 the
+   left box, 3-4 the right) and in its font: players 1-2's as the original's, 3-4's the same banks in
+   line 2 */
 extern "C" void P34_SelectLives(void)
 {
-	for (int k = 0; k < P34_COUNT; k++) {
-		if (g_P34Slot[k].charIndex == -1) continue;
-		short lives = g_PX[k].lives, sx = k ? 0xCA : 0x42, y = 0xB6, bank = k ? 0x6680 : 0x66C0;
+	static const short mid[4] = { 74, 114, 209, 249 };
+	static const unsigned short bank[4] = { 0x66C0, 0x6680, 0x46C0, 0x4680 };
+	for (int p = 1; p <= 2 + P34_COUNT; p++) {
+		if (select_slot(p)->charIndex == -1) continue;
+		short lives = p == 1 ? g_P1Lives : p == 2 ? g_P2Lives : g_PX[p - 3].lives;
+		int digits = lives > 9 ? 2 : 1;
+		short sx = (short)(mid[p - 1] - 4 * (2 + digits));
 		auto put = [&](int ch) {
 			g_SprWritePtr = g_SpriteTable + (g_SprIndex = g_SprWritePtr->link);
-			g_SprWritePtr->y = y + 0x80;
+			g_SprWritePtr->y = 0xC6 + 0x80;
 			g_SprWritePtr->size = 0;
-			g_SprWritePtr->attr = (short)(ch - 0x20 + bank);
+			g_SprWritePtr->attr = (short)(ch - 0x20 + bank[p - 1]);
 			g_SprWritePtr->x = sx + 0x80;
 			sx += 8;
 		};
-		if (lives > 9) sx -= 4;
-		for (const char *s = "LIVES "; *s; s++) put(*s);
+		put('L');
+		sx += 8;
 		if (lives > 9) put('0' + (lives / 10 > 9 ? 9 : lives / 10));
 		put('0' + lives % 10);
 	}

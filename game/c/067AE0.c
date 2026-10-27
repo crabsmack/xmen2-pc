@@ -14,7 +14,7 @@ short PortraitActor_StartFlyIn(register ScalingActor *self)
 	register long t;
 
 	self->toX = self->homeX + self->offX;
-	self->toY = self->offY + 0xAE;
+	self->toY = self->offY + SELECT_HOME_Y;
 	self->fromX = slot->cursorX + 12 + (self->offX >> 1);
 	self->fromY = slot->cursorY + 26 + (self->offY >> 1);
 	t = self->picW;

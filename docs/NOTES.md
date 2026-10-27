@@ -1583,9 +1583,9 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   edged in Pad_Update; Game_ResetPlayers, Cerebro_Run (character from class, health back),
   Game_SceneLoop (health carried, a life spent or out; one of them standing counts), the player
   select (their slots and cursors: Start to join (a life), Left/Right among free characters, Start to
-  confirm; the change applies at once (no portrait to fly: P34_SlotChanged); "PRESS START"/"SELECTED"
-  two rows above players 1-2's; LIVES text; the unique-character rule over four (FREE_CHAR); the end
-  when every player with a character confirmed), Players_PlaceAtStart (60 and 90 px right of player
+  confirm; the unique-character rule over four (FREE_CHAR); the end when every player with a
+  character confirmed; its screen: "The player select with three or more players" below),
+  Players_PlaceAtStart (60 and 90 px right of player
   1), Pause_Check (their Start joins in SiberiaB1's opening, else pauses: a dead player waits for the
   next select everywhere else, as players 1-2 do), the development switch's start at a stage with no
   select before it (SentinelsB2, after SentinelsA1): Game_ResetPlayers runs the select first and resumes
@@ -1635,6 +1635,30 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   in `p34video`). Health and meter strips as HUD_UpdateHealthBars draws them (Art_HUDTiles2/3), every
   frame. Player 2's panel showing "PRESS START" tiles in SiberiaB1 with a player 3-4 present (backlog)
   is hidden by its portrait; the tiles are still wrong in VRAM.
+- **The player select with three or more players** (the user, 2026-10-27; before, players 3-4 had a
+  cursor in players 1-2's box colours and no portrait, their text two rows above players 1-2's):
+  four fixed columns, players 1-4 from the left as the HUD (with three players the fourth is empty).
+  Every player's portrait is a SCALINGACTOR as players 1-2's were, flying out of and into the portrait
+  frames: players 3-4's slots (P34_SelectStart) take their tiles in players 1 and 2's character areas
+  (unused on a Cerebro screen; a portrait needs PlayerSelect_AllocCharBuffers' tiles, 100 =
+  g_PlayerTiles for this ROM, checked), so they are ordinary main-table sprites; the Cerebro screen
+  gets two more objects per player 3-4 for their cursors and portraits (Cerebro_Run's
+  CEREBRO_OBJECTS: the pool was 6 with 4 in use). The portraits stand in their columns
+  (P34_SelectHomeX, x $44/$82/$BF/$FD), players 3-4 facing left (SELECT_FACES_LEFT), 8 px higher
+  (SELECT_HOME_Y) for two text rows: "PRESS"/"START" ($15/$16) or "READY" ($15; "SELECTED" is 8
+  cells and four of them need 32 of the window's 30), columns 6/14/21/29 (P34_SelectText). Lives in
+  the frame's two boxes, "L n" (n up to 99) for players 1-2 left, 3-4 right, each in its half
+  (P34_SelectLives). Players 2-4's cursor boxes are built at VRAM $F800 (BOX_TILE $7C0: past the line
+  scroll table at $F400, which looks empty but isn't free) from the ROM's two (Tbl_CerebroVdp frames
+  7-8): player 2's "2" moved left, 3 and 4 with "3"/"4" (Art_RegionFont) on the right, each player's
+  digit on its side of the screen. Colours: players 1-2 as the original (line 3, whose colours 8-11
+  glow: Cerebro_AnimatePalettes); players 3-4 in line 2 (black and unused on a Cerebro screen) in
+  light blue and yellow, the same font banks and box art, line 2's 8-11 following line 3's glow each
+  frame (P34_SelectFrame). The flight keeps the original's one-at-a-time rule (every slot's busy
+  blocks every cursor: the scaler's buffers are one set), but a Start pressed while a slot is busy
+  waits until none is (P34_TakeStart, g_P34StartWait) instead of being dropped: with four players a
+  portrait is flying much of the time. Check: a Start of player 4's only during player 2's flight
+  joins player 4 once it lands; with the original's drop (control) player 4 stays out.
 - **R6, the raised stop**: with three or more players the main sprite table moves to the region
   (P34_SPR_MAIN, 160 entries) and the game's stop is SPR_STOP = 160 (xmen2_mem.h; 80 in players 3-4's
   own tables and with one or two players, the original); every emitter compares against it and counts

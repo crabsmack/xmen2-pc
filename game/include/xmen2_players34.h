@@ -40,6 +40,8 @@ typedef struct PlayerX {
 #define g_P34ObjIndex		XM_RGA(s16, 0x0288)	/* [0], [1]: players 3 and 4's g_ObjTable slots (Obj_AllocPool) */
 #define g_P34BeamTable		XM_RG(s16, 0x028C)	/* Cyclops' beam went into player 3-4's table (3, 4), else 0 */
 #define g_P34A4Hit		XM_RGA(s32, 0x0290)	/* [0], [1]: SavageBigBio's tentacle hit point on players 3-4 (g_A4Hit1/2's) */
+#define g_P34StartWait		XM_RGA(u8, 0x02A0)	/* [0-3]: players 1-4 pressed Start on the player select while a
+							   slot was busy: it is taken once none is (P34_TakeStart) */
 #define g_P34Slot		XM_RGA(BigSprite, 0x0300)	/* [0] player 3's select slot, [1] player 4's ($42 bytes each) */
 #define P34_SPR_TABLE(k)	(0x0400 + 0x300 * ((k) - 3))	/* player k's sprite table: 82 hardware sprites */
 #define P34_SPR_MAIN		0x1000	/* the main sprite table with three or more players: 162 (SPR_STOP) */
@@ -63,12 +65,22 @@ extern "C" {
 int  P34_Index(const void *obj);	/* 3 or 4 for players 3-4's objects, else 0 */
 void P34_Enter(int k);			/* player k's (3, 4) state into player 2's globals */
 void P34_Leave(int k);			/* and back */
-/* the player select (PlayerSelect_Run and its cursors) */
+/* the player select (PlayerSelect_Run, its cursors and portraits): four columns, 1-2-3-4 */
 int  P34_CharFree(short c);		/* no player 3-4 slot has character c */
 PlayerX *P34_SlotX(const BigSprite *slot);	/* the PlayerX of a player 3-4 slot, else null */
-void P34_SlotChanged(BigSprite *slot);	/* a 3-4 slot's change applies at once (they have no portrait) */
 struct Class *P34_ClassOf(short c);	/* the character's class (as PlayerSelect_Run's cases), 0 for -1 */
-void P34_SelectLives(void);		/* PlayerSelect_Run's frame: their "LIVES n" */
+void P34_SelectStart(short tiles);	/* their slots, cursors and portraits; colours, boxes, everyone's text */
+void P34_SelectFrame(void);		/* each frame after the frame hook: their colours follow the glow */
+void P34_SelectText(short p, char ready);	/* player p's "PRESS"/"START" or "READY" */
+void P34_SelectLives(void);		/* each frame: everyone's "L n" in the frame's boxes */
+void P34_DrawBox(const BigSprite *slot);	/* player 2-4's cursor box */
+short P34_SelectHomeX(short p);		/* where player p's portrait stands */
+char P34_AnyBusy(void);			/* a player 3-4's slot is busy */
+char P34_TakeStart(const BigSprite *slot, int pressed, char busy);	/* a Start (now or kept) to act on */
+/* the portraits with three or more players: each in its column, players 3-4 facing left, 8 px higher
+   (the text has two rows under them); else players 1-2's places ($48, $F8 facing left, y $AE) */
+#define SELECT_FACES_LEFT(self)	(g_opt.players > 2 ? (self)->slot->player >= 3 : (self)->homeX == 0xF8)
+#define SELECT_HOME_Y		(g_opt.players > 2 ? 0xA6 : 0xAE)
 /* the game's loop (Game_ResetPlayers, Cerebro_Run, Game_SceneLoop) */
 void P34_ResetPlayers(void);
 void P34_BeforeSelect(void);		/* each one's character from its class, or none without health */
@@ -162,5 +174,7 @@ template <class F> static inline int P34_EveryLive(F test)
 #define GROUP_P(n_, v_)		(n_ == 0 ? (v_ = &g_Player1) : (v_ = &g_Player2))
 #define P34_HIT(v_, call_)	call_
 #define PLAYER_LIVE		(IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)
+#define SELECT_FACES_LEFT(self)	((self)->homeX == 0xF8)
+#define SELECT_HOME_Y		0xAE
 #endif /* XMEN2_NATIVE */
 #endif /* XMEN2_PLAYERS34_H */

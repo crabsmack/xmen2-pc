@@ -43,10 +43,6 @@ short CursorInput_MoveLeft(BoxInputActor *self)
 			slot->savedChar = n;
 		}
 	}
-#if defined(XMEN2_NATIVE)
-	if (P34_SlotX(slot))
-		P34_SlotChanged(slot);	/* no portrait to fly: the change is the slot's now */
-#endif
 	if (!slot->changing)
 		slot->busy = 0;
 	SET_STATE(self, CursorInput_StatePoll);

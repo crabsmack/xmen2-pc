@@ -22,7 +22,7 @@ void PlayerSelect_CalcPortraitPos(register ScalingActor *self)
 		self->picH = 0;
 	} else {
 		PlayerSelect_LoadCharFrame(slot);
-		if (self->homeX == 0xF8) {
+		if (SELECT_FACES_LEFT(self)) {
 			slot->params->hflip = 1;
 			self->offX = -fr->right;
 		} else {

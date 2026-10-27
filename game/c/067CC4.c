@@ -11,13 +11,13 @@ short PortraitActor_StateLanded(register ScalingActor *self)
 	self->slot->big = 0;
 	self->slot->busy = 0;
 	Spr_Init(&self->spr, 1, self->spr.def, -1, self->spr.flags & 3, self->spr.tileBase, 0);
-	if (self->homeX == 0xF8)
+	if (SELECT_FACES_LEFT(self))
 		self->spr.flags |= 0x10;
 	else
 		self->spr.flags &= ~0x10;
 	PlayerSelect_PlayPickAnim(self);
 	self->x = (self->homeX + g_CameraX) << 8;
-	self->y = (g_CameraY + 0xAE) << 8;
+	self->y = (g_CameraY + SELECT_HOME_Y) << 8;
 	SET_STATE(self, PortraitActor_StateIdle);
 	return self->flags & 8;
 }

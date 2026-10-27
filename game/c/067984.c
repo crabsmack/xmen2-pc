@@ -27,6 +27,10 @@ short PortraitActor_StateWaitTurn(ScalingActor *self)
 		return self->flags & 8;
 	}
 	busy = g_P1Slot->busy || g_P2Slot->busy;
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2 && P34_AnyBusy())	/* phase 7: players 3-4's slots too (one flight at a time) */
+		busy = 1;
+#endif
 	if (!busy) {
 		slot->busy = 1;
 		if ((self->spr.def = PlayerSelect_CharSpriteDef(self->slot)) != 0)

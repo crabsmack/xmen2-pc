@@ -32,6 +32,13 @@
 #define g_GlowTimer		(*(s16 *)g_SceneVar3B38)	/* scene variable: Cerebro_AnimatePalettes' glow: frames to its next stage */
 #define g_GlowStage		(*(s16 *)g_SceneVar3B40)	/* its stage 0-7 */
 #define g_GlowDir		(*(s16 *)g_SceneVar3B48)	/* its direction (+1, -1) */
+#if defined(XMEN2_NATIVE)
+/* the screen's objects: 6, and with three or more players a cursor and a portrait for each player 3-4
+   (PlayerSelect_Run: P34_SelectStart) */
+#define CEREBRO_OBJECTS		(g_opt.players > 2 ? 6 + 2 * P34_COUNT : 6)
+#else
+#define CEREBRO_OBJECTS		6
+#endif
 
 void Cerebro_Run(void)
 {
@@ -48,7 +55,7 @@ void Cerebro_Run(void)
 	if (music != -1)
 		Snd_StopAll();
 	Level_Load(CODEPTR(Lvl_CerebroFg), CODEPTR(Lvl_CerebroFg), CODEPTR(Lvl_CerebroBg),
-		CODEPTR(Lvl_CerebroBg), 0, 0, 0, 0, 1, 0, 6, -1, 8, 8, 0, CODEPTR(Tbl_CerebroClassList));
+		CODEPTR(Lvl_CerebroBg), 0, 0, 0, 0, 1, 0, CEREBRO_OBJECTS, -1, 8, 8, 0, CODEPTR(Tbl_CerebroClassList));
 	g_HudOn = 0;
 	g_BgScrollFactorX = 0;
 	g_BgScrollFactorY = 0;
