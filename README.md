@@ -6,10 +6,11 @@ at the full 60 fps, and up to four players, on one PC or online.
 
 | | |
 |---|---|
-| ![Magneto's throne room in 16:9](docs/media/magneto.png) | ![The Bani Maza ruins in 16:9](docs/media/bani-maza.png) |
-| ![Two players in Siberia, in 16:9](docs/media/siberia.png) | ![Four players in the Savage Land, in 16:9](docs/media/savage-land.png) |
+| ![Magneto's throne room in 16:9](docs/media/magneto.png) | ![Two players in Siberia, in 16:9](docs/media/siberia.png) |
+| ![Four players choosing their characters](docs/media/select.png) | ![Four players in the Savage Land, in 16:9](docs/media/savage-land.png) |
 
-*Screenshots from the port at 16:9 (the original is 4:3), with one, two and four players.*
+*Screenshots from the port at 16:9 (the original is 4:3; its Cerebro screens, like the character
+select, stay 4:3), with one, two and four players.*
 
 **You need your own copy of the game.** Nothing of the cartridge is in this repository or
 in the downloads. The port reads the graphics, sound and levels from your ROM file every time
