@@ -94,6 +94,7 @@ int  P34_Extents(short *x1, short *x2, short *y1, short *y2);	/* pixels; how man
 void P34_SprBeginFrame(void);
 void P34_SprEndFrame(void);
 void P34_HudSprites(void);		/* players 3-4's HUD panels, in their own tables */
+void P34_HudP2(void);			/* player 2's, in the players' order (1-2-3-4) */
 void P34_TagNew(Actor *obj);		/* an object made now belongs to the player 3-4 whose code runs */
 /* R11: what the game takes from players 1-2 by name, for players 3-4 too */
 XPlayer *P34_LayerPlayer(void);		/* PLAYER_LIVE */

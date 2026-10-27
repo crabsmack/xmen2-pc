@@ -56,10 +56,14 @@ void plat_p34_enter(int k);
 unsigned short plat_pad34(int k);
 /* ... a DMA (68000 source, VRAM destination, bytes) into player 2's VRAM areas while a player 3-4's code
    runs: copied into that player's own tiles now (1), else 0 (the VDP's); and the player's HUD tiles
-   (R6a: its panel from the ROM's art, its health and meter strips as HUD_UpdateHealthBars draws them) */
+   (its panel, its character's portrait, from the ROM's art; its health and meter strips as
+   HUD_UpdateHealthBars draws them) */
 int  plat_p34_dma(unsigned long src, unsigned short dest, unsigned short len);
 void plat_spr_dropped(int n);   /* sprite pieces the stop (SPR_STOP) left out: the mp counters */
 void plat_p34_hud(int k, short health, short charge, int hasMeter, unsigned short frame);
+/* ... and with three or more players, player k's (1-4) character this frame (Player_CharIndexOf, -1 out
+   of play): every player's HUD panel is its portrait */
+void plat_hud_char(int k, int ch);
 
 #ifdef __cplusplus
 }

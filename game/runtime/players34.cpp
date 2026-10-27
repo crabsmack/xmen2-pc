@@ -376,26 +376,36 @@ static void hud_sprite(short y, short size, short attr, short x)
 	g_SprWritePtr->x = x;
 }
 
-/* Players 3-4's panels as Level_FrameLoop draws players 1-2's, 64 px further in (player 3 beside
-   player 1, player 4 beside player 2), in their own tables: tiles $7D0- (player 2's HUD area), which
-   the platform shows from each one's HUD tiles (R6a: plat_p34_hud makes them from the ROM's art) */
+/* With three or more players the HUD is in the players' order, 1-2-3-4 from the left (the user,
+   2026-10-27): player 2's panel moves to where player 3's was, 64 px in from player 1's, drawn as
+   player 1's is (its strips left of it, mirrored: the strip art is symmetric) */
+extern "C" void P34_HudP2(void)
+{
+	hud_sprite(0x132, 0xF, (short)0xA7D0, HUD_L(0xA5 + 0x40));
+	if (g_P2HasMeter)
+		hud_sprite(0x133, 7, (short)0xAFE0, HUD_L(0x8F + 0x40));
+	else
+		hud_sprite(0x133, 3, (short)0xAFE0, HUD_L(0x97 + 0x40));
+}
+
+/* Players 3-4's panels as Level_FrameLoop draws player 2's, player 3's 64 px in from where player 2's
+   was, player 4's there, in their own tables: tiles $7D0- (player 2's HUD area), which the platform
+   shows from each one's HUD tiles (plat_p34_hud). Every player's character goes to the platform first:
+   all four panels are their portraits. */
 extern "C" void P34_HudSprites(void)
 {
+	plat_hud_char(1, IS_ALIVE(&g_Player1) ? Player_CharIndexOf(g_Player1.cls) : -1);
+	plat_hud_char(2, IS_ALIVE(&g_Player2) ? Player_CharIndexOf(g_Player2.cls) : -1);
+	for (int k = 3; k <= 4; k++)
+		plat_hud_char(k, k <= 2 + P34_COUNT && IS_ALIVE(PLAYER34(k)) ? Player_CharIndexOf(PLAYER34(k)->cls) : -1);
 	for (int k = 3; k <= 2 + P34_COUNT; k++) {
 		XPlayer *p = PLAYER34(k);
 		if (!IS_ALIVE(p)) continue;
 		P34_Enter(k);
 		plat_p34_hud(k, p->health, p->charge, g_P2HasMeter, g_FrameCounter);
-		if (k == 3) {
-			hud_sprite(0x132, 0xF, (short)0xA7D0, HUD_L(0xA5 + 0x40));
-			if (g_P2HasMeter)
-				hud_sprite(0x133, 7, (short)0xA7E0, HUD_L(0x8F + 0x40));
-			else
-				hud_sprite(0x133, 3, (short)0xA7E4, HUD_L(0x97 + 0x40));
-		} else {
-			hud_sprite(0x132, 0xF, (short)0xA7D0, HUD_R(0x17A - 0x40));
-			hud_sprite(0x133, g_P2HasMeter ? 7 : 3, (short)0xA7E0, HUD_R(0x1A1 - 0x40));
-		}
+		short in = k == 3 ? 0x40 : 0;
+		hud_sprite(0x132, 0xF, (short)0xA7D0, HUD_R(0x17A - in));
+		hud_sprite(0x133, g_P2HasMeter ? 7 : 3, (short)0xA7E0, HUD_R(0x1A1 - in));
 		P34_Leave(k);
 	}
 }

@@ -1615,12 +1615,26 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   their context each frame). A DMA (VDP_QueueDma: copied at once) or VRAM port write in their context
   into player 2's character area or HUD area ($FA00-$FCFF) goes to their own tiles (`s_chr`, `s_hud`:
   snapshot section `p34video`). The VDP model's host-sprite hook draws their tables after the hardware
-  sprites (so behind them), each tile from their own tiles or VRAM, palette and priority as the SAT's.
-- **R6a, the HUD**: players 3-4's panels beside players 1 and 2's (64 px in): player 3's made from
-  player 1's art (Art_HUDTiles), player 4's from player 2's, the old digit's columns cleared and "3" /
-  "4" drawn from the game's 1-bit font (Art_RegionFont) at twice its size in the panel's light colour
-  with a dark outline; health and meter strips as HUD_UpdateHealthBars draws them (Art_HUDTiles2/3),
-  every frame (plat_p34_hud).
+  sprites (so behind them), each tile from their own tiles or VRAM, palette and priority as the SAT's;
+  their HUD pieces (tiles $7D0-$7E7) go in front of everything drawn before them instead, as the
+  game's HUD is in front of the main table's sprites (it is written first). Before 2026-10-27 they
+  went behind like the rest: player 1 walking past covered player 3's strips. Check: the scene-1
+  four-player run, runner frames 1460-2290 every 5th, players 3-4's portrait boxes against their
+  usual picture: 0 frames covered (one fade-in frame differs); the control (HUD behind) 49 and 45.
+- **R6a, the HUD** (amended by the user 2026-10-27; it was numbered X discs, "3"/"4" drawn into
+  players 1-2's art from the game's font): with three or more players every player's panel is its
+  character's select-screen portrait (Tbl_CerebroVdp frames 0-6: raw tiles, a 3x4-tile piece whose top
+  24x28 are the card, palette line 1 like the HUD) with a 1 px black outline, no digit, and the HUD is
+  in the players' order, 1-2-3-4 from the left: players 1-2 as player 1's panel (strips left of it),
+  players 3-4 as player 2's (strips right of it), at the four places the original's two and R6a's two
+  were (P34_HudP2, P34_HudSprites; player 2's strips mirrored, the strip art being symmetric). The
+  portraits reach players 1-2's panels at render time only (players_frame_setup puts them in the
+  panel tiles while a 4x4 panel sprite is in the table, players_frame_restore puts the X discs back),
+  so VRAM and the digest have the game's own; players 3-4's are made in their own HUD tiles when
+  their character changes (plat_p34_hud; the characters come from P34_HudSprites, plat_hud_char,
+  in `p34video`). Health and meter strips as HUD_UpdateHealthBars draws them (Art_HUDTiles2/3), every
+  frame. Player 2's panel showing "PRESS START" tiles in SiberiaB1 with a player 3-4 present (backlog)
+  is hidden by its portrait; the tiles are still wrong in VRAM.
 - **R6, the raised stop**: with three or more players the main sprite table moves to the region
   (P34_SPR_MAIN, 160 entries) and the game's stop is SPR_STOP = 160 (xmen2_mem.h; 80 in players 3-4's
   own tables and with one or two players, the original); every emitter compares against it and counts

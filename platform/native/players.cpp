@@ -56,7 +56,8 @@ extern "C" void plat_p34_enter(int k) { s_p34 = k; }
 #define CHR_MAX (0x80u * 32u)
 static uint8_t s_chr[2][CHR_MAX];
 static uint8_t s_hud[2][HUD_HI - HUD_LO];
-static int s_panel_made[2];
+static int s_panel_made[2];   /* players 3-4: 1 + the character their panel shows, 0 none yet */
+static int s_hud_char[4] = { -1, -1, -1, -1 };   /* each player's character this frame (plat_hud_char) */
 
 static uint32_t chr_lo(void) { return (uint32_t)(uint16_t)ram_be(0xC64C, 2) * 32u; }   /* g_P2VramTile */
 static uint32_t chr_hi(void)
@@ -96,61 +97,59 @@ bool players_vram_write(uint16_t a, uint16_t w)
     return true;
 }
 
-/* R6a: player k's panel, from the ROM's: player 3's from player 1's (the X disc, the digit right),
-   player 4's from player 2's (digit left), the digit's area cleared and the new digit drawn from the
-   game's own font (Art_RegionFont, 1 bit, 8x8) at twice its size, in the panel's light colour ($E)
-   with its outline colour (1) round it. Sprite tiles go down the columns (4x4 tiles). */
-static void make_panel(int k)
+/* With three or more players every player's HUD panel is its character's select-screen portrait (the
+   user, 2026-10-27; R6a's numbered X discs before): Tbl_CerebroVdp's frame ch (0 Beast .. 6 Magneto, as
+   Player_CharIndexOf), a 3x4-tile piece of raw tiles whose top 24x28 are the card, in palette line 1 as
+   the HUD is, with a 1 px black (colour 1) outline, centred on the strips beside it (they are a row
+   lower than the panel). Into 16 tiles of a 4x4-tile sprite, down the columns. */
+#define CEREBRO_SPR 0x0608E2u   /* Tbl_CerebroVdp */
+static void portrait_panel(int ch, uint8_t *tiles)
 {
-    uint8_t px[32][32];
-    uint32_t art = k == 3 ? 0x15B2F4u : 0x15B4F4u;
-    for (int t = 0; t < 16; t++)
+    uint8_t px[32][32] = {};
+    uint32_t frame = CEREBRO_SPR + 0x24u + 0x14u * (uint32_t)ch;
+    uint32_t piece = CEREBRO_SPR + (uint32_t)(g_rom[frame + 0x12] << 8 | g_rom[frame + 0x13]);
+    uint32_t art = CEREBRO_SPR + (uint32_t)(g_rom[piece + 6] << 8 | g_rom[piece + 7]);
+    const int cx = 4, cy = 3;   /* the card's place: its outline is 26x30 at (3, 2) */
+    for (int y = -1; y <= 28; y++)
+        for (int x = -1; x <= 24; x++) px[cy + y][cx + x] = 1;
+    for (int t = 0; t < 12; t++)
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x++) {
+                int row = (t % 4) * 8 + y, col = (t / 4) * 8 + x;
+                if (row >= 28) continue;
                 uint8_t b = g_rom[art + (uint32_t)t * 32 + (uint32_t)y * 4 + (uint32_t)x / 2];
-                px[(t % 4) * 8 + y][(t / 4) * 8 + x] = (uint8_t)(x % 2 ? b & 15 : b >> 4);
+                px[cy + row][cx + col] = (uint8_t)(x % 2 ? b & 15 : b >> 4);
             }
-    int x0 = k == 3 ? 18 : 1, x1 = k == 3 ? 27 : 14;   /* the old digit's columns (Art_HUDTiles' "1" / "2") */
-    for (int y = 3; y < 27; y++)
-        for (int x = x0; x <= x1; x++) px[y][x] = 0;
-    uint32_t glyph = 0x1F4666u + (uint32_t)('0' + k - 0x20) * 8u;
-    int gx = k == 3 ? 15 : 0, gy = 7;   /* 16x16 at (gx, gy) */
-    bool on[32][32] = {};
-    for (int y = 0; y < 8; y++)
-        for (int x = 0; x < 8; x++)
-            if (g_rom[glyph + (uint32_t)y] & (0x80 >> x))
-                for (int dy = 0; dy < 2; dy++)
-                    for (int dx = 0; dx < 2; dx++) on[gy + 2 * y + dy][gx + 2 * x + dx] = true;
-    for (int y = 0; y < 32; y++)
-        for (int x = 0; x < 32; x++) {
-            if (on[y][x]) { px[y][x] = 0xE; continue; }
-            bool edge = false;
-            for (int dy = -1; dy <= 1; dy++)
-                for (int dx = -1; dx <= 1; dx++) {
-                    int yy = y + dy, xx = x + dx;
-                    edge |= yy >= 0 && yy < 32 && xx >= 0 && xx < 32 && on[yy][xx];
-                }
-            if (edge) px[y][x] = 1;
-        }
     for (int t = 0; t < 16; t++)
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x += 2)
-                s_hud[k - 3][t * 32 + y * 4 + x / 2] =
+                tiles[t * 32 + y * 4 + x / 2] =
                     (uint8_t)(px[(t % 4) * 8 + y][(t / 4) * 8 + x] << 4 | px[(t % 4) * 8 + y][(t / 4) * 8 + x + 1]);
-    s_panel_made[k - 3] = 1;
+}
+
+static bool has_portrait(int ch) { return ch >= 0 && ch <= 6; }
+
+/* P34_HudSprites: player k's (1-4) character this frame, -1 out of play */
+extern "C" void plat_hud_char(int k, int ch)
+{
+    if (k >= 1 && k <= 4) s_hud_char[k - 1] = ch;
 }
 
 /* HUD_UpdateHealthBars for player k: its health strip (Art_HUDTiles3: 9 bars, blinking at 2 or fewer)
    and meter (Art_HUDTiles2: charge / 4, at most 8, blinking past it), into its HUD tiles after the panel:
-   player 3 meter then health (as player 1's sprite: P34_HudSprites), player 4 health then meter */
+   health then meter, as player 2's sprite (both are right of the middle: P34_HudSprites) */
 extern "C" void plat_p34_hud(int k, short health, short charge, int hasMeter, unsigned short frame)
 {
     if (k != 3 && k != 4) return;
-    if (!s_panel_made[k - 3]) make_panel(k);
+    int ch = s_hud_char[k - 1];
+    if (has_portrait(ch) && s_panel_made[k - 3] != ch + 1) {
+        portrait_panel(ch, s_hud[k - 3]);
+        s_panel_made[k - 3] = ch + 1;
+    }
     unsigned bars = health <= 0 ? 0 : ((unsigned)(health - 1) >> 8) + 1;
     if (bars > 9) bars = 9;
     else if (bars <= 2 && (frame & 0x10)) bars = 0;
-    uint32_t hp = k == 3 ? 0x280u : 0x200u, mp = k == 3 ? 0x200u : 0x280u;
+    uint32_t hp = 0x200u, mp = 0x280u;
     memcpy(&s_hud[k - 3][hp], &g_rom[0x15BBF4u + bars * 0x80u], 0x80);
     if (hasMeter) {
         unsigned m = (unsigned)(uint16_t)charge >> 2;
@@ -188,13 +187,16 @@ static int table_entries(int k, int *out)
 }
 
 /* one hardware sprite (8 bytes, big-endian, as the SAT holds it) on this output row, behind every
-   sprite already there; k: a player 3-4 whose own tiles stand for player 2's areas, else 0 (VRAM) */
+   sprite already there; k: a player 3-4 whose own tiles stand for player 2's areas, else 0 (VRAM).
+   A player 3-4's HUD piece (its panel and strips) goes in front of them instead, as the HUD is in
+   front of every sprite of the main table (Level_FrameLoop writes it first). */
 static void draw_entry(const uint8_t *e, int k, const GVDP *v, const GVDPSpriteLayer *layer, uint32_t lo, uint32_t hi)
 {
     int y = (int)((e[0] << 8 | e[1]) & 0x1FF) - 128, size = e[2];
     uint16_t attr = (uint16_t)(e[4] << 8 | e[5]);
     int x = (int)((e[6] << 8 | e[7]) & 0x1FF) - 128;
-    if (!(k && (attr & 0x7FF) >= 0x7D0 && (attr & 0x7FF) < 0x7E8))   /* R8: a panel stays at the screen's edge */
+    bool hud = k && (attr & 0x7FF) >= 0x7D0 && (attr & 0x7FF) < 0x7E8;
+    if (!hud)   /* R8: a panel stays at the screen's edge */
         x -= ws_render_shift();
     int w = ((size >> 2) & 3) + 1, h = (size & 3) + 1;
     int row = layer->line - y;
@@ -203,7 +205,7 @@ static void draw_entry(const uint8_t *e, int k, const GVDP *v, const GVDPSpriteL
     int pal = (attr >> 13) & 3, tile0 = attr & 0x7FF, pri = (attr & 0x8000) != 0;
     for (int col = 0; col < w * 8; col++) {
         int sx = layer->offset + x + col;
-        if (sx < 0 || sx >= layer->total || layer->opaque[sx]) continue;
+        if (sx < 0 || sx >= layer->total || (layer->opaque[sx] && !hud)) continue;
         int c = attr & 0x800 ? w * 8 - 1 - col : col;   /* H flip */
         uint32_t a = (uint32_t)(tile0 + (c >> 3) * h + (row >> 3)) * 32u + (uint32_t)(row & 7) * 4u + (uint32_t)(c & 7) / 2u;
         a &= 0xFFFFu;
@@ -244,16 +246,22 @@ static void host_sprites(void *user, const GVDP *v, const GVDPSpriteLayer *layer
 
 /* Before a frame is rendered (machine.cpp): VRAM's attribute table, which the game's DMA filled with
    the main table's first 80 slots, ends its chain there (a link past 80 would make the VDP read past
-   the table); after it, as it was. And no per-line sprite limits (R6). */
+   the table); and players 1-2's panels in the table show their portraits (portrait_panel) from their
+   panel tiles, the X discs there for the render only. After it, VRAM as it was: the game never sees
+   the portraits. And no per-line sprite limits (R6). */
 static uint16_t s_sat_patched[80];
 static uint8_t s_link_was[80];
 static int s_npatched;
+static const uint16_t k_panel_tile[2] = { 0x7E8, 0x7D0 };   /* players 1-2's panel tiles (Level_FrameLoop) */
+static uint8_t s_panel_was[2][16 * 32];
+static int s_panel_swapped[2];
 void players_frame_setup(void)
 {
     if (g_opt.players <= 2) return;
     gvdp_set_unlimited_sprites(1);
     GVDP *v = &g_machine.vdp;
     s_npatched = 0;
+    bool panel[2] = {};
     for (int i = 0; i < 80; i++) {
         uint16_t a = (uint16_t)(0xF000u + 8u * (uint32_t)i + 3u);
         if ((v->vram[a] & 0x7F) >= 80) {
@@ -261,6 +269,16 @@ void players_frame_setup(void)
             s_link_was[s_npatched++] = v->vram[a];
             v->vram[a] = 0;
         }
+        uint16_t attr = (uint16_t)(v->vram[a + 1] << 8 | v->vram[a + 2]);
+        for (int p = 0; p < 2; p++)   /* a panel: 4x4 tiles (the "press start" in player 2's tiles is 4x1) */
+            if ((v->vram[a - 1] & 0xF) == 0xF && (attr & 0x7FF) == k_panel_tile[p]) panel[p] = true;
+    }
+    for (int p = 0; p < 2; p++) {
+        if (!panel[p] || !has_portrait(s_hud_char[p])) continue;
+        uint8_t *t = &v->vram[k_panel_tile[p] * 32u];
+        memcpy(s_panel_was[p], t, sizeof s_panel_was[p]);
+        portrait_panel(s_hud_char[p], t);
+        s_panel_swapped[p] = 1;
     }
 }
 
@@ -269,6 +287,11 @@ void players_frame_restore(void)
     GVDP *v = &g_machine.vdp;
     for (int i = 0; i < s_npatched; i++) v->vram[s_sat_patched[i]] = s_link_was[i];
     s_npatched = 0;
+    for (int p = 0; p < 2; p++)
+        if (s_panel_swapped[p]) {
+            memcpy(&v->vram[k_panel_tile[p] * 32u], s_panel_was[p], sizeof s_panel_was[p]);
+            s_panel_swapped[p] = 0;
+        }
 }
 
 extern "C" void plat_spr_dropped(int n) { players_spr_dropped(n); }
@@ -279,6 +302,7 @@ void players_video_init(void)
     state_section_range("p34video", s_chr, sizeof s_chr);
     state_section_range("p34video", s_hud, sizeof s_hud);
     state_section_range("p34video", s_panel_made, sizeof s_panel_made);
+    state_section_range("p34video", s_hud_char, sizeof s_hud_char);
 }
 /* players 3-4's pads in the game's format, as Pad_ReadPort reads a 6-button pad (players 1-2's are
    6-button too): Up Down Left Right B C A Start in the low byte, Z Y X Mode in bits 8-11, $4000 */

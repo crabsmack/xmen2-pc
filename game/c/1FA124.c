@@ -85,11 +85,19 @@ void Level_FrameLoop(void)
 			if (IS_ALIVE(pl)) {
 				if (pl->health <= 0x200 && !(g_FrameCounter & 0xE))
 					HUD_UpdateHealthBars();
+#if defined(XMEN2_NATIVE)
+				if (g_opt.players > 2)
+					P34_HudP2();	/* phase 7: the HUD in the players' order, 1-2-3-4 */
+				else {
+#endif
 				HUD_SPRITE(0x132, 0xF, 0xA7D0, HUD_R(0x17A));
 				if (g_P2HasMeter)
 					HUD_SPRITE(0x133, 7, 0xA7E0, HUD_R(0x1A1));
 				else
 					HUD_SPRITE(0x133, 3, 0xA7E0, HUD_R(0x1A1));
+#if defined(XMEN2_NATIVE)
+				}
+#endif
 			} else if ((g_SiberiaIntro && (char)Pad_IsP2Connected()) || g_DemoActive) {
 				if (g_FrameCounter & 0x10) {
 					HUD_SPRITE(0x148, 0xC, 0xA7D0, HUD_R(0x16D));
