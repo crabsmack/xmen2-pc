@@ -2204,6 +2204,10 @@ chip has voices for both parts (two full parts with the base song want up to 7 F
   and `4`; fixed, 0. With `players=2` 2 entries, both `join` 1 (runner frames 475-476: the panel's
   DMA goes out at the next V-blank, the join frame shown on two sync points at 30 Hz). All 23 stage
   inputs x `players` 2, 3, 4 on the fix: no entry with `join` 0.
+- **boot.input remade**: the redraw's V-blank wait at player 2's join moves the rest of a boot.input
+  run with `players=3`/`4` a frame, and the old input's walk then lost player 1 at runner frame 1597
+  (M4: in play 1566/3449). `mp_inputs.py --only boot` on the fix: walk/0, all four in at 475, in play
+  players 4 100%, 87%, 89%, 88%; players 3 100%, 87%, 89%. The scene inputs start past the opening.
 - **Netplay version 4** (`NP_VERSION`, for v1.1.0): the game with players 3-4 changed again since
   v1.0.1 (the four-column player select keeps a Start pressed during a flight; this redraw, with its
   V-blank wait), so v1.0.x seats and v1.1.0 seats refuse each other at the seal.
