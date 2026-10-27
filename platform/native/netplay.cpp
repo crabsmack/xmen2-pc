@@ -58,9 +58,10 @@ void     main_np_write_rows(uint64_t upto);
 
 #define NP_PAD_MASK 0x0FFFu
 #define NP_PERIOD_US 16688.9   /* NTSC: 262 lines of 3420 master clocks at 53.693175 MHz */
-#define NP_VERSION "xmen2-native-netplay-3"   /* 2: the digest without the picture's state (R12); 3: v1.0.1, the
+#define NP_VERSION "xmen2-native-netplay-4"   /* 2: the digest without the picture's state (R12); 3: v1.0.1, the
                                                  game with players 3-4 changed (enemies' targets, player 2's
-                                                 pick, the camera with none in play) */
+                                                 pick, the camera with none in play); 4: v1.1.0, again (the
+                                                 four-column select, the panels redrawn on a player 1-2's join) */
 
 /* The input delay D is 5 ticks (83 ms), the rollback driver's own floor, and stays there: the
    scheduler's auto-delay (which would grow D with the link's latency, to 150 ms on the `mid`
