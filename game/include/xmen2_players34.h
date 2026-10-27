@@ -75,6 +75,12 @@ void P34_SelectText(short p, char ready);	/* player p's "PRESS"/"START" or "READ
 void P34_SelectLives(void);		/* each frame: everyone's "L n" in the frame's boxes */
 void P34_DrawBox(const BigSprite *slot);	/* player 2-4's cursor box */
 short P34_SelectHomeX(short p);		/* where player p's portrait stands */
+int  P34_SelectIdle(ScalingActor *self);	/* select_idles: its idle drawn as in a level (1: playing) */
+/* select_idles: Gambit's idleChance ($1B58) is above anything Rand_Next returns (0-$FFF), so his idle
+   never plays in the game; with the option it is drawn half as often as Beast's, Nightcrawler's,
+   Psylocke's and Wolverine's ($DAC: 595 in 4096), 298 in 4096 = 7.3% (the user, 2026-10-27), on the
+   player select (P34_SelectIdle) and standing in a stage (XPlayer_StateStand) */
+#define GAMBIT_IDLE_CHANCE	0x0ED5
 char P34_AnyBusy(void);			/* a player 3-4's slot is busy */
 char P34_TakeStart(const BigSprite *slot, int pressed, char busy);	/* a Start (now or kept) to act on */
 /* the portraits with three or more players: each in its column, players 3-4 facing left, 8 px higher

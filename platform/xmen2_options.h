@@ -22,6 +22,10 @@ typedef struct XmOptions {
                                   camera keeps it inside the level (0: the 16:9 view is presentation only) */
     int music_voices;   /* the music on sound machines of its own (platform/native/sound2.cpp), so no part
                            or effect takes its voices; on by default, 0 = the original's one machine */
+    int select_idles;   /* tweak: on the player select each character plays its idle animation now and then,
+                           as standing in a level does, and Magneto's pick is his standing shot with the
+                           flux bomb's explosion sound; Gambit's idle, never drawn in the game, is drawn
+                           (here and in play) half as often as most others'; 0 = the original */
 } XmOptions;
 
 extern XmOptions g_opt;

@@ -1419,6 +1419,32 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   accelerates again; the bolt flies. Gate passes (TAS 6000 sync points equal, verify 0 mismatches).
   The user played it ("magneto fly feels good"); landing, walls and the two-player tether while
   flying were not tested on purpose.
+- `select_idles=1` (the user, 2026-10-27, from mock-ups; any number of players). What the original
+  does: every character's pick on the player select (PlayerSelect_PlayPickAnim) is one of its
+  standing ground attacks from its CharRecord with that record's attackSound (Beast, Gambit,
+  Nightcrawler, Psylocke combo1; Cyclops, Wolverine combo2), except Magneto's, which is his idle
+  (the crackling energy pose, frames 5-19) with no sound (no record there); a standing portrait
+  only ever loops its standing animation (CharRecord.walkAnim). Standing in a stage,
+  XPlayer_StateStand draws Rand_Next (0-$FFF) whenever an animation ends: above the record's
+  idleChance the idle plays, else the standing loop again. Magneto and Cyclops $3E8 (75.6% a draw;
+  Magneto idles 90% of the time, Cyclops 23%: his standing animation is 16.5 s), Beast,
+  Nightcrawler, Psylocke, Wolverine $DAC (14.5%; only Nightcrawler's idle differs from his stance:
+  20% of the time), Gambit $1B58, above anything the draw returns: his idle (frames 12-21, 3.7 s)
+  never plays.
+  With the option: (1) Magneto's pick is his standing level shot (Tbl_MagnetoAnim5, then the flux
+  bomb's explosion sound $7C where the globe would leave, then Tbl_MagnetoAnim6; no globe; the
+  portrait's steps -1/-2 carry it through PortraitActor_StateIdle; his frames are in his third bank,
+  67-79 tiles, within the portrait's 100). (2) Each portrait draws as XPlayer_StateStand does
+  (P34_SelectIdle). (3) Gambit's idle is drawn at GAMBIT_IDLE_CHANCE $ED5 (298 in 4096, 7.3%: half
+  the others' 595, the user's choice; 22% of the time, one every 16.5 s on average) on the select
+  and in the stages, for whatever stands with his record. Considered and dropped: the upward shot,
+  the other Magneto sounds ($78 the globe, $7F his record's unused attack sound, $7A the bomb
+  charge, which loops until stopped, $83 the clone's blast), and a fixed energy/standing pattern.
+  Checked: Gambit standing 60 s in Siberia: four idles (1290-1470 and on), none with the option off
+  and the two runs equal until the first; the select (scene 1, four players): Magneto's shot with
+  the explosion (the only sfx difference, 1.05 s), every distinct idle seen (Gambit's shoulder
+  rest, Cyclops', Nightcrawler's, Magneto's energy pose); M2's state probe (300:60, --fb) over that
+  select with the option: rows and frames equal, 9 save points equal after the restore.
 - **Native window across monitors** (e443f28): moving the game to another monitor froze and garbled
   the picture while the game and music ran on (SDL 2.28's default Direct3D 9 renderer loses its
   device). The renderer is now direct3d11 on Windows, rebuilt on SDL_RENDER_DEVICE_RESET or 30

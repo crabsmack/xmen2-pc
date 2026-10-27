@@ -51,6 +51,7 @@ program (`[options]`, one per line).
 | `magneto=1` | Magneto can be chosen from the start |
 | `start_char=wolverine` | The character you start Siberia with: `beast`, `cyclops`, `gambit`, `nightcrawler`, `psylocke`, `wolverine` or `magneto` (otherwise random) |
 | `magneto_flight=1` | Magneto moves left and right while hovering |
+| `select_idles=1` | On the player select, characters play their idle animations now and then, as when standing in a stage, and Magneto's pick is his standing shot with the flux bomb's explosion sound. Gambit's idle, which the original never plays, plays on the select and in the stages |
 | `music_voices=0` | On by default: the music plays on sound chips of its own, and players 1 and 2's music parts on a further set, so neither the parts nor the sound effects take notes from the music. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music. `0` gives the cartridge's single set of chips |
 
 `XMen2.exe --options --json` lists them.

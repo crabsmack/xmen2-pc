@@ -7,6 +7,8 @@
  * self: the player.
  * Looking up: Up held with stateTimer below 3 and above 0, the camera not already looking up
  * and no playerFlags $400000 (Up latched in an attack); otherwise stateTimer restarts at 50.
+ * Native, the select_idles option: Gambit's record draws against GAMBIT_IDLE_CHANCE (his own
+ * idleChance is above anything Rand_Next returns, so his idle never plays in the original).
  * Returns self->flags & 8, except when it goes back to the control state. */
 #include "xmen2.h"
 
@@ -40,6 +42,16 @@ short XPlayer_StateStand(XPlayer *self)
 		SET_STATE(self, (StateFn)XPlayer_StateStand);
 		return self->flags & 8;
 	}
+#if defined(XMEN2_NATIVE)
+	/* the select_idles option: Gambit idles too, whoever stands with his record, as the others do
+	   (GAMBIT_IDLE_CHANCE; the draw is the same) */
+	if (g_opt.select_idles && self->charRec == (CharRecord *)CODEPTR(Tbl_GambitCharRecord)) {
+		if ((unsigned short)Rand_Next() > GAMBIT_IDLE_CHANCE)
+			Obj_SetAnim(self, CHAR_PART(self->charRec, idleAnim));
+		else
+			Obj_SetAnim(self, CHAR_PART(self->charRec, walkAnim));
+	} else
+#endif
 	if ((unsigned short)Rand_Next() > self->charRec->idleChance)
 		Obj_SetAnim(self, CHAR_PART(self->charRec, idleAnim));
 	else

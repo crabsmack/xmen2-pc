@@ -25,7 +25,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 1 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0 };
 
 struct OptDef {
     const char *name;
@@ -50,6 +50,9 @@ static OptDef s_defs[] = {
     /* gameplay tweaks (the user, 2026-10-22; a balance prototype, not a phase-6 criterion) */
     { "magneto_flight", { "0", "1", nullptr },
       "tweak: Magneto moves left/right at his walking speed while hovering, 0 = he only turns (the original)", "0" },
+    /* (the user, 2026-10-27) */
+    { "select_idles", { "0", "1", nullptr },
+      "tweak: on the player select each character plays its idle animation now and then, as when standing in a level, and Magneto picked does his standing shot with the flux bomb's explosion sound; Gambit's idle, which the game never plays, plays here and in the stages, half as often as most others'; 0 = only the standing pose, Magneto's pick silent, no Gambit idle (the original)", "0" },
     /* phase 7 (P7-multiplayer.md R7) */
     { "players", { "2", "3", "4", nullptr }, "players at once: 2 (the original), 3 or 4 (pads 3 and 4 join with Start)", "2" },
     /* sound (the user, 2026-10-24; on by default) */
@@ -141,6 +144,7 @@ static void apply(void)
     for (int i = 1; sc->values[i]; i++)   /* the values after "0" in g_P1CharIndex's order */
         if (sc->value == sc->values[i]) g_opt.start_char = i;
     g_opt.magneto_flight = find("magneto_flight")->value == "1";
+    g_opt.select_idles = find("select_idles")->value == "1";
     g_opt.players = atoi(find("players")->value.c_str());
     g_opt.music_voices = find("music_voices")->value == "1";
 }

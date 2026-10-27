@@ -1,6 +1,7 @@
 /* PlayerSelect_PlayIdleAnim - a standing portrait plays its character's idle pose on the player
  * select (cases PlayerSelect_PlayIdleAnim_part1 .. _part6; _part7 is the exit, also with no
- * character).
+ * character). That is each character's standing animation (CharRecord.walkAnim), never its idle.
+ * Native, the select_idles option: first the draw a standing player makes (P34_SelectIdle).
  *
  * self: the portrait.
  *
@@ -10,6 +11,10 @@
 
 void PlayerSelect_PlayIdleAnim(register ScalingActor *self)
 {
+#if defined(XMEN2_NATIVE)
+	if (g_opt.select_idles && P34_SelectIdle(self))	/* the select_idles option: now and then its idle */
+		return;
+#endif
 	switch (self->slot->charIndex) {
 	case 0:
 		Obj_SetAnim(self, CODEPTR(Tbl_BeastSelectIdleAnim));

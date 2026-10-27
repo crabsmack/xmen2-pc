@@ -121,6 +121,26 @@ static const BigSprite *select_slot(int p)
 	return p == 1 ? (const BigSprite *)g_P1Slot : p == 2 ? (const BigSprite *)g_P2Slot : &g_P34Slot[p - 3];
 }
 
+/* PlayerSelect_PlayIdleAnim with the select_idles option: the draw XPlayer_StateStand makes when an
+   animation ends (Rand_Next above the character's idleChance plays its idle animation), here on the
+   select screen; Gambit's with GAMBIT_IDLE_CHANCE (xmen2_players34.h). 1: the idle is playing; 0: the
+   caller plays the standing pose. */
+extern "C" int P34_SelectIdle(ScalingActor *self)
+{
+	static void *const rec[7] = { CODEPTR(Tbl_BeastCharRecord), CODEPTR(Tbl_CyclopsCharRecord),
+		CODEPTR(Tbl_GambitCharRecord), CODEPTR(Tbl_NightcrawlerCharRecord), CODEPTR(Tbl_PsylockeCharRecord),
+		CODEPTR(Tbl_WolverineCharRecord), CODEPTR(Tbl_MagnetoCharRecord) };
+	int c = self->slot->charIndex;
+	if (c < 0 || c > 6)
+		return 0;
+	CharRecord *r = (CharRecord *)rec[c];
+	unsigned short chance = c == 2 ? GAMBIT_IDLE_CHANCE : (unsigned short)r->idleChance;
+	if ((unsigned short)Rand_Next() <= chance)
+		return 0;
+	Obj_SetAnim(self, CHAR_PART(r, idleAnim));
+	return 1;
+}
+
 /* PortraitActor_StateInit: where player p's portrait stands, the middle of its column */
 extern "C" short P34_SelectHomeX(short p)
 {

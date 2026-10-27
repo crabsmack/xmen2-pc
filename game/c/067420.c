@@ -2,6 +2,9 @@
  * attack sound (CharRecord.attackSound, unless $FF; Magneto has no record here, so no sound).
  * Cases PlayerSelect_PlayPickAnim_part1, _part2 (Beast, Cyclops) and the rest of _part2; _part3
  * plays the sound.
+ * Every pick but Magneto's is one of the character's standing ground attacks; his is his idle.
+ * Native, the select_idles option: his standing shot instead (Tbl_MagnetoAnim5, then its sound and
+ * follow-through from PortraitActor_StateIdle, steps -1 / -2).
  *
  * self: the portrait. With no character the 68000 tests whatever its caller left in a4 (never
  * happens: a portrait lands with a character); the PC version plays nothing then.
@@ -43,6 +46,13 @@ void PlayerSelect_PlayPickAnim(register ScalingActor *self)
 		rec = (CharRecord *)CODEPTR(Tbl_WolverineCharRecord);
 		break;
 	case 6:
+#if defined(XMEN2_NATIVE)
+		if (g_opt.select_idles) {	/* the select_idles option: his standing shot, as everyone's pick is a
+						   standing attack; its sound and follow-through: PortraitActor_StateIdle */
+			Obj_SetAnim(self, CODEPTR(Tbl_MagnetoAnim5));
+			self->steps = -1;
+		} else
+#endif
 		Obj_SetAnim(self, CODEPTR(Tbl_MagnetoSelectPickAnim));
 		rec = 0;
 		break;
