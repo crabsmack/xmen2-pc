@@ -1635,11 +1635,12 @@ Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phase
   in `p34video`). Health and meter strips as HUD_UpdateHealthBars draws them (Art_HUDTiles2/3), every
   frame. Player 2's panel showing "PRESS START" tiles in SiberiaB1 with a player 3-4 present (backlog)
   is hidden by its portrait; the tiles are still wrong in VRAM.
-  Tabled by the user 2026-10-27 (the current black outline kept): each portrait's outline in its
-  player's select-screen colour (green, red, light blue, yellow) with the player's digit on the corner
-  of its side, as the select's cursor boxes. Mocked up at 1 px (the outline's place) and 2 px (the
-  select boxes' bright/dim pair, the panel's full 28x32; rejected); at 1 px it identifies the players
-  at a glance, player 2's dark red is the weakest on dark cards and floors. Building it: the HUD is
+  Decided against by the user 2026-10-27 (the portraits alone are enough; the black outline kept):
+  each portrait's outline in its player's select-screen colour (green, red, light blue, yellow) with
+  the player's digit on the corner of its side, as the select's cursor boxes. Mocked up at 1 px (the
+  outline's place) and 2 px (the select boxes' bright/dim pair, the panel's full 28x32), and as the
+  black outline with only the coloured digit; at 1 px it identifies the players at a glance, player
+  2's dark red is the weakest on dark cards and floors. Building it: the HUD is
   palette line 1, which has the red, the yellow and a near light blue but no green, so the border and
   digit colours would be host-side at render time (as players 1-2's portraits are), not CRAM.
 - **The player select with three or more players** (the user, 2026-10-27; before, players 3-4 had a
