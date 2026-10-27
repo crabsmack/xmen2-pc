@@ -2146,6 +2146,80 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
   2%), the same Windows against Linux, and four seats on scene42 (`players=4`): every seat's
   digests equal (the Linux seat's file differs only in its line ends).
 
+### Ideas, not scheduled: costumes, duplicates, more players, own cameras (2026-10-27)
+
+Research and mock-ups only, no code. Costumes wait on the user: the palettes are the user's to
+design (a human task, kept off the backlog until then). The other three follow from it.
+
+- **Costumes (palette swaps)**, Streets of Rage 4 style: after Start confirms a character on the
+  select, its column becomes a colour step; Left/Right changes the costume with the figure recoloured
+  live, Start locks it ("READY"). Layout chosen by the user (mock-up B): "COLOR" over a row of
+  two-tone swatches (top: the costume's main colour, bottom: its second), the pick boxed in the
+  player's colour; six 5 px swatches 2 px apart fill the 40 px of "COLOR"'s five cells, so the column
+  keeps the original's width. Rejected: "< 3 >" under the figure, arrows beside it (with four columns
+  they touch the next figure). The select runs after every death, so a player's last pick should be
+  kept and be one press.
+- **Every hero and the HUD share palette line 1** (`Scene_PostLoadVram`, game/c/006B64.c:
+  `Pal_SceneDefaultLine1`; the select screen's line 1 is the same), so a costume can't be CRAM: it is
+  a whole replacement line for one player's sprites, applied at render time (as R6a's portraits are),
+  players 1-2 told apart by the draw list's owner marks, players 3-4 already drawn by the host. Fades
+  and flashes change line 1 (Pal_ApplyFade, `Nightcrawler_FlashPalette`, hurt flashes), so the
+  player's line must be derived from the current line 1 against the base each frame. The pick is pad
+  input, so it is game state online (snapshot; digest as the region's).
+- **Line 1's groups** (Genesis 3-bit r, g, b): 2-5, 7 a blue ramp dark to light; 6 grey, 8 white;
+  9-11 reds; 12-14 tan, orange, yellow; 15 skin. What each paints, per character (select figures and
+  in-game sprites agree):
+
+  | Character | blue 2-5, 7 | reds 9-11 | tans 12-14 | fixed |
+  |---|---|---|---|---|
+  | Cyclops | suit | visor | straps, trunks, boots | 15 face |
+  | Wolverine | blue panels, mask | belt | yellow suit | claws (6, 8) |
+  | Gambit | bodysuit | chest armour, eyes | coat **and staff** | 15 face |
+  | Beast | fur | trunks | - | |
+  | Nightcrawler | skin **and suit** | suit panels | - | gloves, boots (6, 8) |
+  | Psylocke | suit **and hair** | sash | 12-13 skin shading | 15 skin |
+  | Magneto | cape, dark parts | armour | - | |
+
+  So any colours can go in a group (5 + 3 + 3 steps), but a group's parts change together (bold
+  above): Psylocke's hair always matches her suit, Nightcrawler's skin his suit, Gambit's staff his
+  coat. Splitting them means repainting the sprite art in every frame. Psylocke's 12-13 are skin, so
+  her tans stay.
+- **The mock-ups** (six costumes per character on the select figure and the in-game sprite, layout B
+  with four players picking): composited from runner shots. A player's own pixels come from the RAM
+  sprite table ($FFE226 with one or two players) drawn from `XMEN2_SYNC_DUMP`'s .ram/.vram, the
+  palette-1 entries whose tile is in g_P1VramTile..+g_PlayerTiles ($FFC64E, $FFC64A); the sync point
+  is the one whose pixels agree with the shot (96-99% on scene 1; the rest is foreground in front).
+  SiberiaB1 is a poor backdrop: its snow covers the sprites and shares colours with line 1. The select
+  font is VRAM tile $5A0 + ASCII in five banks (bank 1: value 8 a player's dark colour, 9 its light);
+  it has `<`, `>`, `/` and the digits.
+- **Duplicate characters** (with costumes, two players on one character in different costumes; the
+  picker would refuse a costume already taken on that character). Besides the unique-character rule
+  (FREE_CHAR, Player2_StartLife and P34_Player2Pick), the original keeps one of some things per
+  character, as only one could ever play: Gambit's three cards (g_GambitCards), Magneto's one flux
+  bomb (g_FluxBombObj) and one magnetic globe (g_MagneticGlobObj), Cyclops' beam flicker splice
+  (g_BeamFlickerPending and on, $FFE98E-$FFE99B; players 3-4 have g_P34BeamTable), Psylocke's psi
+  sprite (g_PsylockeFxSpr). Each
+  needs a copy per player. Two players on one character play its part song once (music_voices).
+- **Up to six players, seven with Magneto** (one per character). The players 3-4 design (player 2's
+  globals swapped in, P34_Enter) extends to more, but much of it is sized for two extra: the region's
+  layout (xmen2_players34.h), pads (input scripts take four columns; SDL slots; netplay's pad
+  packing), the LAN hub's four seats, the object pool's two extra slots, R9's second sound machine
+  (voices $B/$C), the phase 7 checks. Layout work: seven select columns (~45 px each fits; the text is
+  tight in 40 cells) and seven HUD panels in 320 px (a compact panel).
+- **Each seat's own camera online** (research). The camera is game state: spawning and despawning
+  (Actor_SpawnRecInView / OutOfView, 1FA124.c), activation (Actor_InActivateWindow, 15DE1E.c), 177
+  files reading g_CameraX/Y (waits for "on screen", aiming, boss states that advance on the camera),
+  the tether, the stage cameras (arenas, CloneA5, SpaceA1, scripted pans). Draw code changes game
+  state (YoyoAcolyte_Draw deals damage, SavageBigBio_Draw hit tests), so the draw pass can't run again
+  for another view; sprite tiles are a bump allocation up to g_VramTileLimit ($700). Collision reads
+  the RAM block map (Tile_TestAt, g_FgBlockMap), not VRAM, so a host renderer could draw any view's
+  planes from RAM. Three levels: (A) each view slides ~90 px within the shared active window (R8's
+  render shift, plus y): cheap; (B) the shared camera takes the group's bounding box, the tether
+  loosens (~2 screens), each seat draws its own 320x224 (planes from the block maps, wider sprite
+  clipping, the tile budget, parallax per view): sealed, a gameplay change, and the same work gives
+  local split screen; (C) truly free: an active window per player and every camera-reading state
+  redefined, a redesign of the game's world model. B is the sensible target.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only
