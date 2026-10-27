@@ -167,9 +167,11 @@ uv run tools/xmen2check.py trace-group --runs RUNS.json [--fb|--options ...|--st
 #   producer saves the states, segments play from them, the harness joins the files (NOTES "Split runs").
 uv run tools/statecheck.py               # cross-process state loads + negative control (~40 min)
 uv run tools/soundcheck.py [--only boot,18] [--players 4,3] [--seeds 1,40,78]   # music_voices: each part song's
-#   notes on the music machines vs a reference, note for note (276 cases ~6 min); XMEN2_KEYON_LOG=FILE logs the notes
+#   notes on the music machines vs a reference, note for note, and full's parts as a superset of them; XMEN2_KEYON_LOG=FILE logs the notes
 ```
-`music_voices` (default on) is sound only: sound2.cpp's music and parts machines, not in the digest. The
+`music_voices` (default `full`; `1` the game's thinned parts, `0` the cartridge) is sound only: sound2.cpp's
+music, parts and full-parts machines, not in the digest (the second machine, players 3-4's, is in it and
+plays silent under `full`). The
 counters line's `"sound"` (per machine and song: key-ons, stolen voices, sounding ms) is the measure
 for sound work. `tools/capture.py render` on a take without a `runner frames:` header runs unbounded:
 pass `--frames N`. phase.py 7 runs phase 6, which runs phase 5: run only the highest phase you need.

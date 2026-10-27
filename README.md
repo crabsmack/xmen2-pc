@@ -52,7 +52,7 @@ program (`[options]`, one per line).
 | `start_char=wolverine` | The character you start Siberia with: `beast`, `cyclops`, `gambit`, `nightcrawler`, `psylocke`, `wolverine` or `magneto` (otherwise random) |
 | `magneto_flight=1` | Magneto moves left and right while hovering |
 | `select_idles=1` | On the player select, characters play their idle animations now and then, as when standing in a stage, and Magneto's pick is his standing shot with the flux bomb's explosion sound. Gambit's idle, which the original never plays, plays on the select and in the stages |
-| `music_voices=0` | On by default: the music plays on sound chips of its own, and players 1 and 2's music parts on a further set, so neither the parts nor the sound effects take notes from the music. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music. `0` gives the cartridge's single set of chips |
+| `music_voices=1` | `full` by default: the music plays on sound chips of its own and the players' music parts on further sets, so neither the parts nor the sound effects take notes from the music, and each player's part plays in full, as one player hears it. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music; with two players or more the game plays each part thinned, one of its tracks muted. `1` keeps the chips of their own with the game's thinned parts, `0` gives the cartridge's single set of chips |
 
 `XMen2.exe --options --json` lists them.
 
@@ -90,7 +90,8 @@ displayed frame, so it never slows down where the cartridge lagged.
 Three and four players are new and have been played less than the rest. Enemies choose their
 targets among all the players in play. In two-player stages the original's sound driver
 runs short of voices, and the music loses notes to the characters' parts and the sound effects.
-By default (`music_voices`) the port gives the music sound chips of its own, so no note is lost.
+By default (`music_voices`) the port gives the music sound chips of its own, so no note is lost,
+and plays every player's part in full, where the game thins each part with two players or more.
 
 ## How it was made
 

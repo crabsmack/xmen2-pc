@@ -31,6 +31,15 @@
  * canonical digest or the sealed options; they are in the snapshot ("snd_music", "snd_parts"), so a
  * rollback or a savestate keeps them in step.
  *
+ * music_voices=full (the default; the user, 2026-10-27). Each part song's first track mutes the part's
+ * second, doubling or harmony track when $A is not 1 (kickoff notes section 3): with two players or
+ * more every part plays thinned, so that the cartridge's one chip has voices for them. With full the
+ * parts machine gets $A = 1 for the game's 2, so players 1's and 2's parts play as one player hears
+ * them, and with players 3-4 in the game a fourth machine, the full-parts machine, plays their parts
+ * the same way (the second machine's commands, $A = 1); the second machine runs as always (it is in the
+ * canonical digest) and is silent. The full-parts machine is presentation only, as the music machines
+ * ("snd_parts34" in the snapshot).
+ *
  * The YM2612 timers and the Z80's frame are the first machine's (machine.cpp), copied: the same
  * driver sees the same machine. Every machine (and the first) counts its key-ons and the voices
  * other songs stole, by song (sound_counters_json).
@@ -71,11 +80,12 @@ extern "C" {
 CHIP_DECLS(snd2)
 CHIP_DECLS(mus)
 CHIP_DECLS(prt)
+CHIP_DECLS(p34)
 extern uint8_t xm_region[0x10000];
 int P34_MusicVoice(int k);   /* game/runtime/players34.cpp: Player_MusicVoice of player k (3, 4) */
 }
 
-/* a machine's chips: one compiled copy of the engine's wrappers (snd2_chips.cpp, mus_, prt_) */
+/* a machine's chips: one compiled copy of the engine's wrappers (snd2_chips.cpp, mus_, prt_, p34_) */
 struct Chips {
     void   (*ym_init)(void);
     void   (*ym_advance)(uint32_t);
@@ -98,7 +108,7 @@ struct Chips {
       p##_ym2612_samples_available, p##_ym2612_rb_save, p##_ym2612_rb_load, p##_psg_init, p##_psg_advance, \
       p##_psg_write, p##_psg_render, p##_psg_samples_available, p##_psg_reset_leftover, p##_psg_rb_save,   \
       p##_psg_rb_load }
-static const Chips k_chips[3] = { CHIPS(snd2), CHIPS(mus), CHIPS(prt) };
+static const Chips k_chips[4] = { CHIPS(snd2), CHIPS(mus), CHIPS(prt), CHIPS(p34) };
 
 #define MPL            3420u
 #define LINES          262
@@ -306,7 +316,10 @@ static int arg_count(uint8_t c);
 
 /* ---- a machine ------------------------------------------------------------------------------------- */
 
-enum Role { ROLE_P34, ROLE_MUSIC, ROLE_PARTS };
+enum Role { ROLE_P34, ROLE_MUSIC, ROLE_PARTS, ROLE_P34_FULL };
+#define NMACHINES 4
+
+static bool p34_full_plays(void);
 
 /* Everything one machine is, one plain struct (the snapshot; the Z80's callbacks scrubbed). The ring
    parser's fields are the second machine's (the one parse feeds all three). */
@@ -444,9 +457,10 @@ struct Machine {
 
     /* ---- the Z80's bus ---- */
 
-    /* the songs whose tracks this machine keeps muted: the second and the parts machine play only part
-       songs, the music machine the music but the parts: not the effects (capture.cpp's classes; a song
-       the driver starts from inside another is music) (XMEN2_SOLO: only the songs it names) */
+    /* the songs whose tracks this machine keeps muted: the second, the parts and the full-parts machine
+       play only part songs, the music machine the music but the parts: not the effects (capture.cpp's
+       classes; a song the driver starts from inside another is music) (XMEN2_SOLO: only the songs it
+       names, but on the second machine) */
     bool muted_song(uint8_t s) const
     {
         switch (role) {
@@ -547,11 +561,13 @@ struct Machine {
     }
 
     /* a variable as this machine gets it: the second machine's $A = 2, $B/$C = players 3's and 4's
-       characters; the music machines' as the game sets it */
+       characters; the full-parts machine's the same but $A = 1 (one player: every part in full); the
+       music machines' as the game sets it, but with music_voices=full the parts machine's $A 2 is 1 */
     uint8_t param_value(uint8_t slot, uint8_t v) const
     {
-        if (role != ROLE_P34) return v;
-        if (slot == 0x0A) return 2;
+        if (role == ROLE_MUSIC) return v;
+        if (role == ROLE_PARTS) return slot == 0x0A && v == 2 && g_opt.music_voices == 2 ? 1 : v;
+        if (slot == 0x0A) return role == ROLE_P34 ? 2 : 1;
         if (slot == 0x0B) return (uint8_t)P34_MusicVoice(3);
         if (slot == 0x0C) return (uint8_t)P34_MusicVoice(4);
         return v;
@@ -616,13 +632,14 @@ struct Machine {
        players' effects, Wolverine's part in Siberia lost all four of its tracks on the parts machine) */
     void command(uint8_t c, const uint8_t *a)
     {
-        if (role != ROLE_P34) {
+        if (role == ROLE_MUSIC || role == ROLE_PARTS) {
             if (c == 0x0B) { memcpy(S.init, a, 12); S.have_init = 1; }
             if (c == 0x1B && a[0] < 32) { S.param[a[0]] = a[1]; S.param_set[a[0] >> 3] |= (uint8_t)(1 << (a[0] & 7)); }
             if (c == 0x10 && !capture_song_effect(a[0])) S.song = a[0];
             if (c == 0x16) S.song = -1;
             if (c == 0x10 && capture_song_effect(a[0]) && !song_controls(a[0])) return;
-            if (S.active) cmd(c, a, arg_count(c));
+            if (S.active && c == 0x1B) send_param(a[0], a[1]);
+            else if (S.active) cmd(c, a, arg_count(c));
             return;
         }
         switch (c) {
@@ -680,6 +697,7 @@ struct Machine {
     void mix(int16_t *fm, size_t fm_n, int16_t *psg, size_t psg_n, int mute)
     {
         if (!S.active) return;
+        if (role == ROLE_P34 && p34_full_plays()) mute = 1;   /* the full-parts machine plays its parts */
         uint32_t fm_prev = 0, psg_prev = 0;
         size_t used = 0;
         for (; used < ev.size() && ev[used].stamp <= FRAME_END; used++) {
@@ -764,8 +782,10 @@ struct Machine {
     }
 };
 
-static Machine M[3];
+static Machine M[NMACHINES];
 static Machine &P34 = M[ROLE_P34];
+
+static bool p34_full_plays(void) { return M[ROLE_P34_FULL].S.active != 0; }
 
 static bool in_game(void)
 {
@@ -776,10 +796,14 @@ static bool in_game(void)
 }
 
 /* the second machine while players 3-4 are in the game; the music machines in the session machine (the
-   chips run) with the option on */
+   chips run) with the option on, the full-parts machine there with music_voices=full and players 3-4 in */
 bool Machine::wanted(void) const
 {
-    return role == ROLE_P34 ? in_game() : g_opt.music_voices && machine_session();
+    switch (role) {
+    case ROLE_P34: return in_game();
+    case ROLE_P34_FULL: return g_opt.music_voices == 2 && machine_session() && in_game();
+    default: return g_opt.music_voices && machine_session();
+    }
 }
 
 extern "C" bool sound_music_voices(void) { return M[ROLE_MUSIC].S.active != 0; }
@@ -861,13 +885,15 @@ static size_t save_mus(uint8_t *d, size_t c)      { return M[ROLE_MUSIC].save(d,
 static int    load_mus(const uint8_t *s, size_t n) { return M[ROLE_MUSIC].load(s, n); }
 static size_t save_prt(uint8_t *d, size_t c)      { return M[ROLE_PARTS].save(d, c); }
 static int    load_prt(const uint8_t *s, size_t n) { return M[ROLE_PARTS].load(s, n); }
+static size_t save_p34f(uint8_t *d, size_t c)      { return M[ROLE_P34_FULL].save(d, c); }
+static int    load_p34f(const uint8_t *s, size_t n) { return M[ROLE_P34_FULL].load(s, n); }
 
 extern "C" void snd2_state_init(void)
 {
-    static const char *names[3] = { "snd2", "snd_music", "snd_parts" };
-    static const StateSaveFn saves[3] = { save_p34, save_mus, save_prt };
-    static const StateLoadFn loads[3] = { load_p34, load_mus, load_prt };
-    for (int r = 0; r < 3; r++) {
+    static const char *names[NMACHINES] = { "snd2", "snd_music", "snd_parts", "snd_parts34" };
+    static const StateSaveFn saves[NMACHINES] = { save_p34, save_mus, save_prt, save_p34f };
+    static const StateLoadFn loads[NMACHINES] = { load_p34, load_mus, load_prt, load_p34f };
+    for (int r = 0; r < NMACHINES; r++) {
         Machine &m = M[r];
         m.role = (Role)r;
         m.name = names[r];
@@ -944,7 +970,8 @@ std::string sound_counters_json(void)
             snprintf(id, sizeof id, "%s\"%02X\"", fx.empty() ? "" : ", ", i);
             fx += id;
         }
-    return std::string("{\"music_voices\": ") + (g_opt.music_voices ? "1" : "0") + ", \"m1\": " + vs_json(s_m1) +
-           ", \"music\": " + vs_json(M[ROLE_MUSIC].V) + ", \"parts\": " + vs_json(M[ROLE_PARTS].V) +
-           ", \"snd2\": " + vs_json(P34.V) + ", \"effects\": [" + fx + "]}";
+    return std::string("{\"music_voices\": ") + (g_opt.music_voices ? "1" : "0") + ", \"full_parts\": " +
+           (g_opt.music_voices == 2 ? "1" : "0") + ", \"m1\": " + vs_json(s_m1) + ", \"music\": " +
+           vs_json(M[ROLE_MUSIC].V) + ", \"parts\": " + vs_json(M[ROLE_PARTS].V) + ", \"snd2\": " + vs_json(P34.V) +
+           ", \"parts34\": " + vs_json(M[ROLE_P34_FULL].V) + ", \"effects\": [" + fx + "]}";
 }

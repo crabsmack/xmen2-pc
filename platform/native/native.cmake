@@ -31,6 +31,8 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/mus_psg.c"
     "${CMAKE_SOURCE_DIR}/platform/native/prt_chips.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/prt_psg.c"
+    "${CMAKE_SOURCE_DIR}/platform/native/p34_chips.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/p34_psg.c"
     "${CMAKE_SOURCE_DIR}/game/runtime/players34.cpp"
     # the game's fiber (phase 7 R2): the engine's snapshottable fibers on vendored minicoro
     "${RUNNER_ROOT}/fiber_compat.c"

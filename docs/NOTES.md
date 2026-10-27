@@ -2077,6 +2077,39 @@ voices from the music. The capture's `XMEN2_SOLO`/`XMEN2_BED` only worked around
     scene24 three); `--state-probe 300:60` on session 40 at 60 Hz: 11 save points exact, and with
     `--state-skip snd_parts` all 11 resaved snapshots differ; `tools/gate.py --mode native` passes.
 
+### music_voices=full: every player's part in full (2026-10-27)
+
+The user, after A/B previews of two- and four-player Siberia and Savage Land, thinned against full:
+"let's make this an option. default on", as a third value of `music_voices` rather than a second
+option (full parts need chips of their own: on the one chip they have no voices, and its RAM is the
+game's). Every part song's track 0 mutes the part's second (doubling/harmony) track when the driver's
+`$A` is not 1 (P7-kickoff.md section 3): the game's arrangement for two players, so that the cartridge's
+chip has voices for both parts (two full parts with the base song want up to 7 FM / 6 PSG voices).
+- **Values:** `full` (the default) = `1` with each part as one player hears it; `1` = the music and
+  parts machines with the game's thinned parts (the default 2026-10-24 to 10-27); `0` = the cartridge.
+  `g_opt.music_voices` is 2, 1 or 0. Presentation only like `1`: each seat's own, not sealed.
+- **How** (sound2.cpp): the parts machine gets `$A` = 1 where the game sends 2 (param_value; its live
+  `$1B` commands now go through send_param, as its replays at a start did), so players 1-2's parts
+  play in full. Players 3-4's machine (R9's second) is in the canonical digest, so it runs as always
+  (`$A` = 2) and is silent, and a fourth machine, the full-parts machine (`ROLE_P34_FULL`, chips
+  `p34_`, snapshot section `snd_parts34`, counters `"parts34"`), plays their parts with `$A` = 1:
+  R9's commands and variables, wanted while players 3-4 are in and the option is `full`. The
+  counters' `"sound"` keeps `"music_voices": 1` for `1` and `full` and adds `"full_parts"`.
+- **Measured:** boot.input, session 8, `players=4,start_char=gambit,lives=inf,full_rate_2p=1`,
+  3,400 frames (P1 Gambit, P2 Nightcrawler, P3 Cyclops, P4 Psylocke): canonical digests of `full`,
+  `1` and `0` equal; FM key-ons `$29` 335 -> 670, `$2B` 37 -> 73 (parts machine), `$2F` 352 -> 691,
+  `$2C` 157 -> 227 (second -> full-parts machine), 0 voices stolen.
+  - `tools/soundcheck.py --players 4,3,2` (every stage input, seeds 1 and 40, 30 and 60 Hz): 276 of
+    276. Each case now also runs a `full` take, whose game rows must equal the others' and whose part
+    songs on the parts and full-parts machines must have every note of the thinned reference within
+    8 frames, notes more where parts play, and no voice stolen (e.g. scene18 four players: `$28` 471
+    -> 942, `$29` 951 -> 1902, `$2B` 103 -> 206, `$2F` 986 -> 2009 FM). The thinned take keeps the
+    note-for-note check.
+  - `--state-probe 300:60` on the run above: 11 save points exact; with `--state-skip snd_parts34`
+    10 of 11 resaved snapshots differ (the first is before players 3-4 join).
+  - Netplay, four seats on loopback (hub), the host `full`, seats 1-3 `0`, `1`, `full`: 3,480 digest
+    rows equal, 11-12 rollbacks a seat.
+
 ### scene42: Cam_TrackBoth with none in play (2026-10-25)
 
 - **The bug**: scene42 (cloneA5) with `players=4` at 30 Hz played differently run to run from sync

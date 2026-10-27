@@ -1540,11 +1540,13 @@ Enhancements, each off unless you turn it on:
                         their own panels, and the camera keeps everyone in view; their
                         characters' music parts play on a second sound machine
 Sound, on unless you turn it off:
-    music_voices=0      the original's single set of sound chips. By default the music plays on
-                        sound chips of its own, players 1 and 2's music parts on a further set,
-                        so no part or sound effect takes its notes (on the cartridge, two
+    music_voices=0      the original's single set of sound chips. By default (full) the music
+                        plays on sound chips of its own, the players' music parts on further
+                        sets, so no part or sound effect takes its notes (on the cartridge, two
                         players' parts need more voices than the chip has, and effects take
-                        voices from the music); the game itself is the same either way
+                        voices from the music), and each player's part plays in full, where the
+                        game thins each part with two players or more; music_voices=1 keeps the
+                        game's thinned parts. The game itself is the same either way
 Cheats, also off unless you turn them on:
     lives=inf           lives are never spent (or lives=N: start a new game with N, 1-99)
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)

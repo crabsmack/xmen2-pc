@@ -4,11 +4,12 @@ the first machine gives it when it has the chips, and the track slots, to itself
     uv run tools/soundcheck.py [--only boot,18] [--players 4,3] [--seeds 1,40] [--options ";full_rate_2p=1"] [--jobs N]
 
 For each stage input (game/mp_inputs: boot.input and scene<N>.input), number of players, session seed
-and option set, three runs of XMen2Native (headless, the session machine, where the sound chips run),
+and option set, four runs of XMen2Native (headless, the session machine, where the sound chips run),
 each logging every note it counts (XMEN2_KEYON_LOG: machine, frame, FM key-on or PSG note, song):
 
-- the take: music_voices on (the default). Its counters line's "sound" names the songs the game
-  started as effects.
+- the take: music_voices=1 (the game's arrangement of the parts). Its counters line's "sound" names
+  the songs the game started as effects.
+- the full take: music_voices=full (the default: each part in full, as one player hears it).
 - the parts' reference: music_voices=0, XMEN2_BED=1 (effects that only play notes never reach the
   driver; those that start or stop songs, set the tempo, a variable or the master volume do, muted),
   XMEN2_SOLO = the part songs: the first machine plays players 1 and 2's parts with every voice and
@@ -20,7 +21,11 @@ runs) must be its notes on the first machine and the second in the parts' refere
 each within SLACK frames of its reference, and only notes in the last SLACK frames may be missing on
 either side. The references count only if the game is the take's: the three runs' game rows
 (--game-rows: the game's state without the sound machine's, whose RAM XMEN2_BED and XMEN2_SOLO
-change) must be equal (the game reads the driver's variables). Exit 1 on any difference.
+change) must be equal (the game reads the driver's variables), the full take's too. The full take's
+part songs, on the parts machine and the full-parts machine (players 3-4's; the second machine is
+silent there), must have every note of the parts' reference within SLACK frames (a muted track only
+skips notes), with no voice stolen on either machine, and (with parts played) notes more: the
+tracks the thinned parts mute. Exit 1 on any difference.
 
 Every other music song's notes on the music machine against the music's reference are compared the
 same way and printed, but not counted ("not counted: ..."): a driver polls its command ring between
@@ -132,13 +137,27 @@ def counts(d: dict) -> str:
     return " ".join(f"${s & 0xFF:02X} {v[0]}/{v[1]}" for s, v in sorted(by.items()))
 
 
+def superset(what: str, got: dict, ref: dict, end: int) -> tuple[list[str], int]:
+    """music_voices=full's parts against the thinned reference: every reference note is there (a muted
+    track only skips notes), the unmuted tracks' notes are extra; and the extra notes' count"""
+    out, n = [], 0
+    for key in sorted({*got, *ref}):
+        extra, missing = unmatched(got.get(key, []), ref.get(key, []), end)
+        n += len(extra)
+        if missing:
+            out.append(f"{what} ${key[0] & 0xFF:02X} {key[1]} {len(got.get(key, []))} vs {len(ref.get(key, []))}"
+                       f" (missing at {missing[:4]})")
+    return out, n
+
+
 def case(name: str, scene: int | None, players: int, seed: int, extra: str) -> tuple[bool, str]:
     inp = INPUTS / ("boot.input" if scene is None else f"scene{scene}.input")
     options = f"players={players}" + (f",{extra}" if extra else "")
     label = f"{name} players {players} seed {seed}" + (f" {extra}" if extra else "")
     with tempfile.TemporaryDirectory(prefix="soundcheck_") as td:
         try:
-            take, g0, n0 = run(inp, scene, seed, options, {}, td, "take")
+            take, g0, n0 = run(inp, scene, seed, options + ",music_voices=1", {}, td, "take")
+            full, g3, n3 = run(inp, scene, seed, options + ",music_voices=full", {}, td, "full")
             fx = {int(s, 16) for s in take["effects"]}
             music = [s for s in range(256) if not part_song(s) and s not in fx]
             off = options + ",music_voices=0"
@@ -148,18 +167,28 @@ def case(name: str, scene: int | None, players: int, seed: int, extra: str) -> t
                             td, "music")
         except RuntimeError as e:
             return False, f"{label}: a run failed: {e}"
-    if take["music_voices"] != 1:
-        return False, f"{label}: music_voices is off in the take"
-    if g1 != g0 or g2 != g0:
+    if take["music_voices"] != 1 or take["full_parts"] != 0 or full["full_parts"] != 1:
+        return False, f"{label}: music_voices is not 1 in the take or full in the full take"
+    if g1 != g0 or g2 != g0 or g3 != g0:
         return False, f"{label}: a reference's game differs from the take's (game rows), no reference"
     is_music = lambda s: s >= 0 and not part_song(s) and s not in fx   # noqa: E731
-    got_p = gather(n0, ("snd_parts", "snd2"), lambda s: s >= 0 and part_song(s))
-    ref_p = gather(n1, ("m1", "snd2"), lambda s: s >= 0 and part_song(s))
+    is_part = lambda s: s >= 0 and part_song(s)   # noqa: E731
+    got_p = gather(n0, ("snd_parts", "snd2"), is_part)
+    ref_p = gather(n1, ("m1", "snd2"), is_part)
     got_m = gather(n0, ("snd_music",), is_music)
     ref_m = gather(n2, ("m1",), is_music)
     end = frames(inp)
     bad, jitter = compare("parts", got_p, ref_p, end), compare("music", got_m, ref_m, end)
-    summary = f"parts {counts(got_p)}; music {counts(got_m)}"
+    # full: players 1-2's parts on the parts machine, 3-4's on the full-parts machine (the second silent)
+    got_f = gather(n3, ("snd_parts", "snd_parts34"), is_part)
+    bad_f, more = superset("full parts", got_f, ref_p, end)
+    stolen = {f"{m} ${k}": v["stolen"] for m in ("parts", "parts34") for k, v in full[m]["songs"].items() if v["stolen"]}
+    if stolen:
+        bad_f.append(f"full parts: voices stolen {stolen}")
+    if ref_p and players >= 2 and not more:
+        bad_f.append("full parts: no note more than the thinned parts")
+    bad += bad_f
+    summary = f"parts {counts(got_p)}; full parts {counts(got_f)}; music {counts(got_m)}"
     return not bad, (f"{label}: {'ok' if not bad else 'DIFFERS: ' + '; '.join(bad)}"
                      + (f" (not counted: {'; '.join(jitter)})" if jitter else "") + f" ({summary})")
 

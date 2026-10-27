@@ -1,6 +1,7 @@
 /* options.cpp - the native runner's options (xmen2disasm docs/phases/P6-enhance.md R1, E2): each
  * enhancement is a runtime option of the one release runner, off by default, except music_voices
- * (the user, 2026-10-24: "as an option (default on)"), which changes only the sound.
+ * (the user, 2026-10-24: "as an option (default on)"; 2026-10-27: its `full`, the default), which
+ * changes only the sound.
  *
  *   --options --json     print the options (default, values, the effective value) and exit 0
  *   --options K=V,K=V    set them for this run
@@ -25,7 +26,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0 };
 
 struct OptDef {
     const char *name;
@@ -55,9 +56,9 @@ static OptDef s_defs[] = {
       "tweak: on the player select each character plays its idle animation now and then, as when standing in a level, and Magneto picked does his standing shot with the flux bomb's explosion sound; Gambit's idle, which the game never plays, plays here and in the stages, half as often as most others'; 0 = only the standing pose, Magneto's pick silent, no Gambit idle (the original)", "0" },
     /* phase 7 (P7-multiplayer.md R7) */
     { "players", { "2", "3", "4", nullptr }, "players at once: 2 (the original), 3 or 4 (pads 3 and 4 join with Start)", "2" },
-    /* sound (the user, 2026-10-24; on by default) */
-    { "music_voices", { "1", "0", nullptr },
-      "the music on sound chips of its own, players 1-2's parts on a further set, so no part or sound effect takes its notes; 0 = one set of chips, as the original", "1" },
+    /* sound (the user, 2026-10-24; on by default; full: 2026-10-27, the default) */
+    { "music_voices", { "full", "1", "0", nullptr },
+      "the music on sound chips of its own, the players' parts on further sets, so no part or sound effect takes its notes, and each player's part in full, as one player hears it; 1 = the same with the game's arrangement for two or more players (each part with one track muted); 0 = one set of chips, as the original", "full" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path;
@@ -146,7 +147,8 @@ static void apply(void)
     g_opt.magneto_flight = find("magneto_flight")->value == "1";
     g_opt.select_idles = find("select_idles")->value == "1";
     g_opt.players = atoi(find("players")->value.c_str());
-    g_opt.music_voices = find("music_voices")->value == "1";
+    const std::string &mv = find("music_voices")->value;
+    g_opt.music_voices = mv == "full" ? 2 : mv == "1";
 }
 
 static std::string json_str(const std::string &s)
