@@ -15,7 +15,10 @@
  *                     30 Hz, so that frame is shown on two sync points)
  *   hud_panels        [player, first, last]: the stretches of runner frames where a player in play has
  *                     its panel drawn (R11 (b): a players 4 run's missing panel counts only where the
- *                     players 2 run of the same input draws it); hud_lists_full when a list was cut
+ *                     players 2 run of the same input draws it)
+ *   hud_tiles_wrong   of those, frames where a player 1-2's panel tiles in VRAM aren't its panel's art
+ *                     (hud_tiles_wrong_at: [frame, player, join] as hud_missing_at); hud_lists_full
+ *                     when a list was cut
  *   sprites_dropped   sprite pieces the game's stop dropped (the emitters report them)
  *   snd2              the second sound machine (sound2.cpp)
  */
@@ -369,6 +372,8 @@ static struct {
     uint64_t players_max;
     uint32_t miss[HUD_LIST][3], n_miss;      /* hud_missing_at */
     uint32_t panel[HUD_LIST][3], n_panel;    /* hud_panels */
+    uint64_t tiles_wrong;
+    uint32_t wrong[HUD_LIST][3], n_wrong;    /* hud_tiles_wrong_at */
     uint32_t open_panel[4];                  /* each player's stretch in panel[] still growing: index + 1, 0 none */
     uint32_t in_play_prev, lists_full;       /* the players in play on the sync point before (bits 0-3) */
     uint16_t join_frame[4];                  /* g_LevelFrame on the first sync point of each one's stretch in play */
@@ -404,6 +409,15 @@ static bool hud_panel(int p)
         idx = link;
     }
     return false;
+}
+
+/* player p's (1-2) panel tiles in VRAM are its panel (HUD_Redraw: Art_HUDTiles, player 2's $200 bytes
+   on, at $FD00 / $FA00), as the game wrote them (players_frame_setup's portraits are the render's only) */
+#define ART_HUD_TILES 0x15B2F4u
+static bool hud_tiles(int p)
+{
+    uint32_t a = p == 1 ? 0xFD00u : 0xFA00u;
+    return !memcmp(&g_machine.vdp.vram[a], &g_rom[ART_HUD_TILES + (p == 1 ? 0u : 0x200u)], 0x200);
 }
 
 /* XMEN2_MP_LOG=1: each change of the scene, of who is in play and of the level loop, by runner frame
@@ -487,6 +501,18 @@ void players_sync_row(void)
                     C.lists_full = 1;
                 }
             } else if (hud_on) {   /* a stretch of frames with the panel: the last one grown, else a new one */
+                if (p <= 2 && !hud_tiles(p)) {
+                    C.tiles_wrong++;
+                    if (getenv("XMEN2_MP_HUD"))
+                        fprintf(stderr, "[mp] frame %llu: player %d's HUD panel tiles wrong (scene %d)\n",
+                                (unsigned long long)machine_frame_no(), p, (int)(int16_t)ram_be(0xCC64, 2));
+                    if (C.n_wrong < HUD_LIST) {
+                        uint32_t *m = C.wrong[C.n_wrong++];
+                        m[0] = frame, m[1] = (uint32_t)p, m[2] = level_frame == C.join_frame[p - 1] ? 1 : 0;
+                    } else {
+                        C.lists_full = 1;
+                    }
+                }
                 uint32_t k = C.open_panel[p - 1];
                 if (k && C.panel[k - 1][2] + 1 == frame) {
                     C.panel[k - 1][2] = frame;
@@ -534,7 +560,8 @@ std::string players_counters_json(void)
         return s + "]";
     };
     return std::string(b) + snd2_counters_json() + ", \"hud_missing_at\": " + list(C.miss, C.n_miss)
-           + ", \"hud_panels\": " + list(C.panel, C.n_panel) + ", \"hud_lists_full\": " + (C.lists_full ? "1" : "0") + "}";
+           + ", \"hud_panels\": " + list(C.panel, C.n_panel) + ", \"hud_tiles_wrong\": " + std::to_string(C.tiles_wrong)
+           + ", \"hud_tiles_wrong_at\": " + list(C.wrong, C.n_wrong) + ", \"hud_lists_full\": " + (C.lists_full ? "1" : "0") + "}";
 }
 
 void players_state_init(void)

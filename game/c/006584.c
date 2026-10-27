@@ -9,6 +9,10 @@ void HUD_Redraw(void)
 	register u8 *panel = (u8 *)CODEPTR(Art_HUDTiles);
 	register u8 *empty = (u8 *)CODEPTR(Art_HUDTiles4);
 
+#if defined(XMEN2_NATIVE)
+	if (g_opt.players > 2)
+		P34_HudPanelsDrawn();	/* phase 7: whose panels these are (HUD_UpdateHealthBars) */
+#endif
 	if (IS_ALIVE(&g_Player1))
 		VDP_QueueDma(panel, 0xFD00, 0x200);
 	else

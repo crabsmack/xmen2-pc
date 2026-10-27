@@ -21,7 +21,12 @@ void HUD_UpdateHealthBars(void)
 	healthTiles = (u8 *)CODEPTR(Art_HUDTiles3);
 	meterTiles = (u8 *)CODEPTR(Art_HUDTiles2);
 	g_HudDirty = 0;
+#if defined(XMEN2_NATIVE)
+	/* phase 7: with players 3-4 the count stays 2 when a player 1-2 joins beside two others */
+	if (g_HudPlayersAlive != g_PlayersAlive || (g_opt.players > 2 && P34_HudPanelsChanged())) {
+#else
 	if (g_HudPlayersAlive != g_PlayersAlive) {
+#endif
 		g_HudPlayersAlive = g_PlayersAlive;
 		HUD_Redraw();
 		return;

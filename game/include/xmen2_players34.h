@@ -42,6 +42,7 @@ typedef struct PlayerX {
 #define g_P34A4Hit		XM_RGA(s32, 0x0290)	/* [0], [1]: SavageBigBio's tentacle hit point on players 3-4 (g_A4Hit1/2's) */
 #define g_P34StartWait		XM_RGA(u8, 0x02A0)	/* [0-3]: players 1-4 pressed Start on the player select while a
 							   slot was busy: it is taken once none is (P34_TakeStart) */
+#define g_P34HudPanels		XM_RG(u8, 0x02A4)	/* players 1-2 in play (bits 0, 1) when HUD_Redraw last drew their panels */
 #define g_P34Slot		XM_RGA(BigSprite, 0x0300)	/* [0] player 3's select slot, [1] player 4's ($42 bytes each) */
 #define P34_SPR_TABLE(k)	(0x0400 + 0x300 * ((k) - 3))	/* player k's sprite table: 82 hardware sprites */
 #define P34_SPR_MAIN		0x1000	/* the main sprite table with three or more players: 162 (SPR_STOP) */
@@ -113,6 +114,8 @@ void P34_SprBeginFrame(void);
 void P34_SprEndFrame(void);
 void P34_HudSprites(void);		/* players 3-4's HUD panels, in their own tables */
 void P34_HudP2(void);			/* player 2's, in the players' order (1-2-3-4) */
+void P34_HudPanelsDrawn(void);		/* HUD_Redraw: the panels are players 1-2's in play now */
+int  P34_HudPanelsChanged(void);	/* HUD_UpdateHealthBars: players 1-2 in play aren't the panels' */
 void P34_TagNew(Actor *obj);		/* an object made now belongs to the player 3-4 whose code runs */
 /* R11: what the game takes from players 1-2 by name, for players 3-4 too */
 XPlayer *P34_LayerPlayer(void);		/* PLAYER_LIVE */

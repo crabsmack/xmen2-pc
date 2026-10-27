@@ -657,6 +657,19 @@ extern "C" void P34_HudP2(void)
 		hud_sprite(0x133, 3, (short)0xAFE0, HUD_L(0x97 + 0x40));
 }
 
+/* HUD_UpdateHealthBars redraws the panels (HUD_Redraw) when the number in play changed. With players
+   3-4 that number is kept to 0-2 (Level_FrameLoop), so a player 1-2 joining or leaving while two others
+   are in play left it as it was, and VRAM with the other panel: player 2 joining after a player 3-4 in
+   the SiberiaB1 intro kept the "press start" tiles where its panel goes. Who of players 1-2 is in play
+   is tested too. */
+static u8 hud_panels_now(void)
+{
+	return (u8)((IS_ALIVE(&g_Player1) ? 1 : 0) | (IS_ALIVE(&g_Player2) ? 2 : 0));
+}
+
+extern "C" void P34_HudPanelsDrawn(void) { g_P34HudPanels = hud_panels_now(); }
+extern "C" int P34_HudPanelsChanged(void) { return g_P34HudPanels != hud_panels_now(); }
+
 /* Players 3-4's panels as Level_FrameLoop draws player 2's, player 3's 64 px in from where player 2's
    was, player 4's there, in their own tables: tiles $7D0- (player 2's HUD area), which the platform
    shows from each one's HUD tiles (plat_p34_hud). Every player's character goes to the platform first:

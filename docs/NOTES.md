@@ -2179,6 +2179,35 @@ chip has voices for both parts (two full parts with the base song want up to 7 F
   2%), the same Windows against Linux, and four seats on scene42 (`players=4`): every seat's
   digests equal (the Linux seat's file differs only in its line ends).
 
+### Player 2's panel tiles after a player 3-4 joined (2026-10-27)
+
+- **The bug**: in SiberiaB1's opening with `players=3` or `4`, when player 2 joined after a player
+  3-4 (boot.input: 1, 3, 4, then 2), player 2's panel tiles (VRAM $FA00-$FBFF, tiles $7D0-) kept the
+  "press start" letters of the opening's blink, scrambled into a 4x4 panel, to the end of the run.
+  With `players=2` the panel was right. Since f06ba34 a 3-4 player render draws the portrait over
+  those tiles, so the screen hid it; VRAM was still wrong.
+- **The cause**: HUD_UpdateHealthBars (game/c/006386.c) redraws the panels (HUD_Redraw: player 1's
+  art to $FD00, player 2's to $FA00, or the placeholder for one out of play) only when
+  `g_PlayersAlive` changed since the last time. With players 3-4 Level_FrameLoop keeps that count to
+  the original's 0-2, so with players 1 and 3 in play it was 2 already, and player 2's join left it
+  at 2: no redraw. A player 1-2 leaving beside two others missed it the same way.
+- **The fix** (native, `g_opt.players > 2`): HUD_Redraw records which of players 1-2 are in play
+  (`g_P34HudPanels`, region $02A4: `P34_HudPanelsDrawn`), and HUD_UpdateHealthBars redraws when
+  that differs from now too (`P34_HudPanelsChanged`), as the original redraws on every join in a
+  two-player game (with its V-blank wait). `players=2` and fewer: unchanged.
+- **The check**: the mp counters' `hud_tiles_wrong` (players.cpp): gameplay frames where a player
+  1-2 in play has its panel in the sprite table but VRAM's panel tiles aren't its art
+  (Art_HUDTiles, player 2's $200 bytes on), with `hud_tiles_wrong_at` `[frame, player, join]` as
+  `hud_missing_at`. `hud_panels` couldn't see the bug: it reads the sprite table, not the tiles.
+  Phase 7's M4 counts an entry with `join` 0 in any run. boot.input (session 1): the control (the
+  old condition) 3,025 frames from player 2's join (runner frame 476) to the end with `players=3`
+  and `4`; fixed, 0. With `players=2` 2 entries, both `join` 1 (runner frames 475-476: the panel's
+  DMA goes out at the next V-blank, the join frame shown on two sync points at 30 Hz). All 23 stage
+  inputs x `players` 2, 3, 4 on the fix: no entry with `join` 0.
+- **Netplay version 4** (`NP_VERSION`, for v1.1.0): the game with players 3-4 changed again since
+  v1.0.1 (the four-column player select keeps a Start pressed during a flight; this redraw, with its
+  V-blank wait), so v1.0.x seats and v1.1.0 seats refuse each other at the seal.
+
 ### Ideas, not scheduled: costumes, duplicates, more players, own cameras (2026-10-27)
 
 Research and mock-ups only, no code. Costumes wait on the user: the palettes are the user's to
