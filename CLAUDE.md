@@ -121,6 +121,10 @@ game/runtime are one link: a file-local type goes in an anonymous namespace (two
 uv run tools/xmen2check.py package [--platform linux] --json   # P8/P9: the ROM-free zip, scanned (tools/romscan.py) and smoke-tested
 uv run tools/xmen2check.py native-build --json                 # XMen2Native alone (CMake XMEN2_NATIVE_ONLY): the Linux build
 uv run tools/xmen2check.py native-build --wsl --json           # that build in WSL (~/xmen2-native-build/<tree hash>), as P9 and Linux seats use it
+#   native-build configures its build dir for XMen2Native alone: a later full `build` or gate.py in the same
+#   dir fails (MSB1009, no XMen2Recomp.vcxproj). Give the gate its own: XMEN2_BUILD=build-full.
+#   Runs by hand: one runner exe per process. 14 processes of one exe from one folder at once gave 2 of 46
+#   runs where nobody was ever in play (both old and new runners, fine alone): copy the exe per run, as the harness does.
 ```
 ```
 uv run tools/xmen2check.py build --native --json   # + per object: what it still needs from the 68000 (COFF), and the link map
