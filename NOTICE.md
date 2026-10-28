@@ -27,6 +27,7 @@ grant any rights in the original game.
 | [SDL2](https://libsdl.org) | Window, input, audio | zlib |
 | [libjuice](https://github.com/paullouisageneau/libjuice) | ICE / NAT traversal for netplay | MPL-2.0, v1.7.2 unmodified (fetched by recomp-net's CMake from the link) |
 | [recomp-net](https://github.com/RetroPortingToolKit/recomp-net) | Netplay transport | MIT |
+| [rbengine](https://github.com/RetroPortingToolKit/rbengine) | Rollback snapshot ring for netplay | MIT |
 | [minicoro](https://github.com/edubart/minicoro) | The game fiber's context switch | Unlicense or MIT-0 (LuaCoco parts: MIT) |
 | [clowncommon](https://github.com/Clownacy/clowncommon), [tomlc99](https://github.com/cktan/tomlc99) | Engine helpers, TOML parsing | ISC, MIT |
 | [xmen2disasm](https://github.com/crabsmack/xmen2disasm) | The disassembly (submodule) | MIT, see its NOTICE.md |

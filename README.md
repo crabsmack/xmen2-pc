@@ -44,7 +44,7 @@ program (`[options]`, one per line).
 |---|---|
 | `widescreen=16:9` | A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). F10 toggles it |
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
-| `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display. F9 toggles it |
+| `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
 | `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
 | `lives=inf` | Lives are never spent (or `lives=N`, 1-99) |
@@ -52,7 +52,7 @@ program (`[options]`, one per line).
 | `start_char=wolverine` | The character you start Siberia with: `beast`, `cyclops`, `gambit`, `nightcrawler`, `psylocke`, `wolverine` or `magneto` (otherwise random) |
 | `magneto_flight=1` | Magneto moves left and right while hovering |
 | `select_idles=1` | On the player select, characters play their idle animations now and then, as when standing in a stage, and Magneto's pick is his standing shot with the flux bomb's explosion sound. Gambit's idle, which the original never plays, plays on the select and in the stages |
-| `music_voices=1` | `full` by default: the music plays on sound chips of its own and the players' music parts on further sets, so neither the parts nor the sound effects take notes from the music, and each player's part plays in full, as one player hears it. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music; with two players or more the game plays each part thinned, one of its tracks muted. `1` keeps the chips of their own with the game's thinned parts, `0` gives the cartridge's single set of chips |
+| `music_voices=full` | The default: the music plays on sound chips of its own and the players' music parts on further sets, so neither the parts nor the sound effects take notes from the music, and each player's part plays in full, as one player hears it. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music; with two players or more the game plays each part thinned, one of its tracks muted. `1` keeps the chips of their own with the game's thinned parts, `0` gives the cartridge's single set of chips |
 
 `XMen2.exe --options --json` lists them.
 
@@ -60,7 +60,8 @@ program (`[options]`, one per line).
 
 Rollback netplay for two to four players, each on their own machine with their own ROM file.
 The host (seat 0) chooses the options that change the game, and every seat plays with them.
-The picture and sound options (`high_fps`, the 16:9 view, `music_voices`) are each seat's own.
+The picture and sound options (`high_fps`, the 16:9 view, `music_voices`) are each seat's own,
+except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
 ```
 seat 0 (host):  XMen2.exe xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000

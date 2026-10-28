@@ -175,3 +175,28 @@ plays silent under `full`). The
 counters line's `"sound"` (per machine and song: key-ons, stolen voices, sounding ms) is the measure
 for sound work. `tools/capture.py render` on a take without a `runner frames:` header runs unbounded:
 pass `--frames N`. phase.py 7 runs phase 6, which runs phase 5: run only the highest phase you need.
+
+## Phases 6-7 (options, online play, four players)
+
+Criteria: xmen2disasm `docs/phases/P6-enhance.md`, `P7-multiplayer.md`; notes: docs/NOTES.md
+"Phase 6", "Phase 7". Every difference from the original is an option of `XMen2Native`, off by
+default (only `music_voices`, sound only, defaults on): `platform/native/options.cpp` (the table,
+`--options K=V,...`, `xmen2.ini [options]` beside the exe), read by the game's `#if
+defined(XMEN2_NATIVE)` branches through `g_opt` (`platform/xmen2_options.h`). A new option goes in
+both files, in README.md's table and in the package README (`PACKAGE_README` in xmen2check.py).
+Savestates: `platform/native/state.cpp` (sections registered at start; M2's negative control
+leaves each out and must catch it).
+Players 3-4: `platform/native/players.cpp` (their pads, VRAM, HUD and the `mp` counters). Netplay:
+`platform/native/netplay.cpp` on the engine's recomp-net and rbengine; the host's game options are
+sealed into the session, presentation ones (`high_fps`, `music_voices`, the 16:9 view unless
+`widescreen_gameplay=1`) stay each seat's. **A release whose game differs from the last one bumps
+`NP_VERSION`** (netplay.cpp), so mismatched seats refuse each other instead of desyncing. M6 needs
+the user's `multiplayer-verified:` line in `docs/USER_VERIFIED.md`.
+```
+uv run tools/xmen2check.py options --json          # E2: the options as the runner lists them, and xmen2.ini read
+uv run tools/xmen2check.py netplay --seats N --input F --out D [--options K=V,..] [--transport lan|hub|ice]
+#   [--link latency=L,jitter=J,loss=P,seed=S] [--seat-options I:K=V,..] [--linux-seats ..] [--scene S --session N]
+#   N seats of the release runner on loopback (or Windows + WSL), seat i playing column i+1 of F; each writes
+#   D/seat<i>/sync.csv, digest.csv (its final timeline) and seat.json
+XMen2Native.exe --netplay --json                   # the transports this build has
+```

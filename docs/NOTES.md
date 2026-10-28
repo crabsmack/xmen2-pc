@@ -1,7 +1,7 @@
-# XMen2Recomp notes (phase 2)
+# XMen2Recomp notes (phases 2-7)
 
-Shared findings for whoever works the phase-2 criteria next. Criteria and status:
-`xmen2disasm/docs/phases/P2-recomp.md`, `xmen2disasm/docs/progress/P2.md`.
+Shared findings for whoever works on this repo next, one section per phase, dated as they were
+found. Criteria and status: `xmen2disasm/docs/phases/PN-*.md`, `xmen2disasm/docs/progress/PN.md`.
 
 ## Setup decisions (2026-10-15)
 
@@ -398,7 +398,8 @@ Getting there:
   master clocks by then: the IRQ was never taken and the driver went quiet after its init. The
   IRQ is now held for a line from where the Z80 is. Over 600 frames XMen2Stepped and
   XMen2SteppedGen write bit-identical audio, and their sync CSVs agree at all 900 sync points.
-  **D2/D6 results recorded before this change used the old Z80 model: re-run them.**
+  **D2/D6 results recorded before this change used the old Z80 model: re-run them.** (Re-run:
+  phase.py 4 on 2026-10-25, D2 and D6 76/76 corpus runs equal.)
 - **Level_LoadUsedTiles overflows its bitmap, as the original does**: Bitmap_FromTileWords
   clears count / 16 + 1 words, up to ~1 KB for the block definitions, into `bits[$100]`. In the
   ROM's frame `remap` sits right above `bits` (-$1004 / -$1104(a6)) and takes it; GCC's stack
@@ -2312,7 +2313,9 @@ design (a human task, kept off the backlog until then). The other three follow f
   EntryPoint and the two interrupt vectors (no match, no shadow test) are verified by D2 + D6.
 - (Resolved 2026-10-15 by the user: fragments, the live stack at sync points, never-executed asm
   and the D2 reference: P4-decomp.md decisions 5-8, "Phase 4" above.)
-- MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe
+- (Resolved by exact mode's interior labels, "Divergence log" 183: the recompiler log has
+  `MISALIGNED_FUNC_ENTRY 0` and the dispatch audit 0 hybrid sites, `offset_table` 0.)
+  MPW switch tables (`move.w Sw(pc,dN),dN / jmp Sw-2(pc,dN)`): the core's offset-table probe
   reads the table from the JMP base (= the JMP's own extension word, one word early), seeds
   `base` as code and decodes the table as instructions. This is the source of the 26
   `MISALIGNED_FUNC_ENTRY` warnings and the 52 `offset_table` hybrid dispatch sites. Fix in the

@@ -1531,6 +1531,7 @@ A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc:
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
+                        (any rate from 61 to 1000)
     widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
                         plays as in 4:3, so enemies still appear at the old screen edge
     widescreen_gameplay=1  with widescreen: enemies wake and appear across the wide view, and
@@ -1538,7 +1539,7 @@ Enhancements, each off unless you turn it on:
     players=4          three or four players (players=3 or 4; the original: 2): players 3
                         and 4 join and choose at the player select as player 2 does, have
                         their own panels, and the camera keeps everyone in view; their
-                        characters' music parts play on a second sound machine
+                        characters' music parts play on sound chips of their own
 Sound, on unless you turn it off:
     music_voices=0      the original's single set of sound chips. By default (full) the music
                         plays on sound chips of its own, the players' music parts on further
@@ -1555,6 +1556,10 @@ Cheats, also off unless you turn them on:
 Gameplay tweaks, off unless you turn them on:
     magneto_flight=1    Magneto moves left and right while hovering, at his walking speed
                         (the original: he can only turn)
+    select_idles=1      on the player select, characters play their idle animations now and
+                        then, and Magneto's pick is his standing shot with the flux bomb's
+                        explosion sound; Gambit's idle, which the original never plays, plays
+                        there and in the stages
 on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
 or in xmen2.ini next to the program:
     [options]
@@ -1635,7 +1640,8 @@ def package_licenses(dest: Path, sdl: bool) -> None:
              (engine / "ymfm" / "LICENSE", "ymfm-LICENSE.txt"),
              (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt"),
              (engine / "minicoro" / "LICENSE", "minicoro-LICENSE.txt"),
-             (common.ENGINE / "external" / "recomp-net" / "LICENSE", "recomp-net-LICENSE.txt")]
+             (common.ENGINE / "external" / "recomp-net" / "LICENSE", "recomp-net-LICENSE.txt"),
+             (common.ENGINE / "external" / "rbengine" / "LICENSE", "rbengine-LICENSE.txt")]
     if sdl:
         pairs.append((engine / "SDL2" / "SDL2-2.28.5" / "COPYING.txt", "SDL2-COPYING.txt"))
     for src, name in pairs:
