@@ -180,7 +180,9 @@ pass `--frames N`. phase.py 7 runs phase 6, which runs phase 5: run only the hig
 
 Criteria: xmen2disasm `docs/phases/P6-enhance.md`, `P7-multiplayer.md`; notes: docs/NOTES.md
 "Phase 6", "Phase 7". Every difference from the original is an option of `XMen2Native`, off by
-default (only `music_voices`, sound only, defaults on): `platform/native/options.cpp` (the table,
+default, except presentation-only ones whose default the user sets: `music_voices` (sound) on,
+`high_fps` and `widescreen` `auto` (the display's; no window, so every headless run and check:
+off). `platform/native/options.cpp` (the table,
 `--options K=V,...`, `xmen2.ini [options]` beside the exe), read by the game's `#if
 defined(XMEN2_NATIVE)` branches through `g_opt` (`platform/xmen2_options.h`). A new option goes in
 both files, in README.md's table and in the package README (`PACKAGE_README` in xmen2check.py).
