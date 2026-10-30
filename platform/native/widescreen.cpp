@@ -506,12 +506,13 @@ static int s_seat_pending = -1, s_seat_idx, s_seat_cerebro;   /* online: the req
 
 static bool view_is_seats(void) { return netplay_enabled() && !g_opt.widescreen_gameplay; }
 
-void ws_request_toggle(void)
+int ws_request_toggle(void)
 {
     s_pending = !(s_pending >= 0 ? s_pending : g_opt.widescreen);
     s_pending_idx = s16at(0xFFCC64);
     s_pending_cerebro = s_cerebro;
     s_seat_pending = s_pending, s_seat_idx = s_pending_idx, s_seat_cerebro = s_pending_cerebro;
+    return s_pending;
 }
 
 /* Before the frame is rendered: the renderer's margins for this screen, the render camera, its bars. */

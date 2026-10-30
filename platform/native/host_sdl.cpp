@@ -31,6 +31,7 @@ extern "C" {
 }
 #include "host_sdl.h"
 #include "native.h"
+#include "osd_font.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -232,7 +233,9 @@ void host_input(uint16_t pads[4])
         }
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F11 && !e.key.repeat) {
             Uint32 f = SDL_GetWindowFlags(s_win);
-            SDL_SetWindowFullscreen(s_win, (f & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+            bool full = !(f & SDL_WINDOW_FULLSCREEN_DESKTOP);
+            SDL_SetWindowFullscreen(s_win, full ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+            host_osd(full ? "FULLSCREEN" : "WINDOWED");
         }
         /* phase 6 R1: the two presentation options */
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
@@ -372,10 +375,59 @@ void host_audio(uint64_t frame, bool mute)
     if (s_audio && !mute) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
 }
 
+/* The hotkeys' messages (F9, F10, F11): 8x8 text, white on a translucent black box, centred at the
+   top of the game's picture for 2 s. Drawn on a copy at present time, so the game's frame (its
+   screenshots, captures and --fb hashes) never has it. */
+static char     s_osd[48];
+static uint64_t s_osd_until;   /* SDL ticks (ms) */
+
+void host_osd(const char *text)
+{
+    snprintf(s_osd, sizeof s_osd, "%s", text);
+    s_osd_until = SDL_GetTicks64() + 2000;
+}
+
+static const uint32_t *osd_overlay(const uint32_t *fb, int *stride, int w, int h)
+{
+    static uint32_t buf[256 * 512];
+    if (!s_osd[0] || SDL_GetTicks64() >= s_osd_until || w > 512 || h > 256) return fb;
+    for (int y = 0; y < h; y++) memcpy(buf + y * 512, fb + y * *stride, (size_t)w * 4);
+    int n = (int)strlen(s_osd), tw = n * 8, x0 = (w - tw) / 2, y0 = 8;
+    for (int y = y0 - 3; y < y0 + 11; y++)
+        for (int x = x0 - 4; x < x0 + tw + 3; x++) {
+            if (x < 0 || x >= w || y < 0 || y >= h) continue;
+            uint32_t p = buf[y * 512 + x];   /* 2/3 black over the picture */
+            buf[y * 512 + x] = (p & 0xFF000000u) | ((p >> 16 & 0xFF) / 3) << 16 | ((p >> 8 & 0xFF) / 3) << 8 | (p & 0xFF) / 3;
+        }
+    for (int i = 0; i < n; i++) {
+        unsigned char c = (unsigned char)s_osd[i];
+        if (c < 0x20 || c > 0x7E) continue;
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++)
+                if (k_osd_font[c - 0x20][y] >> x & 1) {
+                    int px = x0 + i * 8 + x, py = y0 + y;
+                    if (px >= 0 && px < w && py < h) buf[py * 512 + px] = 0xFFFFFFFFu;
+                }
+    }
+    *stride = 512;
+    return buf;
+}
+
 static void draw(const uint32_t *fb, int stride, int w, int h)
 {
     if ((s_rebuild || s_draw_fails >= 30) && !make_renderer()) return;
     if (!s_ren || !s_tex) return;
+    /* testing: XMEN2_OSD_TEST=N:TEXT shows TEXT at the Nth picture drawn, which goes to
+       $XMEN2_DUMP_DIR/osd.bmp with it */
+    static const char *osd_test = getenv("XMEN2_OSD_TEST");
+    static long draws;
+    bool osd_dump = false;
+    if (osd_test && ++draws == atol(osd_test) && strchr(osd_test, ':')) {
+        host_osd(strchr(osd_test, ':') + 1);
+        osd_dump = getenv("XMEN2_DUMP_DIR") != nullptr;
+    }
+    fb = osd_overlay(fb, &stride, w, h);
+    if (osd_dump) host_screenshot((std::string(getenv("XMEN2_DUMP_DIR")) + "/osd.bmp").c_str(), fb, stride, w, h);
     SDL_Rect src = { 0, 0, w, h };
     int bad = SDL_UpdateTexture(s_tex, &src, fb, stride * 4) != 0;
     int ww, wh;

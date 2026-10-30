@@ -27,7 +27,7 @@ bool        netplay_arg(int argc, char **argv, int *i);      /* --netplay ... op
 bool        netplay_enabled(void);
 void        netplay_run(uint64_t frames);           /* never returns: the netplay loop (frames: 0 = played) */
 void        netplay_print_json(void);               /* --netplay --json */
-void        ws_request_toggle(void);                /* widescreen.cpp */
+int         ws_request_toggle(void);                /* widescreen.cpp: the view it goes to, 1 = 16:9 */
 void        present_reset(void);                    /* present.cpp: high_fps turned on again */
 void        present_repeat(void);                   /* present.cpp: a played frame-tick V-int's period */
 std::string options_effective_json(void);           /* {"opt": "value", ...} */

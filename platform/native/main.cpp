@@ -600,7 +600,14 @@ extern "C" void plat_frame_begin(uint64_t frame)
     uint16_t pad[4] = { 0, 0, 0, 0 };
     if (s_np_pads) memcpy(pad, s_np_pad, sizeof pad);
     else if (s_interactive && s_script.empty()) host_input(pad);
-    else if (!s_script.empty()) script_pads(frame, pad);
+    else if (!s_script.empty()) {
+        if (s_interactive) {   /* a window replaying a script: its events still read (else Windows calls it
+                                  "Not Responding"; Esc and the hotkeys work), its pads the script's */
+            uint16_t live[4];
+            host_input(live);
+        }
+        script_pads(frame, pad);
+    }
     if (s_flip && frame >= s_flip && frame < s_flip + 8) pad[0] ^= GPAD_C;   /* --flip: the latency probe */
     capture_record_pads(frame, pad);   /* --record-inputs */
     g_machine.bus.pad[0] = pad[0];

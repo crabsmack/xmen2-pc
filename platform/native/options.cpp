@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "host_sdl.h"
 #include "native.h"
 
 #ifdef _WIN32
@@ -200,6 +201,7 @@ void options_toggle_high_fps(void)
     else g_opt.high_fps = rate;
     find("high_fps")->value = std::to_string(g_opt.high_fps);
     present_reset();
+    host_osd(g_opt.high_fps ? ("HIGH FPS: " + std::to_string(g_opt.high_fps)).c_str() : "HIGH FPS: OFF");
 }
 
 /* Online the 16:9 view is the host's with widescreen_gameplay (R10: it changes what activates and the
@@ -208,9 +210,10 @@ void options_toggle_widescreen(void)
 {
     if (netplay_enabled() && g_opt.widescreen_gameplay) {
         fprintf(stderr, "[native] F10: the 16:9 view is the host's in a netplay session with widescreen_gameplay=1\n");
+        host_osd("16:9 GAMEPLAY SET BY HOST");
         return;
     }
-    ws_request_toggle();
+    host_osd(ws_request_toggle() ? "16:9 FROM THE NEXT SCREEN" : "4:3 FROM THE NEXT SCREEN");
 }
 
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
