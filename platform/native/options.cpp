@@ -1,7 +1,8 @@
 /* options.cpp - the native runner's options (xmen2disasm docs/phases/P6-enhance.md R1, E2): each
  * enhancement is a runtime option of the one release runner, off by default, except music_voices
  * (the user, 2026-10-24: "as an option (default on)"; 2026-10-27: its `full`, the default), which
- * changes only the sound.
+ * changes only the sound, and high_fps and widescreen, `auto` (the user, 2026-10-30), which follow
+ * the display and change only the picture (no window: off, so every headless check is unchanged).
  *
  *   --options --json     print the options (default, values, the effective value) and exit 0
  *   --options K=V,K=V    set them for this run
@@ -39,9 +40,12 @@ struct OptDef {
 
 static OptDef s_defs[] = {
     { "full_rate_2p", { "0", "1", nullptr }, "two players at the full 60 Hz (R3)", "0" },
-    { "high_fps", { "0", "120", "144", "165", "240", nullptr },
-      "display rate in Hz with frames interpolated between logic frames, 0 = off (R4)", "0" },
-    { "widescreen", { "0", "16:9", nullptr }, "16:9 view in levels, 0 = off (R5-R8)", "0" },
+    /* auto (the user, 2026-10-30: "let's use auto for refresh rate and aspect ratio"): the display's,
+       read when the window opens (options_detect_display); no window or no answer: off */
+    { "high_fps", { "auto", "0", "120", "144", "165", "240", nullptr },
+      "display rate in Hz with frames interpolated between logic frames, 0 = off (R4); auto = the display's rate when it is over 60 Hz, else off", "auto" },
+    { "widescreen", { "auto", "0", "16:9", nullptr },
+      "16:9 view in levels, 0 = off (R5-R8); auto = 16:9 on a display wider than 3:2, else off", "auto" },
     { "widescreen_gameplay", { "0", "1", nullptr },
       "with widescreen: objects activate across the wide view and the camera keeps it inside the level (R6); 0 = the view is presentation only, the game plays as in 4:3 (R8)", "0" },
     /* cheats (the user, 2026-10-21; not phase-6 criteria) */
@@ -66,6 +70,7 @@ static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path, s_exe_dir;
 static int s_ini_found;
 static std::string s_ini_rom;   /* [rom] path: the ROM a run without one on the command line plays */
+static int s_auto_hz, s_auto_wide;   /* what auto means on this display (0 until a window has looked) */
 
 static OptDef *find(const std::string &k)
 {
@@ -138,8 +143,9 @@ static void read_ini(void)
 static void apply(void)
 {
     g_opt.full_rate_2p = find("full_rate_2p")->value == "1";
-    g_opt.high_fps = atoi(find("high_fps")->value.c_str());
-    g_opt.widescreen = find("widescreen")->value == "16:9";
+    const std::string &hf = find("high_fps")->value, &ws = find("widescreen")->value;
+    g_opt.high_fps = hf == "auto" ? s_auto_hz : atoi(hf.c_str());
+    g_opt.widescreen = ws == "16:9" || (ws == "auto" && s_auto_wide);
     g_opt.widescreen_gameplay = find("widescreen_gameplay")->value == "1";
     const std::string &l = find("lives")->value;
     g_opt.lives = l == "inf" ? -1 : atoi(l.c_str());
@@ -166,14 +172,43 @@ static std::string json_str(const std::string &s)
     return o + "\"";
 }
 
-/* {"opt": "v", ...}: the effective values (the trace's "options") */
+/* an option's value with auto resolved: what this run plays with */
+static std::string effective(const OptDef &d)
+{
+    if (d.value != "auto") return d.value;
+    if (!strcmp(d.name, "high_fps")) return std::to_string(g_opt.high_fps);
+    if (!strcmp(d.name, "widescreen")) return g_opt.widescreen ? "16:9" : "0";
+    return d.value;
+}
+
+/* {"opt": "v", ...}: the effective values (the trace's "options"), auto resolved */
 std::string options_effective_json(void)
 {
     std::string o = "{";
     for (int i = 0; i < NDEFS; i++)
-        o += (i ? ", " : "") + json_str(s_defs[i].name) + ": " + json_str(s_defs[i].value);
+        o += (i ? ", " : "") + json_str(s_defs[i].name) + ": " + json_str(effective(s_defs[i]));
     return o + "}";
 }
+
+/* The display the window opens on (host_sdl.cpp): w x h desktop pixels, refresh in Hz (0 = unknown).
+   high_fps=auto: its rate when over 61 Hz (one under a common rate, as 143 for 143.98, rounds up),
+   else off; widescreen=auto: 16:9 when it is wider than 3:2 (16:10, 16:9, ultrawide), else off.
+   Anything unknown leaves the original picture. aspect=false: only the rate (a later display). */
+void options_detect_display(int w, int h, int hz, bool aspect)
+{
+    static const int common[] = { 60, 75, 90, 100, 120, 144, 165, 180, 200, 240, 280, 360, 480 };
+    for (int c : common)
+        if (hz + 1 == c) hz = c;
+    s_auto_hz = hz > 61 && hz <= 1000 ? hz : 0;
+    if (aspect) s_auto_wide = w > 0 && h > 0 && w * 2 > h * 3;
+    const std::string &hf = find("high_fps")->value, &ws = find("widescreen")->value;
+    if (hf == "auto") g_opt.high_fps = s_auto_hz;
+    if (aspect && ws == "auto") g_opt.widescreen = s_auto_wide;
+    fprintf(stderr, "[native] display %dx%d at %d Hz: high_fps %s, widescreen %s\n", w, h, hz,
+            effective(*find("high_fps")).c_str(), effective(*find("widescreen")).c_str());
+}
+
+bool options_high_fps_auto(void) { return find("high_fps")->value == "auto"; }
 
 static void print_json(void)
 {
@@ -196,7 +231,8 @@ static void print_json(void)
    so it starts with a scene). */
 void options_toggle_high_fps(void)
 {
-    static int rate = 144;
+    static int rate = 0;
+    if (!rate) rate = s_auto_hz ? s_auto_hz : 144;   /* turned on: the display's rate if known */
     if (g_opt.high_fps) { rate = g_opt.high_fps; g_opt.high_fps = 0; }
     else g_opt.high_fps = rate;
     find("high_fps")->value = std::to_string(g_opt.high_fps);
@@ -233,7 +269,8 @@ std::string options_game_text(void)
     bool ws_gameplay = find("widescreen_gameplay")->value == "1";
     std::string o;
     for (const OptDef &d : s_defs)
-        if (!presentation_only(d, ws_gameplay)) o += (o.empty() ? "" : ",") + std::string(d.name) + "=" + d.value;
+        if (!presentation_only(d, ws_gameplay))   /* auto as the host resolved it: a guest's display must not decide */
+            o += (o.empty() ? "" : ",") + std::string(d.name) + "=" + effective(d);
     return o;
 }
 

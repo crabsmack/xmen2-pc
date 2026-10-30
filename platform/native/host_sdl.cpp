@@ -169,6 +169,13 @@ int host_open(const char *title)
         fprintf(stderr, "[native] SDL: %s\n", SDL_GetError());
         return 0;
     }
+    /* high_fps / widescreen auto: the display the window opens on (centred on the first); a failed
+       query leaves both off */
+    SDL_DisplayMode dm = {};
+    if (SDL_GetDesktopDisplayMode(0, &dm) != 0) dm = SDL_DisplayMode{};
+    if (const char *t = getenv("XMEN2_DISPLAY_TEST"))   /* testing: W,H,HZ in place of the display's */
+        if (sscanf(t, "%d,%d,%d", &dm.w, &dm.h, &dm.refresh_rate) != 3) dm = SDL_DisplayMode{};
+    options_detect_display(dm.w, dm.h, dm.refresh_rate, true);
     s_win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (g_opt.widescreen ? 400 : 320) * 3,
                              224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
@@ -241,6 +248,13 @@ void host_input(uint16_t pads[4])
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
         if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
+        /* high_fps=auto follows the window to another display's rate (the 16:9 view stays as it is) */
+        if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED && options_high_fps_auto()) {
+            SDL_DisplayMode dm = {};
+            if (SDL_GetDesktopDisplayMode(e.window.data1, &dm) != 0) dm = SDL_DisplayMode{};
+            options_detect_display(dm.w, dm.h, dm.refresh_rate, false);
+            present_reset();
+        }
         pad_event(e);
     }
     pads[0] = (uint16_t)(keyboard_pad() | controller_pad(s_pad[0]));

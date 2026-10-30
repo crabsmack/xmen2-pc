@@ -1529,13 +1529,16 @@ levels from your file each time it starts.
 Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
 Game controllers (players 1-4, in the order they are plugged in): D-pad or left stick; X = A,
 A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
+F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  Each says so on screen.
 
+The picture, by default as your display allows (auto); widescreen=0,high_fps=0 for the original's:
+    high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
+                        (any rate from 61 to 1000). auto: the display's rate if over 60 Hz
+    widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
+                        plays as in 4:3, so enemies still appear at the old screen edge.
+                        auto: 16:9 on a display wider than 3:2, else 4:3
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
-    high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
-                        (any rate from 61 to 1000)
-    widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
-                        plays as in 4:3, so enemies still appear at the old screen edge
     widescreen_gameplay=1  with widescreen: enemies wake and appear across the wide view, and
                         the camera keeps the wide view inside the stage (changes the game)
     players=4          three or four players (players=3 or 4; the original: 2): players 3

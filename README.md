@@ -37,17 +37,19 @@ X/A/B = A/B/C, LB/Y/RB = X/Y/Z, Start = Start, Back = Mode. F11: fullscreen. Esc
 
 ## Options
 
-Every option but one is off unless you turn it on, so by default the game plays exactly like
-the cartridge. The exception is the sound: `music_voices` is on, and changes what you hear,
-never the game (`music_voices=0` gives the cartridge's sound). Give options on the command line,
+By default the game plays exactly like the cartridge: every option that changes the game is off
+unless you turn it on. What is on by default changes only what you see and hear, never the game:
+the picture follows your display (`widescreen` and `high_fps` are `auto`), and `music_voices`
+plays the music on chips of its own. `widescreen=0,high_fps=0,music_voices=0` gives the
+cartridge's picture and sound. Give options on the command line,
 `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in `xmen2.ini` next to the
-program (`[options]`, one per line).
+program (`[options]`, one per line). F9, F10 and F11 say on screen what they did.
 
 | Option | What it does |
 |---|---|
-| `widescreen=16:9` | A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). F10 toggles it |
+| `widescreen=16:9` | A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). F10 toggles it. The default, `auto`, is 16:9 on a display wider than 3:2 (16:10, 16:9, ultrawide), else 4:3 |
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
-| `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it |
+| `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it. The default, `auto`, is the display's own rate when it is over 60 Hz (and follows the window to another display), else off |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
 | `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
 | `lives=inf` | Lives are never spent (or `lives=N`, 1-99) |

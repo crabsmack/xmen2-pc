@@ -18,6 +18,8 @@ void        options_set_widescreen(int on);
 void        options_set_first_scene(int scene);     /* --scene N: a new game starts there */
 int         options_first_scene(void);              /* -1: none */
 std::string options_exe_dir(void);                  /* the runner's folder (xmen2.ini's) */
+void        options_detect_display(int w, int h, int hz, bool aspect);   /* high_fps/widescreen auto (host_sdl.cpp) */
+bool        options_high_fps_auto(void);            /* high_fps is auto (a display change looks again) */
 std::string options_ini_rom(void);                  /* xmen2.ini's [rom] path ("" if none) */
 bool        options_remember_rom(const std::string &path);   /* writes it there; false if it can't */
 std::string options_game_text(void);                /* netplay (R10): the game-changing options, k=v,... */
