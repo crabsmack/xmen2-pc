@@ -19,12 +19,15 @@ it starts, and refuses any file but the USA/Europe cartridge (SHA-1
 
 ## Play
 
-Download the Windows or Linux zip from [Releases](https://github.com/crabsmack/xmen2-pc/releases),
-unzip it, and run it with your ROM (or [build it yourself](#build-from-source)):
+Download the Windows or Linux zip from [Releases](https://github.com/crabsmack/xmen2-pc/releases)
+(not the source code), unzip it, and start it: no emulator is needed (or [build it yourself](#build-from-source)).
+Started without a ROM (a double-click), it plays the ROM it was last given, or one in its folder;
+otherwise it asks for yours with a file picker and remembers it (`[rom]` in `xmen2.ini`). You can
+also give it the ROM directly, or drag the ROM onto the program:
 
 ```
 XMen2.exe path\to\xmen2.bin          Windows
-./xmen2 path/to/xmen2.bin            Linux (needs SDL2: libsdl2-2.0-0)
+./xmen2 path/to/xmen2.bin            Linux (needs SDL2: libsdl2-2.0-0; the picker needs zenity or kdialog)
 ```
 
 Keyboard (player 1): arrows; Z/X/C = A/B/C, A/S/D = X/Y/Z, Enter = Start, Q = Mode.

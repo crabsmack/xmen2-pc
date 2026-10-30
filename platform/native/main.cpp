@@ -1,6 +1,7 @@
 /* main.cpp - the native runner's host side (phase 5 P6): XMen2Native.exe ROM [options].
  *
- * Reads the user's ROM (SHA-1 checked: R2, nothing ROM-derived ships), powers the machine on and
+ * Reads the user's ROM (SHA-1 checked: R2, nothing ROM-derived ships; with none on the command line,
+ * xmen2.ini's [rom] path, the ROM beside the program, or, played, a file picker: find_rom), powers the machine on and
  * calls the game's reset entry, which never returns: the game calls the platform at every sync
  * point (machine.cpp plat_sync_point), and the runner frame's host work happens there.
  *
@@ -35,6 +36,8 @@
  */
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
+#include <system_error>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,10 +97,11 @@ extern "C" void xm_sha1(const uint8_t *data, size_t len, uint8_t out[20])
 
 static const char ROM_SHA1[] = "61409e6cf6065ab67d8952b891d8edcf47777193";
 
-static void load_rom(const char *path)
+/* "" if PATH is the game (its bytes then in *out, if given), else why not */
+static std::string rom_check(const char *path, std::vector<uint8_t> *out)
 {
     FILE *f = fopen(path, "rb");
-    if (!f) { fprintf(stderr, "[native] cannot open the ROM %s\n", path); exit(2); }
+    if (!f) return std::string("cannot open the ROM ") + path;
     std::vector<uint8_t> rom;
     uint8_t buf[65536];
     size_t n;
@@ -107,12 +111,61 @@ static void load_rom(const char *path)
     xm_sha1(rom.data(), rom.size(), d);
     char hex[41];
     for (int i = 0; i < 20; i++) snprintf(hex + 2 * i, 3, "%02x", d[i]);
-    if (strcmp(hex, ROM_SHA1)) {
-        fprintf(stderr, "[native] %s is not X-Men 2: Clone Wars (USA/Europe): SHA-1 %s, expected %s\n", path, hex, ROM_SHA1);
-        exit(2);
-    }
+    if (strcmp(hex, ROM_SHA1))
+        return std::string(path) + " is not X-Men 2: Clone Wars (USA/Europe): SHA-1 " + hex + ", expected " + ROM_SHA1 +
+               ". A zipped ROM must be unzipped first; another version of the cartridge is refused.";
+    if (out) out->swap(rom);
+    return "";
+}
+
+/* played runs (no --benchmark) say what went wrong in a message box too: started from a file
+   manager, there is no console to read */
+static void rom_fatal(const std::string &why, bool played)
+{
+    fprintf(stderr, "[native] %s\n", why.c_str());
+    if (played) host_message(why.c_str());
+    exit(2);
+}
+
+static void load_rom(const char *path, bool played)
+{
+    std::vector<uint8_t> rom;
+    std::string why = rom_check(path, &rom);
+    if (!why.empty()) rom_fatal(why, played);
     memset(g_rom, 0, sizeof g_rom);
     memcpy(g_rom, rom.data(), rom.size() < sizeof g_rom ? rom.size() : sizeof g_rom);
+}
+
+/* No ROM on the command line (started by a double-click): xmen2.ini's [rom] path, then a file
+   beside the program that is the game (by its size and SHA-1), then, played, a file picker; the
+   one picked is remembered in xmen2.ini. "" if none. */
+static std::string find_rom(bool played)
+{
+    std::string ini = options_ini_rom();
+    if (!ini.empty() && rom_check(ini.c_str(), nullptr).empty()) return ini;
+    std::error_code ec;
+    for (const auto &e : std::filesystem::directory_iterator(options_exe_dir(), ec)) {
+        std::error_code ec2;
+        if (!e.is_regular_file(ec2) || e.file_size(ec2) != 0x200000) continue;
+        std::string p = e.path().string();
+        if (rom_check(p.c_str(), nullptr).empty()) return p;
+    }
+    if (!played) return "";
+    char path[4096];
+    for (;;) {
+        if (!host_pick_rom(path, sizeof path)) {
+            host_message("X-Men 2 needs your ROM of the game (USA/Europe). Put it in the game's folder, or start "
+                         "the game with it: drag the ROM onto the program, or run  XMen2.exe path\\to\\xmen2.bin  "
+                         "(Linux: ./xmen2 path/to/xmen2.bin).");
+            return "";
+        }
+        std::string why = rom_check(path, nullptr);
+        if (why.empty()) {
+            if (!options_remember_rom(path)) fprintf(stderr, "[native] could not write the ROM's path to xmen2.ini\n");
+            return path;
+        }
+        host_message(why.c_str());   /* and the picker again */
+    }
 }
 
 /* ---- sync rows (as game/xmen2_spec.c: from the export image only) --------------------------- */
@@ -1092,8 +1145,17 @@ int main(int argc, char **argv)
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
     if (const char *t = getenv("XMEN2_PAD_SELFTEST"); t && *t && strcmp(t, "0")) return host_pad_selftest();   /* host_sdl.cpp */
-    if (!rom) { fprintf(stderr, "usage: XMen2Native ROM [--benchmark N] [--input-script F] [--hash-frames K]\n"); return 2; }
-    load_rom(rom);
+    std::string found;
+    if (!rom) {
+        found = find_rom(!s_benchmark);
+        if (found.empty()) {
+            fprintf(stderr, "usage: XMen2Native ROM [--benchmark N] [--input-script F] [--hash-frames K]\n"
+                            "  (without ROM: xmen2.ini's [rom] path, the ROM beside the program, or a file picker)\n");
+            return 2;
+        }
+        rom = found.c_str();
+    }
+    load_rom(rom, !s_benchmark);
     if (!s_benchmark) {   /* played: a window, the pads, the sound */
         if (!host_open("X-Men 2: Clone Wars")) return 3;
         s_interactive = 1;

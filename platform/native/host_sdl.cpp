@@ -31,6 +31,58 @@ extern "C" {
 }
 #include "host_sdl.h"
 #include "native.h"
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#include <commdlg.h>
+#else
+#include <sys/wait.h>
+#endif
+
+/* a run started without a ROM (main.cpp find_rom): what went wrong, and the ROM to play */
+void host_message(const char *text)
+{
+    if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "X-Men 2: Clone Wars", text, nullptr) != 0)
+        fprintf(stderr, "[native] %s\n", text);
+}
+
+bool host_pick_rom(char *path, size_t cap)
+{
+    if (const char *t = getenv("XMEN2_PICK_ROM_TEST")) {   /* testing: the picker's answer ("" = cancelled) */
+        snprintf(path, cap, "%s", t);
+        return *t != 0;
+    }
+#ifdef _WIN32
+    OPENFILENAMEA o = {};
+    path[0] = 0;
+    o.lStructSize = sizeof o;
+    o.lpstrFilter = "Genesis ROM (*.bin, *.md, *.gen)\0*.bin;*.md;*.gen\0All files\0*.*\0";
+    o.lpstrFile = path;
+    o.nMaxFile = (DWORD)cap;
+    o.lpstrTitle = "X-Men 2: Clone Wars - choose your ROM (USA/Europe)";
+    o.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+    return GetOpenFileNameA(&o) != 0;
+#else
+    /* zenity (GNOME and most desktops) or kdialog (KDE); neither: false */
+    static const char *const cmds[] = {
+        "zenity --file-selection --title='X-Men 2: Clone Wars - choose your ROM (USA/Europe)' 2>/dev/null",
+        "kdialog --getopenfilename . 2>/dev/null" };
+    for (const char *cmd : cmds) {
+        FILE *p = popen(cmd, "r");
+        if (!p) continue;
+        bool got = fgets(path, (int)cap, p) != nullptr;
+        int rc = pclose(p);
+        if (got) {
+            size_t n = strlen(path);
+            while (n && (path[n - 1] == '\n' || path[n - 1] == '\r')) path[--n] = 0;
+            if (n) return true;
+        }
+        if (WIFEXITED(rc) && WEXITSTATUS(rc) == 1) return false;   /* it ran and was cancelled: not the next one */
+    }
+    return false;
+#endif
+}
 
 static SDL_Window *s_win;
 static SDL_Renderer *s_ren;

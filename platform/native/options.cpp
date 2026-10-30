@@ -5,7 +5,8 @@
  *
  *   --options --json     print the options (default, values, the effective value) and exit 0
  *   --options K=V,K=V    set them for this run
- *   xmen2.ini            beside the runner: [options] K=V lines set them too; the command line wins
+ *   xmen2.ini            beside the runner: [options] K=V lines set them too; the command line wins.
+ *                        Its [rom] path = PATH is the ROM a run started without one plays (main.cpp)
  *
  * The game's C reads them through g_opt (platform/xmen2_platform.h, native-only branches); with
  * every option at its default no option code runs in the game (music_voices is the platform's).
@@ -61,8 +62,9 @@ static OptDef s_defs[] = {
       "the music on sound chips of its own, the players' parts on further sets, so no part or sound effect takes its notes, and each player's part in full, as one player hears it; 1 = the same with the game's arrangement for two or more players (each part with one track muted); 0 = one set of chips, as the original", "full" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
-static std::string s_ini_path;
+static std::string s_ini_path, s_exe_dir;
 static int s_ini_found;
+static std::string s_ini_rom;   /* [rom] path: the ROM a run without one on the command line plays */
 
 static OptDef *find(const std::string &k)
 {
@@ -118,15 +120,16 @@ static void read_ini(void)
     FILE *f = fopen(s_ini_path.c_str(), "r");
     if (!f) return;
     s_ini_found = 1;
-    char line[512];
-    bool in_options = false;
+    char line[4096];
+    std::string section;
     while (fgets(line, sizeof line, f)) {
         std::string s = trim(line);
         if (s.empty() || s[0] == '#' || s[0] == ';') continue;
-        if (s[0] == '[') { in_options = s == "[options]"; continue; }
+        if (s[0] == '[') { section = s; continue; }
         size_t eq = s.find('=');
-        if (!in_options || eq == std::string::npos) continue;
-        set(trim(s.substr(0, eq)), trim(s.substr(eq + 1)), s_ini_path.c_str());
+        if (eq == std::string::npos) continue;
+        if (section == "[options]") set(trim(s.substr(0, eq)), trim(s.substr(eq + 1)), s_ini_path.c_str());
+        else if (section == "[rom]" && trim(s.substr(0, eq)) == "path") s_ini_rom = trim(s.substr(eq + 1));
     }
     fclose(f);
 }
@@ -268,10 +271,42 @@ extern "C" int plat_debug_first_scene(int scene)
     return e && *e ? atoi(e) : scene;
 }
 
+std::string options_exe_dir(void) { return s_exe_dir; }
+std::string options_ini_rom(void) { return s_ini_rom; }
+
+/* xmen2.ini's [rom] section becomes path = PATH (the rest of the file as it was; a new file if none) */
+bool options_remember_rom(const std::string &path)
+{
+    std::vector<std::string> keep;
+    if (FILE *f = fopen(s_ini_path.c_str(), "r")) {
+        char line[4096];
+        bool in_rom = false;
+        while (fgets(line, sizeof line, f)) {
+            std::string s = trim(line);
+            if (!s.empty() && s[0] == '[') in_rom = s == "[rom]";
+            if (in_rom) continue;
+            std::string l = line;
+            while (!l.empty() && (l.back() == '\n' || l.back() == '\r')) l.pop_back();
+            keep.push_back(l);
+        }
+        fclose(f);
+    }
+    while (!keep.empty() && trim(keep.back()).empty()) keep.pop_back();
+    FILE *f = fopen(s_ini_path.c_str(), "w");
+    if (!f) return false;
+    for (const std::string &l : keep) fprintf(f, "%s\n", l.c_str());
+    fprintf(f, "%s[rom]\n# the ROM the game plays when started without one (set when you chose it)\npath = %s\n",
+            keep.empty() ? "" : "\n", path.c_str());
+    bool ok = fclose(f) == 0;
+    if (ok) s_ini_rom = path;
+    return ok;
+}
+
 /* Removes --options and its argument from argv (main parses the rest); exits after --options --json. */
 void options_init(int *argc, char **argv)
 {
-    s_ini_path = exe_dir(argv[0]) + "/xmen2.ini";
+    s_exe_dir = exe_dir(argv[0]);
+    s_ini_path = s_exe_dir + "/xmen2.ini";
     read_ini();
     bool list = false;
     int w = 1;

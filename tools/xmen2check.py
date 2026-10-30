@@ -1517,7 +1517,9 @@ def cmd_lint(a) -> dict:
 PACKAGE_README = """X-Men 2: Clone Wars, native PC port (from the xmen2disasm decompilation).
 
 Run it with your own copy of the game's cartridge (USA/Europe; it checks the SHA-1
-61409e6cf6065ab67d8952b891d8edcf47777193 and refuses anything else):
+61409e6cf6065ab67d8952b891d8edcf47777193 and refuses anything else). No emulator is needed.
+Start it, and the first time it asks for your ROM with a file picker and remembers it ([rom] in
+xmen2.ini); a ROM in this folder is found by itself. Or give it the ROM (or drag the ROM onto it):
 
     {exe} path\\to\\xmen2.bin
 

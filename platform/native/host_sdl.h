@@ -2,6 +2,7 @@
 #ifndef XMEN2_HOST_SDL_H
 #define XMEN2_HOST_SDL_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 int  host_open(const char *title);           /* 0: no display */
@@ -13,5 +14,7 @@ void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us);
 void host_slip(double us);   /* netplay: both present clocks move by us (the scheduler held a frame) */
 void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, int h);   /* BMP */
 int  host_pad_selftest(void);   /* XMEN2_PAD_SELFTEST: the controllers' slots with virtual ones; 0 = pass */
+void host_message(const char *text);   /* a message box (before or without the window) */
+bool host_pick_rom(char *path, size_t cap);   /* a file picker for the ROM; false: cancelled or none */
 
 #endif /* XMEN2_HOST_SDL_H */
