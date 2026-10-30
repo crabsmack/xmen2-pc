@@ -2225,6 +2225,12 @@ chip has voices for both parts (two full parts with the base song want up to 7 F
 - **Netplay version 4** (`NP_VERSION`, for v1.1.0): the game with players 3-4 changed again since
   v1.0.1 (the four-column player select keeps a Start pressed during a flight; this redraw, with its
   V-blank wait), so v1.0.x seats and v1.1.0 seats refuse each other at the seal.
+- **v1.1.1 keeps version 4** (2026-10-30): since v1.1.0 only the host side and the picture changed
+  (`auto` for high_fps and widescreen, the hotkeys' messages, the ROM finder, high_fps's even
+  frames), and the seal carries `auto` resolved (`16:9` / `0`), which v1.1.0 takes. Checked: a
+  v1.1.0 package seat and a v1.1.1 seat on loopback `lan`, each one hosting, `boot.input` (3,581
+  frames), with no options and with the host's `widescreen_gameplay=1,widescreen=16:9`: equal
+  digests, 0 rollbacks.
 
 ### Ideas, not scheduled: costumes, duplicates, more players, own cameras (2026-10-27)
 

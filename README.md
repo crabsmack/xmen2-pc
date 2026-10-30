@@ -80,7 +80,8 @@ seat 1:         XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.
   files in a shared folder (`--ice-signal-dir DIR`).
 - `--input-delay D` sets the delay in frames (default 5). `XMen2.exe --netplay --json` lists the flags.
 
-Everyone must run the same release (v1.1.0 refuses a v1.0.x seat when it connects).
+Everyone needs a v1.1 release: v1.1.0 and v1.1.1 play together, and a v1.0.x seat is refused
+when it connects.
 
 ## Status
 
