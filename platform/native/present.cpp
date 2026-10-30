@@ -3,8 +3,9 @@
  *
  * The logic stays the 60 Hz frame-synchronous machine. Runner frame k's picture R_k is rendered at
  * sync point k-1, right after the V-int, and shown at k x T (T = 16,688.9 us, one NTSC frame), as
- * the 60 Hz build shows it. With high_fps = H, the frames of an H Hz clock that fall between
- * (k-1) x T and k x T are interpolated from R_(k-1) toward R_k and shown in between: R_k is already
+ * the 60 Hz build shows it. With high_fps = H, n - 1 frames evenly between (k-1) x T and k x T
+ * (n = H x T rounded: 2 at 120 and 144, 3 at 165, 4 at 240) are interpolated from R_(k-1) toward
+ * R_k and shown in between: R_k is already
  * rendered when they are made (the logic of runner frame k-1 is done and its pads were read when
  * the 60 Hz build reads them), so nothing waits for anything: no added latency, the in-between
  * frames only show earlier what R_k will show.
@@ -392,7 +393,7 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
     int hz = g_opt.high_fps;
     if (hz && s_prev.valid && k >= 2 && s_prev.reg5 == s_cur.reg5 && s_prev.reg13 == s_cur.reg13) {
         GVDP *v = &g_machine.vdp;
-        double t0 = (double)(k - 1 + s_extra) * T_US, t1 = t0 + span_now(interactive) * T_US, step = 1e6 / hz;
+        double t0 = (double)(k - 1 + s_extra) * T_US, t1 = t0 + span_now(interactive) * T_US;
         uint32_t hb = hbase(v), sb = satbase(v);
         /* the prev frame's slots by owner, its sprite instances' anchors */
         std::unordered_map<uintptr_t, std::vector<int>> prev_of;
@@ -488,9 +489,14 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
         for (int slot = 0; slot < 80; slot++)
             if (counted[slot] && own[slot]) plan.push_back({ slot, ownx[slot], owny[slot] });
         const bool draw = machine_pixels();
-        for (double j = (double)(int64_t)(t0 / step) + 1; j * step < t1 - 0.5; j++) {
-            double t = j * step, a = (t - t0) / (t1 - t0);
-            if (t <= t0 + 0.5) continue;
+        /* the span in n even parts, n its H Hz frames rounded: R_k at t1, n - 1 frames before it.
+           Not the H Hz clock itself: with R_k at k x T on top of it, 120 showed 180 frames a second,
+           bunched (a gap under 2 ms, then one of 15) wherever the clock ran near R_k, and a 120 Hz
+           screen dropped one in three of them, unevenly, a stutter every 6 s (a player's report,
+           2026-10-30) */
+        int n = std::max(1, (int)((t1 - t0) * hz / 1e6 + 0.5));
+        for (int j = 1; j < n; j++) {
+            double t = t0 + j * (t1 - t0) / n, a = (t - t0) / (t1 - t0);
             /* the scroll: every line's A and B words, the VSRAM entries */
             for (int i = 0; i < 0x400 && draw; i += 2) {
                 int p = w16(s_prev.hscroll + i), c = w16(s_cur.hscroll + i);

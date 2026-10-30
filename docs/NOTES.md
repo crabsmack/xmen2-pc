@@ -1326,12 +1326,25 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
 
 - **Timing** (R4: no added latency): `platform/native/present.cpp`. Runner frame k's picture R_k
   is rendered at sync point k-1 right after the V-int and shown at k x T (T = 16,688.9 us), as at
-  60 Hz. With `high_fps` = H, the frames of an H Hz clock between (k-1) x T and k x T are
-  interpolated from R_(k-1) toward R_k right after R_k is rendered, before the logic of runner
+  60 Hz. With `high_fps` = H, n - 1 frames evenly between (k-1) x T and k x T (n = H x T
+  rounded; "Even frames" below) are interpolated from R_(k-1) toward R_k right after R_k is rendered, before the logic of runner
   frame k: R_k's state is already there (its logic and its pads are those the 60 Hz build has at
   that moment), so the whole frames keep their times and the in-between ones only show earlier
   what R_k will show. A played run waits for each frame's time on the present clock
   (`host_present_at`); a frame more than 4 NTSC frames late moves the clock.
+- **Even frames** (a player's report, 2026-10-30: "seemingly random slowdown" at 120 fps on
+  Windows). Until then the in-between frames were the ticks of an absolute H Hz clock, with R_k at
+  k x T on top: 120 presented 179.9 frames a second (`boot.input`'s present log: 7,202 over 40 s,
+  1,167 gaps under 2 ms), and the 120.000 Hz ticks drift through the 59.92 Hz frames every 6.2 s.
+  The renderer has no vsync, so a 120 Hz screen drops one in three, which one shifting with the
+  drift: smooth, then seconds of stutter. A display model (the newest present at each refresh;
+  refreshes whose content step is off by over 25%) gave 29% at 120 on 120 Hz, 24% at 144 on 144,
+  14% at 240 on 240 and 0.1% on a 60 Hz screen. Now n = H x T rounded even parts of each span
+  (two periods on a two-player step): 0.2% at 120 and 240; 144 presents at 119.8 Hz (17% on a
+  144 Hz screen) and 165 at 179.8 (9%). Rates that aren't a multiple of 59.92 Hz can't be even
+  with R_k at k x T (R4) and no vsync: that is the vsync follow-up. Nothing measured the spacing:
+  E4 checks each whole frame's time and hash, the latency and the render time, `present.frames`
+  is reported unchecked, and on a 60 Hz screen the bunching doesn't show.
 - **An interpolated frame** is R_k's VDP state rendered with the horizontal scroll of every line
   (the camera, the parallax), the VSRAM and the matched sprites moved back toward R_(k-1); then
   VRAM and VSRAM are put back (presentation only: the corpus at 144 Hz has the reference's rows).
