@@ -37,6 +37,7 @@ extern "C" {
 #define NOMINMAX
 #include <windows.h>
 #include <commdlg.h>
+#include <dwmapi.h>
 #else
 #include <sys/wait.h>
 #endif
@@ -96,6 +97,7 @@ static double s_at_base;         /* high_fps: performance-counter ticks at t_us 
 static int s_audio;
 static bool s_rebuild;           /* the renderer's device was reset: make it again before drawing */
 static int s_draw_fails;         /* failed draws in a row */
+static void ptrace_open(void);   /* XMEN2_PRESENT_TRACE (below, with draw) */
 
 /* the renderer and the frame's texture, (re)made; 0 when there is none */
 static int make_renderer(void)
@@ -179,6 +181,7 @@ int host_open(const char *title)
     s_win = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (g_opt.widescreen ? 400 : 320) * 3,
                              224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
+    if (getenv("XMEN2_FULLSCREEN")) SDL_SetWindowFullscreen(s_win, SDL_WINDOW_FULLSCREEN_DESKTOP);   /* as F11 (measuring) */
     if (!make_renderer()) return 0;
     pads_scan();
     s_audio = audio_init((int)GENESIS_PSG_SAMPLE_RATE_NTSC) == 0;
@@ -186,6 +189,7 @@ int host_open(const char *title)
     else fprintf(stderr, "[native] no audio device: playing silent\n");
     s_period = (double)SDL_GetPerformanceFrequency() * 262.0 * 3420.0 / 53693175.0;   /* one NTSC frame */
     s_next = SDL_GetPerformanceCounter();
+    ptrace_open();
     return 1;
 }
 
@@ -427,6 +431,46 @@ static const uint32_t *osd_overlay(const uint32_t *fb, int *stride, int w, int h
     return buf;
 }
 
+/* XMEN2_PRESENT_TRACE=FILE (played runs; the frame-pacing work, NOTES "Present trace"): a row per
+   picture shown: its content time (us on the present clock), when it was due and the performance
+   counter before and after SDL_RenderPresent; on Windows also DWM's last V-blank and refresh period
+   (DwmGetCompositionTimingInfo). tools/presenttrace.py works out from them what each refresh of the
+   display showed. */
+static FILE *s_ptrace;
+static double s_content_us;      /* the picture being drawn: its time on the present clock */
+static uint64_t s_due;           /* when it was due (performance counter) */
+
+static void ptrace_open(void)
+{
+    const char *path = getenv("XMEN2_PRESENT_TRACE");
+    if (!path || !*path) return;
+    s_ptrace = fopen(path, "w");
+    if (!s_ptrace) { fprintf(stderr, "[native] cannot write XMEN2_PRESENT_TRACE %s\n", path); return; }
+    setvbuf(s_ptrace, nullptr, _IOFBF, 1 << 20);
+    SDL_DisplayMode dm = {};
+    SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(s_win), &dm);
+    SDL_RendererInfo info = {};
+    if (s_ren) SDL_GetRendererInfo(s_ren, &info);
+    fprintf(s_ptrace, "# freq %llu display_hz %d renderer %s high_fps %d\n",
+            (unsigned long long)SDL_GetPerformanceFrequency(), dm.refresh_rate, info.name ? info.name : "?", g_opt.high_fps);
+    fprintf(s_ptrace, "content_us,due,pre,post,vblank,period,fullscreen,high_fps\n");
+    atexit([] { if (s_ptrace) fclose(s_ptrace); });
+}
+
+static void ptrace_row(uint64_t pre, uint64_t post)
+{
+    uint64_t vblank = 0, period = 0;
+#ifdef _WIN32
+    DWM_TIMING_INFO ti = {};
+    ti.cbSize = sizeof ti;
+    if (SUCCEEDED(DwmGetCompositionTimingInfo(nullptr, &ti))) { vblank = ti.qpcVBlank; period = ti.qpcRefreshPeriod; }
+#endif
+    int fs = (SDL_GetWindowFlags(s_win) & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 1 : 0;
+    fprintf(s_ptrace, "%.1f,%llu,%llu,%llu,%llu,%llu,%d,%d\n", s_content_us, (unsigned long long)s_due,
+            (unsigned long long)pre, (unsigned long long)post, (unsigned long long)vblank, (unsigned long long)period,
+            fs, g_opt.high_fps);
+}
+
 static void draw(const uint32_t *fb, int stride, int w, int h)
 {
     if ((s_rebuild || s_draw_fails >= 30) && !make_renderer()) return;
@@ -452,7 +496,9 @@ static void draw(const uint32_t *fb, int stride, int w, int h)
     SDL_SetRenderDrawColor(s_ren, 0, 0, 0, 255);
     SDL_RenderClear(s_ren);
     bad |= SDL_RenderCopy(s_ren, s_tex, &src, &dst) != 0;
+    uint64_t pre = s_ptrace ? SDL_GetPerformanceCounter() : 0;
     SDL_RenderPresent(s_ren);
+    if (s_ptrace) ptrace_row(pre, SDL_GetPerformanceCounter());
     s_draw_fails = bad ? s_draw_fails + 1 : 0;
 }
 
@@ -469,11 +515,16 @@ void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us)
         double left_ms = (due - now) * 1000.0 / f;
         if (left_ms > 2.0) SDL_Delay((Uint32)(left_ms - 1.5));
     }
+    s_content_us = t_us;
+    s_due = (uint64_t)due;
     draw(fb, stride, w, h);
 }
 
 void host_present(const uint32_t *fb, int stride, int w, int h)
 {
+    static uint64_t shown;   /* pictures this way so far: the content time is one NTSC frame each */
+    s_content_us = (double)shown++ * 1e6 * 262.0 * 3420.0 / 53693175.0;
+    s_due = s_next;
     draw(fb, stride, w, h);
 
     /* pace: one NTSC frame per frame; a late frame does not try to catch up */

@@ -67,7 +67,7 @@ target_include_directories(XMen2Native PRIVATE
     "${CMAKE_BINARY_DIR}/native")
 target_link_libraries(XMen2Native PRIVATE SDL2::SDL2)
 if(WIN32)
-    target_link_libraries(XMen2Native PRIVATE comdlg32)   # host_sdl.cpp's ROM picker
+    target_link_libraries(XMen2Native PRIVATE comdlg32 dwmapi)   # host_sdl.cpp's ROM picker, XMEN2_PRESENT_TRACE
 endif()
 
 # Phase 7 (P7-multiplayer.md R1): rollback netplay through the engine's libraries, linked directly

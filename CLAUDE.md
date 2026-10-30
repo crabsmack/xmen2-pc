@@ -136,6 +136,9 @@ XMEN2_EXPORT_SELFTEST=1 (or a global's name)   # negative test: one byte of the 
 XMEN2_FIBER_ANYWHERE=1   # XMen2Native: the game's fiber stack where the OS puts it, not XM_FIBER_BASE
 #   the check for stale-stack reads, which the fixed place makes repeatable (NOTES "scene42"): two runs
 #   of a case must give equal game rows. No state-file loads with it set.
+XMEN2_PRESENT_TRACE=FILE (played run) + uv run tools/presenttrace.py FILE [--display-hz H]
+#   frame pacing: what each display refresh showed (judder, dropped pictures, timer lateness);
+#   XMEN2_FULLSCREEN=1 starts fullscreen. NOTES "Present trace"
 ```
 
 Harness (NOTES.md "Phase 5 harness"). `XMEN2_REFS` = the phase-4 `build/phase_traces` (inputs and

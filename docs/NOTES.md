@@ -1395,6 +1395,46 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   for the 16:9 view on or off from the next screen (the camera, the streamer and what activates
   follow it, so it starts with a scene). The window opens 16:9 when widescreen is on at start.
 
+### Present trace: what the display showed (2026-10-30, the vsync work's first step)
+
+- **The trace.** `XMEN2_PRESENT_TRACE=FILE` (played runs, host_sdl.cpp): a row per picture shown, its
+  content time on the present clock, when it was due, the performance counter before and after
+  SDL_RenderPresent, and on Windows DWM's last V-blank and refresh period
+  (`DwmGetCompositionTimingInfo`). `uv run tools/presenttrace.py FILE` takes each picture as shown
+  from the first refresh after its present returned (a later one before that refresh replaces it:
+  dropped) and counts **judder**: pictures kept on screen for over half a refresh more or less than
+  the game time they cover (60 on a 240 Hz display, 4 refreshes each, is smooth; 180 on 240 is not).
+  `--display-hz H` puts the same present times against an H Hz display's refreshes (an estimate).
+  `XMEN2_FULLSCREEN=1` starts fullscreen (as F11). The renderer has no vsync (direct3d11, no
+  `SDL_RENDERER_PRESENTVSYNC`): pictures go out on the timer (`host_present`, `host_present_at`),
+  and a present in fullscreen can tear, which the trace can't see.
+- **This machine** (SDL and DWM: 240 Hz; the driver's WMI entry says 170), scene 1 with its stage
+  input, 1,500 frames after a 2 s start-up, judder:
+
+  | high_fps | windowed | fullscreen |
+  |---|---|---|
+  | 0 (60 a second) | 27.8% | 19.7% |
+  | 120 | 4.9% | 0.8% |
+  | 170 (179.7 a second, n = 3) | 33.9% | 33.5% |
+  | 240 (`auto` here) | 1.1% | 0.14% |
+
+  At a rate that divides the display's, what is left is the beat between the NTSC clock and the
+  display (239.67 a second against 240.004 refreshes: a slip every ~3 s, a few pictures doubled and
+  dropped around it). A rate that doesn't divide it can't be even on a timer (170 on 240).
+- **high_fps=0 presents when the logic is done.** `host_present` draws, then waits for the next tick,
+  so each picture goes out 1-7 ms after its tick (the frame's logic and render: 1,379 of 1,445 over
+  1 ms, at most 6.7 ms), and on a 240 Hz display it lands 3, 4 or 5 refreshes after the one before
+  (`host_present_at`, high_fps's, waits first: 0 late over 1 ms at 120, 170 and 240). With
+  `--display-hz`: 60 Hz 1.4% (a burst at each 12.5 s slip of 59.92 against 60), 59.94 Hz 0.2%,
+  144 Hz 42.8% (most of it 60 on 144 itself). So the default on a 60 Hz display is close to even;
+  a fast display with high_fps off is where it shows.
+- **Open (the user's call):** presenting on the display's refresh instead of the timer (vsync), with
+  the pictures interpolated to each refresh's time, gives every rate even frames (144, 165, 170) and
+  removes the beat, with up to one refresh of added latency; it changes R4's "every whole logic
+  frame appears when the 60 Hz build shows it". With high_fps off it means either the logic at the
+  display's 60.00 Hz (the sound's rate control follows; 0.13% fast) or the 59.92 Hz clock with a
+  doubled refresh every 12.5 s, as now.
+
 ### Cheat options (2026-10-21, the user's request; not phase-6 criteria)
 - `lives`: `0` (the original: 9 each at a new game, Game_ResetPlayers), `1`-`99` (the start count;
   the select screen shows two digits), `inf` (never spent). The game has no continues: a player
