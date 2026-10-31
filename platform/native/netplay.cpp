@@ -63,7 +63,8 @@ void     main_np_write_rows(uint64_t upto);
                                                  pick, the camera with none in play); 4: v1.1.0, again (the
                                                  four-column select, the panels redrawn on a player 1-2's join);
                                                  5: players 3-4 riding an object run with their own pads, and
-                                                 damaging chain explosions hurt them */
+                                                 damaging chain explosions hurt them, and the
+                                                 floor-segment code counts them as players (v1.2.0) */
 
 /* The input delay D is 5 ticks (83 ms), the rollback driver's own floor, and stays there: the
    scheduler's auto-delay (which would grow D with the link's latency, to 150 ms on the `mid`

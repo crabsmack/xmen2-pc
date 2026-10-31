@@ -41,8 +41,8 @@ By default the game plays exactly like the cartridge: every option that changes 
 unless you turn it on. What is on by default changes only what you see and hear, never the game:
 the picture follows your display (`widescreen` and `high_fps` are `auto`), `music_voices`
 plays the music on chips of its own, `sample_retime` and `sample_smooth` play the sound
-driver's samples at a steady rate and smoothed, and `fm_chip` is the YM3438.
-`widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0,fm_chip=ym2612` gives
+driver's samples at a steady rate and smoothed.
+`widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0` gives
 the cartridge's picture and sound. Give options on the command line,
 `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in `xmen2.ini` next to the
 program (`[options]`, one per line). F9, F10 and F11 say on screen what they did.
@@ -63,7 +63,7 @@ program (`[options]`, one per line). F9, F10 and F11 say on screen what they did
 | `music_voices=full` | The default: the music plays on sound chips of its own and the players' music parts on further sets, so neither the parts nor the sound effects take notes from the music, and each player's part plays in full, as one player hears it. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music; with two players or more the game plays each part thinned, one of its tracks muted. `1` keeps the chips of their own with the game's thinned parts, `0` gives the cartridge's single set of chips |
 | `sample_retime=1` | The default: the samples the sound driver plays through the YM2612's DAC, in the music and the effects, reach the chip at a steady rate, each up to 4 ms later than the driver writes it (about 2 ms). The driver gets them to the chip unevenly; `0` plays them as it writes them |
 | `sample_smooth=1` | The default: between one of those samples' values and the next, the chip gets a straight line, a value at each of its own samples, where the cartridge holds each value until the next (a stair-step, whose steps add high frequencies). `0` holds them. With `sample_retime=0` too, the lines lead to the values at the times the driver writes them |
-| `fm_chip=ym3438` | The default: the FM sound (music, effects and samples) on the YM3438, the later version of the Mega Drive's sound chip, which has no DAC "ladder" distortion. The distortion is clearest in quiet passages. `ym2612` gives the YM2612 |
+| `fm_chip=ym3438` | The FM sound (music, effects and samples) on the YM3438, the later version of the Mega Drive's sound chip, which has no DAC "ladder" distortion. The distortion is clearest in quiet passages. The default, `ym2612`, is the cartridge's YM2612 |
 
 `XMen2.exe --options --json` lists them.
 

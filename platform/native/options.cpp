@@ -1,8 +1,7 @@
 /* options.cpp - the native runner's options (xmen2disasm docs/phases/P6-enhance.md R1, E2): each
  * enhancement is a runtime option of the one release runner, off by default, except music_voices
  * (the user, 2026-10-24: "as an option (default on)"; 2026-10-27: its `full`, the default) and
- * sample_retime and sample_smooth (2026-10-30: "default on") and fm_chip (ym3438, 2026-10-30),
- * which change only the sound, and high_fps and widescreen, `auto` (the user, 2026-10-30), which
+ * sample_retime and sample_smooth (2026-10-30: "default on"), which change only the sound, and high_fps and widescreen, `auto` (the user, 2026-10-30), which
  * follow the display and change only the picture (no window: off, so every headless check is
  * unchanged).
  *
@@ -31,7 +30,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 1, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 0, 0 };
 
 struct OptDef {
     const char *name;
@@ -76,9 +75,9 @@ static OptDef s_defs[] = {
       "the sound driver's samples (the YM2612's DAC, in the music and the effects) played at a steady rate, up to 4 ms late, where the driver gets them to the chip unevenly; 0 = as the driver writes them (the original)", "1" },
     /* (the user, 2026-10-30: "yes add the option as well"; its default: "if ym3438 is the cleaner
        version and we don't have any reason to think the composers wrote around ym2612 limitations
-       intentionally, I'd default to 3438") */
-    { "fm_chip", { "ym3438", "ym2612", nullptr },
-      "the FM sound chip modelled, on every sound machine (music, effects and samples): the YM3438, the same chip without the YM2612's DAC distortion (the ladder effect); ym2612 = the YM2612, the chip this port modelled before", "ym3438" },
+       intentionally, I'd default to 3438"; 2026-10-31: "make the ym26 the default, not the 34") */
+    { "fm_chip", { "ym2612", "ym3438", nullptr },
+      "the FM sound chip modelled, on every sound machine (music, effects and samples): ym2612 = the YM2612, the Mega Drive's chip (the original); ym3438 = the YM3438, the same chip without the YM2612's DAC distortion (the ladder effect)", "ym2612" },
     /* (the user, 2026-10-30: "likewise, default on, separate option") */
     { "sample_smooth", { "1", "0", nullptr },
       "the sound driver's samples with a straight line between each value and the next at the chip's own rate, where the original holds each value until the next (a stair-step); with sample_retime=0 the lines lead to the values at the driver's times; 0 = held (the original)", "1" },

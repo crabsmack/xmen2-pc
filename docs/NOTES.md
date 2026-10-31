@@ -2334,6 +2334,8 @@ intentionally, I'd default to 3438". `fm_chip=ym3438|ym2612`, sound only, each s
   rollbacks, the 3,509 digest rows equal (the chips' state is not in the canonical digest).
 - **Not done:** nobody has listened to it. The release notes duty is sample_retime's: all three
   change the default sound; `sample_retime=0,sample_smooth=0,fm_chip=ym2612` gives the original.
+- **Default `ym2612` since 2026-10-31** (the user: "make the ym26 the default, not the 34"): the
+  YM3438 is the option, so `sample_retime=0,sample_smooth=0` gives the original sound.
 
 ### scene42: Cam_TrackBoth with none in play (2026-10-25)
 

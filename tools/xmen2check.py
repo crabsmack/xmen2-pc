@@ -1562,8 +1562,9 @@ Sound, on unless you turn it off:
     sample_smooth=0     each of those samples' values held until the next, a stair-step, as
                         the cartridge does. By default the chip gets a straight line from one
                         value to the next, a value at each of its own samples
-    fm_chip=ym2612      the FM sound on the YM2612. By default it is on the YM3438, the later
-                        version of the chip, without the YM2612's DAC "ladder" distortion
+    fm_chip=ym3438      the FM sound on the YM3438, the later version of the chip, without the
+                        YM2612's DAC "ladder" distortion. By default it is on the YM2612, as
+                        the cartridge's
 Cheats, also off unless you turn them on:
     lives=inf           lives are never spent (or lives=N: start a new game with N, 1-99)
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
