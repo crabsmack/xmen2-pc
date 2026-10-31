@@ -376,8 +376,8 @@ static int s_nhud;
 static bool hud_attr(uint16_t attr)
 {
     static const uint16_t hud[] = { 0xA7E8, 0xA7F8, 0xA7FC, 0xA7D0, 0xA7E0, 0xA7D4 };
-    for (uint16_t a : hud)
-        if (attr == a) return true;
+    for (uint16_t a : hud)   /* either flip: player 2's strips in the players' order are mirrored ($AFE0, P34_HudP2) */
+        if ((attr & 0xE7FF) == a) return true;
     return false;
 }
 

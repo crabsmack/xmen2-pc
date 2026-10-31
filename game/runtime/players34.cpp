@@ -86,6 +86,38 @@ extern "C" void P34_Leave(int k)
 	swap_in(&g_PX[k - 3]);
 }
 
+/* An object's code run by another's: a rider's Update by its carrier (Actor_Update, ToxicCan_Update),
+   whose timer gave the carrier's context. In the rider's own (k = P34_Index(rider), 0 = none): out of
+   the one now, whatever its depth, and into k's; P34_SwitchBack undoes it. Before this a player 3-4
+   on an elevator ran its frame with player 2's pads (the playtest of 2026-10-31: "2p is taking
+   control of 3p's controls ... related to touching the elevator"). Returns 0 when nothing changed. */
+extern "C" int P34_Switch(int k)
+{
+	int was = g_P34Active, depth = g_P34Depth;
+	if (was == k) return 0;
+	if (was) {
+		plat_p34_enter(0);
+		g_P34Active = 0;
+		swap_in(&g_PX[was - 3]);
+	}
+	if (k) P34_Enter(k);
+	return 0x10000 | depth << 4 | was;
+}
+
+extern "C" void P34_SwitchBack(int k, int token)
+{
+	if (!token) return;
+	if (k) {
+		if (g_P34Depth != 1) xm::fatal("P34_SwitchBack(%d) at depth %d", k, (int)g_P34Depth);
+		P34_Leave(k);
+	}
+	int was = token & 0xF;
+	if (was) {
+		P34_Enter(was);
+		g_P34Depth = (short)(token >> 4 & 0xFFF);
+	}
+}
+
 /* ---- the player select ------------------------------------------------------------------------- */
 
 extern "C" int P34_CharFree(short c)

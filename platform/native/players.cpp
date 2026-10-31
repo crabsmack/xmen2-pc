@@ -47,7 +47,11 @@ extern "C" uint16_t g_pad34[2];
 static int s_p34;   /* the player 3-4 whose code runs (0: none) */
 static uint32_t ram_be(uint32_t off, int w);
 
-extern "C" void plat_p34_enter(int k) { s_p34 = k; }
+extern "C" void plat_p34_enter(int k)
+{
+    s_p34 = k;
+    present_p34_enter(k);   /* high_fps: whose sprite table the sprite marks are in */
+}
 
 /* ---- players 3-4's tiles (R6: a host-side extension of the VDP model) ------------------------------
  * A player 3-4 runs as player 2 (game/include/xmen2_players34.h), so its sprites use player 2's tile
@@ -224,6 +228,16 @@ static void draw_entry(const uint8_t *e, int k, const GVDP *v, const GVDPSpriteL
     }
 }
 
+/* Players 3-4's tables are filled only by Level_FrameLoop (P34_SprBeginFrame/EndFrame) and kept as they
+   are outside it: on the player select after a stage they showed player 3's last HUD panel and pieces
+   of its character from tiles holding other art by now (the playtest of 2026-10-31). They are drawn
+   while a level loop runs ($FFC942, g_InLevelLoop) that isn't the select (g_P34SelectOn), which sets
+   that flag too. */
+bool players_p34_tables_shown(void)
+{
+    return g_opt.players > 2 && ram_be(0xC942, 1) && !reg_be(0x0284, 2);
+}
+
 /* With three or more players the main sprite table is in the region with 160 slots (SPR_STOP): the
    hardware shows the first 80 (VRAM's attribute table, its chain ended there: players_frame_setup),
    this the rest, then players 3-4's own tables, each behind what is already drawn */
@@ -240,8 +254,9 @@ static void host_sprites(void *user, const GVDP *v, const GVDPSpriteLayer *layer
         if (!link || link >= 160) break;
         idx = link;
     }
+    bool shown = players_p34_tables_shown();
     int ents[80];
-    for (int k = 3; k <= g_opt.players && k <= 4; k++) {
+    for (int k = 3; k <= g_opt.players && k <= 4 && shown; k++) {
         int n = table_entries(k, ents);
         for (int i = 0; i < n; i++) draw_entry(&xm_region[table_off(k) + 8u * (uint32_t)ents[i]], k, v, layer, lo, hi);
     }
@@ -273,8 +288,12 @@ void players_frame_setup(void)
             v->vram[a] = 0;
         }
         uint16_t attr = (uint16_t)(v->vram[a + 1] << 8 | v->vram[a + 2]);
-        for (int p = 0; p < 2; p++)   /* a panel: 4x4 tiles (the "press start" in player 2's tiles is 4x1) */
-            if ((v->vram[a - 1] & 0xF) == 0xF && (attr & 0x7FF) == k_panel_tile[p]) panel[p] = true;
+        /* a panel: 4x4 tiles (the "press start" in player 2's tiles is 4x1) on the HUD's row (Level_FrameLoop's
+           y $132): player 3's cursor box on the player select is a 4x4 of tile $7D0 too (BOX_TILE + 16), and
+           showed player 2's portrait in its colours (the playtest of 2026-10-31) */
+        bool hud_row = (v->vram[a - 3] << 8 | v->vram[a - 2]) == 0x132;
+        for (int p = 0; p < 2; p++)
+            if (hud_row && (v->vram[a - 1] & 0xF) == 0xF && (attr & 0x7FF) == k_panel_tile[p]) panel[p] = true;
     }
     for (int p = 0; p < 2; p++) {
         if (!panel[p] || !has_portrait(s_hud_char[p])) continue;

@@ -52,7 +52,16 @@ void ToxicCan_Update(register ToxicCan *self)
 		for (i = self->spr.firstChild; i != 0xFF; ) {
 			child = i == 0xFF ? 0 : g_ObjTable[i];
 			i = child->spr.nextSibling;
+#if defined(XMEN2_NATIVE)
+			{	/* phase 7: a rider runs in its own context (Actor_Update's) */
+				int k = P34_Index(child), was = P34_Switch(k);
+
+				(*child->cls->method[17])(child);	/* +$4A Update */
+				P34_SwitchBack(k, was);
+			}
+#else
 			(*child->cls->method[17])(child);	/* +$4A Update */
+#endif
 		}
 	}
 	if (self->hitCooldown > 0)

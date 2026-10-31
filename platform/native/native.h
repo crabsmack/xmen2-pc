@@ -62,6 +62,8 @@ void        players_spr_dropped(int n);
 void        players_sync_row(void);
 void        players_state_init(void);
 int         players_p34_running(void);
+bool        players_p34_tables_shown(void);   /* players 3-4's sprite tables are drawn this frame */
+void        present_p34_enter(int k);         /* present.cpp: a player 3-4's code starts (k) or ends (0) */
 std::string players_counters_json(void);
 bool        players_vram_write(uint16_t a, uint16_t w);   /* a player 3-4's VRAM port write, into its tiles */
 void        players_video_init(void);

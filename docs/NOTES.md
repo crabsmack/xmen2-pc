@@ -2272,6 +2272,66 @@ chip has voices for both parts (two full parts with the base song want up to 7 F
   frames), with no options and with the host's `widescreen_gameplay=1,widescreen=16:9`: equal
   digests, 0 rollbacks.
 
+### The four-player playtest of 2026-10-31 (v1.1.1)
+
+The user played v1.1.1 with `players=4,lives=inf,start_char=magneto,magneto=1,magneto_flight=1,
+select_idles=1` (then `full_rate_2p=1`), `high_fps` and `widescreen` `auto` (240 Hz, 16:9), from
+SentinelsB1 through the escape. Eight bugs; each below with its cause, fix and check.
+
+- **Player 3 played with player 2's pad** ("2p is taking control of 3p's controls ... related to
+  touching the elevator"). A player landing on an object's floor is attached to it
+  (Obj_AttachChild stops its own timer) and the carrier's Update runs its riders' Updates
+  (Actor_Update 15E7FA, ToxicCan_Update 144AE2). Timer_RunAll enters a player 3-4's context from the
+  timer's object, here the carrier's: none, so player 3's frame ran with player 2's globals (pads,
+  character, meter, VRAM area). Fix: `P34_Switch` / `P34_SwitchBack` (players34.cpp) run each rider
+  in its own context (P34_Index), leaving whichever is active and coming back to it. Game change with
+  3+ players: **NP_VERSION 5**. Not reached by the stage inputs (their mp counters equal the old
+  runner's on scene3.input), so checked by the user's play only.
+- **Player 3 immune to the escape's fire walls** ("wolverine (3p) became immune to the damage from
+  the xplosions"). ExplodeFx_ChainHit (13EBB6) takes a player to be an object in slots 0-1 (the
+  original's `cmpi.b #2,$15(a4)`); players 3-4's objects are past the pool, so they got hit type $C,
+  XPlayer_TakeDamage's bounce: no damage, no cooldown, every frame in the flame. Every damaging chain
+  (fire walls, X-Clone impacts, bio-ball puffs, toxic cans) missed them. Fix: a native branch hits
+  P34_IS_PLAYER with type 4 in its context (P34_HIT). Check: scene7.input, `players=4`, 3,500
+  frames: players 3-4 drawn on 2,964 and 2,947 of 2,964 in-play frames before (never blinking),
+  2,853 and 2,859 now (hit blinks), all four still in play. The other `index < 2` player tests
+  (1F85B6 passFrames, 1F87B2 floor types $E/$F, 1F8B42 the blocked-segment hook) have no native
+  branch yet: open, for an R11 sweep. Also not faithful: ObjList_ForEachInBox stops at a callback's
+  non-zero d0, which after XPlayer_TakeDamage is $FE on the 68000's knockback path; the native void
+  call leaves `xm::g_d0` as the last stored-pointer call left it, so which of several players in
+  one blast's box are hit on the same frame can differ from the original (left as is).
+- **high_fps, three bugs with three or more players** (present.cpp):
+  - Marks made while a player 3-4's code ran read its own table's g_SprIndex (P34_Enter swaps it)
+    and were taken as main-table slots: main-table sprites took that player's steps, and player 2's
+    health bar slid while player 3 moved. Marks now go to the table of the code that runs
+    (`present_p34_enter`, from plat_p34_enter), with the owner announced just before the enter.
+  - Players 3-4's own tables and the main table's slots 80-159 (drawn by players.cpp) were never
+    moved: they stepped at 60 Hz (30) against the interpolated scroll. They are planned like the
+    VDP's 80 now (the region's entries moved for the render and put back after it, as VRAM is).
+  - Player 2's strip in the players' order is mirrored ($AFE0, P34_HudP2) and wasn't in the HUD
+    list (here and widescreen.cpp's, which shifted it with the render camera): the lists ignore the
+    flip bits.
+  Check: scene3.input `players=4,high_fps=240,widescreen=16:9`, runner frames 600-1400, player 2's
+  bar found by template in each in-between picture: off its place in 216 of 2,403 before (up to
+  13 px), 2 now (both frame 614, the template caught on a vertical scroll behind the bar's gaps;
+  the bar is still there). `present`: 445,140 sprites planned (260,352 before: the main table's
+  first 80 only), 99.8% matched as before.
+- **16:9 near a level's ends** ("characters vibrate sometimes when near the edge of the screen"):
+  widescreen.cpp shifts the VDP's sprites and scroll by the render camera's shift, which changes
+  each frame within 40 px of the camera's limits, but anchor steps were the game's places: an
+  anchored sprite was off by (1 - a) of the camera's step in each in-between frame. Steps are screen
+  places now (each frame's shift kept in the snapshot). Found by reading; not measured in pictures.
+- **The player select after a stage**: players 3-4's tables are filled only by Level_FrameLoop and
+  were drawn on every screen, so the select showed their last HUD panels and pieces of their
+  characters (from tiles holding other art by then); they are drawn only in a level loop that isn't
+  the select (`players_p34_tables_shown`). And players_frame_setup put player 2's portrait into any
+  4x4 sprite of tile $7D0, which player 3's cursor box is on the select (BOX_TILE + 16): it showed
+  player 2's portrait in player 3's colours. It takes the HUD's row (y $132) only. Check: scene7.input
+  through the escape's end (runner frames 5,500 and 7,000, the select): before, Cyclops' portrait in
+  player 3's box and players 3-4's panels over the lives box; now player 3's box and the lives.
+- Gate (`gate.py --mode native`): PASS, TAS 6,000 sync points equal, verify 0 mismatches, 3,047/3,047
+  MPW matches.
+
 ### Ideas, not scheduled: costumes, duplicates, more players, own cameras (2026-10-27)
 
 Research and mock-ups only, no code. Costumes wait on the user: the palettes are the user's to

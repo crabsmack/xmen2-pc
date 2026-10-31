@@ -66,6 +66,8 @@ extern "C" {
 int  P34_Index(const void *obj);	/* 3 or 4 for players 3-4's objects, else 0 */
 void P34_Enter(int k);			/* player k's (3, 4) state into player 2's globals */
 void P34_Leave(int k);			/* and back */
+int  P34_Switch(int k);			/* into k's context (0: none) from any; a token for P34_SwitchBack */
+void P34_SwitchBack(int k, int token);	/* the context before P34_Switch */
 /* the player select (PlayerSelect_Run, its cursors and portraits): four columns, 1-2-3-4 */
 int  P34_CharFree(short c);		/* no player 3-4 slot has character c */
 PlayerX *P34_SlotX(const BigSprite *slot);	/* the PlayerX of a player 3-4 slot, else null */

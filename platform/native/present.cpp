@@ -53,18 +53,47 @@ static int16_t s16at(uint32_t a) { return (int16_t)(m8(a) << 8 | m8(a + 1)); }
 
 /* ---- sprite owners (the game's native branches) --------------------------------------------- */
 
-/* While runner frame k-1's logic builds the sprite list (DMA'd at the next V-int: R_k's), each
-   owner's draw is announced with the slot written last before it (g_SprIndex, $FFE21E: $51 = none
-   yet); slots are filled in order from 0 (Spr_BeginFrame). */
+/* The sprite tables (phase 7): the main one, and with three or more players players 3-4's own. The
+   main one is the VDP's 80 slots, or with three or more players 160 in players 3-4's region (the
+   hardware shows the first 80, players.cpp draws the rest); players 3-4's are in the region too
+   (P34_SPR_TABLE, drawn by players.cpp). Each fills in order from slot 0. */
+#define NT 3          /* 0 the main table, 1 player 3's, 2 player 4's */
+#define MAXS 160      /* the main table's slots with three or more players (xmen2_mem.h SPR_STOP) */
+extern "C" uint8_t xm_region[];
+static uint32_t rg_off(int t) { return t ? 0x0400u + 0x300u * (uint32_t)(t - 1) : 0x1000u; }   /* P34_SPR_TABLE(k), P34_SPR_MAIN */
+static int slots(int t) { return !t && g_opt.players > 2 ? MAXS : 80; }
+static int none_index(int t) { return !t && g_opt.players > 2 ? MAXS + 1 : 0x51; }   /* SPR_START: none written yet */
+
+/* While runner frame k-1's logic builds the sprite lists (DMA'd at the next V-int: R_k's), each
+   owner's draw is announced with the slot written last before it (g_SprIndex, $FFE21E, its table's
+   while a player 3-4's code runs: P34_Enter swaps it); slots are filled in order from 0
+   (Spr_BeginFrame). Until 2026-10-31 a player 3-4's marks went to the main table with its own
+   table's slot numbers: main-table sprites took that player's steps (player 2's health bar slid
+   while player 3 moved, in the playtest of that day). */
 namespace { struct Mark { uintptr_t owner; int before; uintptr_t spr; int ax, ay; }; }   /* spr: an anchor mark (internal linkage: players.cpp has a Mark too) */
-static std::vector<Mark> s_marks;
+static std::vector<Mark> s_marks[NT];
+static int s_ctx;                  /* the player 3-4 whose code runs (plat_p34_enter), else 0 */
+static uintptr_t s_last_owner;     /* the owner announced last outside them */
+
+static int table_now(void) { return s_ctx ? s_ctx - 2 : 0; }
+static int index_now(int t)   /* table t's g_SprIndex */
+{
+    if (!t || s_ctx == t + 2) return s16at(0xFFE21E);
+    uint32_t o = 0x0200u + 40u * (uint32_t)(t - 1) + 30u;   /* g_PX[t - 1].sprIndex (xmen2_players34.h PlayerX) */
+    return (int16_t)(xm_region[o] << 8 | xm_region[o + 1]);
+}
+static void push_mark(int t, uintptr_t owner, uintptr_t spr, int ax, int ay)
+{
+    int i = index_now(t);
+    s_marks[t].push_back({ owner, i == none_index(t) ? -1 : i, spr, ax, ay });
+}
 
 extern "C" void plat_spr_owner(const void *owner)
 {
     players_spr_owner(owner, s16at(0xFFE21E));   /* phase 7: the mp counters' `drawn` */
     if (!g_opt.high_fps) return;
-    int i = s16at(0xFFE21E);
-    s_marks.push_back({ (uintptr_t)owner, i == 0x51 ? -1 : i, 0, 0, 0 });
+    if (!s_ctx) s_last_owner = (uintptr_t)owner;
+    push_mark(table_now(), (uintptr_t)owner, 0, 0, 0);
 }
 
 /* Each sprite emitter (Spr_EmitPre/Stream and their Clip and Linked forms) announces the sprite
@@ -72,22 +101,31 @@ extern "C" void plat_spr_owner(const void *owner)
 extern "C" void plat_spr_anchor(const void *spr, long x, long y)
 {
     if (!g_opt.high_fps) return;
-    int i = s16at(0xFFE21E);
-    s_marks.push_back({ 0, i == 0x51 ? -1 : i, (uintptr_t)spr, (int)x, (int)y });
+    push_mark(table_now(), 0, (uintptr_t)spr, (int)x, (int)y);
+}
+
+/* players.cpp's plat_p34_enter: a player 3-4's code starts (k) or ends (0). The owner announced just
+   before (its timer, its draw-list node, the hits: each marks, then enters) owns what it writes. */
+void present_p34_enter(int k)
+{
+    s_ctx = k;
+    if (k && g_opt.high_fps) push_mark(k - 2, s_last_owner, 0, 0, 0);
 }
 
 struct Tag { uintptr_t owner; int piece; uintptr_t spr; int ax, ay; };
-static Tag s_tags[80], s_prev_tags[80];
+static Tag s_tags[NT][MAXS], s_prev_tags[NT][MAXS];
 
-static void resolve_tags(void)
+static void resolve_tags(int t)
 {
-    for (Tag &t : s_tags) t = { 0, 0, 0, 0, 0 };
-    int last = s16at(0xFFE21E);
-    last = last == 0x51 ? -1 : last;
+    Tag *tags = s_tags[t];
+    for (int s = 0; s < MAXS; s++) tags[s] = { 0, 0, 0, 0, 0 };
+    int last = index_now(t), n = slots(t);
+    last = last == none_index(t) ? -1 : last;
+    std::vector<Mark> &marks = s_marks[t];
     static const char *dbg = getenv("XMEN2_PRESENT_DEBUG");
-    if (dbg && strtoull(dbg, nullptr, 10) == machine_frame_no()) {
+    if (!t && dbg && strtoull(dbg, nullptr, 10) == machine_frame_no()) {
         fprintf(stderr, "[present] frame %llu last %d marks", (unsigned long long)machine_frame_no(), last);
-        for (const Mark &m : s_marks) fprintf(stderr, " (%llx,%d)", (unsigned long long)m.owner, m.before);
+        for (const Mark &m : marks) fprintf(stderr, " (%llx,%d)", (unsigned long long)m.owner, m.before);
         fprintf(stderr, "\n");
         for (int s = 0; s <= last && s < 80; s++) {
             uint32_t e = 0xFFE226u + 8u * (uint32_t)s;
@@ -96,16 +134,16 @@ static void resolve_tags(void)
         }
     }
     Tag cur = { 0, 0, 0, 0, 0 };
-    for (size_t m = 0; m < s_marks.size(); m++) {
-        const Mark &k = s_marks[m];
+    for (size_t m = 0; m < marks.size(); m++) {
+        const Mark &k = marks[m];
         if (k.spr) { cur.spr = k.spr; cur.ax = k.ax; cur.ay = k.ay; }      /* an anchor: same owner */
         else cur = { k.owner, 0, 0, 0, 0 };                                /* a new owner, no anchor yet */
         int from = k.before + 1;
-        int to = m + 1 < s_marks.size() ? s_marks[m + 1].before : last;
-        for (int slot = from; slot <= to && slot < 80; slot++, cur.piece++)
-            if (slot >= 0) s_tags[slot] = cur;
+        int to = m + 1 < marks.size() ? marks[m + 1].before : last;
+        for (int slot = from; slot <= to && slot < n; slot++, cur.piece++)
+            if (slot >= 0) tags[slot] = cur;
     }
-    s_marks.clear();
+    marks.clear();
 }
 
 /* ---- the VDP inputs an interpolation moves --------------------------------------------------- */
@@ -114,7 +152,11 @@ struct Snap {
     bool valid;
     uint8_t hscroll[0x400];       /* the horizontal scroll table (224 lines x A, B) */
     uint16_t vsram[GVDP_VSRAM_ENTRIES];
-    uint8_t sat[80 * 8];
+    uint8_t sat[80 * 8];          /* VRAM's attribute table: x at screen places (widescreen.cpp shifted it) */
+    uint8_t rg[NT][MAXS * 8];     /* with three or more players the region's tables (the main one's slots 80
+                                     on, players 3-4's): x unshifted, players.cpp shifts as it draws */
+    bool live[NT];                /* the table is drawn this frame (players 3-4's: players_p34_tables_shown) */
+    int shift;                    /* ws_render_shift(): anchors and the region's x are unshifted */
     uint8_t reg11, reg5, reg13;
 };
 static Snap s_prev, s_cur;
@@ -129,6 +171,15 @@ static void snap_now(Snap *s)
     for (int i = 0; i < 0x400; i++) s->hscroll[i] = v->vram[(uint16_t)(hb + (uint32_t)i)];
     memcpy(s->vsram, v->vsram, sizeof s->vsram);
     for (int i = 0; i < 80 * 8; i++) s->sat[i] = v->vram[(uint16_t)(sb + (uint32_t)i)];
+    s->shift = ws_render_shift();
+    s->live[0] = true;
+    for (int t = 1; t < NT; t++) {
+        uint32_t o = 0x0200u + 40u * (uint32_t)(t - 1) + 36u;   /* g_PX[t - 1].sprLast: $51 = nothing written */
+        s->live[t] = t + 2 <= g_opt.players && players_p34_tables_shown()
+                     && (int16_t)(xm_region[o] << 8 | xm_region[o + 1]) != 0x51;
+    }
+    if (g_opt.players > 2)
+        for (int t = 0; t < NT; t++) memcpy(s->rg[t], &xm_region[rg_off(t)], (size_t)slots(t) * 8);
     s->reg11 = v->reg[11];
     s->reg5 = v->reg[5];
     s->reg13 = v->reg[13];
@@ -137,6 +188,12 @@ static void snap_now(Snap *s)
 
 static int w16(const uint8_t *p) { return (int16_t)(p[0] << 8 | p[1]); }
 static void put16(uint8_t *p, int v) { p[0] = (uint8_t)(v >> 8); p[1] = (uint8_t)v; }
+
+/* slot s of table t in a snapshot (VRAM's for the main table's first 80, else the region's), and what
+   its x needs added to be a screen place in VRAM's terms: the frame's shift for the region's */
+static const uint8_t *ent(const Snap &n, int t, int s) { return !t && s < 80 ? n.sat + s * 8 : n.rg[t] + s * 8; }
+static int xoff(const Snap &n, int t, int s) { return !t && s < 80 ? 0 : -n.shift; }
+static int sx(const Snap &n, int t, int s) { return w16(ent(n, t, s) + 6) + xoff(n, t, s); }
 
 /* a wrapped scroll value moved fraction a of the way from p to c (or c: a cut) */
 static int lerp_wrap(int p, int c, double a, int mod)
@@ -150,8 +207,8 @@ static int lerp_wrap(int p, int c, double a, int mod)
 static bool hud_attr(int attr)
 {
     static const int hud[] = { 0xA7E8, 0xA7F8, 0xA7FC, 0xA7D0, 0xA7E0, 0xA7D4 };
-    for (int a : hud)
-        if ((attr & 0xFFFF) == a) return true;
+    for (int a : hud)   /* either flip: player 2's strips in the players' order are mirrored ($AFE0, P34_HudP2) */
+        if ((attr & 0xE7FF) == a) return true;
     return false;
 }
 
@@ -261,8 +318,8 @@ bool present_logging(void) { return s_log != nullptr; }
    back when the branch ends, as a savestate's sections and counters are (none of it is the game's
    state, so it is no section) */
 static struct PresentKept {
-    std::vector<Mark> marks;
-    Tag tags[80], prev_tags[80];
+    std::vector<Mark> marks[NT];
+    Tag tags[NT][MAXS], prev_tags[NT][MAXS];
     Snap prev, cur;
     uint64_t frames, whole, sprites, matched, unmatched[5], fallback, extra;
     std::vector<uint32_t> render_us;
@@ -280,7 +337,7 @@ FILE *present_log_file(FILE *f)   /* swap the log: the one in use is returned */
 void present_branch_save(void)
 {
     PresentKept &k = s_kept;
-    k.marks = s_marks;
+    for (int t = 0; t < NT; t++) k.marks[t] = s_marks[t];
     memcpy(k.tags, s_tags, sizeof s_tags);
     memcpy(k.prev_tags, s_prev_tags, sizeof s_prev_tags);
     k.prev = s_prev;
@@ -295,7 +352,7 @@ void present_branch_save(void)
 void present_branch_restore(void)
 {
     const PresentKept &k = s_kept;
-    s_marks = k.marks;
+    for (int t = 0; t < NT; t++) s_marks[t] = k.marks[t];
     memcpy(s_tags, k.tags, sizeof s_tags);
     memcpy(s_prev_tags, k.prev_tags, sizeof s_prev_tags);
     s_prev = k.prev;
@@ -336,7 +393,7 @@ void present_state_save(std::vector<uint8_t> &out)
 {
     present_branch_save();
     const PresentKept &k = s_kept;
-    put_vec(out, k.marks);
+    for (int t = 0; t < NT; t++) put_vec(out, k.marks[t]);
     put(out, k.tags); put(out, k.prev_tags); put(out, k.prev); put(out, k.cur);
     put(out, k.frames); put(out, k.whole); put(out, k.sprites); put(out, k.matched); put(out, k.unmatched);
     put(out, k.fallback); put(out, k.extra);
@@ -348,7 +405,7 @@ bool present_state_load(const uint8_t *p, size_t n)
 {
     const uint8_t *end = p + n;
     PresentKept &k = s_kept;
-    bool ok = get_vec(p, end, k.marks) && get(p, end, k.tags) && get(p, end, k.prev_tags) && get(p, end, k.prev) &&
+    bool ok = get_vec(p, end, k.marks[0]) && get_vec(p, end, k.marks[1]) && get_vec(p, end, k.marks[2]) && get(p, end, k.tags) && get(p, end, k.prev_tags) && get(p, end, k.prev) &&
               get(p, end, k.cur) && get(p, end, k.frames) && get(p, end, k.whole) && get(p, end, k.sprites) &&
               get(p, end, k.matched) && get(p, end, k.unmatched) && get(p, end, k.fallback) && get(p, end, k.extra) &&
               get_vec(p, end, k.render_us) && get(p, end, k.gameplay) && p == end;
@@ -381,13 +438,119 @@ bool present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, boo
     return false;
 }
 
+/* The sprites an interpolation moves: table t's slot, its step from R_(k-1) in screen pixels. */
+struct Plan { int t, slot, dx, dy; };
+static int s_why[NT][MAXS], s_ownx[NT][MAXS], s_owny[NT][MAXS];   /* why: the `unmatched` counter's index */
+static bool s_own[NT][MAXS], s_counted[NT][MAXS];
+
+static bool snaps(int dx, int dy) { return dx > SNAP_SPRITE || dx < -SNAP_SPRITE || dy > SNAP_SPRITE || dy < -SNAP_SPRITE; }
+
+/* Each sprite's step from R_(k-1): its sprite instance's (the emitter's anchor, the object's place
+   on screen), so a frame of animation that rearranges the pieces changes in place, as at 60 Hz,
+   instead of each piece sliding from wherever the piece of its index was (ghost limbs beside an
+   idling player, part of Cyclops gone in his charged blast: the playtest of 2026-10-21). Pieces
+   written by no emitter move with their owner, by the one step that lines up most of its pieces
+   with its pieces in R_(k-1) (the same size and tile word; else the same size). None for the HUD, a
+   sprite without an owner or instance, a new owner or instance, an owner whose pieces line up
+   nowhere, a snap. Steps are of screen places: an anchor is the game's place, so the frames' 16:9
+   shifts come off it (widescreen.cpp moves the render camera by up to 40 px near a level's ends; with
+   the game's place a standing player shook by the camera's step there, the playtest of 2026-10-31). */
+static void plan_table(int t, std::vector<Plan> &plan)
+{
+    const Tag *tags = s_tags[t], *prev_tags = s_prev_tags[t];
+    int *why = s_why[t], *ownx = s_ownx[t], *owny = s_owny[t];
+    bool *own = s_own[t], *counted = s_counted[t];
+    /* the prev frame's slots by owner, its sprite instances' anchors */
+    std::unordered_map<uintptr_t, std::vector<int>> prev_of;
+    std::unordered_map<uintptr_t, std::pair<int, int>> prev_anchor;
+    for (int s = 0; s < slots(t); s++) {
+        if (prev_tags[s].owner) prev_of[prev_tags[s].owner].push_back(s);
+        if (prev_tags[s].spr) prev_anchor[prev_tags[s].spr] = { prev_tags[s].ax, prev_tags[s].ay };
+    }
+    std::unordered_map<uintptr_t, std::vector<int>> cur_of;
+    int link_mask = !t && g_opt.players > 2 ? 0xFF : 0x7F;
+    for (int slot = 0, n = 0; n < slots(t); n++) {
+        const uint8_t *c = ent(s_cur, t, slot);
+        int y9 = w16(c) & 0x3FF;
+        if (y9 + 32 > 128 && y9 < 128 + 240 && !hud_attr(w16(c + 4))) {
+            counted[slot] = true;
+            auto pa = tags[slot].spr ? prev_anchor.find(tags[slot].spr) : prev_anchor.end();
+            if (pa != prev_anchor.end()) {
+                int dx = (tags[slot].ax - s_cur.shift) - (pa->second.first - s_prev.shift);
+                int dy = tags[slot].ay - pa->second.second;
+                if (snaps(dx, dy)) why[slot] = 4;
+                else { own[slot] = true; ownx[slot] = dx; owny[slot] = dy; }
+            } else if (tags[slot].spr)
+                why[slot] = 2;
+            else if (!tags[slot].owner) {
+                /* written outside every owner (a pause screen's text, a loop of its own): the same
+                   slot with the same tile and size in R_(k-1) is the same sprite */
+                const uint8_t *p = ent(s_prev, t, slot);
+                int dx = sx(s_cur, t, slot) - sx(s_prev, t, slot), dy = w16(c) - w16(p);
+                if (!prev_tags[slot].owner && p[2] == c[2] && w16(p + 4) == w16(c + 4) && !snaps(dx, dy)) {
+                    own[slot] = true; ownx[slot] = dx; owny[slot] = dy;
+                    s_fallback++;
+                } else
+                    why[slot] = 1;
+            } else
+                cur_of[tags[slot].owner].push_back(slot);
+        }
+        int link = c[3] & link_mask;
+        if (!link || link >= slots(t)) break;
+        slot = link;
+    }
+    for (auto &oc : cur_of) {
+        const std::vector<int> &cs = oc.second;
+        auto po = prev_of.find(oc.first);
+        if (po == prev_of.end()) {
+            for (int s : cs) why[s] = 2;
+            continue;
+        }
+        /* votes: each sprite counts once for each step that puts a like piece of R_(k-1) under it */
+        int best_votes = 0, bdx = 0, bdy = 0;
+        bool any_size = false;
+        for (int strict = 1; strict >= 0 && !best_votes; strict--) {
+            std::unordered_map<uint32_t, int> votes;
+            for (int s : cs) {
+                const uint8_t *c = ent(s_cur, t, s);
+                std::vector<uint32_t> mine;
+                for (int ps : po->second) {
+                    const uint8_t *p = ent(s_prev, t, ps);
+                    if (p[2] != c[2]) continue;
+                    any_size = true;
+                    if (strict && w16(p + 4) != w16(c + 4)) continue;
+                    int dx = sx(s_cur, t, s) - sx(s_prev, t, ps), dy = w16(c) - w16(p);
+                    if (snaps(dx, dy)) continue;
+                    uint32_t key = (uint32_t)(dx + 128) << 16 | (uint32_t)(dy + 128);
+                    if (std::find(mine.begin(), mine.end(), key) == mine.end()) mine.push_back(key);
+                }
+                for (uint32_t key : mine) votes[key]++;
+            }
+            for (auto &v : votes) {   /* the most votes; of equals, the shortest step */
+                int dx = (int)(v.first >> 16) - 128, dy = (int)(v.first & 0xFFFF) - 128;
+                if (v.second > best_votes
+                    || (v.second == best_votes && abs(dx) + abs(dy) < abs(bdx) + abs(bdy))) {
+                    best_votes = v.second; bdx = dx; bdy = dy;
+                }
+            }
+        }
+        /* a step most pieces disagree with is a coincidence: no step (R_k's places) */
+        if (best_votes && best_votes * 3 >= (int)cs.size()) {
+            for (int s : cs) { own[s] = true; ownx[s] = bdx; owny[s] = bdy; }
+        } else
+            for (int s : cs) why[s] = any_size ? 4 : 3;
+    }
+    for (int slot = 0; slot < slots(t); slot++)
+        if (counted[slot] && own[slot]) plan.push_back({ t, slot, ownx[slot], owny[slot] });
+}
+
 /* plat_sync_point, after R_k (k = the frame begun) is rendered and before the frame's logic: the
    frames between R_(k-1) and R_k. */
 void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride)
 {
     if (!g_opt.high_fps && !s_log) return;
     memcpy(s_prev_tags, s_tags, sizeof s_tags);
-    resolve_tags();
+    for (int t = 0; t < NT; t++) resolve_tags(t);
     snap_now(&s_cur);
     s_gameplay = m8(0xFFC942) && !m8(0xFFC7FE);
     int hz = g_opt.high_fps;
@@ -395,99 +558,12 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
         GVDP *v = &g_machine.vdp;
         double t0 = (double)(k - 1 + s_extra) * T_US, t1 = t0 + span_now(interactive) * T_US;
         uint32_t hb = hbase(v), sb = satbase(v);
-        /* the prev frame's slots by owner, its sprite instances' anchors */
-        std::unordered_map<uintptr_t, std::vector<int>> prev_of;
-        std::unordered_map<uintptr_t, std::pair<int, int>> prev_anchor;
-        for (int s = 0; s < 80; s++) {
-            if (s_prev_tags[s].owner) prev_of[s_prev_tags[s].owner].push_back(s);
-            if (s_prev_tags[s].spr) prev_anchor[s_prev_tags[s].spr] = { s_prev_tags[s].ax, s_prev_tags[s].ay };
-        }
-        /* each sprite's step from R_(k-1): its sprite instance's (the emitter's anchor, the object's
-           place on screen), so a frame of animation that rearranges the pieces changes in place, as at
-           60 Hz, instead of each piece sliding from wherever the piece of its index was (ghost limbs
-           beside an idling player, part of Cyclops gone in his charged blast: the playtest of
-           2026-10-21). Pieces written by no emitter move with their owner, by the one step that lines
-           up most of its pieces with its pieces in R_(k-1) (the same size and tile word; else the same
-           size). None for the HUD, a sprite without an owner or instance, a new owner or instance, an
-           owner whose pieces line up nowhere, a snap. */
-        struct Plan { int slot, dx, dy; };
         std::vector<Plan> plan;
-        std::unordered_map<uintptr_t, std::vector<int>> cur_of;
-        int why[80] = { 0 }, ownx[80], owny[80];
-        bool own[80] = { false }, counted[80] = { false };
-        for (int slot = 0, n = 0; n < 80; n++) {
-            const uint8_t *c = s_cur.sat + slot * 8;
-            int y9 = w16(c) & 0x3FF;
-            if (y9 + 32 > 128 && y9 < 128 + 240 && !hud_attr(w16(c + 4))) {
-                counted[slot] = true;
-                auto pa = s_tags[slot].spr ? prev_anchor.find(s_tags[slot].spr) : prev_anchor.end();
-                if (pa != prev_anchor.end()) {
-                    int dx = s_tags[slot].ax - pa->second.first, dy = s_tags[slot].ay - pa->second.second;
-                    if (dx > SNAP_SPRITE || dx < -SNAP_SPRITE || dy > SNAP_SPRITE || dy < -SNAP_SPRITE) why[slot] = 4;
-                    else { own[slot] = true; ownx[slot] = dx; owny[slot] = dy; }
-                } else if (s_tags[slot].spr)
-                    why[slot] = 2;
-                else if (!s_tags[slot].owner) {
-                    /* written outside every owner (a pause screen's text, a loop of its own): the same
-                       slot with the same tile and size in R_(k-1) is the same sprite */
-                    const uint8_t *p = s_prev.sat + slot * 8;
-                    int dx = w16(c + 6) - w16(p + 6), dy = w16(c) - w16(p);
-                    if (!s_prev_tags[slot].owner && p[2] == c[2] && w16(p + 4) == w16(c + 4)
-                        && dx <= SNAP_SPRITE && dx >= -SNAP_SPRITE && dy <= SNAP_SPRITE && dy >= -SNAP_SPRITE) {
-                        own[slot] = true; ownx[slot] = dx; owny[slot] = dy;
-                        s_fallback++;
-                    } else
-                        why[slot] = 1;
-                } else
-                    cur_of[s_tags[slot].owner].push_back(slot);
-            }
-            int link = c[3] & 0x7F;
-            if (!link || link >= 80) break;
-            slot = link;
-        }
-        for (auto &oc : cur_of) {
-            const std::vector<int> &cs = oc.second;
-            auto po = prev_of.find(oc.first);
-            if (po == prev_of.end()) {
-                for (int s : cs) why[s] = 2;
-                continue;
-            }
-            /* votes: each sprite counts once for each step that puts a like piece of R_(k-1) under it */
-            int best_votes = 0, bdx = 0, bdy = 0;
-            bool any_size = false;
-            for (int strict = 1; strict >= 0 && !best_votes; strict--) {
-                std::unordered_map<uint32_t, int> votes;
-                for (int s : cs) {
-                    const uint8_t *c = s_cur.sat + s * 8;
-                    std::vector<uint32_t> mine;
-                    for (int ps : po->second) {
-                        const uint8_t *p = s_prev.sat + ps * 8;
-                        if (p[2] != c[2]) continue;
-                        any_size = true;
-                        if (strict && w16(p + 4) != w16(c + 4)) continue;
-                        int dx = w16(c + 6) - w16(p + 6), dy = w16(c) - w16(p);
-                        if (dx > SNAP_SPRITE || dx < -SNAP_SPRITE || dy > SNAP_SPRITE || dy < -SNAP_SPRITE) continue;
-                        uint32_t key = (uint32_t)(dx + 128) << 16 | (uint32_t)(dy + 128);
-                        if (std::find(mine.begin(), mine.end(), key) == mine.end()) mine.push_back(key);
-                    }
-                    for (uint32_t key : mine) votes[key]++;
-                }
-                for (auto &v : votes) {   /* the most votes; of equals, the shortest step */
-                    int dx = (int)(v.first >> 16) - 128, dy = (int)(v.first & 0xFFFF) - 128;
-                    if (v.second > best_votes
-                        || (v.second == best_votes && abs(dx) + abs(dy) < abs(bdx) + abs(bdy))) {
-                        best_votes = v.second; bdx = dx; bdy = dy;
-                    }
-                }
-            }
-            /* a step most pieces disagree with is a coincidence: no step (R_k's places) */
-            if (best_votes && best_votes * 3 >= (int)cs.size()) {
-                for (int s : cs) { own[s] = true; ownx[s] = bdx; owny[s] = bdy; }
-            } else
-                for (int s : cs) why[s] = any_size ? 4 : 3;
-        }
-        for (int slot = 0; slot < 80; slot++)
-            if (counted[slot] && own[slot]) plan.push_back({ slot, ownx[slot], owny[slot] });
+        memset(s_why, 0, sizeof s_why);
+        memset(s_own, 0, sizeof s_own);
+        memset(s_counted, 0, sizeof s_counted);
+        for (int t = 0; t < NT; t++)
+            if (s_cur.live[t] && s_prev.live[t]) plan_table(t, plan);
         const bool draw = machine_pixels();
         /* the span in n even parts, n its H Hz frames rounded: R_k at t1, n - 1 frames before it.
            Not the H Hz clock itself: with R_k at k x T on top of it, 120 showed 180 frames a second,
@@ -507,8 +583,9 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
             /* the sprites: back from R_k's position by (1 - a) of their step */
             for (size_t q = 0; q < plan.size() && draw; q++) {
                 const Plan &pl = plan[q];
-                const uint8_t *c = s_cur.sat + pl.slot * 8;
-                uint8_t *dst = &v->vram[(uint16_t)(sb + (uint32_t)pl.slot * 8u)];
+                const uint8_t *c = ent(s_cur, pl.t, pl.slot);
+                uint8_t *dst = !pl.t && pl.slot < 80 ? &v->vram[(uint16_t)(sb + (uint32_t)pl.slot * 8u)]
+                                                     : &xm_region[rg_off(pl.t) + (uint32_t)pl.slot * 8u];   /* players.cpp draws these */
                 double back = 1.0 - a;
                 put16(dst + 6, w16(c + 6) - (int)(back * pl.dx + (pl.dx >= 0 ? 0.5 : -0.5)));
                 put16(dst, w16(c) - (int)(back * pl.dy + (pl.dy >= 0 ? 0.5 : -0.5)));
@@ -517,14 +594,15 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
                 static int dbg_n;
                 if (getenv("XMEN2_PRESENT_DEBUG2") && dbg_n < 30) {
                     int no = 0;
-                    for (int slot = 0; slot < 80; slot++) no += counted[slot] && why[slot] == 1;
-                    if (no) { dbg_n++; fprintf(stderr, "[present] frame %llu no_owner %d marks %d\n", (unsigned long long)k, no, (int)s_marks.size()); }
+                    for (int slot = 0; slot < MAXS; slot++) no += s_counted[0][slot] && s_why[0][slot] == 1;
+                    if (no) { dbg_n++; fprintf(stderr, "[present] frame %llu no_owner %d\n", (unsigned long long)k, no); }
                 }
-                for (int slot = 0; slot < 80; slot++) {
-                    if (!counted[slot]) continue;
-                    s_sprites++;
-                    if (!own[slot]) s_unmatched[why[slot]]++;
-                }
+                for (int t = 0; t < NT; t++)
+                    for (int slot = 0; slot < MAXS; slot++) {
+                        if (!s_counted[t][slot]) continue;
+                        s_sprites++;
+                        if (!s_own[t][slot]) s_unmatched[s_why[t][slot]]++;
+                    }
                 s_matched += plan.size();
             }
             if (!draw) {   /* --no-pixels: the frame planned and counted, VRAM untouched, nothing drawn */
@@ -552,6 +630,8 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
             for (int i = 0; i < 0x400; i++) v->vram[(uint16_t)(hb + (uint32_t)i)] = s_cur.hscroll[i];
             memcpy(v->vsram, s_cur.vsram, sizeof v->vsram);
             for (int i = 0; i < 80 * 8; i++) v->vram[(uint16_t)(sb + (uint32_t)i)] = s_cur.sat[i];
+            if (g_opt.players > 2)   /* the region's tables: the game's own memory, as it was */
+                for (int t = 0; t < NT; t++) memcpy(&xm_region[rg_off(t)], s_cur.rg[t], (size_t)slots(t) * 8);
         }
     }
     s_prev = s_cur;
@@ -560,7 +640,7 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
 void present_reset(void)
 {
     s_prev.valid = false;
-    s_marks.clear();
+    for (int t = 0; t < NT; t++) s_marks[t].clear();
 }
 
 void present_render_us_write(const char *path)
