@@ -35,6 +35,8 @@ typedef struct XmOptions {
                            file); presentation only, 1 by default; 0 = each value held (the original) */
     int fm_chip;        /* every sound machine's FM chip: 1 the YM3438 (no DAC ladder distortion, the default),
                            0 the YM2612 (the original); presentation only */
+    int pacing;         /* 1: pictures on the display's refreshes (vsync, platform/native/host_sdl.cpp
+                           host_present_refresh); 0: by the clock (the default); presentation only */
 } XmOptions;
 
 extern XmOptions g_opt;

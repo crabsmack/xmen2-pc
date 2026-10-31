@@ -1534,6 +1534,9 @@ F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  Each says
 The picture, by default as your display allows (auto); widescreen=0,high_fps=0 for the original's:
     high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display
                         (any rate from 61 to 1000). auto: the display's rate if over 60 Hz
+    pacing=display      experimental: pictures on the display's refreshes (vsync), each at the
+                        refresh nearest its time; with high_fps each refresh shows the game at
+                        its own moment. The default, timer: by the PC's clock, as before
     widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
                         plays as in 4:3, so enemies still appear at the old screen edge.
                         auto: 16:9 on a display wider than 3:2, else 4:3

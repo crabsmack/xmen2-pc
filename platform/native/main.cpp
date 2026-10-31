@@ -646,7 +646,8 @@ extern "C" void plat_frame_repeat(void)
 {
     if (!quiet()) capture_video_repeat();   /* XMEN2_CAPTURE: the video keeps the sound's time */
     if (!s_interactive || quiet()) return;
-    if (g_opt.high_fps) present_repeat();   /* its period is covered by the frames in between */
+    /* its period is covered by the frames in between; pacing=display: the screen keeps the picture */
+    if (g_opt.high_fps || host_vsync()) present_repeat();
     else host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
 }
 

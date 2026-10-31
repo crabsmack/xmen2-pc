@@ -52,6 +52,7 @@ program (`[options]`, one per line). F9, F10 and F11 say on screen what they did
 | `widescreen=16:9` | A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). F10 toggles it. The default, `auto`, is 16:9 on a display wider than 3:2 (16:10, 16:9, ultrawide), else 4:3 |
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
 | `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it. The default, `auto`, is the display's own rate when it is over 60 Hz (and follows the window to another display), else off |
+| `pacing=display` | Experimental, not yet measured on a live display: pictures go out on the display's refreshes (vsync), each at the refresh nearest its time, and with `high_fps` each refresh shows the game at its own moment (`high_fps` is then at most that rate). The default, `timer`, shows them by the PC's clock, as before. If the display holds pictures back (a locked, hidden or minimized window), the timer takes over for 5 s at a time |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
 | `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
 | `lives=inf` | Lives are never spent (or `lives=N`, 1-99) |

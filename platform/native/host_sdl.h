@@ -12,6 +12,13 @@ void host_present(const uint32_t *fb, int stride, int w, int h);   /* the pictur
 void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us);   /* high_fps: the picture
                                                                                       at t_us on the present clock */
 void host_slip(double us);   /* netplay: both present clocks move by us (the scheduler held a frame) */
+/* pacing=display: the renderer presents on the display's refresh (vsync), each picture at a refresh
+   of its own, the one nearest its time on the present clock (host_present_at's) */
+bool host_vsync(void);       /* display pacing is on (a window, vsync, a known refresh period) */
+int  host_refreshes(double t0_us, double t1_us, double *t_us, int max);   /* the refreshes in [t0, t1), on the
+                                                                             present clock; how many */
+double host_refresh_us(void);   /* the refresh period on the present clock (us) */
+void host_present_refresh(const uint32_t *fb, int stride, int w, int h, double t_us);
 void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, int h);   /* BMP */
 int  host_pad_selftest(void);   /* XMEN2_PAD_SELFTEST: the controllers' slots with virtual ones; 0 = pass */
 void host_message(const char *text);   /* a message box (before or without the window) */

@@ -21,6 +21,7 @@
  */
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <map>
 #include <stdint.h>
 #include <stdio.h>
@@ -428,14 +429,35 @@ static int span_now(bool interactive)
 /* plat_frame_end(k): R_k, shown at k x T. Played with high_fps: presented here at its time. */
 bool present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive)
 {
-    if (!s_log && !g_opt.high_fps) return false;
+    bool display = interactive && host_vsync();   /* pacing=display: at the refresh nearest its time */
+    if (!s_log && !g_opt.high_fps && !display) return false;
     bool gameplay = m8(0xFFC942) && !m8(0xFFC7FE);
     log_row(k, (double)k * T_US, true, gameplay, s_log && machine_pixels() ? fnv(fb, stride, w, h) : 0);
+    if (display) {
+        host_present_refresh(fb, stride, w, h, (double)(k + s_extra) * T_US);
+        return true;
+    }
     if (interactive && g_opt.high_fps) {
         host_present_at(fb, stride, w, h, (double)(k + s_extra) * T_US);
         return true;
     }
     return false;
+}
+
+/* pacing=display, high_fps on: the frames between R_(k-1) at t0 and R_k at t1 are the display's
+   refreshes between them (not those nearest t0 and t1, whose pictures are R_(k-1)'s and R_k's), every
+   m-th when the display is faster than high_fps (m = its rate over high_fps, rounded up): each shows
+   the game interpolated to its own moment. Returns how many (in t). */
+static int refresh_times(double t0, double t1, int hz, double *t, int max)
+{
+    double p = host_refresh_us(), r[64];
+    if (p <= 0) return 0;
+    int n = host_refreshes(t0 + p * 0.5, t1 - p * 0.5, r, 64), m = std::max(1, (int)std::ceil(1e6 / p / hz - 1e-6)), out = 0;
+    for (int i = 0; i < n && out < max; i++) {
+        long idx = std::lround((r[i] - t0) / p);   /* refreshes since R_(k-1)'s */
+        if (idx % m == 0) t[out++] = r[i];
+    }
+    return out;
 }
 
 /* The sprites an interpolation moves: table t's slot, its step from R_(k-1) in screen pixels. */
@@ -571,8 +593,13 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
            screen dropped one in three of them, unevenly, a stutter every 6 s (a player's report,
            2026-10-30) */
         int n = std::max(1, (int)((t1 - t0) * hz / 1e6 + 0.5));
+        /* pacing=display: the refreshes in between instead (refresh_times) */
+        const bool display = interactive && host_vsync();
+        double rt[64];
+        int nr = display ? refresh_times(t0, t1, hz, rt, 64) : 0;
+        if (display) n = nr + 1;
         for (int j = 1; j < n; j++) {
-            double t = t0 + j * (t1 - t0) / n, a = (t - t0) / (t1 - t0);
+            double t = display ? rt[j - 1] : t0 + j * (t1 - t0) / n, a = (t - t0) / (t1 - t0);
             /* the scroll: every line's A and B words, the VSRAM entries */
             for (int i = 0; i < 0x400 && draw; i += 2) {
                 int p = w16(s_prev.hscroll + i), c = w16(s_cur.hscroll + i);
@@ -616,7 +643,8 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
             present_note_render(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - r0).count());
             int w = machine_screen_width(), h = machine_screen_height();
             log_row(k, t, false, s_gameplay, s_log ? fnv(ifb, stride, w, h) : 0);
-            if (interactive) host_present_at(ifb, stride, w, h, t);
+            if (display) host_present_refresh(ifb, stride, w, h, t);
+            else if (interactive) host_present_at(ifb, stride, w, h, t);
             static const char *shots = getenv("XMEN2_PRESENT_SHOTS"), *dir = getenv("XMEN2_DUMP_DIR");
             if (shots && dir) {   /* XMEN2_PRESENT_SHOTS=FROM-TO: the in-between frames of those runner frames */
                 unsigned long long lo = 0, hi = 0;

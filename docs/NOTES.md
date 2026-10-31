@@ -1453,6 +1453,35 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   display's 60.00 Hz (the sound's rate control follows; 0.13% fast) or the 59.92 Hz clock with a
   doubled refresh every 12.5 s, as now.
 
+### pacing=display: the first build (2026-10-31; not yet measured on a live display)
+
+The user (2026-10-30): "I agree this should be an option". `pacing` = `timer` (the default until the
+user rules, today's pacing) | `display` | `auto` (= `display`); presentation only, each seat's own.
+
+- **What `display` does (way A: real vsync).** `SDL_RenderSetVSync(1)`; the refresh grid is DWM's
+  `qpcVBlank` / `qpcRefreshPeriod` (the trace's) on Windows, else the last vsync'd present's return
+  and the display's rate. A whole frame goes to the refresh nearest its time on the present clock
+  (`host_present_refresh`: drawn half a refresh before it, so the blocking present lands there; a
+  refresh after the last picture's at the earliest). With high_fps the frames between R_(k-1) and
+  R_k are the refreshes between them (not the two nearest t0 and t1), every m-th when the display is
+  faster than high_fps (m = its rate over high_fps rounded up), each interpolated to its own moment.
+  The logic keeps its 59.92 Hz clock (the present clock). Not built: the logic following a 60.00 Hz
+  display with high_fps off; way B (no vsync, aimed at DWM's grid).
+- **A locked session holds vsync'd presents back.** The first runs (the user away, the session
+  locked: LogonUI running, 219 minutes idle) took 260 ms a present (p50) with vsync, windowed and
+  fullscreen, with or without the waits and with vsync set at the renderer's creation instead: the
+  game, paced by its presents, ran at 4 frames a second, and a 1,500-frame run passed 10 minutes.
+  Since then a present held over two NTSC frames turns vsync off and the timer paces for 5 s
+  (`s_vsync_off_until`), then vsync is tried again; one line on stderr. Locked, 600 frames: 59.0
+  presents a second (high_fps 0) and 118.4 (120), the hold's present 67-139 ms each 5 s.
+- **Timer pacing measured in the same locked session** (scene1.input, 1,500 frames, windowed, DWM
+  240.021 Hz): judder high_fps 0 12.8%, 120 5.9%, 240 2.2%, 170 34.4%; dropped 0 / 0 / 123 / 25
+  (2026-10-30, unlocked: 27.8%, 4.9%, 1.1%, 33.9%). Whether DWM's grid means anything on a locked
+  desktop isn't known, so these are not a baseline.
+- **Not measured:** `display` on a live display (every setup of the task: windowed and fullscreen
+  at 240 Hz, high_fps 0/120/240/170, then FreeSync off at 144/165 and 60, FreeSync on), its present
+  times (queueing: rising block times), the latency; the R4/E4 amendment's draft waits for them.
+
 ### Cheat options (2026-10-21, the user's request; not phase-6 criteria)
 - `lives`: `0` (the original: 9 each at a new game, Game_ResetPlayers), `1`-`99` (the start count;
   the select screen shows two digits), `inf` (never spent). The game has no continues: a player

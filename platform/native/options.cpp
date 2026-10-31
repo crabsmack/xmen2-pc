@@ -31,7 +31,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 1 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 1, 0 };
 
 struct OptDef {
     const char *name;
@@ -46,6 +46,10 @@ static OptDef s_defs[] = {
        read when the window opens (options_detect_display); no window or no answer: off */
     { "high_fps", { "auto", "0", "120", "144", "165", "240", nullptr },
       "display rate in Hz with frames interpolated between logic frames, 0 = off (R4); auto = the display's rate when it is over 60 Hz, else off", "auto" },
+    /* the vsync work (the user, 2026-10-30: "I agree this should be an option"; its default is the
+       user's call, not yet made: timer, as before) */
+    { "pacing", { "timer", "display", "auto", nullptr },
+      "when pictures are shown: timer = by the PC's clock, as before; display = on the display's refreshes (vsync), each picture at the refresh nearest its time, and with high_fps each refresh shows the game at its own moment (high_fps is then at most that rate); auto = display", "timer" },
     { "widescreen", { "auto", "0", "16:9", nullptr },
       "16:9 view in levels, 0 = off (R5-R8); auto = 16:9 on a display wider than 3:2, else off", "auto" },
     { "widescreen_gameplay", { "0", "1", nullptr },
@@ -158,6 +162,7 @@ static void apply(void)
     g_opt.full_rate_2p = find("full_rate_2p")->value == "1";
     const std::string &hf = find("high_fps")->value, &ws = find("widescreen")->value;
     g_opt.high_fps = hf == "auto" ? s_auto_hz : atoi(hf.c_str());
+    g_opt.pacing = find("pacing")->value != "timer";
     g_opt.widescreen = ws == "16:9" || (ws == "auto" && s_auto_wide);
     g_opt.widescreen_gameplay = find("widescreen_gameplay")->value == "1";
     const std::string &l = find("lives")->value;
@@ -276,7 +281,8 @@ void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : 
    sealed widescreen_gameplay is 1. The text is `k=v,...` in table order. */
 static bool presentation_only(const OptDef &d, bool ws_gameplay)
 {
-    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "music_voices") || !strcmp(d.name, "sample_retime") ||
+    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "pacing") || !strcmp(d.name, "music_voices") ||
+           !strcmp(d.name, "sample_retime") ||
            !strcmp(d.name, "sample_smooth") || !strcmp(d.name, "fm_chip") ||
            (!strcmp(d.name, "widescreen") && !ws_gameplay);
 }

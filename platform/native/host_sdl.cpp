@@ -17,6 +17,7 @@
  */
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
+#include <cmath>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,6 +97,12 @@ static bool s_at_started;        /* high_fps: the present clock has started */
 static double s_at_base;         /* high_fps: performance-counter ticks at t_us 0 */
 static int s_audio;
 static bool s_rebuild;           /* the renderer's device was reset: make it again before drawing */
+static bool s_vsync;             /* pacing=display: the renderer presents on the refresh */
+static double s_disp_period;     /* counter ticks per refresh of the display the window opened on (0: unknown) */
+static uint64_t s_last_flip;     /* when the last vsync'd present returned (the refresh grid off Windows) */
+static double s_last_refresh;    /* the counter time of the refresh the last picture was for */
+static uint64_t s_vsync_off_until; /* the display is holding presents back: the timer paces until then */
+static uint64_t s_vsync_holds;   /* how often (stderr at the first) */
 static int s_draw_fails;         /* failed draws in a row */
 static void ptrace_open(void);   /* XMEN2_PRESENT_TRACE (below, with draw) */
 
@@ -112,6 +119,10 @@ static int make_renderer(void)
     if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
     if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, 0);
     if (!s_ren) { fprintf(stderr, "[native] SDL renderer: %s\n", SDL_GetError()); return 0; }
+    /* pacing=display: the present waits for the display's refresh */
+    s_vsync = g_opt.pacing && SDL_RenderSetVSync(s_ren, 1) == 0;
+    s_vsync_off_until = 0;
+    if (g_opt.pacing && !s_vsync) fprintf(stderr, "[native] pacing=display: no vsync (%s), the timer paces\n", SDL_GetError());
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     s_tex = SDL_CreateTexture(s_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 480);
     if (!s_tex) { fprintf(stderr, "[native] SDL texture: %s\n", SDL_GetError()); return 0; }
@@ -188,6 +199,7 @@ int host_open(const char *title)
     if (s_audio) audio_set_playback_enabled(1);
     else fprintf(stderr, "[native] no audio device: playing silent\n");
     s_period = (double)SDL_GetPerformanceFrequency() * 262.0 * 3420.0 / 53693175.0;   /* one NTSC frame */
+    s_disp_period = dm.refresh_rate > 0 ? (double)SDL_GetPerformanceFrequency() / dm.refresh_rate : 0;
     s_next = SDL_GetPerformanceCounter();
     ptrace_open();
     return 1;
@@ -518,6 +530,98 @@ void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us)
     s_content_us = t_us;
     s_due = (uint64_t)due;
     draw(fb, stride, w, h);
+}
+
+/* pacing=display (the vsync work, NOTES "Present trace"): the refresh grid as a V-blank and a period
+   in counter ticks: DWM's on Windows (the trace's), else the last vsync'd present's return and the
+   display's rate. false: none known, the timer paces. */
+static bool grid(double *vblank, double *period)
+{
+#ifdef _WIN32
+    DWM_TIMING_INFO ti = {};
+    ti.cbSize = sizeof ti;
+    if (SUCCEEDED(DwmGetCompositionTimingInfo(nullptr, &ti)) && ti.qpcRefreshPeriod && ti.qpcVBlank) {
+        *vblank = (double)ti.qpcVBlank;
+        *period = (double)ti.qpcRefreshPeriod;
+        return true;
+    }
+#endif
+    if (!s_disp_period || !s_last_flip) return false;
+    *vblank = (double)s_last_flip;
+    *period = s_disp_period;
+    return true;
+}
+
+/* A vsync'd present that blocks longer than two NTSC frames means the display isn't taking pictures
+   at its rate: a locked session gave 260 ms a present (2026-10-31), so the game, paced by its
+   presents, ran at 4 frames a second. Then vsync is off and the timer paces for 5 s, and is tried
+   again. */
+bool host_vsync(void)
+{
+    double v, p;
+    if (!s_vsync || !s_ren) return false;
+    if (s_vsync_off_until) {
+        if (SDL_GetPerformanceCounter() < s_vsync_off_until) return false;
+        s_vsync_off_until = 0;
+        SDL_RenderSetVSync(s_ren, 1);
+        s_last_refresh = 0;
+    }
+    return grid(&v, &p);
+}
+
+static double clock_start(double t_us)   /* the present clock's start (host_present_at's), set at its first use */
+{
+    double f = (double)SDL_GetPerformanceFrequency();
+    if (!s_at_started) { s_at_base = (double)SDL_GetPerformanceCounter() - t_us * f / 1e6; s_at_started = true; }
+    return f;
+}
+
+double host_refresh_us(void)
+{
+    double v, p;
+    return grid(&v, &p) ? p * 1e6 / (double)SDL_GetPerformanceFrequency() : 0;
+}
+
+int host_refreshes(double t0_us, double t1_us, double *t_us, int max)
+{
+    double v, p, f = clock_start(t0_us);
+    if (!grid(&v, &p)) return 0;
+    double w0 = s_at_base + t0_us * f / 1e6, w1 = s_at_base + t1_us * f / 1e6;
+    int n = 0;
+    for (double w = v + std::ceil((w0 - v) / p) * p; w < w1 && n < max; w += p) t_us[n++] = (w - s_at_base) * 1e6 / f;
+    return n;
+}
+
+/* The picture at the refresh nearest t_us, a refresh after the last picture's at the earliest: drawn
+   half a refresh before it, so the vsync'd present gives it that refresh (a present returns when the
+   picture is queued; later than that refresh, the next one). A refresh more than 4 NTSC frames late
+   moves the clock, as host_present_at. */
+void host_present_refresh(const uint32_t *fb, int stride, int w, int h, double t_us)
+{
+    double v, p, f = clock_start(t_us);
+    if (!grid(&v, &p)) { host_present_at(fb, stride, w, h, t_us); return; }
+    double due = s_at_base + t_us * f / 1e6, now = (double)SDL_GetPerformanceCounter();
+    if (now > due + 4 * s_period) { s_at_base += now - due; due = now; }
+    double r = v + std::floor((due - v) / p + 0.5) * p;
+    if (r < s_last_refresh + p * 0.5) r = s_last_refresh + p;
+    s_last_refresh = r;
+    while ((now = (double)SDL_GetPerformanceCounter()) < r - p * 0.5) {
+        double left_ms = (r - p * 0.5 - now) * 1000.0 / f;
+        if (left_ms > 2.0) SDL_Delay((Uint32)(left_ms - 1.5));
+    }
+    s_content_us = t_us;
+    s_due = (uint64_t)r;
+    uint64_t pre = SDL_GetPerformanceCounter();
+    draw(fb, stride, w, h);
+    s_last_flip = SDL_GetPerformanceCounter();
+    if ((double)(s_last_flip - pre) > 2 * s_period) {   /* held back (host_vsync) */
+        if (!s_vsync_holds++)
+            fprintf(stderr, "[native] pacing=display: the display held a present %.0f ms (a locked, hidden or minimized "
+                    "window?): the timer paces, vsync tried again every 5 s\n", (double)(s_last_flip - pre) * 1e3 / f);
+        SDL_RenderSetVSync(s_ren, 0);
+        s_vsync_off_until = s_last_flip + (uint64_t)(5 * f);
+        s_next = s_last_flip + (uint64_t)s_period;   /* the timer's next frame (host_present) */
+    }
 }
 
 void host_present(const uint32_t *fb, int stride, int w, int h)
