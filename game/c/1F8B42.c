@@ -22,7 +22,10 @@
  * a player's position is kept for next time (g_CollideSafeX/Y).
  * Hand-written 68000 in an MPW frame (a2 as a variable, word index sums): it can't byte-match.
  * The contact list is a local, as in the original; the hooks get pointers into it (each hook
- * only reads the contact it is given; g_SegBlockedHook is an empty function, Sys_Nop1F949E). */
+ * only reads the contact it is given; g_SegBlockedHook is an empty function, Sys_Nop1F949E).
+ * Phase 7 (R11): a player is IS_PLAYER_OBJ, slots 0-1 and players 3-4's objects: a stuck player
+ * 3-4 is put back too (it fell through AvalonA3's floor), and they share g_CollideSafeX/Y with
+ * players 1-2 as those two share it in the original. */
 #include "xmen2.h"
 
 /* |v| of a byte, as a byte (neg.b: -128 stays -128), widened. */
@@ -81,7 +84,7 @@ void Obj_CollideSegs(void *obj)
 			if (c->pushY > 0 && !(o->flags & 0x1000)) {
 				c->flags |= 4;
 				s->flags |= 0x40;
-				if ((s8)o->index < 2) {
+				if (IS_PLAYER_OBJ(o)) {
 					if (o->hitCooldown == 0)
 						FN_AT(SegObjFn, g_SegBlockedHook)(o, list, best);
 					s->passFrames = 30;
@@ -114,7 +117,7 @@ void Obj_CollideSegs(void *obj)
 			best = bestEvent;
 		c = best;
 		if (passes > 30) {
-			if ((s8)o->index < 2) {
+			if (IS_PLAYER_OBJ(o)) {
 				if (!g_CollideReset) {
 					g_CollideReset = 0xFF;
 					passes = 25;
@@ -161,7 +164,7 @@ void Obj_CollideSegs(void *obj)
 		}
 		if (c->flags < 0) {
 			if (c->event) {
-				if ((s8)o->index < 2) {
+				if (IS_PLAYER_OBJ(o)) {
 					if (c->event == 4)
 						CALL_STUB(Sys_Nop1FA8C4, (0L, 2L, 0L));
 					else
@@ -177,7 +180,7 @@ void Obj_CollideSegs(void *obj)
 		if (c->flags & 4)
 			g_Segs[c->seg].flags &= ~0x40;
 	}
-	if ((s8)o->index < 2) {
+	if (IS_PLAYER_OBJ(o)) {
 		g_CollideSafeX = o->x;
 		g_CollideSafeY = o->y;
 	}

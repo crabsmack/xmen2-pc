@@ -2295,8 +2295,7 @@ SentinelsB1 through the escape. Eight bugs; each below with its cause, fix and c
   P34_IS_PLAYER with type 4 in its context (P34_HIT). Check: scene7.input, `players=4`, 3,500
   frames: players 3-4 drawn on 2,964 and 2,947 of 2,964 in-play frames before (never blinking),
   2,853 and 2,859 now (hit blinks), all four still in play. The other `index < 2` player tests
-  (1F85B6 passFrames, 1F87B2 floor types $E/$F, 1F8B42 the blocked-segment hook) have no native
-  branch yet: open, for an R11 sweep. Also not faithful: ObjList_ForEachInBox stops at a callback's
+  were swept after the playtest ("The players 3-4 slot sweep" below). Also not faithful: ObjList_ForEachInBox stops at a callback's
   non-zero d0, which after XPlayer_TakeDamage is $FE on the 68000's knockback path; the native void
   call leaves `xm::g_d0` as the last stored-pointer call left it, so which of several players in
   one blast's box are hit on the same frame can differ from the original (left as is).
@@ -2331,6 +2330,53 @@ SentinelsB1 through the escape. Eight bugs; each below with its cause, fix and c
   player 3's box and players 3-4's panels over the lives box; now player 3's box and the lives.
 - Gate (`gate.py --mode native`): PASS, TAS 6,000 sync points equal, verify 0 mismatches, 3,047/3,047
   MPW matches.
+
+### The players 3-4 slot sweep (2026-10-31)
+
+The original takes a player to be an object in slots 0-1 (`cmpi.b #2,$15(a4)`, or `move.b
+$15(a4),d0` / `cmpi.b #2,d0`); players 3-4's objects are past the pool (`g_P34ObjIndex`), so such
+a test takes them for other objects. Every such test in the disassembly (a scan of all 3,621
+functions for a load or compare of byte +$15 against 0-3) is in four functions: ExplodeFx_ChainHit
+(13EBB6, fixed in the playtest), Seg_GatherNearObj (1F85B6), Seg_CollideObj (1F87B2; its
+Trigger and CeilFloor parts are 1F895C / 1F89A4 in the disassembly) and Obj_CollideSegs (1F8B42).
+The last three take `IS_PLAYER_OBJ(o)` now (xmen2_players34.h): slots 0-1, or players 3-4's
+objects in the native build; the original's expression in the others. What each test did to a
+player 3-4, and where it bites:
+
+- **Obj_CollideSegs, 30 passes without a resolution** (1F8B42, `passes > 30`): a player is put back
+  at g_CollideSafeX/Y (once per call), others just stop. A player 3-4 stuck in segments wasn't put
+  back. Found by random play from each stage start (below): AvalonA3 (scene 14, seed 3), player 4
+  at x 333 overran the passes 6 times in 12 frames while falling through the floor (y 801 to 862)
+  and was off view 39 frames; now it is put back after the first (1 overrun) and off view 8, drawn
+  on 1,795 frames instead of 1,768. Players 1-2 overrun too (scene 8, seed 8, player 1: once, the
+  same before and after). The put-back position is one global for all players, written at the end
+  of each player's call (`IS_PLAYER_OBJ` there too), so a player can be put back where another one
+  was: the original's, between players 1 and 2, kept.
+- **Obj_CollideSegs, pushed down while walking** (`c->pushY > 0`): every object skips the
+  segment for the call; a player also calls g_SegBlockedHook (an empty function) and sets the
+  segment's passFrames to 30. Players 3-4 never set it. The only reader is Seg_GatherNearObj, for
+  owned segments (owner not -2): while it is positive a player passes through the segment (no
+  contact, so no landing or head bump) and counts it down. Random play hits the push in SentinelsB2
+  (scene 7, 3 of 8 seeds, 14 to 26 times, players 3-4 only), always on level segments (owner -2),
+  where passFrames has no reader: no change there (the runs' mp counters are equal before and
+  after). Neither the stage inputs nor the random play ever met an owned segment with passFrames
+  set, for any player: the case (a platform's block, `$1C` from Actor_Activate: the elevators,
+  SwampPlatform, Platform1, ToxicCan, Tank, BeamScooter, BanimazaDoor) is fixed by reading only.
+- **Seg_GatherNearObj** (1F85B6): that passFrames skip and countdown, as above.
+- **Seg_CollideObj** (1F87B2): the `$1D` trigger box (players only), floor `$E` (players only, an
+  event contact without a push) and floor `$F` (others only: a player falls through). No level of
+  the cartridge has a segment of those types (a decode of all 25 Level_Load lists, FG and BG: the
+  types are 1-4, $12-$1C, $21-$24) and no object makes one (Seg_Create / Seg_Setup callers: 1, 3,
+  $13, $14, $15, $1C), so these tests never run; fixed for completeness.
+
+How it was checked: a temporary probe (not committed) counted each test's outcome for players 3-4,
+players 1-2 and other objects, with a switch for the old tests in the same runner. The 23 stage
+inputs (`players=4`) meet none of the tests, for any player (a positive control counted ~6,000
+players 3-4 calls of Obj_CollideSegs per stage; no other object calls it there). So random play:
+each stage input up to its last Start press, then random holds of each pad (directions and A/B/C,
+no Start) for the rest of its length, 8 seeds a stage, 184 runs. Old against new: 183 runs' mp
+counters equal, the one that differs is AvalonA3's above. The sweep changes the game with three or
+more players; NP_VERSION 5 (d396db9) isn't released yet, so it isn't bumped again.
 
 ### Ideas, not scheduled: costumes, duplicates, more players, own cameras (2026-10-27)
 

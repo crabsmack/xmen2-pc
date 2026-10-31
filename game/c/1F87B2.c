@@ -16,7 +16,9 @@
  *   $13-$1C solid blocks: Seg_CollideBlock;   $1D trigger box: a player inside raises event 2.
  * Returns 1 no contact (Seg_CollideObj_RetNone), 2 contact (Seg_CollideObj_RetHit), 3 above a
  * floor.
- * Hand-written 68000 in an MPW frame (a2, exg, a jump table of its own): it can't byte-match. */
+ * Hand-written 68000 in an MPW frame (a2, exg, a jump table of its own): it can't byte-match.
+ * Phase 7 (R11): a player is IS_PLAYER_OBJ, slots 0-1 and players 3-4's objects (no level or
+ * object of the cartridge makes a segment of type $E, $F or $1D, so those tests never run). */
 #include "xmen2.h"
 
 /* where the surface is at distance d along the segment: slope * d >> 8, with slopes of
@@ -88,7 +90,7 @@ short Seg_CollideObj(Seg *seg, void *obj, SegContact *c)
 		return Seg_CollideBlock(o, s, c);
 	case 0x1D:
 		/* Seg_CollideObj_Trigger */
-		if ((s8)o->index >= 2 || o->boxTop >= s->y2 || o->boxLeft >= s->x2
+		if (!IS_PLAYER_OBJ(o) || o->boxTop >= s->y2 || o->boxLeft >= s->x2
 		    || o->boxRight < s->x1 || o->boxBottom <= s->y1)
 			return 1;
 		c->event = 2;
@@ -114,14 +116,14 @@ short Seg_CollideObj(Seg *seg, void *obj, SegContact *c)
 		if (push < -64)
 			return 1;
 		if (s->type == 0xE) {
-			if ((s8)o->index >= 2)
+			if (!IS_PLAYER_OBJ(o))
 				return 1;
 			c->event = 2;
 			c->flags |= 0x8000;
 			return 2;
 		}
 		if (s->type == 0xF) {
-			if ((s8)o->index < 2)
+			if (IS_PLAYER_OBJ(o))
 				return 1;
 			c->event = 3;
 			c->flags |= 0x8000;

@@ -179,6 +179,9 @@ template <class F> static inline int P34_EveryLive(F test)
 #endif
 /* obj is player 3's or 4's object (not one they made) */
 #define P34_IS_PLAYER(o_)	((const void *)(o_) == (const void *)&g_Player3 || (const void *)(o_) == (const void *)&g_Player4)
+/* the original's `(s8)index < 2` player test (players are slots 0-1, cmpi.b #2,$15(a4)), with
+   players 3-4, whose objects are past the pool (Obj_AllocPool, g_P34ObjIndex): R11 */
+#define IS_PLAYER_OBJ(o_)	((s8)(o_)->index < 2 || P34_IS_PLAYER(o_))
 
 #else
 #define GROUP_N			2
@@ -187,5 +190,6 @@ template <class F> static inline int P34_EveryLive(F test)
 #define PLAYER_LIVE		(IS_ALIVE(&g_Player1) ? &g_Player1 : &g_Player2)
 #define SELECT_FACES_LEFT(self)	((self)->homeX == 0xF8)
 #define SELECT_HOME_Y		0xAE
+#define IS_PLAYER_OBJ(o_)	((s8)(o_)->index < 2)
 #endif /* XMEN2_NATIVE */
 #endif /* XMEN2_PLAYERS34_H */

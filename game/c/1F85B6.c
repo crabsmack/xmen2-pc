@@ -11,7 +11,8 @@
  * attached to (SprInst.parent chain), or for a player (index < 2) while its passFrames is
  * positive; a player counts passFrames down then. The list ends with a record of flags 1.
  * The two scans differ at the left edge (< against <=), the original's.
- * Hand-written 68000 in an MPW frame (a2, exg, dbra, 16-bit sums): it can't byte-match. */
+ * Hand-written 68000 in an MPW frame (a2, exg, dbra, 16-bit sums): it can't byte-match.
+ * Phase 7 (R11): a player is IS_PLAYER_OBJ, slots 0-1 and players 3-4's objects. */
 #include "xmen2.h"
 
 void Seg_GatherNearObj(void *obj, SegContact *c)
@@ -94,7 +95,7 @@ void Seg_GatherNearObj(void *obj, SegContact *c)
 		c++;
 		if (s->owner == -2)
 			continue;
-		if ((u8)s->owner != o->index && !((s8)o->index < 2 && s->passFrames > 0)) {
+		if ((u8)s->owner != o->index && !(IS_PLAYER_OBJ(o) && s->passFrames > 0)) {
 			a = (u8)s->owner == 0xFF ? 0 : (Actor *)g_ObjTable[(u8)s->owner];
 			for (;;) {
 				if (!a)
@@ -106,7 +107,7 @@ void Seg_GatherNearObj(void *obj, SegContact *c)
 		}
 		c[-1].flags = 4;
 		s->flags |= 0x40;
-		if ((s8)o->index < 2 && s->passFrames != 0)
+		if (IS_PLAYER_OBJ(o) && s->passFrames != 0)
 			s->passFrames--;
 	next:	;
 	}
