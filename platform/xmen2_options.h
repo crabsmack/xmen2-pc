@@ -1,8 +1,8 @@
 /* xmen2_options.h - the native runner's enhancement options (xmen2disasm docs/phases/P6-enhance.md
  * R1): set by platform/native/options.cpp from the command line and xmen2.ini, read by the platform
  * and by the game's native-only branches (`#if defined(XMEN2_NATIVE)`). All 0 = the original
- * (players: 2); music_voices, sample_retime and sample_smooth, presentation only, are `full` (2), 1 and
- * 1 by default. */
+ * (players: 2); music_voices, sample_retime, sample_smooth and fm_chip, presentation only, are `full`
+ * (2), 1, 1 and 1 (the YM3438) by default. */
 #ifndef XMEN2_OPTIONS_H
 #define XMEN2_OPTIONS_H
 
@@ -32,6 +32,8 @@ typedef struct XmOptions {
                            (platform/native/sample_retime.cpp); presentation only, 1 by default; 0 = as written */
     int sample_smooth;  /* ... and a straight line between each value and the next at the chip's rate (the same
                            file); presentation only, 1 by default; 0 = each value held (the original) */
+    int fm_chip;        /* every sound machine's FM chip: 1 the YM3438 (no DAC ladder distortion, the default),
+                           0 the YM2612 (the original); presentation only */
 } XmOptions;
 
 extern XmOptions g_opt;

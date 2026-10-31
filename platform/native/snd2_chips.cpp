@@ -13,4 +13,5 @@
 #define ym2612_rb_save           snd2_ym2612_rb_save
 #define ym2612_rb_load           snd2_ym2612_rb_load
 #define ym2612_cosim_hash        snd2_ym2612_cosim_hash
+#define ym2612_set_model         snd2_ym2612_set_model
 #include "audio/ym2612_ymfm.cpp"

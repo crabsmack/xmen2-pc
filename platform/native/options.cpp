@@ -1,9 +1,10 @@
 /* options.cpp - the native runner's options (xmen2disasm docs/phases/P6-enhance.md R1, E2): each
  * enhancement is a runtime option of the one release runner, off by default, except music_voices
  * (the user, 2026-10-24: "as an option (default on)"; 2026-10-27: its `full`, the default) and
- * sample_retime and sample_smooth (2026-10-30: "default on"), which change only the sound, and high_fps and
- * widescreen, `auto` (the user, 2026-10-30), which follow
- * the display and change only the picture (no window: off, so every headless check is unchanged).
+ * sample_retime and sample_smooth (2026-10-30: "default on") and fm_chip (ym3438, 2026-10-30),
+ * which change only the sound, and high_fps and widescreen, `auto` (the user, 2026-10-30), which
+ * follow the display and change only the picture (no window: off, so every headless check is
+ * unchanged).
  *
  *   --options --json     print the options (default, values, the effective value) and exit 0
  *   --options K=V,K=V    set them for this run
@@ -30,7 +31,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 1 };
 
 struct OptDef {
     const char *name;
@@ -69,6 +70,11 @@ static OptDef s_defs[] = {
     /* sound (the user, 2026-10-30: "1/2 yes unless there's a cost, let's have it, and default on") */
     { "sample_retime", { "1", "0", nullptr },
       "the sound driver's samples (the YM2612's DAC, in the music and the effects) played at a steady rate, up to 4 ms late, where the driver gets them to the chip unevenly; 0 = as the driver writes them (the original)", "1" },
+    /* (the user, 2026-10-30: "yes add the option as well"; its default: "if ym3438 is the cleaner
+       version and we don't have any reason to think the composers wrote around ym2612 limitations
+       intentionally, I'd default to 3438") */
+    { "fm_chip", { "ym3438", "ym2612", nullptr },
+      "the FM sound chip modelled, on every sound machine (music, effects and samples): the YM3438, the same chip without the YM2612's DAC distortion (the ladder effect); ym2612 = the YM2612, the chip this port modelled before", "ym3438" },
     /* (the user, 2026-10-30: "likewise, default on, separate option") */
     { "sample_smooth", { "1", "0", nullptr },
       "the sound driver's samples with a straight line between each value and the next at the chip's own rate, where the original holds each value until the next (a stair-step); with sample_retime=0 the lines lead to the values at the driver's times; 0 = held (the original)", "1" },
@@ -168,6 +174,7 @@ static void apply(void)
     g_opt.music_voices = mv == "full" ? 2 : mv == "1";
     g_opt.sample_retime = find("sample_retime")->value == "1";
     g_opt.sample_smooth = find("sample_smooth")->value == "1";
+    g_opt.fm_chip = find("fm_chip")->value == "ym3438";
 }
 
 static std::string json_str(const std::string &s)
@@ -264,13 +271,14 @@ void options_toggle_widescreen(void)
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
 /* Netplay (phase 7 R10, R12): the options that change the game are the host's, sealed into the
-   session; each player keeps the presentation ones: high_fps, music_voices, sample_retime and
-   sample_smooth (the sound only: not in the canonical digest), and widescreen unless the sealed
-   widescreen_gameplay is 1. The text is `k=v,...` in table order. */
+   session; each player keeps the presentation ones: high_fps, music_voices, sample_retime,
+   sample_smooth and fm_chip (the sound only: not in the canonical digest), and widescreen unless the
+   sealed widescreen_gameplay is 1. The text is `k=v,...` in table order. */
 static bool presentation_only(const OptDef &d, bool ws_gameplay)
 {
     return !strcmp(d.name, "high_fps") || !strcmp(d.name, "music_voices") || !strcmp(d.name, "sample_retime") ||
-           !strcmp(d.name, "sample_smooth") || (!strcmp(d.name, "widescreen") && !ws_gameplay);
+           !strcmp(d.name, "sample_smooth") || !strcmp(d.name, "fm_chip") ||
+           (!strcmp(d.name, "widescreen") && !ws_gameplay);
 }
 
 std::string options_game_text(void)

@@ -2278,6 +2278,32 @@ retimer; `sample_smooth=0` holds each value, as the cartridge.
   sample_retime's (both change the default sound; `sample_retime=0,sample_smooth=0` gives the
   original).
 
+### fm_chip: the YM3438 (2026-10-31)
+
+The user (2026-10-30): "yes add the option as well", default `ym3438`: "if ym3438 is the cleaner
+version and we don't have any reason to think the composers wrote around ym2612 limitations
+intentionally, I'd default to 3438". `fm_chip=ym3438|ym2612`, sound only, each seat's own.
+
+- **How.** ymfm's `ym3438` is its `ym2612` with another `generate()` (no DAC ladder), not virtual,
+  so the engine's wrapper (`runner/audio/ym2612_ymfm.cpp`, engine fork) keeps a second pointer of
+  that type and calls its `generate()`; `ym2612_set_model(0|1)` (in `audio/ym2612.h`; 0, the
+  YM2612, by default, so other games using the engine are unchanged) picks it, a change after the
+  chip exists making a new one. Each machine's chip copy renames it (`snd2_ym2612_set_model` ...),
+  and `snd2_state_init` sets all five before any sounds (the first machine's chip already exists
+  then and is made again). A temporary print in the wrapper's init showed all five chips as the
+  option says, both ways.
+- **Measured** (`XMEN2_WAV`, `players=4`, defaults otherwise), 1 s windows over -60 dBFS: the
+  difference of the two renders against the YM2612's, median -14.2 dB (boot.input), -21.7 (scene5),
+  -22.9 (scene14), -21.9 (scene36); the largest in quiet passages (-1.3 dB in a window at -40 dBFS,
+  the first seconds after a stage warp, the same screen on these three), as crossover distortion is.
+- **Checks.** `fm_chip=ym2612,sample_retime=0,sample_smooth=0` gives the old runner's (8ce0374)
+  sound byte for byte (scene5, default `music_voices` and `0`); `--state-probe 300:60` gives the
+  plain run's sound with the YM3438 (both), and `--state-skip sound` / `snd_music` changes it.
+  Netplay, two seats, the host `ym3438`, the guest `ym2612`, `latency=200,jitter=50`: 44 and 40
+  rollbacks, the 3,509 digest rows equal (the chips' state is not in the canonical digest).
+- **Not done:** nobody has listened to it. The release notes duty is sample_retime's: all three
+  change the default sound; `sample_retime=0,sample_smooth=0,fm_chip=ym2612` gives the original.
+
 ### scene42: Cam_TrackBoth with none in play (2026-10-25)
 
 - **The bug**: scene42 (cloneA5) with `players=4` at 30 Hz played differently run to run from sync

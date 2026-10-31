@@ -76,12 +76,14 @@ extern "C" {
     size_t p##_psg_samples_available(void);                                                                 \
     void   p##_psg_reset_leftover(void);                                                                    \
     size_t p##_psg_rb_save(void *dst, size_t cap);                                                          \
-    int    p##_psg_rb_load(const void *src, size_t len);
+    int    p##_psg_rb_load(const void *src, size_t len);                                                   \
+    void   p##_ym2612_set_model(int model);
 extern "C" {
 CHIP_DECLS(snd2)
 CHIP_DECLS(mus)
 CHIP_DECLS(prt)
 CHIP_DECLS(p34)
+void ym2612_set_model(int model);   /* the first machine's chip (the engine's audio/ym2612.h) */
 extern uint8_t xm_region[0x10000];
 int P34_MusicVoice(int k);   /* game/runtime/players34.cpp: Player_MusicVoice of player k (3, 4) */
 }
@@ -901,6 +903,12 @@ static int    load_p34f(const uint8_t *s, size_t n) { return M[ROLE_P34_FULL].lo
 
 extern "C" void snd2_state_init(void)
 {
+    /* fm_chip: every machine's YM2612 the model chosen, the first machine's too (before any chip sounds) */
+    ym2612_set_model(g_opt.fm_chip);
+    snd2_ym2612_set_model(g_opt.fm_chip);
+    mus_ym2612_set_model(g_opt.fm_chip);
+    prt_ym2612_set_model(g_opt.fm_chip);
+    p34_ym2612_set_model(g_opt.fm_chip);
     static const char *names[NMACHINES] = { "snd2", "snd_music", "snd_parts", "snd_parts34" };
     static const StateSaveFn saves[NMACHINES] = { save_p34, save_mus, save_prt, save_p34f };
     static const StateLoadFn loads[NMACHINES] = { load_p34, load_mus, load_prt, load_p34f };
