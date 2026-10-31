@@ -33,6 +33,7 @@ extern "C" {
 #include <vector>
 
 #include "native.h"
+#include "sample_retime.h"
 #include "state.h"
 #include "state_place.h"
 
@@ -1048,21 +1049,24 @@ static int gm_load(const uint8_t *src, size_t len)
     return 1;
 }
 
-/* the sound chips, the event queue between them and the machine (the session machine only: elsewhere
-   they are not driven). Each part prefixed by its length. */
+/* the sound chips, the event queue between them and the machine, and sample_retime's samples on their
+   way to it (the session machine only: elsewhere they are not driven). Each part prefixed by its
+   length. */
 static size_t sound_save(uint8_t *dst, size_t cap)
 {
     if (!s_session) return 0;
-    size_t parts[3] = { ym2612_rb_save(nullptr, 0), psg_rb_save(nullptr, 0), audio_event_rb_save(nullptr, 0) };
-    size_t need = 3 * sizeof(uint32_t) + parts[0] + parts[1] + parts[2];
+    size_t parts[4] = { ym2612_rb_save(nullptr, 0), psg_rb_save(nullptr, 0), audio_event_rb_save(nullptr, 0),
+                        dac_m1_save(nullptr, 0) };
+    size_t need = 4 * sizeof(uint32_t) + parts[0] + parts[1] + parts[2] + parts[3];
     if (!dst) return need;
     if (cap < need) return 0;
     uint8_t *o = dst;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         uint32_t n = (uint32_t)parts[i];
         memcpy(o, &n, sizeof n);
         o += sizeof n;
-        size_t w = i == 0 ? ym2612_rb_save(o, n) : i == 1 ? psg_rb_save(o, n) : audio_event_rb_save(o, n);
+        size_t w = i == 0 ? ym2612_rb_save(o, n) : i == 1 ? psg_rb_save(o, n) : i == 2 ? audio_event_rb_save(o, n)
+                 : dac_m1_save(o, n);
         if (w != n) return 0;
         o += n;
     }
@@ -1073,13 +1077,14 @@ static int sound_load(const uint8_t *src, size_t len)
 {
     if (!s_session) return len == 0;
     const uint8_t *i = src, *end = src + len;
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < 4; k++) {
         uint32_t n;
         if ((size_t)(end - i) < sizeof n) return 0;
         memcpy(&n, i, sizeof n);
         i += sizeof n;
         if ((size_t)(end - i) < n) return 0;
-        int ok = k == 0 ? ym2612_rb_load(i, n) : k == 1 ? psg_rb_load(i, n) : audio_event_rb_load(i, n);
+        int ok = k == 0 ? ym2612_rb_load(i, n) : k == 1 ? psg_rb_load(i, n) : k == 2 ? audio_event_rb_load(i, n)
+               : dac_m1_load(i, n);
         if (!ok) return 0;
         i += n;
     }

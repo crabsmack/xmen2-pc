@@ -2182,6 +2182,55 @@ chip has voices for both parts (two full parts with the base song want up to 7 F
   - Netplay, four seats on loopback (hub), the host `full`, seats 1-3 `0`, `1`, `full`: 3,480 digest
     rows equal, 11-12 rollbacks a seat.
 
+### sample_retime: the DAC samples at a steady rate (2026-10-31)
+
+The user, after the prototype's A/B clips (2026-10-30): "1/2 yes unless there's a cost, let's have
+it, and default on": its own option, sound only, every sample (music and effects) on every sound
+machine. `platform/native/sample_retime.cpp`; `sample_retime=0` is the original.
+
+- **What it does.** The GEMS driver writes each sample's values to the YM2612's DAC (`$2A`) from its
+  Z80 loop; in this machine they reach the chip unevenly. Per machine a phase-locked loop gives each
+  value a time: the sample's spacing is its last values' span over their count (up to 128), each
+  value goes out one spacing after the last, pulled 1/256 of the way towards 2 ms after it was
+  written, never earlier than written or more than 4 ms later; a gap over 30,000 master clocks starts
+  a sample. Values and order are the driver's. The first machine's FM writes wait for the frame's end
+  (`g_fm_m1`), each machine's in its own list (sound2.cpp); at the frame's end the samples due before
+  the next frame go in among them by time, as a select of `$2A`, the value and the address the chip
+  had (so a write that relied on that address still lands there); the rest wait for the next frame.
+  No frame of latency is added (the prototype held every write back a frame).
+- **The prototype's estimate didn't hold.** Its spacing was the mean of the gaps within 40% of it,
+  starting from the sample's first gap. That gap is often a burst (~3,360 master clocks against a
+  true 9,045), and once it was taken every real gap was "a dropout": the values ran ahead to the
+  never-earlier bound and kept the driver's jitter (scene7.input, `music_voices=0`, two players, got
+  worse: 91.9% of the gaps within 5% -> 89.9%). The span over the count has no such lock. With it and
+  the prototype's pull of 1/64, 97.7% / 79.7% of the first machine's gaps were within 5% / 1%; with
+  1/256, 98.0% / 88.9% (the table).
+- **Measured** (`XMEN2_DAC_LOG`: each sample's write and out time; each gap against the median of the
+  64 around it within its sample, the prototype's measure), the 23 stage inputs, `players=4`, default
+  options:
+
+  | machine | gaps | within 5% | within 1% | gaps over 2x |
+  |---|---|---|---|---|
+  | first (`m1`) | 3,727,788 | 70.1% -> 98.0% | 36.9% -> 88.9% | 20,927 -> 71 |
+  | music (`snd_music`) | 3,653,936 | 68.9% -> 98.8% | 36.0% -> 93.9% | 9,043 -> 5 |
+
+  Lateness: median 1.88-2.00 ms per run, at most 2.64 ms. No sample dropped (`sound.dac` counters:
+  `retimed`, `dropped`, `pending_max`; at most 201 waiting, of 1,024). The parts machines play no
+  samples on these inputs. With `music_voices` on, the first machine's music samples are `$80`
+  (capture.cpp) and its effects' are the real ones.
+- **Checks.** `sample_retime=0` gives the old runner's sound byte for byte (`XMEN2_WAV`, scene1 and
+  scene5 with `players=4`, scene5 and scene14 with `music_voices=0`). On, `--state-probe 300:60` gives
+  the plain run's sound (the same four cases); with `--state-skip sound` or `snd_music` it differs,
+  and so does a build that doesn't load the retimer's part of `sound` (`music_voices=0`) or of the
+  music machine's section (the defaults). That last check found the frame's writes waiting in
+  `g_fm_m1` at a snapshot (the Z80 also runs between frames, when the 68000 hands its bus back): they
+  are in `sound` too. Netplay, two seats, `latency=200,jitter=50`, the host on and the guest
+  `sample_retime=0`: 47 and 42 rollbacks, the 3,509 digest rows equal; the option is each seat's
+  own (not sealed), like `music_voices`.
+- **Not done:** nobody has listened to the built option (the A/B clips were the prototype's); the
+  smoothing (ramps between values) and the FM chip model are their own options (backlog). The next
+  release's notes should say the default sound changed and that `sample_retime=0` gives the original.
+
 ### scene42: Cam_TrackBoth with none in play (2026-10-25)
 
 - **The bug**: scene42 (cloneA5) with `players=4` at 30 Hz played differently run to run from sync

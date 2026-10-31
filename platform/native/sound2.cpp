@@ -58,6 +58,7 @@ extern "C" {
 #include "audio/event_queue.h"
 
 #include "native.h"
+#include "sample_retime.h"
 #include "state.h"
 
 #define CHIP_DECLS(p)                                                                                     \
@@ -343,9 +344,10 @@ struct Snd2 {
     uint8_t  have_init, init[12];
     uint8_t  param_set[4], param[32];
     int16_t  song;                   /* the song to start with the machine (P34: the dispatcher song), -1 none */
+    DacRetime dac;                   /* sample_retime: its DAC samples on their way to its chip */
 };
 
-struct Ev { uint32_t stamp; uint8_t port, v; };
+typedef ChipEv Ev;
 
 /* the second machine's counters (host counters: restored with a snapshot, not state) */
 struct SongCount { int16_t id; uint64_t part, base; };
@@ -439,7 +441,8 @@ struct Machine {
             S.ym_reg[r] = v;
             if (r == 0x28 && (v & 0xF0)) count_keyon(owner_song(S.ram, FM_POOL, 6, v & 7));
         }
-        if (machine_session()) ev.push_back({ S.zstamp, (uint8_t)port, v });
+        if (machine_session() && !(g_opt.sample_retime && dac_take(&S.dac, name, S.zstamp, port, v)))
+            ev.push_back({ S.zstamp, (uint8_t)port, v });
     }
 
     void psg_write(uint8_t v)
@@ -598,6 +601,7 @@ struct Machine {
         S.base = -1;
         if (machine_session()) { chip->ym_init(); chip->psg_init(); }
         ev.clear();
+        dac_reset(&S.dac);
         vs_reset(&V);
         /* Snd_Init's bytes, the variables, the song playing */
         if (S.have_init) {
@@ -619,6 +623,7 @@ struct Machine {
         S.active = 0;
         S.base = -1;
         ev.clear();
+        dac_reset(&S.dac);
         if (machine_session()) { chip->ym_init(); chip->psg_init(); }
     }
 
@@ -698,6 +703,12 @@ struct Machine {
     {
         if (!S.active) return;
         if (role == ROLE_P34 && p34_full_plays()) mute = 1;   /* the full-parts machine plays its parts */
+        if (g_opt.sample_retime) {   /* the frame's samples back in, at their steady times */
+            static std::vector<Ev> merged;
+            merged.clear();
+            dac_merge(&S.dac, ev.data(), ev.size(), &merged);
+            ev.swap(merged);
+        }
         uint32_t fm_prev = 0, psg_prev = 0;
         size_t used = 0;
         for (; used < ev.size() && ev[used].stamp <= FRAME_END; used++) {
@@ -901,6 +912,7 @@ extern "C" void snd2_state_init(void)
         m.S.npend = 0;
         m.S.song = -1;
         m.S.base = -1;
+        dac_reset(&m.S.dac);
         m.wire();
         m.chip->ym_init();
         m.chip->psg_init();
@@ -959,8 +971,18 @@ std::string snd2_counters_json(void)
     return s + "}}";
 }
 
+/* sample_retime's counts of one machine: samples retimed, lost to a full ring, the most waiting at once */
+static std::string dac_json(const DacRetime &d)
+{
+    char b[128];
+    snprintf(b, sizeof b, "{\"retimed\": %llu, \"dropped\": %llu, \"pending_max\": %u}", (unsigned long long)d.retimed,
+             (unsigned long long)d.dropped, d.pending_max);
+    return b;
+}
+
 /* the counters line's "sound": every machine's key-ons and stolen voices by song (the session machine's),
-   and the songs the game started as effects (capture.cpp's class, the music machines' mutes) */
+   the songs the game started as effects (capture.cpp's class, the music machines' mutes), and
+   sample_retime's counts */
 std::string sound_counters_json(void)
 {
     std::string fx;
@@ -973,5 +995,8 @@ std::string sound_counters_json(void)
     return std::string("{\"music_voices\": ") + (g_opt.music_voices ? "1" : "0") + ", \"full_parts\": " +
            (g_opt.music_voices == 2 ? "1" : "0") + ", \"m1\": " + vs_json(s_m1) + ", \"music\": " +
            vs_json(M[ROLE_MUSIC].V) + ", \"parts\": " + vs_json(M[ROLE_PARTS].V) + ", \"snd2\": " + vs_json(P34.V) +
-           ", \"parts34\": " + vs_json(M[ROLE_P34_FULL].V) + ", \"effects\": [" + fx + "]}";
+           ", \"parts34\": " + vs_json(M[ROLE_P34_FULL].V) + ", \"effects\": [" + fx + "], \"sample_retime\": " +
+           (g_opt.sample_retime ? "1" : "0") + ", \"dac\": {\"m1\": " + dac_json(g_dac_m1) + ", \"music\": " +
+           dac_json(M[ROLE_MUSIC].S.dac) + ", \"parts\": " + dac_json(M[ROLE_PARTS].S.dac) + ", \"snd2\": " +
+           dac_json(P34.S.dac) + ", \"parts34\": " + dac_json(M[ROLE_P34_FULL].S.dac) + "}}";
 }

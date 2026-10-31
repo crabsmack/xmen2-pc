@@ -1,7 +1,8 @@
 /* options.cpp - the native runner's options (xmen2disasm docs/phases/P6-enhance.md R1, E2): each
  * enhancement is a runtime option of the one release runner, off by default, except music_voices
- * (the user, 2026-10-24: "as an option (default on)"; 2026-10-27: its `full`, the default), which
- * changes only the sound, and high_fps and widescreen, `auto` (the user, 2026-10-30), which follow
+ * (the user, 2026-10-24: "as an option (default on)"; 2026-10-27: its `full`, the default) and
+ * sample_retime (2026-10-30: "default on"), which change only the sound, and high_fps and
+ * widescreen, `auto` (the user, 2026-10-30), which follow
  * the display and change only the picture (no window: off, so every headless check is unchanged).
  *
  *   --options --json     print the options (default, values, the effective value) and exit 0
@@ -29,7 +30,7 @@
 #include <unistd.h>
 #endif
 
-extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0 };
+extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1 };
 
 struct OptDef {
     const char *name;
@@ -65,6 +66,9 @@ static OptDef s_defs[] = {
     /* sound (the user, 2026-10-24; on by default; full: 2026-10-27, the default) */
     { "music_voices", { "full", "1", "0", nullptr },
       "the music on sound chips of its own, the players' parts on further sets, so no part or sound effect takes its notes, and each player's part in full, as one player hears it; 1 = the same with the game's arrangement for two or more players (each part with one track muted); 0 = one set of chips, as the original", "full" },
+    /* sound (the user, 2026-10-30: "1/2 yes unless there's a cost, let's have it, and default on") */
+    { "sample_retime", { "1", "0", nullptr },
+      "the sound driver's samples (the YM2612's DAC, in the music and the effects) played at a steady rate, up to 4 ms late, where the driver gets them to the chip unevenly; 0 = as the driver writes them (the original)", "1" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path, s_exe_dir;
@@ -159,6 +163,7 @@ static void apply(void)
     g_opt.players = atoi(find("players")->value.c_str());
     const std::string &mv = find("music_voices")->value;
     g_opt.music_voices = mv == "full" ? 2 : mv == "1";
+    g_opt.sample_retime = find("sample_retime")->value == "1";
 }
 
 static std::string json_str(const std::string &s)
@@ -255,12 +260,12 @@ void options_toggle_widescreen(void)
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
 /* Netplay (phase 7 R10, R12): the options that change the game are the host's, sealed into the
-   session; each player keeps the presentation ones: high_fps, music_voices (the sound only: not in
-   the canonical digest), and widescreen unless the sealed widescreen_gameplay is 1. The text is
-   `k=v,...` in table order. */
+   session; each player keeps the presentation ones: high_fps, music_voices and sample_retime (the
+   sound only: not in the canonical digest), and widescreen unless the sealed widescreen_gameplay is
+   1. The text is `k=v,...` in table order. */
 static bool presentation_only(const OptDef &d, bool ws_gameplay)
 {
-    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "music_voices") ||
+    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "music_voices") || !strcmp(d.name, "sample_retime") ||
            (!strcmp(d.name, "widescreen") && !ws_gameplay);
 }
 

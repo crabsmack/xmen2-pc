@@ -1,7 +1,7 @@
 /* xmen2_options.h - the native runner's enhancement options (xmen2disasm docs/phases/P6-enhance.md
  * R1): set by platform/native/options.cpp from the command line and xmen2.ini, read by the platform
  * and by the game's native-only branches (`#if defined(XMEN2_NATIVE)`). All 0 = the original
- * (players: 2); music_voices, presentation only, is `full` (2) by default. */
+ * (players: 2); music_voices and sample_retime, presentation only, are `full` (2) and 1 by default. */
 #ifndef XMEN2_OPTIONS_H
 #define XMEN2_OPTIONS_H
 
@@ -27,6 +27,8 @@ typedef struct XmOptions {
                            as standing in a level does, and Magneto's pick is his standing shot with the
                            flux bomb's explosion sound; Gambit's idle, never drawn in the game, is drawn
                            (here and in play) half as often as most others'; 0 = the original */
+    int sample_retime;  /* the sound driver's DAC samples played at a steady rate, on every sound machine
+                           (platform/native/sample_retime.cpp); presentation only, 1 by default; 0 = as written */
 } XmOptions;
 
 extern XmOptions g_opt;

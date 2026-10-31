@@ -39,9 +39,10 @@ X/A/B = A/B/C, LB/Y/RB = X/Y/Z, Start = Start, Back = Mode. F11: fullscreen. Esc
 
 By default the game plays exactly like the cartridge: every option that changes the game is off
 unless you turn it on. What is on by default changes only what you see and hear, never the game:
-the picture follows your display (`widescreen` and `high_fps` are `auto`), and `music_voices`
-plays the music on chips of its own. `widescreen=0,high_fps=0,music_voices=0` gives the
-cartridge's picture and sound. Give options on the command line,
+the picture follows your display (`widescreen` and `high_fps` are `auto`), `music_voices`
+plays the music on chips of its own, and `sample_retime` plays the sound driver's samples at a
+steady rate. `widescreen=0,high_fps=0,music_voices=0,sample_retime=0` gives the cartridge's
+picture and sound. Give options on the command line,
 `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in `xmen2.ini` next to the
 program (`[options]`, one per line). F9, F10 and F11 say on screen what they did.
 
@@ -58,6 +59,7 @@ program (`[options]`, one per line). F9, F10 and F11 say on screen what they did
 | `magneto_flight=1` | Magneto moves left and right while hovering |
 | `select_idles=1` | On the player select, characters play their idle animations now and then, as when standing in a stage, and Magneto's pick is his standing shot with the flux bomb's explosion sound. Gambit's idle, which the original never plays, plays on the select and in the stages |
 | `music_voices=full` | The default: the music plays on sound chips of its own and the players' music parts on further sets, so neither the parts nor the sound effects take notes from the music, and each player's part plays in full, as one player hears it. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music; with two players or more the game plays each part thinned, one of its tracks muted. `1` keeps the chips of their own with the game's thinned parts, `0` gives the cartridge's single set of chips |
+| `sample_retime=1` | The default: the samples the sound driver plays through the YM2612's DAC, in the music and the effects, reach the chip at a steady rate, each up to 4 ms later than the driver writes it (about 2 ms). The driver gets them to the chip unevenly; `0` plays them as it writes them |
 
 `XMen2.exe --options --json` lists them.
 
@@ -65,7 +67,7 @@ program (`[options]`, one per line). F9, F10 and F11 say on screen what they did
 
 Rollback netplay for two to four players, each on their own machine with their own ROM file.
 The host (seat 0) chooses the options that change the game, and every seat plays with them.
-The picture and sound options (`high_fps`, the 16:9 view, `music_voices`) are each seat's own,
+The picture and sound options (`high_fps`, the 16:9 view, `music_voices`, `sample_retime`) are each seat's own,
 except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
 ```

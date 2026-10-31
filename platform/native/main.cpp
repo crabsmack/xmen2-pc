@@ -47,6 +47,7 @@
 
 #include "host_sdl.h"
 #include "native.h"
+#include "sample_retime.h"
 #include "state.h"
 #include "xmen2_image.h"
 #include "state_place.h"
@@ -514,15 +515,29 @@ static uint64_t fb_hash(int w, int h)
 static int s_interactive;
 
 /* the sound chips run in the session machine (played runs, netplay, trace --session); only a played
-   run has a device to hear them */
+   run has a device to hear them. With sample_retime the FM writes wait for the frame's end (g_fm_m1),
+   its DAC samples taken out and put back in at their steady times (sample_retime.cpp) */
 extern "C" void plat_audio_write(uint32_t stamp, int port, uint8_t v)
 {
-    if (machine_session() && capture_audio_write(port, &v)) audio_event_push(stamp, (uint8_t)port, v);
+    if (!machine_session() || !capture_audio_write(port, &v)) return;
+    if (g_opt.sample_retime && port != PLAT_AUDIO_PSG) {
+        if (!dac_take(&g_dac_m1, "m1", stamp, (unsigned)port, v)) g_fm_m1.push_back({ stamp, (uint8_t)port, v });
+        return;
+    }
+    audio_event_push(stamp, (uint8_t)port, v);
 }
 
 extern "C" void plat_frame_audio(uint64_t frame)
 {
-    if (machine_session()) host_audio(frame, quiet());   /* quiet: the chips run, nothing is heard */
+    if (!machine_session()) return;
+    if (g_opt.sample_retime) {
+        static std::vector<ChipEv> merged;
+        merged.clear();
+        dac_merge(&g_dac_m1, g_fm_m1.data(), g_fm_m1.size(), &merged);
+        g_fm_m1.clear();
+        for (const ChipEv &e : merged) audio_event_push(e.stamp, e.port, e.v);
+    }
+    host_audio(frame, quiet());   /* quiet: the chips run, nothing is heard */
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }

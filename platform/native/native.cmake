@@ -24,6 +24,7 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/state.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/players.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/sound2.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/sample_retime.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/capture.cpp"
     # the sound machines' chips: the engine's YM2612 and SN76489 wrappers, each machine's compiled
     # through its own file. Never the engine's files themselves: MSBuild would then credit everything
