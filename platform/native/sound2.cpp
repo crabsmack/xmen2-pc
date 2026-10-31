@@ -441,7 +441,7 @@ struct Machine {
             S.ym_reg[r] = v;
             if (r == 0x28 && (v & 0xF0)) count_keyon(owner_song(S.ram, FM_POOL, 6, v & 7));
         }
-        if (machine_session() && !(g_opt.sample_retime && dac_take(&S.dac, name, S.zstamp, port, v)))
+        if (machine_session() && !(dac_on() && dac_take(&S.dac, name, S.zstamp, port, v)))
             ev.push_back({ S.zstamp, (uint8_t)port, v });
     }
 
@@ -703,7 +703,7 @@ struct Machine {
     {
         if (!S.active) return;
         if (role == ROLE_P34 && p34_full_plays()) mute = 1;   /* the full-parts machine plays its parts */
-        if (g_opt.sample_retime) {   /* the frame's samples back in, at their steady times */
+        if (dac_on()) {   /* the frame's samples back in, at their steady times, with their ramps */
             static std::vector<Ev> merged;
             merged.clear();
             dac_merge(&S.dac, ev.data(), ev.size(), &merged);
@@ -971,18 +971,20 @@ std::string snd2_counters_json(void)
     return s + "}}";
 }
 
-/* sample_retime's counts of one machine: samples retimed, lost to a full ring, the most waiting at once */
+/* sample_retime's counts of one machine: samples taken, lost to a full ring, the most waiting at once,
+   and sample_smooth's ramp steps */
 static std::string dac_json(const DacRetime &d)
 {
-    char b[128];
-    snprintf(b, sizeof b, "{\"retimed\": %llu, \"dropped\": %llu, \"pending_max\": %u}", (unsigned long long)d.retimed,
-             (unsigned long long)d.dropped, d.pending_max);
+    char b[192];
+    snprintf(b, sizeof b, "{\"retimed\": %llu, \"dropped\": %llu, \"pending_max\": %u, \"ramp_steps\": %llu}",
+             (unsigned long long)d.retimed, (unsigned long long)d.dropped, d.pending_max,
+             (unsigned long long)d.ramp_steps);
     return b;
 }
 
 /* the counters line's "sound": every machine's key-ons and stolen voices by song (the session machine's),
    the songs the game started as effects (capture.cpp's class, the music machines' mutes), and
-   sample_retime's counts */
+   sample_retime's and sample_smooth's counts */
 std::string sound_counters_json(void)
 {
     std::string fx;
@@ -996,7 +998,7 @@ std::string sound_counters_json(void)
            (g_opt.music_voices == 2 ? "1" : "0") + ", \"m1\": " + vs_json(s_m1) + ", \"music\": " +
            vs_json(M[ROLE_MUSIC].V) + ", \"parts\": " + vs_json(M[ROLE_PARTS].V) + ", \"snd2\": " + vs_json(P34.V) +
            ", \"parts34\": " + vs_json(M[ROLE_P34_FULL].V) + ", \"effects\": [" + fx + "], \"sample_retime\": " +
-           (g_opt.sample_retime ? "1" : "0") + ", \"dac\": {\"m1\": " + dac_json(g_dac_m1) + ", \"music\": " +
-           dac_json(M[ROLE_MUSIC].S.dac) + ", \"parts\": " + dac_json(M[ROLE_PARTS].S.dac) + ", \"snd2\": " +
+           (g_opt.sample_retime ? "1" : "0") + ", \"sample_smooth\": " + (g_opt.sample_smooth ? "1" : "0") +
+           ", \"dac\": {\"m1\": " + dac_json(g_dac_m1) + ", \"music\": " + dac_json(M[ROLE_MUSIC].S.dac) + ", \"parts\": " + dac_json(M[ROLE_PARTS].S.dac) + ", \"snd2\": " +
            dac_json(P34.S.dac) + ", \"parts34\": " + dac_json(M[ROLE_P34_FULL].S.dac) + "}}";
 }

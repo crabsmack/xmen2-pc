@@ -12,10 +12,17 @@
  * 30,000 master clocks (0.56 ms) starts a new sample (its own rate): its first value goes out 2 ms
  * after it was written. The values and their order are the driver's; only their times move.
  *
+ * sample_smooth: the chip holds a DAC value until the next (a stair-step, whose images sound as
+ * high frequencies); with the option each value is reached by a straight line from the last, one
+ * value every chip sample (1,008 master clocks), none across a gap that starts a sample. Measured on
+ * the DAC alone (NOTES "sample_smooth"): 5-9 dB less of its energy above 4 kHz. With sample_retime
+ * off the lines lead to the values at the driver's own times; a line begun in the frame before its
+ * value was written is put at the start of that value's frame.
+ *
  * Nothing waits a frame: a frame's samples due by its end go to the chip with it (merged into its
- * other writes by time), the rest with the next. The register address is part I's own: each sample
- * is written as a select of $2A and the value, and the address the chip had is selected again, so
- * a write that relied on it still lands there.
+ * other writes by time), the rest with the next. The chip has one address latch for both parts:
+ * each value is written as a select of $2A and the value, and the address the chip had (either
+ * part's) is selected again, so a write that relied on it still lands there.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,18 +66,23 @@ int dac_m1_load(const uint8_t *src, size_t len)
 /* a machine (re)started: nothing waiting, no sample yet; the counts go on */
 void dac_reset(DacRetime *d)
 {
-    uint64_t retimed = d->retimed, dropped = d->dropped;
+    uint64_t retimed = d->retimed, dropped = d->dropped, steps = d->ramp_steps;
     uint32_t most = d->pending_max;
     memset(d, 0, sizeof *d);
     d->period = 10155;                  /* unused until a sample has two values */
     d->last_in = d->last_out = -1e18;
+    d->emit_at = -1e18;
+    d->ramp_k = 1;
+    d->emit_val = 0x80;
     d->retimed = retimed;
     d->dropped = dropped;
     d->pending_max = most;
+    d->ramp_steps = steps;
 }
 
-/* XMEN2_DAC_LOG=FILE (dev): every sample retimed, `machine,in,out,value`: when the driver wrote it and
-   when it goes out, master clocks on that machine's retimer's clock. A replayed frame is logged again. */
+/* XMEN2_DAC_LOG=FILE (dev): every value taken, `machine,in,out,value`: when the driver wrote it and
+   when it goes out (the ramps' steps not listed), master clocks on that machine's retimer's clock. A
+   replayed frame is logged again. */
 static FILE *dac_log(void)
 {
     static FILE *f = [] {
@@ -84,14 +96,15 @@ static FILE *dac_log(void)
 
 bool dac_take(DacRetime *d, const char *who, uint32_t stamp, unsigned port, uint8_t v)
 {
-    if (port == 0) d->in_sel = v;
-    if (port != 1 || d->in_sel != 0x2A) return false;
+    if (port == 0 || port == 2) d->in_addr = (uint16_t)(port << 7 | v);
+    if (port != 1 || d->in_addr != 0x2A) return false;
     double in = (double)(d->frame * DAC_FRAME + stamp), out, gap = in - d->last_in;
     if (gap > NEW_SAMPLE) d->nhist = d->ihist = 0;
     d->hist[d->ihist] = in;
     d->ihist = (d->ihist + 1) & 127;
     if (d->nhist < 128) d->nhist++;
-    if (d->nhist == 1) out = in + LATE_MAX / 2;
+    if (!g_opt.sample_retime) out = in;   /* sample_smooth alone: the driver's times */
+    else if (d->nhist == 1) out = in + LATE_MAX / 2;
     else {
         d->period = (in - d->hist[(d->ihist - d->nhist) & 127]) / (d->nhist - 1);
         out = d->last_out + d->period;
@@ -115,26 +128,61 @@ bool dac_take(DacRetime *d, const char *who, uint32_t stamp, unsigned port, uint
     return true;
 }
 
+/* sample_smooth (the user, 2026-10-30: "likewise, default on, separate option"): between the last
+   value written and the next, a value every chip sample (1,008 master clocks), on the straight line
+   from the one to the other; none across a gap that starts a sample */
+#define CHIP_SAMPLE 1008.0
+
 void dac_merge(DacRetime *d, const ChipEv *in, size_t n, std::vector<ChipEv> *out)
 {
     const double base = (double)(d->frame * DAC_FRAME), end = base + (double)DAC_FRAME;
-    auto sample = [&](uint32_t stamp) {
-        uint32_t i = d->head;
-        out->push_back({ stamp, 0, 0x2A });
-        out->push_back({ stamp, 1, d->val[i] });
-        if (d->out_sel != 0x2A) out->push_back({ stamp, 0, d->out_sel });
-        d->head = (d->head + 1) % DAC_PENDING;
-        d->count--;
+    /* the next write: a step of the ramp towards the value waiting (1), the value (2), or none (0) */
+    auto next = [&](double *t, uint8_t *v) -> int {
+        if (!d->count) return 0;
+        double at = d->at[d->head];
+        uint8_t to = d->val[d->head];
+        if (g_opt.sample_smooth && at - d->emit_at < NEW_SAMPLE) {
+            int m = (int)((at - d->emit_at) / CHIP_SAMPLE);
+            if (d->ramp_k < m) {
+                *t = d->emit_at + d->ramp_k * CHIP_SAMPLE;
+                *v = (uint8_t)(d->emit_val + ((int)to - (int)d->emit_val) * d->ramp_k / m);
+                return 1;
+            }
+        }
+        *t = at;
+        *v = to;
+        return 2;
     };
-    auto due = [&](void) { return d->count && d->at[d->head] < end; };
-    auto stamp_of = [&](void) { double t = d->at[d->head] - base; return (uint32_t)(t < 0 ? 0 : t); };
+    auto stamp_of = [&](double t) { t -= base; return (uint32_t)(t < 0 ? 0 : t); };
+    /* the writes due before `limit` (a stamp of this frame) */
+    auto put = [&](double limit) {
+        double t;
+        uint8_t v;
+        for (int k; (k = next(&t, &v)) && t < end && stamp_of(t) < limit;) {
+            uint32_t s = stamp_of(t);
+            /* the select every time: left out when the address was already $2A, the sound changed with
+               sample_smooth on (not with sample_retime alone; the cause wasn't found) */
+            out->push_back({ s, 0, 0x2A });
+            out->push_back({ s, 1, v });
+            if (d->out_addr != 0x2A) out->push_back({ s, (uint8_t)(d->out_addr & 0x100 ? 2 : 0), (uint8_t)d->out_addr });
+            if (k == 1) {
+                d->ramp_k++;
+                d->ramp_steps++;
+                continue;
+            }
+            d->emit_at = t;
+            d->emit_val = v;
+            d->ramp_k = 1;
+            d->head = (d->head + 1) % DAC_PENDING;
+            d->count--;
+        }
+    };
     for (size_t k = 0; k < n; k++) {
         const ChipEv &e = in[k];
-        if (e.port <= 3)
-            while (due() && stamp_of() < e.stamp) sample(stamp_of());
+        if (e.port <= 3) put((double)e.stamp);
         out->push_back(e);
-        if (e.port == 0) d->out_sel = e.v;
+        if (e.port == 0 || e.port == 2) d->out_addr = (uint16_t)(e.port << 7 | e.v);
     }
-    while (due()) sample(stamp_of());
+    put(1e30);
     d->frame++;
 }

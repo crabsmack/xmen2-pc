@@ -2231,6 +2231,53 @@ machine. `platform/native/sample_retime.cpp`; `sample_retime=0` is the original.
   smoothing (ramps between values) and the FM chip model are their own options (backlog). The next
   release's notes should say the default sound changed and that `sample_retime=0` gives the original.
 
+### sample_smooth: straight lines between the DAC values (2026-10-31)
+
+The user (2026-10-30): "likewise, default on, separate option": linear ramps between DAC values at
+the chip's sample rate (the prototype's `XMEN2_PROTO_DAC=2`). In `sample_retime.cpp` with the
+retimer; `sample_smooth=0` holds each value, as the cartridge.
+
+- **What it does.** At a frame's end, besides the values due (sample_retime), the merge writes the
+  steps of a straight line from the last value written to the next one waiting: one every chip
+  sample (1,008 master clocks), each step's value rounded towards the last value; none across a
+  gap that starts a sample (30,000 master clocks). A step due in this frame whose value is in a later frame is written
+  in this frame, so a line never waits; the next value is known by then (it went out about 2 ms
+  after it was written). The option applies with `sample_retime=0` too (my reading: it was open, not
+  asked): the values then go out at the driver's times through the same merge, and a line toward a
+  value written in the next frame lands at that frame's start.
+- **Measured** on the DAC alone (its output rebuilt from `GENESIS_AUDIO_APPLIEDDUMP`: the last value
+  written at each chip sample, the 0.5 s windows where samples play; `music_voices=0`, so the first
+  machine plays every sample), the share of its energy (20 Hz-20 kHz) above 4 kHz / 8 kHz:
+
+  | stage input | original | sample_retime | both (the default) | sample_smooth alone |
+  |---|---|---|---|---|
+  | scene5 | -21.4 / -25.9 dB | -21.4 / -26.0 | -26.5 / -35.9 | -26.4 / -35.2 |
+  | scene14 | -17.8 / -22.4 | -17.8 / -22.4 | -23.4 / -33.4 | -23.3 / -32.6 |
+  | scene20 | -16.2 / -19.1 | -16.4 / -19.2 | -25.2 / -31.3 | -24.4 / -30.3 |
+
+  In the whole mix (FM and PSG too) the share above 4 kHz drops by 0.3-1.2 dB on the same stages
+  (both on against `sample_retime` alone).
+  The 23 stage inputs (`players=4`, defaults): 7,406,274 values, 37,522,339 steps, none dropped, at
+  most 201 waiting.
+- **Found on the way: the restore wrote to the data port.** Keeping the address as one latch for both
+  parts (ymfm's `m_address`: port 0 sets it, port 2 sets `$100 |` it, a port-1 data write is ignored
+  while it has `$100`), the restore first took its port from bit 7 of the address: an address of `$80`
+  or more (here `$B0`) went to port 1, so `$B0` was written to the DAC and the driver's next data
+  write landed on `$2A` (the applied writes of scene20 showed a second stream of values). The port is
+  bit 8's now. With the address followed for both parts, `sample_smooth=0` gives 09ca375's sound
+  byte for byte (scene5 and scene14, `music_voices=0`): on these runs that change changed nothing.
+  Leaving out the select of `$2A` when the address already is `$2A` gave the same sound with
+  `sample_retime` alone, but other sound with `sample_smooth` (cause not found), so the select is
+  always written, as before.
+- **Checks.** Both options off: the old runner's sound byte for byte (`XMEN2_WAV`, scene5 and
+  scene14, `music_voices=0`). `--state-probe 300:60` gives the plain run's sound with both on, with
+  `sample_smooth` alone (`music_voices=0`) and with the defaults; with `--state-skip sound` /
+  `snd_music` it differs. Netplay, two seats, `latency=200,jitter=50`, the host with both on and the
+  guest with both off: 40 and 38 rollbacks, the 3,509 digest rows equal (each seat's own, not sealed).
+- **Not done:** nobody has listened to it (the prototype's clips only). The release notes duty is
+  sample_retime's (both change the default sound; `sample_retime=0,sample_smooth=0` gives the
+  original).
+
 ### scene42: Cam_TrackBoth with none in play (2026-10-25)
 
 - **The bug**: scene42 (cloneA5) with `players=4` at 30 Hz played differently run to run from sync
