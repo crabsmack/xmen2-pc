@@ -557,6 +557,24 @@ cold cache right after a build. The build tree is ~0.7 GB without traces. Note: 
 changes the key of xmen2disasm's `cc.py --match-recomp` cache, so the next `phase.py 4`
 re-matches every file once (a 6-file sample re-matched after this change).
 
+**Stale chip copies (found 2026-10-30, fixed 2026-10-31).** The sound machines' chip copies
+(`platform/native/{snd2,mus,prt,p34}_chips.cpp`, `*_psg.c`) `#include` the engine's
+`audio/ym2612_ymfm.cpp` / `audio/sn76489.c`, which XMen2Native also listed as sources of their own.
+MSBuild's file tracker, compiling a batch under /MP, credits every file read after the compiler
+opens one of the target's sources to that source: the eight copies' entries in `CL.read.1.tlog`
+were empty (the only 8 of 3,206), so touching the engine's FM wrapper rebuilt `ym2612_ymfm.obj`
+alone, its PSG wrapper `sn76489.obj` alone, and no header under them reached a copy either: the
+music machines ran the old chip. `OBJECT_DEPENDS` doesn't help (the Visual Studio generator writes
+no AdditionalInputs for a ClCompile item, CMake 4.4). Fix: the engine's two files are no source of
+the target any more; the first machine's chips compile through `snd1_chips.cpp` / `snd1_psg.c`
+(an `#include`, no renames), like the other machines'. Check: every entry has reads; touching
+`ym2612_ymfm.cpp` rebuilds the 5 `*_chips.obj`, `sn76489.c` the 5 `*_psg.obj`, `audio/ym2612.h`
+the 5 chips + machine.obj + mixer.obj. A build tree from before keeps the empty entries until the
+copies compile again, so each copy's file changed (a comment line) with the fix. The old and new
+runners give the same notes (XMEN2_KEYON_LOG, every machine), sound and mp counters on boot,
+scene3, scene18 and scene36 (`players=4`). The Linux build (Makefiles, the compiler's depfiles)
+wasn't checked for the stale copies; it builds with the new source list.
+
 ### Phase 5 harness (P0 gates, 2026-10-17)
 
 The P0 exit gates (xmen2disasm LESSONS.md "Kickoff checklist") measured by `tools/bench.py` ->

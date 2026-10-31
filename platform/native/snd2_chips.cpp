@@ -1,6 +1,7 @@
 /* snd2_chips.cpp - the second sound machine's chips (phase 7 R9, sound2.cpp): the engine's YM2612
  * (ymfm) wrapper compiled a second time under other names, so it has a state of its own (the
  * wrapper's state is all file-local). snd2_psg.c does the same for the PSG. */
+/* the engine's file is never a source of the target itself (snd1_chips.cpp says why) */
 #define ym2612_init              snd2_ym2612_init
 #define ym2612_advance           snd2_ym2612_advance
 #define ym2612_write             snd2_ym2612_write

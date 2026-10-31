@@ -1,5 +1,6 @@
 /* p34_psg.c - the full-parts machine's PSG (full_parts: players 3-4's parts, sound2.cpp): the engine's SN76489
  * wrapper compiled once more under other names, so it has a state of its own (as snd2_psg.c). */
+/* the engine's file is never a source of the target itself (snd1_psg.c says why) */
 #define psg_init              p34_psg_init
 #define psg_advance           p34_psg_advance
 #define psg_write             p34_psg_write

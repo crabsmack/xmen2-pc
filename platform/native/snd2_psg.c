@@ -1,5 +1,6 @@
 /* snd2_psg.c - the second sound machine's PSG (phase 7 R9, sound2.cpp): the engine's SN76489
  * wrapper compiled a second time under other names, so it has a state of its own. */
+/* the engine's file is never a source of the target itself (snd1_psg.c says why) */
 #define psg_init              snd2_psg_init
 #define psg_advance           snd2_psg_advance
 #define psg_write             snd2_psg_write

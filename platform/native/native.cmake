@@ -25,6 +25,11 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/players.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/sound2.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/capture.cpp"
+    # the sound machines' chips: the engine's YM2612 and SN76489 wrappers, each machine's compiled
+    # through its own file. Never the engine's files themselves: MSBuild would then credit everything
+    # a copy reads after including one to that source, and an engine change rebuilt no copy.
+    "${CMAKE_SOURCE_DIR}/platform/native/snd1_chips.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/snd1_psg.c"
     "${CMAKE_SOURCE_DIR}/platform/native/snd2_chips.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/snd2_psg.c"
     "${CMAKE_SOURCE_DIR}/platform/native/mus_chips.cpp"
@@ -43,8 +48,6 @@ add_executable(XMen2Native
     "${RUNNER_ROOT}/chip_trace.c"
     "${RUNNER_ROOT}/audio/event_queue.c"
     "${RUNNER_ROOT}/audio/mixer.c"
-    "${RUNNER_ROOT}/audio/sn76489.c"
-    "${RUNNER_ROOT}/audio/ym2612_ymfm.cpp"
     "${RUNNER_ROOT}/audio/fm_shadow.cpp"
     "${RUNNER_ROOT}/audio/observability.c"
     "${RUNNER_ROOT}/audio/audio_shadow.c"

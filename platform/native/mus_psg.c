@@ -1,5 +1,6 @@
 /* mus_psg.c - the music machine's PSG (music_voices, sound2.cpp): the engine's SN76489 wrapper
  * compiled once more under other names, so it has a state of its own (as snd2_psg.c). */
+/* the engine's file is never a source of the target itself (snd1_psg.c says why) */
 #define psg_init              mus_psg_init
 #define psg_advance           mus_psg_advance
 #define psg_write             mus_psg_write
