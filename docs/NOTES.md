@@ -1502,7 +1502,9 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   Magneto idles 90% of the time, Cyclops 23%: his standing animation is 16.5 s), Beast,
   Nightcrawler, Psylocke, Wolverine $DAC (14.5%; only Nightcrawler's idle differs from his stance:
   20% of the time), Gambit $1B58, above anything the draw returns: his idle (frames 12-21, 3.7 s)
-  never plays.
+  never plays while standing. It does play as his look-up (Up held a while: XPlayer_StateStand,
+  XPlayer_StartLookUp): his record's idleAnim (+$44) and lookUpAnim (+$48) are the same script,
+  $1CEC6E (2026-10-31; so are Beast's, Wolverine's and Psylocke's, whose idles play standing too).
   With the option: (1) Magneto's pick is his standing level shot (Tbl_MagnetoAnim5, then the flux
   bomb's explosion sound $7C where the globe would leave, then Tbl_MagnetoAnim6; no globe; the
   portrait's steps -1/-2 carry it through PortraitActor_StateIdle; his frames are in his third bank,

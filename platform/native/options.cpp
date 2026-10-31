@@ -61,7 +61,7 @@ static OptDef s_defs[] = {
       "tweak: Magneto moves left/right at his walking speed while hovering, 0 = he only turns (the original)", "0" },
     /* (the user, 2026-10-27) */
     { "select_idles", { "0", "1", nullptr },
-      "tweak: on the player select each character plays its idle animation now and then, as when standing in a level, and Magneto picked does his standing shot with the flux bomb's explosion sound; Gambit's idle, which the game never plays, plays here and in the stages, half as often as most others'; 0 = only the standing pose, Magneto's pick silent, no Gambit idle (the original)", "0" },
+      "tweak: on the player select each character plays its idle animation now and then, as when standing in a level, and Magneto picked does his standing shot with the flux bomb's explosion sound; Gambit's idle, which the game plays only as his look-up (hold Up), never while standing, plays here and standing in the stages, half as often as most others'; 0 = only the standing pose, Magneto's pick silent, no standing Gambit idle (the original)", "0" },
     /* phase 7 (P7-multiplayer.md R7) */
     { "players", { "2", "3", "4", nullptr }, "players at once: 2 (the original), 3 or 4 (pads 3 and 4 join with Start)", "2" },
     /* sound (the user, 2026-10-24; on by default; full: 2026-10-27, the default) */

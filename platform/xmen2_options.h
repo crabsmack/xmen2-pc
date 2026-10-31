@@ -26,8 +26,9 @@ typedef struct XmOptions {
                            in full as one player hears it; 0 = the original's one machine */
     int select_idles;   /* tweak: on the player select each character plays its idle animation now and then,
                            as standing in a level does, and Magneto's pick is his standing shot with the
-                           flux bomb's explosion sound; Gambit's idle, never drawn in the game, is drawn
-                           (here and in play) half as often as most others'; 0 = the original */
+                           flux bomb's explosion sound; Gambit's idle, drawn in the game only as his
+                           look-up (hold Up), never standing, is drawn standing (here and in play) half
+                           as often as most others'; 0 = the original */
     int sample_retime;  /* the sound driver's DAC samples played at a steady rate, on every sound machine
                            (platform/native/sample_retime.cpp); presentation only, 1 by default; 0 = as written */
     int sample_smooth;  /* ... and a straight line between each value and the next at the chip's rate (the same

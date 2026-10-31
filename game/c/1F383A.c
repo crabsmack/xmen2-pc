@@ -8,7 +8,8 @@
  * Looking up: Up held with stateTimer below 3 and above 0, the camera not already looking up
  * and no playerFlags $400000 (Up latched in an attack); otherwise stateTimer restarts at 50.
  * Native, the select_idles option: Gambit's record draws against GAMBIT_IDLE_CHANCE (his own
- * idleChance is above anything Rand_Next returns, so his idle never plays in the original).
+ * idleChance is above anything Rand_Next returns, so his idle never plays standing in the
+ * original; it plays as his look-up, the same script).
  * Returns self->flags & 8, except when it goes back to the control state. */
 #include "xmen2.h"
 

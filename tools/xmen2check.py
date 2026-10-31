@@ -1571,8 +1571,9 @@ Gameplay tweaks, off unless you turn them on:
                         (the original: he can only turn)
     select_idles=1      on the player select, characters play their idle animations now and
                         then, and Magneto's pick is his standing shot with the flux bomb's
-                        explosion sound; Gambit's idle, which the original never plays, plays
-                        there and in the stages
+                        explosion sound; Gambit's idle, which the original plays only as his
+                        look-up (hold Up), never while standing, plays there and standing
+                        in the stages
 on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
 or in xmen2.ini next to the program:
     [options]
