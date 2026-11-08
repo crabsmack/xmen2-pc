@@ -1555,6 +1555,43 @@ user rules, today's pacing) | `display` | `auto` (= `display`); presentation onl
   itself has not been re-tried. If it freezes again, stderr's `[native] renderer:` line says which
   renderer it had.
 
+### Magneto's last phase with widescreen_gameplay (2026-11-07)
+
+- **The bug** (the user's playtest, `widescreen_gameplay=1`): in AvalonA4 (Throne_Room, scene 17)
+  Magneto reached his last phase, then hovered in his box and never attacked again.
+  MagnetoBoss_StateWaitCamera (0377D6) waits for `g_CameraX >= $750` and only then holds camera
+  zone 5 (AvalonA4_SetCameraZone, bit $20 of `g_SceneVar3B02`) and goes to the final fight
+  (MagnetoBoss_FinalSetup / _StateFinalFight). The stage's camera limit is `g_CamMaxX` = $760,
+  so the threshold is 16 px inside it. With the gameplay margin the camera stops at
+  `CAM_HI(g_CamMinX, g_CamMaxX)` = $760 - 40 = $738 at 16:9, and the test never passed.
+- **Measured** (the user's recording, now `game/test_inputs/magneto_final.input`: 6,389 frames
+  from scene 16, Wolverine, RAM dumped every 30 syncs): with the option on, the boss's state is
+  StateWaitCamera from sync ~3150 to the end; `g_CameraX` peaks at $738 and the zone mask stays 0.
+  The same input with the option off: the camera reaches $750 at sync 3330, the mask gets $20,
+  and the boss goes to StateFinalFight. The earlier zones (StateZone0 $1A4, StateZone2Approach
+  $39F, StateZone4Approach $600) are all well inside the narrowed range: zones 1, 2 and 4 were
+  held at the same syncs in both runs.
+- **The fix** (NATIVE-only branch; MPW and PC still byte-match): the threshold and the zone's x
+  are $750 or `CAM_HI(g_CamMinX, g_CamMaxX)`, whichever is less. With the option off `CAM_HI` is
+  the limit itself ($760), so it is $750 as on the cartridge. The pan target is clamped too, so
+  the camera locks where it is. That isn't needed to finish the pan: Cam_PanStep moves the
+  camera's own x, which nothing clamps (zone 0 pans to x 0 while the clamped camera sits at 40,
+  and it completes).
+- **Checked** (`tools/magneto_check.py OUT --ref-exe OLD`): option on, the fixed build holds zone
+  5 at sync 3270 (camera $738) and the beam later catches Magneto (the next stage, scene 18, at
+  sync ~3900); the build without the fix never does (the control: the test catches the bug).
+  Option off, both builds reach zone 5 at sync 3330 and their `--game-rows` are identical. At 4:3
+  (`--options widescreen=0,...`: no margin) both builds reach it at 3330 with the option on or off,
+  and their game rows are identical in both cases (6,390 rows). `NP_VERSION` 6: the game differs with the option on.
+- **Other fixed camera thresholds** (the C swept for `g_CameraX` compared against constants, and
+  every Cam_PanTo caller): only MagnetoBoss_StateWaitCamera's $750 can lie above CAM_HI; the
+  other three MagnetoBoss thresholds ($1A4, $39F, $600) are far inside it. BigAcolyte_ActWaitPlayers,
+  BigBio_StateWaitPlayers, BroodClaw_StateDropClone and Hologram_LockArena wait for the players'
+  positions, then pan to a fixed x and lock: no stall, whatever the target. Players 3-4: the
+  camera keeps the group in view (Cam_TrackBoth with P34_Extents), and the fix compares against
+  the same clamped limit, so the margin doesn't add a stall there. A player hanging back still
+  holds the camera, as player 2 does on the cartridge. Not run with a four-pad input.
+
 ## Phase 7: online play and four players
 
 Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phases/P7-multiplayer.md`
