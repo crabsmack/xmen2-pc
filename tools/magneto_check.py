@@ -90,6 +90,7 @@ def play(runner: Path, d: Path, inp: Path, h: dict, options: str, every: int, ro
     d.mkdir(parents=True)
     local = d / runner.name   # one runner copy per process (CLAUDE.md "Runs by hand")
     shutil.copy2(runner, local)
+    dlls = [shutil.copy2(p, d / p.name) for p in runner.parent.glob("*.dll")]   # Windows: SDL2.dll beside it
     env = {**os.environ, "SDL_AUDIODRIVER": "dummy", "XMEN2_DUMP_DIR": str(d),
            "XMEN2_SYNC_DUMP": ",".join(str(s) for s in range(every, h["frames"] + 1, every))}
     cmd = [str(local), str(common.ROM), "--benchmark", str(h["frames"]), "--input-script", str(inp),
@@ -103,6 +104,8 @@ def play(runner: Path, d: Path, inp: Path, h: dict, options: str, every: int, ro
         rc, err = f"timeout after {TIMEOUT} s", (e.stderr or b"").decode(errors="replace")
     (d / "stderr.txt").write_text(err)
     local.unlink()
+    for p in dlls:
+        Path(p).unlink()
     res = {"rc": rc, "zone5": None, "waited": False, "states": set(), "camx": None, "max_camx": None}
     for f in sorted(d.glob("s*.ram")):
         ram = f.read_bytes()
