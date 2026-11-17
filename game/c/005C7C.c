@@ -17,7 +17,7 @@ void Game_ResetPlayers(void)
 #if defined(XMEN2_NATIVE)
 	if (g_opt.players > 2)
 		P34_ResetPlayers();	/* phase 7: players 3 and 4 the same */
-	g_SceneIndex = plat_debug_first_scene(g_ScnSiberiaB1);	/* XMEN2_DEBUG_SCENE: a development test */
+	g_SceneIndex = plat_first_scene(g_ScnSiberiaB1);	/* the start_stage option (or --scene, XMEN2_DEBUG_SCENE) */
 #define CEREBRO_SCREEN(n)	(g_SceneTable[n].name[0] == 'C' && g_SceneTable[n].name[1] == 'e')	/* "CerebroScreen ..." */
 	if (g_SceneIndex > 0 && !CEREBRO_SCREEN(g_SceneIndex) && !CEREBRO_SCREEN(g_SceneIndex - 1)) {
 		/* ... at a stage with no select before it (SentinelsB2, after SentinelsA1; a "CerebroScreen"

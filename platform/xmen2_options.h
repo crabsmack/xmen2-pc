@@ -61,9 +61,9 @@ void plat_spr_owner(const void *owner);
    animation does to the pieces */
 void plat_spr_anchor(const void *spr, long x, long y);
 
-/* development tests (options.cpp): XMEN2_DEBUG_SCENE=n makes scene n the first one of a new game
-   (Game_ResetPlayers); without it, `scene` (the original) */
-int plat_debug_first_scene(int scene);
+/* the first scene of a new game (Game_ResetPlayers; options.cpp): the start_stage option's, or for
+   development tests --scene N or XMEN2_DEBUG_SCENE=n; without them, `scene` (the original) */
+int plat_first_scene(int scene);
 
 /* four players (phase 7, platform/native/players.cpp): player k's (3, 4) code runs from now on (0: no
    more), for its sprites' tiles and the VRAM it writes; and players 3-4's pads from the host */

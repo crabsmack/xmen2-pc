@@ -43,9 +43,27 @@ the picture follows your display (`widescreen` and `high_fps` are `auto`), `musi
 plays the music on chips of its own, `sample_retime` and `sample_smooth` play the sound
 driver's samples at a steady rate and smoothed.
 `widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0` gives
-the cartridge's picture and sound. Give options on the command line,
-`XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in `xmen2.ini` next to the
-program (`[options]`, one per line). F9, F10 and F11 say on screen what they did.
+the cartridge's picture and sound. F9, F10 and F11 say on screen what they did.
+
+Give options on the command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`,
+or in the settings file, `xmen2.ini`. It is a plain text file in the same folder as `XMen2.exe`
+(Linux: `xmen2`), the folder you unzipped. The game writes it the first time you choose your ROM
+with the file picker. If it isn't there, make it yourself with any text editor (Notepad: save as
+`xmen2.ini` with "All files", so it doesn't become `xmen2.ini.txt`). Options go under
+`[options]`, one per line; the command line wins over the file:
+
+```ini
+[options]
+widescreen=16:9
+lives=inf
+start_stage=avalon
+
+[rom]
+path = C:\Games\xmen2.bin
+```
+
+`XMen2.exe --options --json` prints the options and, as `settings_file`, the file it reads
+(`settings_file_found` says whether it exists).
 
 | Option | What it does |
 |---|---|
@@ -58,6 +76,7 @@ program (`[options]`, one per line). F9, F10 and F11 say on screen what they did
 | `lives=inf` | Lives are never spent (or `lives=N`, 1-99) |
 | `magneto=1` | Magneto can be chosen from the start |
 | `start_char=wolverine` | The character you start Siberia with: `beast`, `cyclops`, `gambit`, `nightcrawler`, `psylocke`, `wolverine` or `magneto` (otherwise random) |
+| `start_stage=avalon` | A level select: every new game starts at this stage, and so does power-on. A world's name (`sentinels`, `avalon`, `banimaza`, `savage`, `space`, `clone`) starts at its Cerebro briefing; a later stage starts at the player select before it: `sentinels_b1`, `sentinels_a1`, `sentinels_b2`, `avalon_b2`, `avalon_a2`, `avalon_a3`, `avalon_a4` (Magneto), `banimaza_a1`, `banimaza_a2` (Apocalypse), `savage_b1`, `savage_a2`, `savage_a3`, `savage_a4`, `space_a1`, `clone_a2`, `clone_a5` (the last stage). From there the game carries on as usual. The default, `0`, is Siberia |
 | `magneto_flight=1` | Magneto moves left and right while hovering |
 | `select_idles=1` | On the player select, characters play their idle animations now and then, as when standing in a stage, and Magneto's pick is his standing shot with the flux bomb's explosion sound. Gambit's idle, which the original plays only as his look-up (hold Up), never while standing, plays on the select and when he stands in the stages |
 | `music_voices=full` | The default: the music plays on sound chips of its own and the players' music parts on further sets, so neither the parts nor the sound effects take notes from the music, and each player's part plays in full, as one player hears it. On the cartridge, two players' parts need more voices than the chip has, and the effects take voices from the music; with two players or more the game plays each part thinned, one of its tracks muted. `1` keeps the chips of their own with the game's thinned parts, `0` gives the cartridge's single set of chips |
@@ -75,20 +94,49 @@ The picture and sound options (`high_fps`, the 16:9 view, `music_voices`, `sampl
 `sample_smooth`, `fm_chip`) are each seat's own,
 except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
-```
-seat 0 (host):  XMen2.exe xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000
-seat 1:         XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST_IP:7000
-```
+There is no lobby or server: one player hosts, and the others connect to the host's address.
+Online play is started from a command prompt (Windows: in the game's folder, type `cmd` in
+Explorer's address bar and press Enter; Linux: a terminal there, with `./xmen2` for `XMen2.exe`).
 
-- `lan`: every seat reaches the host's address directly (on a LAN, over a VPN such as
-  Tailscale, or through a forwarded UDP port).
-- `hub`: the host relays the other seats' traffic (3-4 players, `--options players=4` on the host).
-- `ice`: NAT traversal through a public STUN server; the seats swap connection details as
-  files in a shared folder (`--ice-signal-dir DIR`).
-- `--input-delay D` sets the delay in frames (default 5). `XMen2.exe --netplay --json` lists the flags.
+**Two players**
 
-Everyone needs a v1.1 release: v1.1.0 and v1.1.1 play together, and a v1.0.x seat is refused
-when it connects.
+1. Everyone uses the same release of the port, each with their own ROM file.
+2. The host finds an address the other player can reach:
+   - same home network: the host's local address (`ipconfig` on Windows, the IPv4 address,
+     such as `192.168.1.20`);
+   - over the internet, the simplest way: both install a VPN such as
+     [Tailscale](https://tailscale.com) and use the host's Tailscale address (`100.x.y.z`);
+   - or the host forwards UDP port 7000 on their router to their PC and gives out their public
+     address. Windows may ask to let `XMen2.exe` through the firewall: allow it.
+3. The host starts first, choosing the options that change the game (here, infinite lives):
+   ```
+   XMen2.exe xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options lives=inf
+   ```
+4. The other player starts within a minute, with the host's address in place of `HOST_IP`:
+   ```
+   XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST_IP:7000
+   ```
+5. The game starts on both screens when they have found each other, and the console prints
+   `[netplay] seat 0 of 2 ...`. After 60 s without the other player it stops with `no session
+   after 60 s`: check the address, the port and the firewall, and try again.
+
+**Three or four players:** the host relays everyone's traffic. Each player has their own seat
+number (1, 2, 3) and they all connect to the host:
+```
+host:     XMen2.exe xmen2.bin --netplay hub --seat 0 --seats 4 --bind 0.0.0.0:7000 --options players=4
+others:   XMen2.exe xmen2.bin --netplay hub --seat 1 --seats 4 --bind 0.0.0.0:7001 --peer HOST_IP:7000
+          (--seat 2 and --seat 3 for the next two players)
+```
+For three players use `--seats 3` and `players=3`.
+
+**Without a VPN or port forwarding (two players):** `--netplay ice` finds a way through both
+routers with a public STUN server. The seats swap their connection details as files in a
+folder both can reach (a network share or a synced folder): `--ice-signal-dir DIR` in place
+of `--bind` and `--peer`.
+
+`--input-delay D` sets the delay in frames (default 5). `XMen2.exe --netplay --json` lists the flags.
+A seat whose release plays a different game from the host's is refused when it connects
+(v1.1.0 and v1.1.1 play together; v1.2.0 only with v1.2.0).
 
 ## Status
 

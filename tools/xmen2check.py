@@ -1570,6 +1570,13 @@ Cheats, also off unless you turn them on:
     magneto=1           Magneto can be chosen from the start (the original: from Bani Maza)
     start_char=magneto  the character you start Siberia with (beast, cyclops, gambit,
                         nightcrawler, psylocke, wolverine, magneto; the original: at random)
+    start_stage=avalon  a level select: every new game starts at this stage, and so does
+                        power-on. A world (sentinels, avalon, banimaza, savage, space, clone)
+                        starts at its Cerebro briefing; a later stage at the player select
+                        before it: sentinels_b1, sentinels_a1, sentinels_b2, avalon_b2,
+                        avalon_a2, avalon_a3, avalon_a4 (Magneto), banimaza_a1, banimaza_a2
+                        (Apocalypse), savage_b1, savage_a2, savage_a3, savage_a4, space_a1,
+                        clone_a2, clone_a5 (the last stage). The original: Siberia
 Gameplay tweaks, off unless you turn them on:
     magneto_flight=1    Magneto moves left and right while hovering, at his walking speed
                         (the original: he can only turn)
@@ -1579,9 +1586,13 @@ Gameplay tweaks, off unless you turn them on:
                         look-up (hold Up), never while standing, plays there and standing
                         in the stages
 on the command line:  {exe} path\\to\\xmen2.bin --options widescreen=16:9,high_fps=144
-or in xmen2.ini next to the program:
+or in the settings file, xmen2.ini: a plain text file in this folder, beside {exe}. The game
+writes it when you choose your ROM with the file picker; if it isn't here, make it with any text
+editor (Notepad: save as xmen2.ini with "All files", not xmen2.ini.txt). The command line wins:
     [options]
     widescreen=16:9
+    lives=inf
+{exe} --options --json shows the file it reads (settings_file, settings_file_found).
 While playing: F9 turns the in-between frames on and off, F10 the 16:9 view (from the next
 screen).  {exe} --options --json lists them.
 
@@ -1591,12 +1602,24 @@ widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays w
 high_fps, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
 seat's own (F9 and F10 work), except that with the host's widescreen_gameplay=1 the view is the
 host's too.
-    host:   {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options players=2
-    others: {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
-lan / direct IP: every seat reaches the host's address (a forwarded UDP port across the
-internet).  hub: the host relays the others' traffic (3-4 seats).  ice: NAT traversal through a
-public STUN server, the seats swapping their connection details as files (--ice-signal-dir DIR,
-a shared folder).  --input-delay D (frames, default 5).  {exe} --netplay --json lists them.
+There is no lobby: one player hosts, the others connect to the host's address, each from a
+command prompt in this folder. Everyone needs the same release.
+ 1. The host's address: on one home network, its local IPv4 address (ipconfig); over the
+    internet, simplest is a VPN such as Tailscale on both PCs (the host's 100.x.y.z address),
+    or the host forwards UDP port 7000 on the router to the PC. Allow {exe} through the
+    firewall if asked.
+ 2. The host starts first (the options that change the game go here):
+    {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options lives=inf
+ 3. The other player, within a minute, with the host's address for HOST:
+    {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
+ 4. Both games start when they find each other ("[netplay] seat 0 of 2 ..." in the console).
+    After 60 s alone it stops with "no session after 60 s": check the address, port, firewall.
+Three or four players: --netplay hub, --seats 3 or 4, each guest its own --seat (1, 2, 3), all
+with --peer HOST:7000, and --options players=3 or 4 on the host.  Without a VPN or forwarded
+port (two players): --netplay ice finds a way through both routers with a public STUN server,
+the seats swapping their connection details as files in a folder both can reach
+(--ice-signal-dir DIR, in place of --bind and --peer).  --input-delay D (frames, default 5).
+{exe} --netplay --json lists the flags.
 
 Recording: --record-inputs FILE writes every frame's pads when you quit (Esc), online too (the
 shared game, the same file on every seat). It is small, it holds no picture or sound, and the game

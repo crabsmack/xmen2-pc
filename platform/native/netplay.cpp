@@ -66,7 +66,8 @@ void     main_np_write_rows(uint64_t upto);
                                                  damaging chain explosions hurt them, and the
                                                  floor-segment code counts them as players (v1.2.0);
                                                  6: Magneto's last phase starts at the camera's limit
-                                                 with widescreen_gameplay (MagnetoBoss_StateWaitCamera) */
+                                                 with widescreen_gameplay (MagnetoBoss_StateWaitCamera),
+                                                 and the start_stage option (sealed with the others) */
 
 /* The input delay D is 5 ticks (83 ms), the rollback driver's own floor, and stays there: the
    scheduler's auto-delay (which would grow D with the link's latency, to 150 ms on the `mid`

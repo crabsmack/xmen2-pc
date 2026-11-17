@@ -34,7 +34,7 @@ extern "C" XmOptions g_opt = { 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 0, 0 };
 
 struct OptDef {
     const char *name;
-    const char *values[10];   /* the first is the default (off, but music_voices'); null-terminated */
+    const char *values[32];   /* the first is the default (off, but music_voices'); null-terminated */
     const char *what;
     std::string value;
 };
@@ -59,6 +59,12 @@ static OptDef s_defs[] = {
     { "magneto", { "0", "1", nullptr }, "cheat: Magneto selectable from the start, 0 = from Bani Maza", "0" },
     { "start_char", { "0", "beast", "cyclops", "gambit", "nightcrawler", "psylocke", "wolverine", "magneto", nullptr },
       "cheat: player 1's character in Siberia at power-on, 0 = at random (the original)", "0" },
+    /* (GitHub issue #2, "Level Select"): the values are k_start_stages' names, in the game's order */
+    { "start_stage", { "0", "sentinels", "sentinels_b1", "sentinels_a1", "sentinels_b2", "avalon", "avalon_b2",
+                       "avalon_a2", "avalon_a3", "avalon_a4", "banimaza", "banimaza_a1", "banimaza_a2", "savage",
+                       "savage_b1", "savage_a2", "savage_a3", "savage_a4", "space", "space_a1", "clone", "clone_a2",
+                       "clone_a5", nullptr },
+      "cheat: every new game starts at this stage, and power-on goes there in place of Siberia's demo: a world's name = its Cerebro briefing (sentinels, avalon, banimaza, savage, space, clone), WORLD_XN = the player select before that later stage; 0 = Siberia (the original)", "0" },
     /* gameplay tweaks (the user, 2026-10-22; a balance prototype, not a phase-6 criterion) */
     { "magneto_flight", { "0", "1", nullptr },
       "tweak: Magneto moves left/right at his walking speed while hovering, 0 = he only turns (the original)", "0" },
@@ -326,11 +332,30 @@ static int s_first_scene = -1;
 void options_set_first_scene(int scene) { s_first_scene = scene; }
 int options_first_scene(void) { return s_first_scene; }
 
-extern "C" int plat_debug_first_scene(int scene)
+/* start_stage's scenes: g_SceneIndex in Scene_RegisterAll's order (game/c/0054C6.c; SiberiaB1 is 0).
+   A world starts at its Cerebro briefing (which runs the player select), a later stage at the player
+   select registered before it; SentinelsB2 follows SentinelsA1 with no select, and Game_ResetPlayers
+   puts the select first for it. These are tools/ws_warp.py's starts (WORLDS, LATER), all played there. */
+static const struct { const char *name; int scene; } k_start_stages[] = {
+    { "sentinels", 1 }, { "sentinels_b1", 3 }, { "sentinels_a1", 5 }, { "sentinels_b2", 7 },
+    { "avalon", 8 }, { "avalon_b2", 10 }, { "avalon_a2", 12 }, { "avalon_a3", 14 }, { "avalon_a4", 16 },
+    { "banimaza", 18 }, { "banimaza_a1", 20 }, { "banimaza_a2", 22 },
+    { "savage", 24 }, { "savage_b1", 26 }, { "savage_a2", 28 }, { "savage_a3", 30 }, { "savage_a4", 32 },
+    { "space", 34 }, { "space_a1", 36 },
+    { "clone", 38 }, { "clone_a2", 40 }, { "clone_a5", 42 },
+};
+
+/* Game_ResetPlayers' first scene: --scene N, else XMEN2_DEBUG_SCENE=n (development tests), else the
+   start_stage option's, else `scene` (the original's SiberiaB1) */
+extern "C" int plat_first_scene(int scene)
 {
     if (s_first_scene >= 0) return s_first_scene;
     const char *e = getenv("XMEN2_DEBUG_SCENE");
-    return e && *e ? atoi(e) : scene;
+    if (e && *e) return atoi(e);
+    const std::string &v = find("start_stage")->value;
+    for (const auto &s : k_start_stages)
+        if (v == s.name) return s.scene;
+    return scene;
 }
 
 std::string options_exe_dir(void) { return s_exe_dir; }

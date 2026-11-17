@@ -1505,6 +1505,19 @@ user rules, today's pacing) | `display` | `auto` (= `display`); presentation onl
   every time. Played runs now read the line the beam would be on from the wall clock (traced runs
   keep 0, so every trace is unchanged): four played starts gave Cyclops, Wolverine, Wolverine,
   Nightcrawler. It is the only V-counter read in the game.
+- `start_stage` (2026-11-17, GitHub issue #2 "Level Select"): the development `--scene N` /
+  `XMEN2_DEBUG_SCENE` start made an option by name. Game_ResetPlayers' native branch asks
+  `plat_first_scene` (options.cpp; was `plat_debug_first_scene`): `--scene`, then the variable,
+  then the option, then SiberiaB1. The names map to tools/ws_warp.py's starts: a world's Cerebro
+  briefing (it runs the player select) or the select registered before a later stage
+  (k_start_stages, Scene_RegisterAll's order; SentinelsB2 7, whose select Game_ResetPlayers puts
+  first). Game_ResetPlayers runs at power-on (Game_SceneLoop) and at each new game (LogoAndDemo's
+  Start, Credits, Failure), so power-on goes straight there instead of Siberia's demo. A game
+  option, so sealed into netplay sessions with the others; capture headers carry it in `# options`.
+  Checked (headless walker, 3,000 frames, widescreen=16:9 for the screen counters): each of the 22
+  values gives game rows equal to `XMEN2_DEBUG_SCENE=n` and reaches its stage
+  (`CerebroScreen PlayerSelect` then e.g. `AvalonA4 Throne_Room`); `start_stage=0` equals no
+  option; two netplay seats with the host's `avalon_a4`: both sealed it, digests identical.
 
 ### Gameplay tweaks (2026-10-22, the user's balance prototype; not phase-6 criteria)
 - `magneto_flight=1`: hovering (air A, Tbl_MagnetoAnim) with Left/Right held, Magneto_AirSteer
