@@ -1413,6 +1413,46 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   for the 16:9 view on or off from the next screen (the camera, the streamer and what activates
   follow it, so it starts with a scene). The window opens 16:9 when widescreen is on at start.
 
+### high_fps coverage: what the in-between frames left still (2026-11-18)
+
+A player asked whether high_fps keeps CRT-like motion clarity at high rates. It does for whatever
+the in-between frames move (each picture lit 1/H s while the eye tracks), so the question became
+what they don't move. `XMEN2_PRESENT_AUDIT=FILE` (present.cpp) logs it per logic frame:
+U rows (each sprite left where R_k has it, with its reason, owner and instance), A rows (an
+instance whose pieces all line up with its R_(k-1) pieces by a step that isn't its anchor's: motion
+by animation frames) and P rows (on-screen plane cells rewritten to hold what a cell 1-4 cells away
+held: motion drawn into the nametable). `uv run tools/present_audit.py run OUT` plays the TAS and
+the 12 scenario inputs with it at 144 Hz; `summary OUT/*/audit.csv` ranks the rows.
+
+- **First audit**: 101,254 sprites left still on gameplay frames (TAS 0.42%, scenario-continue 5.5%).
+  70% were players blinking while invulnerable after a respawn or continue: drawn every other frame,
+  so their instance had no anchor in R_(k-1) ("new") and never moved between frames. Then a
+  timer's particles (the ice shards Nightcrawler breaks, TAS 21153-21236, owner timer slot 1,
+  $FFF12E) and the ninja's ring of seven fire orbs (scenario-char-beast 486-526, 32 px apart, up to
+  14 px a frame): owners without anchors whose pieces each move their own way, so no one step got
+  the third of the votes. A rows: 326, one-piece effects off by 1-6 px (BrainRocket's), left alone.
+  P rows: none of them motion. Every hit was the level streamer writing the next row or column of
+  32 px blocks at the screen's edge (41 cells = one row across; the "steps" of exactly 4 cells are
+  repeating blocks); with the two edge cells left out, 3 single frames remain (the ice wall
+  breaking at 21151). Nothing in the game moves by rewriting tiles.
+- **Fixes** (present.cpp): (1) `s_seen`, each instance's anchor when last drawn, up to 9 frames
+  back: an instance absent from R_(k-1) moves from there by step / g per frame (g frames since; a
+  blink that slows to every 9th frame, scenario-continue 11893-11995, set the reach). (2) an owner
+  whose vote fails, with as many on-screen pieces in both frames, each the size of the one in its
+  place in slot order and within `PIECE_STEP` (16) px of it: each piece moves by its own step
+  (`pieces_per_logic_frame` in the `present` counters). (3) Spr_EmitFlicker (15AE48, the stun
+  effect over a BIONPC and Blast_Draw's zap) announces an anchor keyed by the object (its body's is
+  the instance): the flicker shows other pieces each frame, so its owner's vote can't line them up.
+  No corpus run was seen to exercise (3).
+- **After**: 17,660 left still (TAS 3,872 -> 985 of 917,399, 0.11%; scenario-continue 39,224 ->
+  3,830). The rest are cuts and arrivals: sprites written outside every owner at scene changes,
+  Nightcrawler's teleport (a snap, rightly), objects that appear. Whole frames are unchanged (a
+  clip of both builds: every whole frame equal, only in-between pictures differ).
+- **Not moved, by design**: animation frames, palettes and the HUD change at 60 Hz (a pose
+  changing in place is not motion the eye tracks); steps over 64 px of scroll or 48 px of sprite
+  snap. CRT-like clarity without in-between frames (black frame insertion, a rolling-scan CRT
+  simulation) would be a presentation option needing `pacing=display`'s refresh timing.
+
 ### Present trace: what the display showed (2026-10-30, the vsync work's first step)
 
 - **The trace.** `XMEN2_PRESENT_TRACE=FILE` (played runs, host_sdl.cpp): a row per picture shown, its

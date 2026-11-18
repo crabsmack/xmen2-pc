@@ -65,6 +65,12 @@ void Spr_EmitFlicker(Actor *obj, u8 *tiles, SprInst *base, char flicker, unsigne
 		u8 *widths = (u8 *)CODEPTR(Tbl_SprSizeWidth);
 		u8 *heights = (u8 *)CODEPTR(Tbl_SprSizeHeight);
 
+#if defined(XMEN2_NATIVE)
+		/* phase 6 R4: the pieces written next move with the object. Keyed by the object, not its
+		   instance (o->spr, its body's anchor): a different place, and the flicker shows another
+		   few pieces each frame, so no step of the owner's lines them up */
+		plat_spr_anchor(o, sx, sy);
+#endif
 		for (i = count; i; p++, i--) {
 			if (flicker && (g_VBlankCount + i & mask))
 				continue;

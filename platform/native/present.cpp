@@ -15,8 +15,11 @@
  * and every sprite by its sprite instance's step (the emitter's anchor, plat_spr_anchor), else with
  * its owner (the draw-list node, timer or scene hook whose call wrote it, plat_spr_owner; both from
  * the game's native branches), all of an owner's sprites by the one step that lines up most of its
- * pieces with R_(k-1)'s. Not moved: the HUD's sprites, unmatched ones, a
- * scroll step over 64 px or a sprite step over 48 px (they snap), the palettes, the planes' tiles.
+ * pieces with R_(k-1)'s, else (particles) each piece by its own short step. An instance not drawn
+ * in R_(k-1) (a blinking player) moves from where it was last drawn, up to 9 frames back. Not
+ * moved: the HUD's sprites, unmatched ones, a scroll step over 64 px or a sprite step over 48 px
+ * (they snap), the palettes, the planes' tiles (the audit of 2026-11-18 found no motion drawn by
+ * rewriting them: XMEN2_PRESENT_AUDIT).
  * Presentation only: VRAM and VSRAM are put back after each interpolated render.
  */
 #include <algorithm>
@@ -115,6 +118,8 @@ void present_p34_enter(int k)
 
 struct Tag { uintptr_t owner; int piece; uintptr_t spr; int ax, ay; };
 static Tag s_tags[NT][MAXS], s_prev_tags[NT][MAXS];
+namespace { struct Seen { int ax, ay, shift; uint64_t k; }; }   /* seen_update: an instance's last anchor */
+static std::unordered_map<uintptr_t, Seen> s_seen[NT];
 
 static void resolve_tags(int t)
 {
@@ -322,11 +327,12 @@ static struct PresentKept {
     std::vector<Mark> marks[NT];
     Tag tags[NT][MAXS], prev_tags[NT][MAXS];
     Snap prev, cur;
-    uint64_t frames, whole, sprites, matched, unmatched[5], fallback, extra;
+    uint64_t frames, whole, sprites, matched, unmatched[5], fallback, extra, pieces;
     std::vector<uint32_t> render_us;
     bool gameplay;
+    std::vector<std::pair<uintptr_t, Seen>> seen[NT];   /* s_seen, by instance */
 } s_kept;
-static uint64_t s_extra;
+static uint64_t s_extra, s_pieces;   /* s_pieces: sprites moved by their own step (PIECE_STEP), a count per logic frame */
 
 FILE *present_log_file(FILE *f)   /* swap the log: the one in use is returned */
 {
@@ -345,9 +351,14 @@ void present_branch_save(void)
     k.cur = s_cur;
     k.frames = s_frames; k.whole = s_whole; k.sprites = s_sprites; k.matched = s_matched;
     memcpy(k.unmatched, s_unmatched, sizeof s_unmatched);
-    k.fallback = s_fallback; k.extra = s_extra;
+    k.fallback = s_fallback; k.extra = s_extra; k.pieces = s_pieces;
     k.render_us = s_render_us;
     k.gameplay = s_gameplay;
+    for (int t = 0; t < NT; t++) {
+        k.seen[t].assign(s_seen[t].begin(), s_seen[t].end());
+        std::sort(k.seen[t].begin(), k.seen[t].end(),
+                  [](const std::pair<uintptr_t, Seen> &a, const std::pair<uintptr_t, Seen> &b) { return a.first < b.first; });
+    }
 }
 
 void present_branch_restore(void)
@@ -360,9 +371,10 @@ void present_branch_restore(void)
     s_cur = k.cur;
     s_frames = k.frames; s_whole = k.whole; s_sprites = k.sprites; s_matched = k.matched;
     memcpy(s_unmatched, k.unmatched, sizeof s_unmatched);
-    s_fallback = k.fallback; s_extra = k.extra;
+    s_fallback = k.fallback; s_extra = k.extra; s_pieces = k.pieces;
     s_render_us = k.render_us;
     s_gameplay = k.gameplay;
+    for (int t = 0; t < NT; t++) s_seen[t] = std::unordered_map<uintptr_t, Seen>(k.seen[t].begin(), k.seen[t].end());
 }
 
 /* --state-at / --state-load (main.cpp "State files"): what present_branch_save keeps, as bytes for
@@ -397,9 +409,10 @@ void present_state_save(std::vector<uint8_t> &out)
     for (int t = 0; t < NT; t++) put_vec(out, k.marks[t]);
     put(out, k.tags); put(out, k.prev_tags); put(out, k.prev); put(out, k.cur);
     put(out, k.frames); put(out, k.whole); put(out, k.sprites); put(out, k.matched); put(out, k.unmatched);
-    put(out, k.fallback); put(out, k.extra);
+    put(out, k.fallback); put(out, k.extra); put(out, k.pieces);
     put_vec(out, k.render_us);
     put(out, k.gameplay);
+    for (int t = 0; t < NT; t++) put_vec(out, k.seen[t]);
 }
 
 bool present_state_load(const uint8_t *p, size_t n)
@@ -409,7 +422,8 @@ bool present_state_load(const uint8_t *p, size_t n)
     bool ok = get_vec(p, end, k.marks[0]) && get_vec(p, end, k.marks[1]) && get_vec(p, end, k.marks[2]) && get(p, end, k.tags) && get(p, end, k.prev_tags) && get(p, end, k.prev) &&
               get(p, end, k.cur) && get(p, end, k.frames) && get(p, end, k.whole) && get(p, end, k.sprites) &&
               get(p, end, k.matched) && get(p, end, k.unmatched) && get(p, end, k.fallback) && get(p, end, k.extra) &&
-              get_vec(p, end, k.render_us) && get(p, end, k.gameplay) && p == end;
+              get(p, end, k.pieces) && get_vec(p, end, k.render_us) && get(p, end, k.gameplay) &&
+              get_vec(p, end, k.seen[0]) && get_vec(p, end, k.seen[1]) && get_vec(p, end, k.seen[2]) && p == end;
     if (ok) present_branch_restore();
     return ok;
 }
@@ -460,12 +474,45 @@ static int refresh_times(double t0, double t1, int hz, double *t, int max)
     return out;
 }
 
-/* The sprites an interpolation moves: table t's slot, its step from R_(k-1) in screen pixels. */
-struct Plan { int t, slot, dx, dy; };
-static int s_why[NT][MAXS], s_ownx[NT][MAXS], s_owny[NT][MAXS];   /* why: the `unmatched` counter's index */
+/* The sprites an interpolation moves: table t's slot, its step over the span in screen pixels. */
+struct Plan { int t, slot; double dx, dy; };
+static int s_why[NT][MAXS];   /* why: the `unmatched` counter's index */
+static double s_ownx[NT][MAXS], s_owny[NT][MAXS];
 static bool s_own[NT][MAXS], s_counted[NT][MAXS];
 
 static bool snaps(int dx, int dy) { return dx > SNAP_SPRITE || dx < -SNAP_SPRITE || dy > SNAP_SPRITE || dy < -SNAP_SPRITE; }
+
+/* Each sprite instance's anchor when it was last drawn, for SEEN_FRAMES frames: an instance drawn
+   only every other frame (a player flickering while invulnerable after a respawn, Beast_* and the
+   others' blink) has no anchor in R_(k-1), and was left where R_k has it in every in-between frame
+   it shows (the audit of 2026-11-18: 70% of the sprites left still). It moves from its last place
+   instead, by the part of the step that falls in this span. Up to 9 frames back: a blink that
+   slows (a player shown every 5, then up to 9 frames, scenario-continue 11893-11995) too. */
+#define SEEN_FRAMES 10
+
+static void seen_update(int t, uint64_t k)
+{
+    const Tag *tags = s_tags[t];
+    for (int s = 0; s < slots(t); s++)
+        if (tags[s].spr) s_seen[t][tags[s].spr] = { tags[s].ax, tags[s].ay, s_cur.shift, k };
+    for (auto it = s_seen[t].begin(); it != s_seen[t].end();)
+        it = it->second.k + SEEN_FRAMES <= k ? s_seen[t].erase(it) : std::next(it);
+}
+
+/* on screen and not the HUD: the sprites the interpolation counts */
+static bool counted_at(const Snap &n, int t, int s)
+{
+    const uint8_t *e = ent(n, t, s);
+    int y9 = w16(e) & 0x3FF;
+    return y9 + 32 > 128 && y9 < 128 + 240 && !hud_attr(w16(e + 4));
+}
+
+/* An owner without anchors whose pieces share no step (a timer's particles, each on its own path:
+   the ice shards Nightcrawler breaks, TAS 21153-21236; the ninja's ring of puffs, 32 px apart and up
+   to 14 px a frame, scenario-char-beast 520-526): when it has as many pieces on screen as in
+   R_(k-1), each of the size of the one in its place in the order, each a step of at most PIECE_STEP
+   px from it, the pieces are the same ones and each moves by its own step. */
+#define PIECE_STEP 16
 
 /* Each sprite's step from R_(k-1): its sprite instance's (the emitter's anchor, the object's place
    on screen), so a frame of animation that rearranges the pieces changes in place, as at 60 Hz,
@@ -477,31 +524,32 @@ static bool snaps(int dx, int dy) { return dx > SNAP_SPRITE || dx < -SNAP_SPRITE
    nowhere, a snap. Steps are of screen places: an anchor is the game's place, so the frames' 16:9
    shifts come off it (widescreen.cpp moves the render camera by up to 40 px near a level's ends; with
    the game's place a standing player shook by the camera's step there, the playtest of 2026-10-31). */
-static void plan_table(int t, std::vector<Plan> &plan)
+static void plan_table(int t, uint64_t k, std::vector<Plan> &plan)
 {
     const Tag *tags = s_tags[t], *prev_tags = s_prev_tags[t];
-    int *why = s_why[t], *ownx = s_ownx[t], *owny = s_owny[t];
+    int *why = s_why[t];
+    double *ownx = s_ownx[t], *owny = s_owny[t];
     bool *own = s_own[t], *counted = s_counted[t];
-    /* the prev frame's slots by owner, its sprite instances' anchors */
+    /* the prev frame's slots by owner; the instances' anchors are s_seen's */
     std::unordered_map<uintptr_t, std::vector<int>> prev_of;
-    std::unordered_map<uintptr_t, std::pair<int, int>> prev_anchor;
-    for (int s = 0; s < slots(t); s++) {
+    for (int s = 0; s < slots(t); s++)
         if (prev_tags[s].owner) prev_of[prev_tags[s].owner].push_back(s);
-        if (prev_tags[s].spr) prev_anchor[prev_tags[s].spr] = { prev_tags[s].ax, prev_tags[s].ay };
-    }
+    const std::unordered_map<uintptr_t, Seen> &seen = s_seen[t];
     std::unordered_map<uintptr_t, std::vector<int>> cur_of;
     int link_mask = !t && g_opt.players > 2 ? 0xFF : 0x7F;
     for (int slot = 0, n = 0; n < slots(t); n++) {
         const uint8_t *c = ent(s_cur, t, slot);
-        int y9 = w16(c) & 0x3FF;
-        if (y9 + 32 > 128 && y9 < 128 + 240 && !hud_attr(w16(c + 4))) {
+        if (counted_at(s_cur, t, slot)) {
             counted[slot] = true;
-            auto pa = tags[slot].spr ? prev_anchor.find(tags[slot].spr) : prev_anchor.end();
-            if (pa != prev_anchor.end()) {
-                int dx = (tags[slot].ax - s_cur.shift) - (pa->second.first - s_prev.shift);
-                int dy = tags[slot].ay - pa->second.second;
-                if (snaps(dx, dy)) why[slot] = 4;
-                else { own[slot] = true; ownx[slot] = dx; owny[slot] = dy; }
+            auto pa = tags[slot].spr ? seen.find(tags[slot].spr) : seen.end();
+            if (pa != seen.end()) {
+                /* the step since it was last drawn, g frames ago: g - 1 of them before this span */
+                int g = (int)(k - pa->second.k);
+                int dx = (tags[slot].ax - s_cur.shift) - (pa->second.ax - pa->second.shift);
+                int dy = tags[slot].ay - pa->second.ay;
+                double fx = (double)dx / g, fy = (double)dy / g;
+                if (snaps((int)std::lround(fx), (int)std::lround(fy))) why[slot] = 4;
+                else { own[slot] = true; ownx[slot] = fx; owny[slot] = fy; }
             } else if (tags[slot].spr)
                 why[slot] = 2;
             else if (!tags[slot].owner) {
@@ -559,11 +607,165 @@ static void plan_table(int t, std::vector<Plan> &plan)
         /* a step most pieces disagree with is a coincidence: no step (R_k's places) */
         if (best_votes && best_votes * 3 >= (int)cs.size()) {
             for (int s : cs) { own[s] = true; ownx[s] = bdx; owny[s] = bdy; }
+            continue;
+        }
+        /* each piece its own step (PIECE_STEP): the pieces in slot order, both frames */
+        std::vector<int> ps, cso(cs.begin(), cs.end());
+        for (int p : po->second)
+            if (counted_at(s_prev, t, p)) ps.push_back(p);
+        std::sort(cso.begin(), cso.end());
+        bool pairs = ps.size() == cso.size();
+        for (size_t i = 0; pairs && i < cso.size(); i++) {
+            const uint8_t *c = ent(s_cur, t, cso[i]), *p = ent(s_prev, t, ps[i]);
+            int dx = sx(s_cur, t, cso[i]) - sx(s_prev, t, ps[i]), dy = w16(c) - w16(p);
+            pairs = (p[2] & 0xF) == (c[2] & 0xF) && abs(dx) <= PIECE_STEP && abs(dy) <= PIECE_STEP;
+        }
+        if (pairs) {
+            for (size_t i = 0; i < cso.size(); i++) {
+                int s = cso[i];
+                own[s] = true;
+                ownx[s] = sx(s_cur, t, s) - sx(s_prev, t, ps[i]);
+                owny[s] = w16(ent(s_cur, t, s)) - w16(ent(s_prev, t, ps[i]));
+            }
+            s_pieces += cso.size();
         } else
             for (int s : cs) why[s] = any_size ? 4 : 3;
     }
     for (int slot = 0; slot < slots(t); slot++)
         if (counted[slot] && own[slot]) plan.push_back({ t, slot, ownx[slot], owny[slot] });
+}
+
+/* ---- the audit (dev): what the in-between frames leave still --------------------------------- */
+
+/* XMEN2_PRESENT_AUDIT=FILE, for finding motion the interpolation misses. Once per logic frame with
+   in-between frames, gameplay frames only:
+     U,frame,table,slot,why,attr,size,x,y,owner,owner_w0,spr,spr_def   a sprite left where R_k has it
+       (why: the `unmatched` index; owner and spr as 68000 RAM addresses, 0 outside the arena;
+       owner_w0 the long at the owner, an actor's class; spr_def the instance's definition)
+     A,frame,table,spr,spr_def,owner,owner_w0,adx,ady,pdx,pdy,pieces   a sprite instance whose
+       pieces all line up with its pieces in R_(k-1) (same size and tile word) by one step that
+       isn't its anchor's: motion by animation frames at a fixed anchor, which moves at 60 Hz
+     P,frame,plane,dx,dy,votes,changed   plane A (0) or B (1): on-screen cells rewritten between
+       R_(k-1) and R_k of which `votes` hold what the cell (dx, dy) cells away held: a block moved
+       by rewriting the nametable, which moves at 60 Hz */
+extern "C" uint8_t *xm_arena;
+static FILE *s_audit;
+static bool s_audit_init;
+static uint16_t s_nt_prev[2][128 * 64];
+static bool s_nt_valid;
+
+static uint32_t ram_of(uintptr_t p)
+{
+    uintptr_t a = (uintptr_t)xm_arena;
+    return xm_arena && p >= a && p < a + 0x20000u ? 0xFF0000u | (uint32_t)((p - a) & 0xFFFFu) : 0;
+}
+static uint32_t long_at(uint32_t a) { return a ? (uint32_t)(uint16_t)s16at(a) << 16 | (uint16_t)s16at(a + 2) : 0; }
+
+static bool audit_on(void)
+{
+    if (!s_audit_init) {
+        s_audit_init = true;
+        if (const char *p = getenv("XMEN2_PRESENT_AUDIT")) {
+            s_audit = fopen(p, "w");
+            if (s_audit) setvbuf(s_audit, nullptr, _IOFBF, 1 << 20);
+        }
+    }
+    return s_audit != nullptr;
+}
+
+static void audit_planes(uint64_t k, bool log)
+{
+    const GVDP *v = &g_machine.vdp;
+    static const int dims[4] = { 32, 64, 0, 128 };
+    int pw = dims[v->reg[16] & 3], ph = dims[(v->reg[16] >> 4) & 3];
+    if (!pw || !ph || pw * ph > 128 * 64) { s_nt_valid = false; return; }
+    uint32_t base[2] = { (uint32_t)(v->reg[2] & 0x38) << 10, (uint32_t)(v->reg[4] & 7) << 13 };
+    uint16_t cur[2][128 * 64];
+    for (int pl = 0; pl < 2; pl++)
+        for (int i = 0; i < pw * ph; i++) {
+            uint32_t a = (base[pl] + 2u * (uint32_t)i) & 0xFFFFu;
+            cur[pl][i] = (uint16_t)(v->vram[a] << 8 | v->vram[(a + 1) & 0xFFFFu]);
+        }
+    if (s_nt_valid && log) {
+        int hmode = v->reg[11] & 3, line = 112, he = hmode == 0 ? 0 : hmode == 3 ? line * 4 : (line & ~7) * 4;
+        int cw = machine_screen_width() / 8 + 1, ch = 29;
+        for (int pl = 0; pl < 2; pl++) {
+            int hs = w16(s_cur.hscroll + he + 2 * pl) & 0x3FF, vs = s_cur.vsram[pl] & 0x3FF;
+            int x0 = ((-hs) % 1024 + 1024) % 1024 / 8, y0 = vs / 8;
+            int votes[9][9] = {}, changed = 0;
+            /* not the two cells at each edge: the level's streamer writes the next row or column of
+               32 px blocks there as the camera moves (the first audit's "moves", 4 cells apart) */
+            for (int cy = 2; cy < ch - 2; cy++)
+                for (int cx = 2; cx < cw - 3; cx++) {
+                    int x = (x0 + cx) % pw, y = (y0 + cy) % ph, i = y * pw + x;
+                    uint16_t c = cur[pl][i];
+                    if (c == s_nt_prev[pl][i]) continue;
+                    changed++;
+                    if (!(c & 0x7FF)) continue;
+                    for (int dy = -4; dy <= 4; dy++)
+                        for (int dx = -4; dx <= 4; dx++) {
+                            if (!dx && !dy) continue;
+                            int px = ((x - dx) % pw + pw) % pw, py = ((y - dy) % ph + ph) % ph;
+                            if (s_nt_prev[pl][py * pw + px] == c) votes[dy + 4][dx + 4]++;
+                        }
+                }
+            int best = 0, bx = 0, by = 0;
+            for (int dy = 0; dy < 9; dy++)
+                for (int dx = 0; dx < 9; dx++)
+                    if (votes[dy][dx] > best) { best = votes[dy][dx]; bx = dx - 4; by = dy - 4; }
+            if (best >= 6)
+                fprintf(s_audit, "P,%llu,%d,%d,%d,%d,%d\n", (unsigned long long)k, pl, bx, by, best, changed);
+        }
+    }
+    memcpy(s_nt_prev, cur, sizeof cur);
+    s_nt_valid = true;
+}
+
+/* A rows: table t's instances in R_k and R_(k-1) */
+static void audit_anchors(uint64_t k, int t)
+{
+    const Tag *tags = s_tags[t], *prev_tags = s_prev_tags[t];
+    std::unordered_map<uintptr_t, std::vector<int>> cur_of, prev_of;
+    for (int s = 0; s < slots(t); s++) {
+        if (tags[s].spr && s_counted[t][s]) cur_of[tags[s].spr].push_back(s);
+        if (prev_tags[s].spr) prev_of[prev_tags[s].spr].push_back(s);
+    }
+    for (auto &oc : cur_of) {
+        auto po = prev_of.find(oc.first);
+        if (po == prev_of.end()) continue;
+        const Tag &tg = tags[oc.second[0]];
+        const Tag &pt = prev_tags[po->second[0]];
+        int adx = (tg.ax - s_cur.shift) - (pt.ax - s_prev.shift), ady = tg.ay - pt.ay;
+        std::unordered_map<uint32_t, int> votes;
+        for (int s : oc.second) {
+            const uint8_t *c = ent(s_cur, t, s);
+            std::vector<uint32_t> mine;
+            for (int ps : po->second) {
+                const uint8_t *p = ent(s_prev, t, ps);
+                if (p[2] != c[2] || w16(p + 4) != w16(c + 4)) continue;
+                int dx = sx(s_cur, t, s) - sx(s_prev, t, ps), dy = w16(c) - w16(p);
+                if (snaps(dx, dy)) continue;
+                uint32_t key = (uint32_t)(dx + 128) << 16 | (uint32_t)(dy + 128);
+                if (std::find(mine.begin(), mine.end(), key) == mine.end()) mine.push_back(key);
+            }
+            for (uint32_t key : mine) votes[key]++;
+        }
+        int n = (int)oc.second.size();
+        for (auto &vt : votes) {
+            if (vt.second != n) continue;
+            int dx = (int)(vt.first >> 16) - 128, dy = (int)(vt.first & 0xFFFF) - 128;
+            if (dx == adx && dy == ady) { votes.clear(); break; }   /* the anchor's step fits: nothing missed */
+        }
+        int best = 0, bdx = 0, bdy = 0;
+        for (auto &vt : votes) {
+            int dx = (int)(vt.first >> 16) - 128, dy = (int)(vt.first & 0xFFFF) - 128;
+            if (vt.second == n && (!best || abs(dx) + abs(dy) < abs(bdx) + abs(bdy))) { best = n; bdx = dx; bdy = dy; }
+        }
+        if (!best) continue;
+        uint32_t spr = ram_of(oc.first), owner = ram_of(tg.owner);
+        fprintf(s_audit, "A,%llu,%d,%06X,%06X,%06X,%06X,%d,%d,%d,%d,%d\n", (unsigned long long)k, t, spr,
+                long_at(spr ? spr + 2 : 0), owner, long_at(owner), adx, ady, bdx, bdy, n);
+    }
 }
 
 /* plat_sync_point, after R_k (k = the frame begun) is rendered and before the frame's logic: the
@@ -585,7 +787,21 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
         memset(s_own, 0, sizeof s_own);
         memset(s_counted, 0, sizeof s_counted);
         for (int t = 0; t < NT; t++)
-            if (s_cur.live[t] && s_prev.live[t]) plan_table(t, plan);
+            if (s_cur.live[t] && s_prev.live[t]) plan_table(t, k, plan);
+        if (s_gameplay && audit_on())
+            for (int t = 0; t < NT; t++) {
+                if (!(s_cur.live[t] && s_prev.live[t])) continue;
+                audit_anchors(k, t);
+                for (int slot = 0; slot < slots(t); slot++) {
+                    if (!s_counted[t][slot] || s_own[t][slot]) continue;
+                    const uint8_t *c = ent(s_cur, t, slot);
+                    const Tag &tg = s_tags[t][slot];
+                    uint32_t owner = ram_of(tg.owner), spr = ram_of(tg.spr);
+                    fprintf(s_audit, "U,%llu,%d,%d,%d,%04X,%X,%d,%d,%06X,%06X,%06X,%06X\n", (unsigned long long)k, t, slot,
+                            s_why[t][slot], (unsigned)(uint16_t)w16(c + 4), c[2], sx(s_cur, t, slot), w16(c), owner,
+                            long_at(owner), spr, long_at(spr ? spr + 2 : 0));
+                }
+            }
         const bool draw = machine_pixels();
         /* the span in n even parts, n its H Hz frames rounded: R_k at t1, n - 1 frames before it.
            Not the H Hz clock itself: with R_k at k x T on top of it, 120 showed 180 frames a second,
@@ -662,13 +878,18 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
                 for (int t = 0; t < NT; t++) memcpy(&xm_region[rg_off(t)], s_cur.rg[t], (size_t)slots(t) * 8);
         }
     }
+    if (audit_on()) audit_planes(k, s_gameplay && hz);
+    for (int t = 0; t < NT; t++) {
+        if (s_cur.live[t]) seen_update(t, k);
+        else s_seen[t].clear();
+    }
     s_prev = s_cur;
 }
 
 void present_reset(void)
 {
     s_prev.valid = false;
-    for (int t = 0; t < NT; t++) s_marks[t].clear();
+    for (int t = 0; t < NT; t++) { s_marks[t].clear(); s_seen[t].clear(); }
 }
 
 void present_render_us_write(const char *path)
@@ -689,13 +910,14 @@ std::string present_counters_json(void)
         p99 = v[i];
     }
     if (s_log) fflush(s_log);
+    if (s_audit) fflush(s_audit);
     char b[512];
     snprintf(b, sizeof b, "{\"hz\": %d, \"frames\": %llu, \"whole\": %llu, \"sprites\": %llu, \"sprites_matched\": %llu, "
              "\"render_us_p99\": %u, \"unmatched\": {\"no_owner\": %llu, \"new\": %llu, \"size\": %llu, \"snap\": %llu}, "
-             "\"fallback_per_logic_frame\": %llu}",
+             "\"fallback_per_logic_frame\": %llu, \"pieces_per_logic_frame\": %llu}",
              g_opt.high_fps ? g_opt.high_fps : 60, (unsigned long long)s_frames,
              (unsigned long long)s_whole, (unsigned long long)s_sprites, (unsigned long long)s_matched, p99,
              (unsigned long long)s_unmatched[1], (unsigned long long)s_unmatched[2], (unsigned long long)s_unmatched[3],
-             (unsigned long long)s_unmatched[4], (unsigned long long)s_fallback);
+             (unsigned long long)s_unmatched[4], (unsigned long long)s_fallback, (unsigned long long)s_pieces);
     return b;
 }
