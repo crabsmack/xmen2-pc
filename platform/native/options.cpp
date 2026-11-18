@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -143,6 +144,9 @@ static std::string exe_dir(const char *argv0)
     return s == std::string::npos ? std::string(".") : p.substr(0, s);
 }
 
+/* every section's keys as read (and as written since): the launcher's [launcher] and [netplay] */
+static std::map<std::string, std::map<std::string, std::string>> s_ini;
+
 static void read_ini(void)
 {
     FILE *f = fopen(s_ini_path.c_str(), "r");
@@ -156,8 +160,10 @@ static void read_ini(void)
         if (s[0] == '[') { section = s; continue; }
         size_t eq = s.find('=');
         if (eq == std::string::npos) continue;
-        if (section == "[options]") set(trim(s.substr(0, eq)), trim(s.substr(eq + 1)), s_ini_path.c_str());
-        else if (section == "[rom]" && trim(s.substr(0, eq)) == "path") s_ini_rom = trim(s.substr(eq + 1));
+        std::string k = trim(s.substr(0, eq)), v = trim(s.substr(eq + 1));
+        if (section == "[options]") set(k, v, s_ini_path.c_str());
+        else if (section == "[rom]" && k == "path") s_ini_rom = v;
+        if (section.size() > 2) s_ini[section.substr(1, section.size() - 2)][k] = v;
     }
     fclose(f);
 }
@@ -361,17 +367,28 @@ extern "C" int plat_first_scene(int scene)
 std::string options_exe_dir(void) { return s_exe_dir; }
 std::string options_ini_rom(void) { return s_ini_rom; }
 
-/* xmen2.ini's [rom] section becomes path = PATH (the rest of the file as it was; a new file if none) */
-bool options_remember_rom(const std::string &path)
+std::string options_ini_get(const char *section, const char *key, const std::string &def)
 {
+    auto s = s_ini.find(section);
+    if (s == s_ini.end()) return def;
+    auto k = s->second.find(key);
+    return k == s->second.end() ? def : k->second;
+}
+
+/* xmen2.ini's [section] becomes kv (after a `# comment` line, if any; no kv: the section goes), the rest
+   of the file as it was (a new file if none) */
+bool options_ini_write(const char *section, const std::vector<std::pair<std::string, std::string>> &kv,
+                       const char *comment)
+{
+    std::string head = std::string("[") + section + "]";
     std::vector<std::string> keep;
     if (FILE *f = fopen(s_ini_path.c_str(), "r")) {
         char line[4096];
-        bool in_rom = false;
+        bool in = false;
         while (fgets(line, sizeof line, f)) {
             std::string s = trim(line);
-            if (!s.empty() && s[0] == '[') in_rom = s == "[rom]";
-            if (in_rom) continue;
+            if (!s.empty() && s[0] == '[') in = s == head;
+            if (in) continue;
             std::string l = line;
             while (!l.empty() && (l.back() == '\n' || l.back() == '\r')) l.pop_back();
             keep.push_back(l);
@@ -382,11 +399,56 @@ bool options_remember_rom(const std::string &path)
     FILE *f = fopen(s_ini_path.c_str(), "w");
     if (!f) return false;
     for (const std::string &l : keep) fprintf(f, "%s\n", l.c_str());
-    fprintf(f, "%s[rom]\n# the ROM the game plays when started without one (set when you chose it)\npath = %s\n",
-            keep.empty() ? "" : "\n", path.c_str());
+    if (!kv.empty()) {
+        fprintf(f, "%s%s\n", keep.empty() ? "" : "\n", head.c_str());
+        if (comment && *comment) fprintf(f, "# %s\n", comment);
+        for (const auto &p : kv) fprintf(f, "%s = %s\n", p.first.c_str(), p.second.c_str());
+    }
     bool ok = fclose(f) == 0;
+    if (ok) {
+        s_ini_found = 1;
+        auto &m = s_ini[section];
+        m.clear();
+        for (const auto &p : kv) m[p.first] = p.second;
+    }
+    return ok;
+}
+
+/* xmen2.ini's [rom] section becomes path = PATH */
+bool options_remember_rom(const std::string &path)
+{
+    bool ok = options_ini_write("rom", {{"path", path}}, "the ROM the game plays when started without one (set when you chose it)");
     if (ok) s_ini_rom = path;
     return ok;
+}
+
+/* The table, for the launcher (launcher.cpp): names, values (the default first), what each does */
+int options_count(void) { return NDEFS; }
+const char *options_name(int i) { return s_defs[i].name; }
+const char *options_what(int i) { return s_defs[i].what; }
+std::vector<std::string> options_values(int i)
+{
+    std::vector<std::string> v;
+    for (int k = 0; s_defs[i].values[k]; k++) v.push_back(s_defs[i].values[k]);
+    return v;
+}
+std::string options_get(int i) { return s_defs[i].value; }
+bool options_set(int i, const std::string &v)
+{
+    if (!valid(s_defs[i], v)) return false;
+    s_defs[i].value = v;
+    apply();
+    return true;
+}
+bool options_presentation_only(int i) { return presentation_only(s_defs[i], false) || !strcmp(s_defs[i].name, "widescreen"); }
+
+/* [options]: every option not at its default, in table order */
+bool options_save(void)
+{
+    std::vector<std::pair<std::string, std::string>> kv;
+    for (const OptDef &d : s_defs)
+        if (d.value != d.values[0]) kv.emplace_back(d.name, d.value);
+    return options_ini_write("options", kv, "changed from the defaults (the launcher writes this section; the README lists every option)");
 }
 
 /* Removes --options and its argument from argv (main parses the rest); exits after --options --json. */

@@ -1,0 +1,4 @@
+# Known false positives of the publication guard (one regex per line, matched against the flagged line).
+# stb_truetype's contributor list (vendored with Dear ImGui, platform/native/external/imgui/imstb_truetype.h):
+# an upstream contributor, not anyone connected with this repo.
+^//\s+Rob Loach\s+Cort Stratton$

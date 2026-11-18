@@ -21,9 +21,15 @@ it starts, and refuses any file but the USA/Europe cartridge (SHA-1
 
 Download the Windows or Linux zip from [Releases](https://github.com/crabsmack/xmen2-pc/releases)
 (not the source code), unzip it, and start it: no emulator is needed (or [build it yourself](#build-from-source)).
-Started without a ROM (a double-click), it plays the ROM it was last given, or one in its folder;
-otherwise it asks for yours with a file picker and remembers it (`[rom]` in `xmen2.ini`). You can
-also give it the ROM directly, or drag the ROM onto the program:
+
+Started with a double-click, it opens the **launcher**: choose your ROM (Browse...), change the
+options, and play on this PC, or host or join an online game. It remembers everything in
+`xmen2.ini` beside the program, and finds the ROM by itself next time (or one in its folder). Untick
+"Show this launcher when the game starts" to go straight into the game with those settings;
+`XMen2.exe --launcher` brings it back. Keyboard and controllers work in it too (arrows or the
+D-pad to move, Enter or A to choose).
+
+You can also skip the launcher and give it the ROM directly, or drag the ROM onto the program:
 
 ```
 XMen2.exe path\to\xmen2.bin          Windows
@@ -45,10 +51,11 @@ driver's samples at a steady rate and smoothed.
 `widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0` gives
 the cartridge's picture and sound. F9, F10 and F11 say on screen what they did.
 
-Give options on the command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`,
-or in the settings file, `xmen2.ini`. It is a plain text file in the same folder as `XMen2.exe`
-(Linux: `xmen2`), the folder you unzipped. The game writes it the first time you choose your ROM
-with the file picker. If it isn't there, make it yourself with any text editor (Notepad: save as
+The launcher's Options page sets them, with a description of each. They can also go on the
+command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in the settings
+file, `xmen2.ini`: a plain text file in the same folder as `XMen2.exe` (Linux: `xmen2`), the
+folder you unzipped. The launcher writes it when you press Play (and the game when you choose your
+ROM with the file picker). You can also make it yourself with any text editor (Notepad: save as
 `xmen2.ini` with "All files", so it doesn't become `xmen2.ini.txt`). Options go under
 `[options]`, one per line; the command line wins over the file:
 
@@ -95,8 +102,12 @@ The picture and sound options (`high_fps`, the 16:9 view, `music_voices`, `sampl
 except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
 There is no lobby or server: one player hosts, and the others connect to the host's address.
-Online play is started from a command prompt (Windows: in the game's folder, type `cmd` in
-Explorer's address bar and press Enter; Linux: a terminal there, with `./xmen2` for `XMen2.exe`).
+**The launcher's Online page does all of this:** the host picks the number of players and presses
+Host Game (the page lists the addresses to give out, with Copy buttons); the others type the
+host's address (and, with three or four players, the seat the host gave them) and press Join Game.
+It remembers what you used. The steps below are the same thing from a command prompt (Windows:
+in the game's folder, type `cmd` in Explorer's address bar and press Enter; Linux: a terminal
+there, with `./xmen2` for `XMen2.exe`), and what to check when a connection fails.
 
 **Two players**
 

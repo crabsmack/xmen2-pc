@@ -1518,8 +1518,10 @@ PACKAGE_README = """X-Men 2: Clone Wars, native PC port (from the xmen2disasm de
 
 Run it with your own copy of the game's cartridge (USA/Europe; it checks the SHA-1
 61409e6cf6065ab67d8952b891d8edcf47777193 and refuses anything else). No emulator is needed.
-Start it, and the first time it asks for your ROM with a file picker and remembers it ([rom] in
-xmen2.ini); a ROM in this folder is found by itself. Or give it the ROM (or drag the ROM onto it):
+Start it, and the launcher opens: choose your ROM (Browse...), change the options (each with a
+description), and play on this PC, or host or join an online game. It remembers all of it in
+xmen2.ini in this folder. Untick "Show this launcher when the game starts" to go straight into the
+game; {exe} --launcher brings it back. Or skip it: give it the ROM (or drag the ROM onto it):
 
     {exe} path\\to\\xmen2.bin
 
@@ -1602,8 +1604,10 @@ widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays w
 high_fps, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
 seat's own (F9 and F10 work), except that with the host's widescreen_gameplay=1 the view is the
 host's too.
-There is no lobby: one player hosts, the others connect to the host's address, each from a
-command prompt in this folder. Everyone needs the same release.
+There is no lobby: one player hosts, the others connect to the host's address. Everyone needs the
+same release. The launcher's Online page does it: the host presses Host Game (the page lists the
+addresses to give out), the others type that address and press Join Game. From a command prompt
+in this folder instead:
  1. The host's address: on one home network, its local IPv4 address (ipconfig); over the
     internet, simplest is a VPN such as Tailscale on both PCs (the host's 100.x.y.z address),
     or the host forwards UDP port 7000 on the router to the PC. Allow {exe} through the
@@ -1683,7 +1687,11 @@ def package_licenses(dest: Path, sdl: bool) -> None:
              (engine / "superzazu" / "LICENSE", "superzazu-z80-LICENSE.txt"),
              (engine / "minicoro" / "LICENSE", "minicoro-LICENSE.txt"),
              (common.ENGINE / "external" / "recomp-net" / "LICENSE", "recomp-net-LICENSE.txt"),
-             (common.ENGINE / "external" / "rbengine" / "LICENSE", "rbengine-LICENSE.txt")]
+             (common.ENGINE / "external" / "rbengine" / "LICENSE", "rbengine-LICENSE.txt"),
+             # the launcher (platform/native/launcher.cpp): Dear ImGui and its two fonts, built into the program
+             (common.ROOT / "platform" / "native" / "external" / "imgui" / "LICENSE.txt", "imgui-LICENSE.txt"),
+             (common.ROOT / "platform" / "native" / "external" / "fonts" / "Karla-OFL.txt", "Karla-font-OFL.txt"),
+             (common.ROOT / "platform" / "native" / "external" / "fonts" / "Roboto-LICENSE.txt", "Roboto-font-LICENSE.txt")]
     if sdl:
         pairs.append((engine / "SDL2" / "SDL2-2.28.5" / "COPYING.txt", "SDL2-COPYING.txt"))
     for src, name in pairs:

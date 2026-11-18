@@ -2675,6 +2675,51 @@ design (a human task, kept off the backlog until then). The other three follow f
   local split screen; (C) truly free: an active window per player and every camera-reading state
   redefined, a redesign of the game's world model. B is the sensible target.
 
+## The launcher (GitHub issue #1, 2026-11-18)
+
+- **What it is.** `platform/native/launcher.cpp`: a start window for players who won't use the
+  command line (the issue: "Nobody wants to play around with the console to play online"). The
+  user widened it from a multiplayer GUI to the general front door: the ROM, every option, online
+  play. Default on; "Show this launcher when the game starts" (xmen2.ini `[launcher] show = 0`)
+  turns it off, `--launcher` brings it back, `--no-launcher` skips it once.
+- **When it shows** (main.cpp): a played start (no `--benchmark`) with no ROM, no `--netplay` and
+  no `--input-script` on the command line, unless `[launcher] show = 0`; `--launcher` always
+  (except headless). Every harness, trace and scripted run passes a ROM or `--benchmark`, so none
+  sees it; a drag-and-drop of the ROM onto the program skips it too.
+- **It only produces what the command line does.** Options go to `[options]` (options.cpp
+  `options_save`, the values not at their defaults, table order; the rest of the file kept),
+  online play to the same `--netplay` arguments, fed through `netplay_arg` before the game starts.
+  Host: `lan` for 2, `hub` for 3-4 (and the `players` option raised to the seat count), `--seat 0
+  --bind 0.0.0.0:PORT`; join: `--seat S --bind 0.0.0.0:PORT+S --peer HOST[:7000]`; ICE (2 players):
+  `--ice-signal-dir`. `[netplay]` remembers the last online settings. The game never knows it ran.
+- **Chosen from mock-ups** (the user, 2026-11-18): our own Dear ImGui launcher over the shared
+  recomp-ui (its lobby-server netplay and two-player waiting room don't fit R8's 2-4 seats over
+  lan/hub/ice, and its settings standard would split the options table); layout A (tabs: Play,
+  Options, Online) over a sidebar; theme "Cerebro" (6 of 10): the Cerebro screen's bezel colours
+  ($575777/$777792/$313157, sampled from frames the runner renders), its green lights, yellow
+  title. The mock-up tool and sheets were scratch (build/launcher-mock), not kept.
+- **Options shown** from options.cpp's table through launcher.cpp's own labels, groups (Picture,
+  Sound, Gameplay, Cheats) and help text; an option without an entry there still appears, under
+  "Other" with options.cpp's description. Values from the file the table doesn't list (lives=37)
+  are kept and shown. Picture and sound say "each player's own" online, the rest "the host's".
+- **Addresses** for the host to give out: this PC's IPv4 addresses (GetAdaptersAddresses /
+  getifaddrs), virtual adapters (Hyper-V/WSL, VirtualBox, VMware, Docker) left out, 100.64.0.0/10
+  labelled as a VPN (Tailscale's range). The public address isn't asked of any outside service:
+  the page says to look it up.
+- **Seats are typed by hand** (the host tells each guest theirs), as the netplay contract needs.
+  Handing seats out on connection would be a netplay change (a protocol message, NP_VERSION).
+- **Dependencies:** Dear ImGui v1.92.9b (MIT) vendored in `platform/native/external/imgui`
+  (core + SDL2 and SDL_Renderer backends, unmodified); Karla (OFL 1.1) and Roboto Medium (Apache
+  2.0) in `platform/native/external/fonts`, built into the program by native.cmake at configure
+  time (`launcher_fonts.h`); their licenses go into the packages' LICENSES/. Windows links
+  iphlpapi. Its own SDL window and renderer, closed (no SDL_Quit) before the game's opens.
+- **Checked:** `tools/launcher_check.py OUT` (headless: SDL's dummy video driver,
+  `XMEN2_LAUNCHER_TEST` scripts, `XMEN2_LAUNCHER_DRYRUN` plans): play (options saved, the plan's
+  options), host 4 (hub, players=4), join (lan, the default port added), a wrong ROM (no plan,
+  nothing written), show = 0 (the next start plays from `[rom]` without it), `--launcher`, and
+  `--benchmark` never showing it: 7/7, with screenshots of the pages. Not checked by a person yet:
+  the window on a real desktop, mouse, keyboard and controller navigation, Browse.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only
