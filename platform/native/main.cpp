@@ -1174,6 +1174,7 @@ int main(int argc, char **argv)
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
     if (const char *t = getenv("XMEN2_PAD_SELFTEST"); t && *t && strcmp(t, "0")) return host_pad_selftest();   /* host_sdl.cpp */
+    if (!s_benchmark) host_detach_lone_console();   /* a double-click's console window: closed (host_sdl.cpp) */
     std::string found;
     /* The launcher (GitHub issue #1): a played start with no ROM, no netplay and no input script on the
        command line (a double-click), unless xmen2.ini says not to; --launcher always (not headless). It

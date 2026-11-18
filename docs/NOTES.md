@@ -2720,6 +2720,17 @@ design (a human task, kept off the backlog until then). The other three follow f
   window opens DPI-unaware as before: launcher then game on this display, the game still reports
   `display 1536x864` (the 250% logical size). Linux: scale 1; `XMEN2_LAUNCHER_SCALE` overrides
   (tests, a high-DPI X11).
+- **No console window from Explorer** (the user: "a terminal window pops up with [launcher]
+  display ..."): XMen2Native is a console program (its output is the command line's and the
+  harness's), so a double-click got a console of its own, which every version had, holding only log
+  lines. A played run that is the only process on its console (`GetConsoleProcessList` = 1: a
+  double-click; a terminal or a script shares theirs) calls FreeConsole (host_sdl.cpp
+  `host_detach_lone_console`): the window shows for a moment and goes; output into pipes is
+  unaffected (launcher_check 7/7 after it). What a player must know comes as message boxes: the ROM
+  errors as before, and now a played netplay session's failures (netplay.cpp `np_tell`: no session
+  after 60 s, a refused match, the rest). `XMEN2_NO_MESSAGEBOX=1` prints them instead (tests): a
+  guest with no host gives "No other player connected within a minute ..." and exit 6. A GUI-subsystem
+  build would hide the window completely, but costs the command line its output.
 - **Seats are typed by hand** (the host tells each guest theirs), as the netplay contract needs.
   Handing seats out on connection would be a netplay change (a protocol message, NP_VERSION).
 - **Dependencies:** Dear ImGui v1.92.9b (MIT) vendored in `platform/native/external/imgui`

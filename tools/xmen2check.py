@@ -1616,8 +1616,8 @@ in this folder instead:
     {exe} xmen2.bin --netplay lan --seat 0 --seats 2 --bind 0.0.0.0:7000 --options lives=inf
  3. The other player, within a minute, with the host's address for HOST:
     {exe} xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST:7000
- 4. Both games start when they find each other ("[netplay] seat 0 of 2 ..." in the console).
-    After 60 s alone it stops with "no session after 60 s": check the address, port, firewall.
+ 4. Both games start when they find each other ("[netplay] seat 0 of 2 ..." in the prompt).
+    After 60 s alone it stops and says so: check the address, port, firewall.
 Three or four players: --netplay hub, --seats 3 or 4, each guest its own --seat (1, 2, 3), all
 with --peer HOST:7000, and --options players=3 or 4 on the host.  Without a VPN or forwarded
 port (two players): --netplay ice finds a way through both routers with a public STUN server,

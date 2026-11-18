@@ -127,9 +127,9 @@ there, with `./xmen2` for `XMen2.exe`), and what to check when a connection fail
    ```
    XMen2.exe xmen2.bin --netplay lan --seat 1 --seats 2 --bind 0.0.0.0:7001 --peer HOST_IP:7000
    ```
-5. The game starts on both screens when they have found each other, and the console prints
-   `[netplay] seat 0 of 2 ...`. After 60 s without the other player it stops with `no session
-   after 60 s`: check the address, the port and the firewall, and try again.
+5. The game starts on both screens when they have found each other (a command prompt shows
+   `[netplay] seat 0 of 2 ...`). After 60 s without the other player it stops and says so
+   (`no session after 60 s`): check the address, the port and the firewall, and try again.
 
 **Three or four players:** the host relays everyone's traffic. Each player has their own seat
 number (1, 2, 3) and they all connect to the host:

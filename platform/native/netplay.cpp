@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 
+#include "host_sdl.h"
 #include "native.h"
 #include "state.h"
 
@@ -93,10 +94,30 @@ static std::string s_seal;   /* the sealed configuration (the mod set's text) */
 static double s_replay_us, s_replay_us_max, s_save_us, s_saves;   /* what a replayed tick and a snapshot cost */
 static double now_us(void);
 
+static bool s_played;   /* a played session (netplay_run(0)): a person, maybe with no console, is told */
+
+/* a played session's failure, for a player (a message box: started from the launcher there is no
+   console to read) */
+static void np_tell(const std::string &what)
+{
+    if (!s_played) return;
+    std::string m;
+    if (what.find("no session after") != std::string::npos)
+        m = "No other player connected within a minute, so online play stopped.\n\nCheck that the host started first, "
+            "that everyone typed the host's address and port, and that the host's firewall (or router, over the "
+            "internet) lets the game's UDP port through. The README's Online section has the details.";
+    else if (what.find("refus") != std::string::npos || what.find("can't be taken") != std::string::npos)
+        m = "The other game refused the match (" + what + ").\n\nEveryone needs the same version of the game, and each "
+            "player a different seat.";
+    else m = "Online play stopped: " + what;
+    host_message(m.c_str());
+}
+
 [[noreturn]] static void np_fail(const char *what)
 {
     fprintf(stderr, "[netplay] %s\n", what);
     fflush(stderr);
+    np_tell(what);
     exit(6);
 }
 
@@ -387,6 +408,7 @@ static void h_return_to_lobby(void *ctx)
     const char *why = s_drv ? rnet_rb_driver_refusal(s_drv) : nullptr;
     fprintf(stderr, "[netplay] the match was refused: %s\n", why ? why : "?");
     fflush(stderr);
+    np_tell(std::string("refused: ") + (why ? why : "?"));
     exit(7);
 }
 
@@ -491,6 +513,7 @@ static void record_cut(void)
 
 void netplay_run(uint64_t frames)
 {
+    s_played = frames == 0;
     if (N.seats < 2 || N.seats > 4 || N.seat < 0 || N.seat >= N.seats) np_fail("--seat I --seats N: 0 <= I < N, 2 <= N <= 4");
     if (N.transport != "ice" && (N.bind.empty() || (N.seat && N.peer.empty())))
         np_fail("--bind HOST:PORT (and --peer HOST:PORT for a guest)");

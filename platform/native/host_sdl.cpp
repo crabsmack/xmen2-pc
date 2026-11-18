@@ -44,8 +44,25 @@ extern "C" {
 #endif
 
 /* a run started without a ROM (main.cpp find_rom): what went wrong, and the ROM to play */
+/* Windows: the program is a console program (its output is for the command line and the harness), so a
+   start from Explorer gets a console window of its own, empty but for log lines. A played run that is
+   the only process on its console (a double-click; a terminal or a script shares theirs) lets it go:
+   the window closes, and what a player must know comes in message boxes (host_message, netplay's
+   failures). Output a parent redirected (pipes) is unaffected. */
+void host_detach_lone_console(void)
+{
+#ifdef _WIN32
+    DWORD pids[2];
+    if (GetConsoleWindow() && GetConsoleProcessList(pids, 2) == 1) FreeConsole();
+#endif
+}
+
 void host_message(const char *text)
 {
+    if (getenv("XMEN2_NO_MESSAGEBOX")) {   /* tests: the text, no dialog on the desktop */
+        fprintf(stderr, "[native] message: %s\n", text);
+        return;
+    }
     if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "X-Men 2: Clone Wars", text, nullptr) != 0)
         fprintf(stderr, "[native] %s\n", text);
 }
