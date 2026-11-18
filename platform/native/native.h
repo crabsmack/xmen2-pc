@@ -11,6 +11,8 @@
 #ifdef __cplusplus
 #include <stdio.h>
 #include <string>
+#include <utility>
+#include <vector>
 void        options_init(int *argc, char **argv);   /* options.cpp: --options, xmen2.ini */
 void        options_toggle_high_fps(void);          /* played: F9 */
 void        options_toggle_widescreen(void);        /* played: F10 (from the next screen) */
@@ -22,6 +24,25 @@ void        options_detect_display(int w, int h, int hz, bool aspect);   /* high
 bool        options_high_fps_auto(void);            /* high_fps is auto (a display change looks again) */
 std::string options_ini_rom(void);                  /* xmen2.ini's [rom] path ("" if none) */
 bool        options_remember_rom(const std::string &path);   /* writes it there; false if it can't */
+/* the launcher's view of the table and of xmen2.ini (launcher.cpp) */
+int         options_count(void);
+const char *options_name(int i);
+const char *options_what(int i);
+std::vector<std::string> options_values(int i);     /* the listed values, the default first */
+std::string options_get(int i);
+bool        options_set(int i, const std::string &v);   /* false: not one of its values (nothing changes) */
+bool        options_presentation_only(int i);       /* picture or sound only: each seat's own online */
+bool        options_save(void);                     /* xmen2.ini [options]: the values not at their defaults */
+std::string options_ini_get(const char *section, const char *key, const std::string &def);
+bool        options_ini_write(const char *section, const std::vector<std::pair<std::string, std::string>> &kv,
+                              const char *comment);  /* replaces [section] (no kv: removes it) */
+/* launcher.cpp: the start window (played, no ROM on the command line, or --launcher) */
+struct LaunchPlan {
+    std::string rom;                     /* the ROM to play (checked) */
+    std::vector<std::string> netplay;    /* --netplay ... arguments, empty for a game on this PC */
+};
+bool        launcher_run(const std::string &rom, LaunchPlan *plan);   /* false: the player quit */
+std::string rom_check_path(const char *path);       /* main.cpp: "" if PATH is the game, else why not */
 std::string options_game_text(void);                /* netplay (R10): the game-changing options, k=v,... */
 bool        options_adopt_game(const std::string &text);   /* a guest takes the host's */
 /* netplay.cpp (phase 7 R1): rollback netplay of the release runner */

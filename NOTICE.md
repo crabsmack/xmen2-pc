@@ -29,6 +29,9 @@ grant any rights in the original game.
 | [recomp-net](https://github.com/RetroPortingToolKit/recomp-net) | Netplay transport | MIT |
 | [rbengine](https://github.com/RetroPortingToolKit/rbengine) | Rollback snapshot ring for netplay | MIT |
 | [minicoro](https://github.com/edubart/minicoro) | The game fiber's context switch | Unlicense or MIT-0 (LuaCoco parts: MIT) |
+| [Dear ImGui](https://github.com/ocornut/imgui) (Omar Cornut) | The launcher's interface, v1.92.9b vendored in `platform/native/external/imgui/` | MIT |
+| [Karla](https://github.com/googlefonts/karla) (Jonathan Pinhorn, the Karla Project Authors) | The launcher's text font, built into the program | SIL Open Font License 1.1 |
+| [Roboto](https://github.com/googlefonts/roboto) (Christian Robertson) | The launcher's title font, built into the program | Apache License 2.0 |
 | [clowncommon](https://github.com/Clownacy/clowncommon), [tomlc99](https://github.com/cktan/tomlc99) | Engine helpers, TOML parsing | ISC, MIT |
 | [xmen2disasm](https://github.com/crabsmack/xmen2disasm) | The disassembly (submodule) | MIT, see its NOTICE.md |
 

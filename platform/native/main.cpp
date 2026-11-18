@@ -119,6 +119,8 @@ static std::string rom_check(const char *path, std::vector<uint8_t> *out)
     return "";
 }
 
+std::string rom_check_path(const char *path) { return rom_check(path, nullptr); }   /* the launcher's */
+
 /* played runs (no --benchmark) say what went wrong in a message box too: started from a file
    manager, there is no console to read */
 static void rom_fatal(const std::string &why, bool played)
@@ -1121,6 +1123,7 @@ int main(int argc, char **argv)
     const char *rom = nullptr, *script = nullptr, *present_log = nullptr, *digest = nullptr, *probe_out = ".", *game_rows = nullptr;
     const char *plan = nullptr, *hash_out = nullptr, *states = nullptr, *state_in = nullptr;
     bool session = false, no_render = false, no_pixels = false, scan_first = false;
+    int launcher = -1;   /* --launcher 1, --no-launcher 0, else xmen2.ini's [launcher] show */
     uint64_t seed = 0;
     xm_install_crash_trace();   /* a host exception prints where and the stack (crash_win.cpp) */
     options_init(&argc, argv);   /* --options (phase 6), xmen2.ini; --options --json exits here */
@@ -1164,12 +1167,38 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(argv[i], "--probe-out") && i + 1 < argc) probe_out = argv[++i];
         else if (!strcmp(argv[i], "--state-skip") && i + 1 < argc) s_state_skip = argv[++i];
+        else if (!strcmp(argv[i], "--launcher")) launcher = 1;      /* launcher.cpp: show it, whatever xmen2.ini says */
+        else if (!strcmp(argv[i], "--no-launcher")) launcher = 0;   /* ... or not, this once */
         else if (netplay_arg(argc, argv, &i)) {}   /* --netplay ... (netplay.cpp) */
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
     if (const char *t = getenv("XMEN2_PAD_SELFTEST"); t && *t && strcmp(t, "0")) return host_pad_selftest();   /* host_sdl.cpp */
+    if (!s_benchmark) host_detach_lone_console();   /* a double-click's console window: closed (host_sdl.cpp) */
     std::string found;
+    /* The launcher (GitHub issue #1): a played start with no ROM, no netplay and no input script on the
+       command line (a double-click), unless xmen2.ini says not to; --launcher always (not headless). It
+       hands back the ROM and online play's --netplay arguments; the options it set are applied already. */
+    if (launcher < 0)
+        launcher = !rom && !netplay_enabled() && !script && options_ini_get("launcher", "show", "1") != "0";
+    if (launcher && !s_benchmark) {
+        static LaunchPlan lp;   /* netplay_arg keeps pointers into its strings */
+        if (!launcher_run(rom ? std::string(rom) : find_rom(false), &lp)) return 0;
+        if (getenv("XMEN2_LAUNCHER_DRYRUN")) {   /* the test: the plan, not the game */
+            std::string args;
+            for (const std::string &a : lp.netplay) args += (args.empty() ? "\"" : ", \"") + a + "\"";
+            printf("[launcher] plan {\"rom\": \"%s\", \"netplay\": [%s], \"options\": %s}\n", lp.rom.c_str(), args.c_str(),
+                   options_effective_json().c_str());
+            return 0;
+        }
+        found = lp.rom;
+        rom = found.c_str();
+        static std::vector<char *> av;
+        av.push_back(argv[0]);
+        for (std::string &a : lp.netplay) av.push_back(&a[0]);
+        for (int i = 1; i < (int)av.size(); i++)
+            if (!netplay_arg((int)av.size(), av.data(), &i)) { fprintf(stderr, "[native] launcher: bad argument %s\n", av[i]); return 2; }
+    }
     if (!rom) {
         found = find_rom(!s_benchmark);
         if (found.empty()) {

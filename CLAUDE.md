@@ -188,9 +188,19 @@ default, except presentation-only ones whose default the user sets: `music_voice
 off). `platform/native/options.cpp` (the table,
 `--options K=V,...`, `xmen2.ini [options]` beside the exe), read by the game's `#if
 defined(XMEN2_NATIVE)` branches through `g_opt` (`platform/xmen2_options.h`). A new option goes in
-both files, in README.md's table and in the package README (`PACKAGE_README` in xmen2check.py).
+both files, in README.md's table, in the package README (`PACKAGE_README` in xmen2check.py) and in
+the launcher's `shown_table` (launcher.cpp).
 Savestates: `platform/native/state.cpp` (sections registered at start; M2's negative control
 leaves each out and must catch it).
+The launcher (`platform/native/launcher.cpp`, Dear ImGui vendored in `platform/native/external/`;
+NOTES "The launcher"): a played start with no ROM, `--netplay` or `--input-script` on the command
+line opens it (`[launcher] show = 0` in xmen2.ini turns that off, `--launcher` / `--no-launcher`).
+It only writes xmen2.ini and hands the game `--netplay` arguments, so harness runs never meet it. A new
+option appears there by itself (under "Other"); give it a label, group and help in its `shown_table`.
+`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (7 cases, screenshots in OUT/shots).
+A played run that fails (a bad ROM, a netplay session with nobody there) shows a message box, and on
+Windows SDL shows real dialogs even with `SDL_VIDEODRIVER=dummy`: one blocks on the user's desktop
+until clicked. Headless tests that can get there set `XMEN2_NO_MESSAGEBOX=1` (the text goes to stderr).
 Players 3-4: `platform/native/players.cpp` (their pads, VRAM, HUD and the `mp` counters). Netplay:
 `platform/native/netplay.cpp` on the engine's recomp-net and rbengine; the host's game options are
 sealed into the session, presentation ones (`high_fps`, `music_voices`, the 16:9 view unless

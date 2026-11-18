@@ -22,7 +22,10 @@ void host_present_refresh(const uint32_t *fb, int stride, int w, int h, double t
 void host_screenshot(const char *path, const uint32_t *fb, int stride, int w, int h);   /* BMP */
 int  host_pad_selftest(void);   /* XMEN2_PAD_SELFTEST: the controllers' slots with virtual ones; 0 = pass */
 void host_message(const char *text);   /* a message box (before or without the window) */
+void host_detach_lone_console(void);    /* Windows, played: close the console window a double-click opened */
 void host_osd(const char *text);       /* a hotkey's message on the picture for 2 s (up to 47 characters) */
+void host_wait_screen(const char *const *lines, int n);   /* netplay, played: waiting for the others (one
+                                                              frame; Esc or closing the window quits) */
 bool host_pick_rom(char *path, size_t cap);   /* a file picker for the ROM; false: cancelled or none */
 
 #endif /* XMEN2_HOST_SDL_H */

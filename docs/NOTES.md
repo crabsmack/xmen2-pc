@@ -2715,6 +2715,85 @@ design (a human task, kept off the backlog until then). The other three follow f
   local split screen; (C) truly free: an active window per player and every camera-reading state
   redefined, a redesign of the game's world model. B is the sensible target.
 
+## The launcher (GitHub issue #1, 2026-11-18)
+
+- **What it is.** `platform/native/launcher.cpp`: a start window for players who won't use the
+  command line (the issue: "Nobody wants to play around with the console to play online"). The
+  user widened it from a multiplayer GUI to the general front door: the ROM, every option, online
+  play. Default on; "Show this launcher when the game starts" (xmen2.ini `[launcher] show = 0`)
+  turns it off, `--launcher` brings it back, `--no-launcher` skips it once.
+- **When it shows** (main.cpp): a played start (no `--benchmark`) with no ROM, no `--netplay` and
+  no `--input-script` on the command line, unless `[launcher] show = 0`; `--launcher` always
+  (except headless). Every harness, trace and scripted run passes a ROM or `--benchmark`, so none
+  sees it; a drag-and-drop of the ROM onto the program skips it too.
+- **It only produces what the command line does.** Options go to `[options]` (options.cpp
+  `options_save`, the values not at their defaults, table order; the rest of the file kept),
+  online play to the same `--netplay` arguments, fed through `netplay_arg` before the game starts.
+  Host: `lan` for 2, `hub` for 3-4 (and the `players` option raised to the seat count), `--seat 0
+  --bind 0.0.0.0:PORT`; join: `--seat S --bind 0.0.0.0:PORT+S --peer HOST[:7000]`; ICE (2 players):
+  `--ice-signal-dir`. `[netplay]` remembers the last online settings. The game never knows it ran.
+- **Chosen from mock-ups** (the user, 2026-11-18): our own Dear ImGui launcher over the shared
+  recomp-ui (its lobby-server netplay and two-player waiting room don't fit R8's 2-4 seats over
+  lan/hub/ice, and its settings standard would split the options table); layout A (tabs: Play,
+  Options, Online) over a sidebar; theme "Cerebro" (6 of 10): the Cerebro screen's bezel colours
+  ($575777/$777792/$313157, sampled from frames the runner renders), its green lights, yellow
+  title. The mock-up tool and sheets were scratch (build/launcher-mock), not kept.
+- **Options shown** from options.cpp's table through launcher.cpp's own labels, groups (Picture,
+  Sound, Gameplay, Cheats) and help text; an option without an entry there still appears, under
+  "Other" with options.cpp's description. Values from the file the table doesn't list (lives=37)
+  are kept and shown. Picture and sound say "each player's own" online, the rest "the host's".
+- **Addresses** for the host to give out: this PC's IPv4 addresses (GetAdaptersAddresses /
+  getifaddrs), virtual adapters (Hyper-V/WSL, VirtualBox, VMware, Docker) left out, 100.64.0.0/10
+  labelled as a VPN (Tailscale's range). The public address isn't asked of any outside service:
+  the page says to look it up.
+- **"Changed from the cartridge"** (the Play page's list and the Options page's `*`; the user,
+  2026-11-18: the defaults aren't the cartridge, "the default already may have some changed"): each
+  option against the cartridge's own setting (`shown_table`'s `cart`: widescreen and high_fps 0,
+  music_voices 0, sample_retime and sample_smooth 0; else the default), `auto` as it comes out on
+  this display (options_detect_display's rule, from SDL's desktop mode: on a 4:3 60 Hz display it is
+  the cartridge's). Two buttons: "Reset to the defaults" and "Everything as the cartridge".
+- **Sharp on scaled displays** (the user's first look: "the text looks low res"; this machine's
+  display is 3840x2160 at 250%, so the DPI-unaware window was stretched 2.5x). The launcher's thread
+  is per-monitor DPI aware while it runs (SetThreadDpiAwarenessContext, Windows 10 1607+), its
+  sizes and fonts scaled by the display's DPI / 96 (ImGui `FontScaleDpi`: glyphs drawn at the real
+  size), and it quits its own SDL video at the end and restores the thread's mode, so the game's
+  window opens DPI-unaware as before: launcher then game on this display, the game still reports
+  `display 1536x864` (the 250% logical size). Linux: scale 1; `XMEN2_LAUNCHER_SCALE` overrides
+  (tests, a high-DPI X11).
+- **No console window from Explorer** (the user: "a terminal window pops up with [launcher]
+  display ..."): XMen2Native is a console program (its output is the command line's and the
+  harness's), so a double-click got a console of its own, which every version had, holding only log
+  lines. A played run that is the only process on its console (`GetConsoleProcessList` = 1: a
+  double-click; a terminal or a script shares theirs) calls FreeConsole (host_sdl.cpp
+  `host_detach_lone_console`): the window shows for a moment and goes; output into pipes is
+  unaffected (launcher_check 7/7 after it). What a player must know comes as message boxes: the ROM
+  errors as before, and now a played netplay session's failures (netplay.cpp `np_tell`: no session
+  after 60 s, a refused match, the rest). `XMEN2_NO_MESSAGEBOX=1` prints them instead (tests): a
+  guest with no host gives "No other player connected within a minute ..." and exit 6. A GUI-subsystem
+  build would hide the window completely, but costs the command line its output.
+- **A played session waits as long as it takes** (the user, 2026-11-18: "why are we killing the
+  online play if nobody connects in 60 seconds? seems excessive"). The 60 s limit in seal_exchange
+  came from phase 7's harness (seats started together; a stuck test must end), and while it waited
+  the window pumped no events (black, "Not responding", no way to close it). Now a played session
+  (netplay_run(0)) has no limit and draws a waiting screen every 33 ms (host_sdl.cpp
+  `host_wait_screen`, the OSD font: "WAITING FOR THE OTHER PLAYERS" / "WAITING FOR THE HOST", the
+  port or the host's address, the time waited, "ESC OR CLOSE THE WINDOW TO STOP"); Esc or closing
+  quits (exit 0). `--benchmark` runs keep the 60 s (np_fail, exit 6). Testing: `XMEN2_WAIT_QUIT_MS=N`
+  (a close after N ms), `XMEN2_WAIT_SHOT=FILE` (the screen as a BMP).
+- **Seats are typed by hand** (the host tells each guest theirs), as the netplay contract needs.
+  Handing seats out on connection would be a netplay change (a protocol message, NP_VERSION).
+- **Dependencies:** Dear ImGui v1.92.9b (MIT) vendored in `platform/native/external/imgui`
+  (core + SDL2 and SDL_Renderer backends, unmodified); Karla (OFL 1.1) and Roboto Medium (Apache
+  2.0) in `platform/native/external/fonts`, built into the program by native.cmake at configure
+  time (`launcher_fonts.h`); their licenses go into the packages' LICENSES/. Windows links
+  iphlpapi. Its own SDL window and renderer, closed (no SDL_Quit) before the game's opens.
+- **Checked:** `tools/launcher_check.py OUT` (headless: SDL's dummy video driver,
+  `XMEN2_LAUNCHER_TEST` scripts, `XMEN2_LAUNCHER_DRYRUN` plans): play (options saved, the plan's
+  options), host 4 (hub, players=4), join (lan, the default port added), a wrong ROM (no plan,
+  nothing written), show = 0 (the next start plays from `[rom]` without it), `--launcher`, and
+  `--benchmark` never showing it: 7/7, with screenshots of the pages. Not checked by a person yet:
+  the window on a real desktop, mouse, keyboard and controller navigation, Browse.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only
