@@ -2903,6 +2903,62 @@ written is a model of the chip.
   port. A test harness for code that can reach outside the machine sets the switches that stop it
   for every case, not per case (launcher_check's NO_ROUTER).
 
+### Controls (2026-11-18)
+
+- **Why.** A RecompLauncher report: "no ... options to modify the controls". The user: "add in
+  control remapping options ... intuitive and fully featured (some obvious ones being: select input
+  device, remap working for both controllers and keyboard, try and support a broad range of
+  controllers within reason)". Until then host_sdl.cpp had one fixed map (README "Play").
+- **Shape** (`platform/native/controls.cpp`, the launcher's Controls tab). Per player 1-4: the
+  controller (`auto` = plug-in order, as before; a GUID = that controller always; `none`), a
+  keyboard layout (arrows, W A S D, none), and per Genesis button two keys and two controller
+  inputs, set by click-and-press; a stick dead zone; a light per button showing what the game would
+  get (controls_mask, the same function the game reads). Any player can have keys, so two can
+  share a keyboard. Not an option of options.cpp: it changes which host input makes a pad bit, not
+  the game, so it is outside the digest, the netplay seal and NP_VERSION (each seat sends pad bits;
+  online a seat plays with player 1's controls, main_local_pad's pad[0]). Defaults = the old fixed
+  map exactly (the dead zone 37% = 12,123 of 32,767 where the old code had 12,000).
+- **Controllers.** Bindings are SDL game-controller inputs (`pad:a`, `pad:-lefty`), so one set
+  works on every controller SDL maps (its built-in list: XInput, PS3/4/5, Switch Pro, Joy-Cons,
+  Stadia, 8BitDo, ...; plus `gamecontrollerdb.txt` beside the exe, and SDL_GAMECONTROLLERCONFIG).
+  `SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS=0`: face buttons by position on every pad (SDL 2.28's
+  default swaps Nintendo's A/B to their labels, so a Switch pad's defaults were mirrored before).
+  The launcher names inputs as printed: Cross/Circle, L1/R2, Minus/Plus, View/Menu (Xbox One) by
+  SDL_GameControllerGetType. A joystick SDL has no mapping for gets one made at plug-in
+  (generic_map: buttons in the common DirectInput order a b x y LB RB LT RT back start LS RS ...,
+  hat 0 as the D-pad, axes 0-3 as the sticks; wheels, flight sticks, throttles and anything under
+  4 buttons left alone), and is labelled by raw index ("Button 3") through
+  SDL_GameControllerGetBindForButton. Every controller is opened (a fifth one waits and takes a
+  freed player); a pinned GUID with two of the same model gives them to the pinned players in
+  plug-in order. A settings change reassigns everything in plug-in order (controls_reassign); a
+  plug-in or unplug while playing only touches that controller (the old sticky slots), and says
+  on the picture which player it went to (host_osd).
+- **Capture** (launcher.cpp capture_event): a waiting box takes the next KEYDOWN (not a repeat) or
+  controller BUTTONDOWN / an axis over half way and over half its travel from where it rested when
+  the wait began (triggers resting at the far end are not presses). Key-ups always reach ImGui, so
+  the Enter that started a wait isn't left held there. ImGui's controller navigation is off while a
+  box waits and after a controller input went into one, until everything is let go: the backend
+  polls the pads, so the button just bound would otherwise press the box again. Esc cancels,
+  Backspace/Delete clear, Guide is ignored (Steam, Game Bar), 10 s gives up; Esc and F9-F11 can't be
+  bound. A key belongs to one button of one player (bound again, it moves, with a note); a
+  controller input to one button of its player.
+- **xmen2.ini** `[player1]`..`[player4]`, only players not at the defaults (README "Controls"):
+  `key:NAME` is SDL's scancode name (`#N` when the name has a comma: the comma key), `pad:NAME` SDL's
+  mapping names with a sign for a stick half. A button missing from a section keeps its default; an
+  unreadable part is skipped with a stderr line.
+- **Checks.** `XMEN2_PAD_SELFTEST=1` (16 steps, SDL's virtual controllers, headless): the old slot
+  steps, a remap and the dead zone read through host_input, player 1 `none`, a pinned GUID, a
+  generic joystick mapped and read (button 1 = B, button 10 = Start, hat up), and controls_selftest
+  (the ini text round trip, odd names, refused parts, keys moving between players, WASD taking A S D
+  from player 1). `tools/launcher_check.py` case "controls": a virtual controller's stick press
+  caught by a waiting box, a layout, a second key, a controller `none`, a dead zone, the sections
+  written, and the next start reading them back unchanged; "pad selftest" runs the above. The
+  launcher's test script drives a virtual controller (`vpad`, `vpress`, `vaxis`; with a hidden
+  window SDL drops controller input unless SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, set for test
+  scripts only). Not checked: a physical controller of each family (labels, positional face
+  buttons on a real Switch pad), a real unknown joystick, keyboard capture (SDL can't fake key
+  state headless; the parsing and binding are tested), and the page on a 250% display.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

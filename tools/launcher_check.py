@@ -8,7 +8,9 @@ OUT/shots for a person to look at.
 
 Cases: play (options set, saved, the plan's options), host 4 (hub, seat 0, players=4 set), join (lan, the
 default port added to the address, seat 1's port), a wrong ROM (PLAY refused, nothing written), show=0 then
-a start without the launcher (the game runs from [rom], no launcher), and --launcher overriding show=0.
+a start without the launcher (the game runs from [rom], no launcher), and --launcher overriding show=0,
+the Controls page (a virtual controller's input caught, keyboard layouts, [playerN] written and read back),
+the pad selftest (controllers' slots and bindings), and join codes.
 """
 from __future__ import annotations
 
@@ -99,8 +101,10 @@ def main() -> int:
     shots.mkdir(parents=True)
     rom = str(common.ROM)
     fails = []
+    checks = [0]
 
     def check(name: str, ok: bool, why: str):
+        checks[0] += 1
         print(f"{'PASS' if ok else 'FAIL'}  {name}: {why}")
         if not ok:
             fails.append(name)
@@ -179,6 +183,43 @@ press play
     # 7. scripted and headless starts never see it: --benchmark with no ROM argument and no ini
     r, plan, ini = run_case(exe, out / "bench", "press quit\n", ["--benchmark", "3"], dry=True)
     check("--benchmark skips it", plan is None and "[launcher]" not in r.stderr, f"exit {r.returncode}")
+
+    # 7b. the Controls page (controls.cpp): a virtual controller's stick press caught for player 1's Z, player 2
+    # on W A S D (A S D move from player 1's X Y Z), a second key, player 3 with no controller, a dead zone; all
+    # in xmen2.ini, and read back by the next start unchanged
+    r, plan, ini = run_case(exe, out / "controls", f"""rom {rom}
+vpad
+tab controls
+wait sleep 0.3
+shot {shots / '13_controls.bmp'}
+capture 1 z pad
+wait sleep 0.2
+vpress rightstick 1
+wait sleep 0.3
+vpress rightstick 0
+deadzone 1 50
+player 2
+keys 2 wasd
+bind 2 start key2 key:Left Shift
+controller 3 none
+wait sleep 0.2
+shot {shots / '14_controls_p2.bmp'}
+press play
+""", [])
+    want = ["[player1]", "z = pad:rightstick", "x = pad:leftshoulder", "deadzone = 50", "[player2]",
+            "up = key:W, pad:dpup, pad:-lefty", "start = key:Space, key:Left Shift, pad:start", "[player3]",
+            "controller = none"]
+    missing = [w for w in want if w not in ini]
+    r2, plan2, ini2 = run_case(exe, out / "controls", "tab controls\npress play\n", [])
+    check("controls", plan is not None and not missing and "[player4]" not in ini and ini2 == ini,
+          f"missing {missing}, player 4 written {'[player4]' in ini}, read back unchanged {ini2 == ini}"
+          + ("" if not missing else f"\n{r.stderr[-600:]}\n{ini}"))
+
+    # 7c. the controllers' slots and the bindings with SDL's virtual controllers (host_pad_selftest)
+    env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "XMEN2_PAD_SELFTEST": "1"}
+    r = subprocess.run([str(exe)], capture_output=True, text=True, env=env, timeout=60)
+    m = re.search(r"pad selftest: (\d+) of (\d+) steps ok", r.stderr)
+    check("pad selftest", r.returncode == 0 and m is not None, m.group(0) if m else r.stderr[-600:])
 
     # 8-11. join codes (room.cpp): host and joiners on loopback, side by side (XMEN2_ROOM_BIND: no router, no
     # firewall question; RNET_HOST_RELAY_ENDPOINT: the code's "public" address)
@@ -297,7 +338,7 @@ press quit
             f.unlink()
         except ImportError:
             break
-    print(f"{12 - len(fails)}/12 pass; screenshots in {shots}")
+    print(f"{checks[0] - len(fails)}/{checks[0]} pass; screenshots in {shots}")
     return 1 if fails else 0
 
 

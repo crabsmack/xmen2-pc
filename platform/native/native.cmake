@@ -21,6 +21,7 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/present.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/game_entry.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/host_sdl.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/controls.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/state.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/players.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/sound2.cpp"

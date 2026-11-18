@@ -3,9 +3,10 @@
  * and their mixer are the engine's (audio/: ymfm's YM2612, the SN76489, the cycle-stamped event
  * queue the Z80's writes go into, audio.c's device bridge).
  *
- *   Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
- *   Game controllers (players 1-4 in plug-in order, the keyboard with the first; an unplugged one
- *   frees its slot): D-pad or left stick; X = A, A = B, B = C, Start;
+ *   The players' keys and controllers are controls.cpp's (the launcher's Controls page, xmen2.ini's
+ *   [player1]..[player4]); by default the keyboard is player 1's: arrows; Z = A, X = B, C = C,
+ *   Enter = Start; A = X, S = Y, D = Z, Q = Mode; game controllers are players 1-4 in plug-in order
+ *   (an unplugged one frees its player): D-pad or left stick; X = A, A = B, B = C, Start;
  *   LB = X, Y = Y, RB = Z, Back = Mode.  Esc or closing the window quits.
  * XMEN2_PAD_SELFTEST=1: the slots checked with virtual controllers, headless (host_pad_selftest).
  * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
@@ -30,6 +31,7 @@ extern "C" {
 #include "genesis_clocks.h"
 #include "video/genesis_bus.h"
 }
+#include "controls.h"
 #include "host_sdl.h"
 #include "native.h"
 #include "osd_font.h"
@@ -107,7 +109,6 @@ bool host_pick_rom(char *path, size_t cap)
 static SDL_Window *s_win;
 static SDL_Renderer *s_ren;
 static SDL_Texture *s_tex;
-static SDL_GameController *s_pad[4];   /* players 1-4 (3-4: phase 7, `players` 3 or 4) */
 static uint64_t s_next;          /* performance-counter time of the next frame */
 static double s_period;          /* counter ticks per frame */
 static bool s_at_started;        /* high_fps: the present clock has started */
@@ -150,51 +151,28 @@ static int make_renderer(void)
     return 1;
 }
 
-/* The controllers' slots (players 1-4 in plug-in order). SDL2 also sends SDL_CONTROLLERDEVICEADDED
-   for the controllers present at SDL_Init, which host_open has opened already: opening one again
-   gives the same handle, so a slot is taken only by a device in none (v1.0.0 on Linux: one pad was
-   players 1 and 2). An unplugged controller frees its slot; plugged in again it takes the first free
-   one, its own when the others are still there. */
-static SDL_JoystickID pad_id(SDL_GameController *c) { return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)); }
-
-static void pad_add(int index)   /* a device index */
-{
-    if (!SDL_IsGameController(index)) return;
-    SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(index);
-    for (int n = 0; n < 4; n++)
-        if (s_pad[n] && pad_id(s_pad[n]) == id) return;
-    for (int n = 0; n < 4; n++)
-        if (!s_pad[n]) {
-            if ((s_pad[n] = SDL_GameControllerOpen(index)))
-                fprintf(stderr, "[native] controller %d: %s (instance %d)\n", n + 1, SDL_GameControllerName(s_pad[n]), (int)id);
-            return;
-        }
-}
-
-static void pad_remove(SDL_JoystickID id)   /* an instance ID */
-{
-    for (int n = 0; n < 4; n++)
-        if (s_pad[n] && pad_id(s_pad[n]) == id) {
-            SDL_GameControllerClose(s_pad[n]);
-            s_pad[n] = nullptr;
-            fprintf(stderr, "[native] controller %d removed (instance %d)\n", n + 1, (int)id);
-        }
-}
+/* The controllers (controls.cpp): each player's, plugged in and out while playing. A change shows on
+   the picture ("PLAYER 2: Xbox Controller") once the game is running; host_open's own scan doesn't. */
+static bool s_pads_osd;
 
 static void pad_event(const SDL_Event &e)
 {
-    if (e.type == SDL_CONTROLLERDEVICEADDED) pad_add(e.cdevice.which);
-    else if (e.type == SDL_CONTROLLERDEVICEREMOVED) pad_remove(e.cdevice.which);
+    std::string msg = controls_event(e);
+    if (!msg.empty() && s_pads_osd) {
+        for (char &c : msg) c = (char)toupper((unsigned char)c);
+        host_osd(msg.c_str());
+    }
 }
 
 static void pads_scan(void)   /* those present at SDL_Init */
 {
-    for (int i = 0; i < SDL_NumJoysticks(); i++) pad_add(i);
+    controls_devices_init();
 }
 
 int host_open(const char *title)
 {
     SDL_SetMainReady();
+    controls_sdl_hints();
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
         fprintf(stderr, "[native] SDL: %s\n", SDL_GetError());
         return 0;
@@ -222,48 +200,9 @@ int host_open(const char *title)
     return 1;
 }
 
-static uint16_t keyboard_pad(void)
-{
-    const Uint8 *k = SDL_GetKeyboardState(nullptr);
-    uint16_t p = 0;
-    if (k[SDL_SCANCODE_UP]) p |= GPAD_UP;
-    if (k[SDL_SCANCODE_DOWN]) p |= GPAD_DOWN;
-    if (k[SDL_SCANCODE_LEFT]) p |= GPAD_LEFT;
-    if (k[SDL_SCANCODE_RIGHT]) p |= GPAD_RIGHT;
-    if (k[SDL_SCANCODE_Z]) p |= GPAD_A;
-    if (k[SDL_SCANCODE_X]) p |= GPAD_B;
-    if (k[SDL_SCANCODE_C]) p |= GPAD_C;
-    if (k[SDL_SCANCODE_RETURN]) p |= GPAD_START;
-    if (k[SDL_SCANCODE_A]) p |= GPAD_X;
-    if (k[SDL_SCANCODE_S]) p |= GPAD_Y;
-    if (k[SDL_SCANCODE_D]) p |= GPAD_Z;
-    if (k[SDL_SCANCODE_Q]) p |= GPAD_MODE;
-    return p;
-}
-
-static uint16_t controller_pad(SDL_GameController *c)
-{
-    if (!c) return 0;
-    uint16_t p = 0;
-    const int dead = 12000;
-    int x = SDL_GameControllerGetAxis(c, SDL_CONTROLLER_AXIS_LEFTX), y = SDL_GameControllerGetAxis(c, SDL_CONTROLLER_AXIS_LEFTY);
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_UP) || y < -dead) p |= GPAD_UP;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_DOWN) || y > dead) p |= GPAD_DOWN;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_LEFT) || x < -dead) p |= GPAD_LEFT;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) || x > dead) p |= GPAD_RIGHT;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_X)) p |= GPAD_A;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_A)) p |= GPAD_B;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_B)) p |= GPAD_C;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_START)) p |= GPAD_START;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) p |= GPAD_X;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_Y)) p |= GPAD_Y;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) p |= GPAD_Z;
-    if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_BACK)) p |= GPAD_MODE;
-    return p;
-}
-
 void host_input(uint16_t pads[4])
 {
+    s_pads_osd = true;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)) {
@@ -290,27 +229,35 @@ void host_input(uint16_t pads[4])
         }
         pad_event(e);
     }
-    pads[0] = (uint16_t)(keyboard_pad() | controller_pad(s_pad[0]));
-    pads[1] = controller_pad(s_pad[1]);
-    pads[2] = controller_pad(s_pad[2]);
-    pads[3] = controller_pad(s_pad[3]);
+    for (int p = 0; p < 4; p++) pads[p] = controls_mask(p);
 }
 
 /* XMEN2_PAD_SELFTEST=1: the slots with SDL's virtual game controllers, headless (no window, no ROM).
    A controller attached after SDL_Init is found by host_open's scan and then announced by
    SDL_CONTROLLERDEVICEADDED, as one plugged in before launch; unplugged, plugged in again, a second
    one, the first replugged. Each step's slots are printed; exit 0 when every step holds. */
-static int virtual_pad(void)   /* its instance ID, or -1 */
+static int virtual_pad(bool generic = false)   /* its instance ID, or -1; generic: a joystick SDL has no mapping for */
 {
     SDL_VirtualJoystickDesc d;
     SDL_zero(d);
     d.version = SDL_VIRTUAL_JOYSTICK_DESC_VERSION;
-    d.type = SDL_JOYSTICK_TYPE_GAMECONTROLLER;
-    d.naxes = SDL_CONTROLLER_AXIS_MAX;
-    d.nbuttons = SDL_CONTROLLER_BUTTON_MAX;
-    d.name = "xmen2 selftest pad";
+    d.type = generic ? SDL_JOYSTICK_TYPE_UNKNOWN : SDL_JOYSTICK_TYPE_GAMECONTROLLER;
+    d.naxes = generic ? 2 : SDL_CONTROLLER_AXIS_MAX;
+    d.nbuttons = generic ? 10 : SDL_CONTROLLER_BUTTON_MAX;
+    d.nhats = generic ? 1 : 0;
+    d.vendor_id = generic ? 0x1234 : 0;   /* its own GUID */
+    d.product_id = generic ? 0x5678 : 0;
+    d.name = generic ? "xmen2 selftest generic pad" : "xmen2 selftest pad";
     int index = SDL_JoystickAttachVirtualEx(&d);
     return index < 0 ? -1 : (int)SDL_JoystickGetDeviceInstanceID(index);
+}
+
+static SDL_Joystick *joy_of(int id)   /* an instance ID's open joystick */
+{
+    for (int p = 0; p < 4; p++)
+        if (SDL_GameController *c = controls_player_pad(p))
+            if (SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)) == id) return SDL_GameControllerGetJoystick(c);
+    return SDL_JoystickFromInstanceID(id);
 }
 
 static void unplug(int id)
@@ -328,14 +275,18 @@ static void pump(void)
 int host_pad_selftest(void)
 {
     SDL_SetMainReady();
+    controls_sdl_hints();
     if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
         fprintf(stderr, "[native] pad selftest: SDL: %s\n", SDL_GetError());
         return 2;
     }
+    controls_load();
+    for (int p = 0; p < 4; p++) controls_defaults(p);   /* not this folder's xmen2.ini */
     int steps = 0, good = 0;
+    auto pad_id = [](SDL_GameController *c) { return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)); };
     auto expect = [&](const char *what, int p1, int p2) {   /* instance IDs in slots 1 and 2, -1 empty; 3-4 empty */
         int got[4];
-        for (int n = 0; n < 4; n++) got[n] = s_pad[n] ? (int)pad_id(s_pad[n]) : -1;
+        for (int n = 0; n < 4; n++) got[n] = controls_player_pad(n) ? (int)pad_id(controls_player_pad(n)) : -1;
         bool ok = got[0] == p1 && got[1] == p2 && got[2] == -1 && got[3] == -1;
         steps++;
         good += ok;
@@ -350,15 +301,36 @@ int host_pad_selftest(void)
     pads_scan();   /* host_open's, then the event SDL queued for it */
     pump();
     expect("one controller before launch", a, -1);
-    if (s_pad[0]) {   /* its button reaches player 1 only */
-        SDL_JoystickSetVirtualButton(SDL_GameControllerGetJoystick(s_pad[0]), SDL_CONTROLLER_BUTTON_A, 1);
+    auto expect_pads = [&](const char *what, uint16_t w0, uint16_t w1) {   /* players 1 and 2's bits; 3-4 none */
         uint16_t pads[4];
         host_input(pads);
-        bool ok = pads[0] == GPAD_B && !pads[1] && !pads[2] && !pads[3];
+        bool ok = pads[0] == w0 && pads[1] == w1 && !pads[2] && !pads[3];
         steps++;
         good += ok;
-        fprintf(stderr, "[native] pad selftest: its A button: pads %04x %04x %04x %04x (want %04x 0 0 0) %s\n", pads[0], pads[1],
-                pads[2], pads[3], GPAD_B, ok ? "ok" : "WRONG");
+        fprintf(stderr, "[native] pad selftest: %s: pads %04x %04x %04x %04x (want %04x %04x 0 0) %s\n", what, pads[0], pads[1],
+                pads[2], pads[3], w0, w1, ok ? "ok" : "WRONG");
+    };
+    if (SDL_Joystick *j = joy_of(a)) {   /* its button reaches player 1 only */
+        SDL_JoystickSetVirtualButton(j, SDL_CONTROLLER_BUTTON_A, 1);
+        expect_pads("its A button", GPAD_B, 0);
+        /* remapped: the south button is C, and the left stick (pushed right, past the dead zone) is nothing */
+        controls_bind_pad(0, CB_C, 0, PadIn{PadIn::BUTTON, SDL_CONTROLLER_BUTTON_A, 0});
+        g_controls[0].pad[CB_RIGHT][1] = PadIn();
+        SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_LEFTX, 30000);
+        expect_pads("remapped: A = C, no stick", GPAD_C, 0);
+        controls_defaults(0);
+        expect_pads("the defaults again: A = B, stick right", GPAD_B | GPAD_RIGHT, 0);
+        g_controls[0].deadzone = 95;
+        expect_pads("a dead zone past the stick", GPAD_B, 0);
+        controls_defaults(0);
+        SDL_JoystickSetVirtualButton(j, SDL_CONTROLLER_BUTTON_A, 0);
+        SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_LEFTX, 0);
+        /* player 1 with no controller: it goes to player 2 */
+        g_controls[0].device = "none";
+        controls_reassign();
+        expect("player 1 set to none", -1, a);
+        g_controls[0].device = "auto";
+        controls_reassign();
     }
     unplug(a);
     pump();
@@ -375,6 +347,40 @@ int host_pad_selftest(void)
     int a3 = virtual_pad();
     pump();
     expect("the first plugged in again", a3, b);
+    /* player 2 asks for this model by GUID (all the virtual ones share it): it takes the first plugged in */
+    char guid[64];
+    SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(joy_of(a3)), guid, sizeof guid);
+    g_controls[1].device = guid;
+    controls_reassign();
+    expect("player 2 pinned to the model: the first plugged in (b)", a3, b);
+    g_controls[1].device = "auto";
+    controls_reassign();   /* a settings change: plug-in order */
+    expect("player 2 auto again", b, a3);
+    /* a joystick SDL has no mapping for: mapped here, player 3, its buttons in order and its hat */
+    int g = virtual_pad(true);
+    pump();
+    SDL_GameController *gc = controls_player_pad(2);
+    bool mapped = gc && (int)pad_id(gc) == g;
+    steps++;
+    good += mapped;
+    fprintf(stderr, "[native] pad selftest: a generic joystick is player 3: %s\n", mapped ? "ok" : "WRONG");
+    if (mapped) {
+        SDL_Joystick *j = SDL_GameControllerGetJoystick(gc);
+        SDL_JoystickSetVirtualButton(j, 0, 1);
+        SDL_JoystickSetVirtualButton(j, 9, 1);
+        SDL_JoystickSetVirtualHat(j, 0, SDL_HAT_UP);
+        uint16_t pads[4];
+        host_input(pads);
+        bool ok = pads[2] == (GPAD_B | GPAD_START | GPAD_UP) && !pads[0] && !pads[1];
+        steps++;
+        good += ok;
+        fprintf(stderr, "[native] pad selftest: its button 1, button 10 and hat up: player 3 %04x (want %04x) %s; labels %s, %s\n",
+                pads[2], GPAD_B | GPAD_START | GPAD_UP, ok ? "ok" : "WRONG",
+                controls_pad_label(g_controls[2].pad[CB_B][0], 2).c_str(), controls_pad_label(g_controls[2].pad[CB_START][0], 2).c_str());
+    }
+    int bad = controls_selftest();
+    steps++;
+    good += bad == 0;
     fprintf(stderr, "[native] pad selftest: %d of %d steps ok\n", good, steps);
     SDL_Quit();
     return good == steps ? 0 : 1;

@@ -1532,6 +1532,11 @@ Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D
 Game controllers (players 1-4, in the order they are plugged in): D-pad or left stick; X = A,
 A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
 F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  Each says so on screen.
+The launcher's Controls page changes all of that for each player: which controller (any, a
+particular one, or none), a keyboard layout (arrows or W A S D, so two can share a keyboard), and
+two keys and two controller inputs for every button (click a box, press the key or button). Most
+controllers work as they are (Xbox, PlayStation, Switch, 8BitDo, ...), unknown ones with their
+buttons in order; a gamecontrollerdb.txt in this folder adds more. Online: player 1's controls.
 
 The picture, by default as your display allows (auto); widescreen=0,high_fps=0 for the original's:
     high_fps=144        frames in between the game's own, for a 120/144/165/240 Hz display

@@ -40,6 +40,55 @@ Keyboard (player 1): arrows; Z/X/C = A/B/C, A/S/D = X/Y/Z, Enter = Start, Q = Mo
 Controllers (players 1-4, in the order they are plugged in; an unplugged controller's player
 goes to the next one plugged in): D-pad or left stick;
 X/A/B = A/B/C, LB/Y/RB = X/Y/Z, Start = Start, Back = Mode. F11: fullscreen. Esc: quit.
+All of these can be changed: see [Controls](#controls).
+
+## Controls
+
+The launcher's **Controls** page sets each player's controls (players 1-4, a tab each):
+
+- **Controller**: any controller (the default: controllers go to players 1-4 in the order they
+  are plugged in), one particular controller (that player always gets it, wherever it is
+  plugged in), or none.
+- **Keyboard**: a ready-made layout (arrow keys with Z X C, or W A S D with J K L, so two players
+  can share the keyboard) or no keys.
+- **Every button of the Genesis pad** takes two keys and two controller inputs: click a box (or
+  choose it with Enter or the A button) and press the key, the controller button, or move the stick
+  or trigger you want. Esc cancels, Backspace clears; right-click or Delete clears a box. A key
+  belongs to one button of one player, so taking it moves it from wherever it was (the page says
+  so). Esc, F9, F10 and F11 stay the game's own.
+- **Stick dead zone**: how far a stick or trigger moves before it counts.
+- Press anything on the page to try it: a light shows what the game will get for that player.
+
+Controllers: anything SDL knows works with the same bindings, with its buttons named as printed on
+it: Xbox, PlayStation 3/4/5, Switch Pro and Joy-Cons, 8BitDo, Stadia, Steam and many more. Face
+buttons go by position (the bottom button is "A" on an Xbox pad, Cross on a PlayStation one and B
+on a Switch one). A controller SDL doesn't know (a generic USB pad, an arcade stick) works too:
+its buttons are taken in order, its hat or first stick moves, and the Controls page binds whatever
+it has. For more known controllers, put a [`gamecontrollerdb.txt`](https://github.com/mdqinc/SDL_GameControllerDB)
+beside the program (or set `SDL_GAMECONTROLLERCONFIG`). A controller plugged in while playing says
+on screen which player it went to.
+
+Online, you play with player 1's controls.
+
+The settings go in `xmen2.ini`, a section per player that isn't at the defaults:
+
+```ini
+[player2]
+controller = auto
+deadzone = 37
+up = key:W, pad:dpup, pad:-lefty
+a = key:J, pad:x
+start = key:Space, pad:start, pad:righttrigger
+```
+
+`controller` is `auto`, `none` or a controller's GUID (the launcher writes it, and its name as
+`controller_name`). Each button (`up`, `down`, `left`, `right`, `a`, `b`, `c`, `start`, `x`, `y`,
+`z`, `mode`) lists up to two `key:` and two `pad:` inputs, or nothing; a button left out keeps its
+default. Keys are SDL's names (`key:Left Shift`, `key:Keypad 8`); controller inputs are SDL's
+(`pad:a` the bottom face button, `b` right, `x` left, `y` top, `leftshoulder`, `rightshoulder`,
+`back`, `start`, `guide`, `leftstick`, `rightstick`, `dpup`..., `misc1`, `paddle1`-`paddle4`,
+`touchpad`; a stick direction `-leftx` / `+leftx` / `-lefty` / `+lefty`, the same for `rightx`
+/ `righty`; triggers `lefttrigger`, `righttrigger`).
 
 ## Options
 

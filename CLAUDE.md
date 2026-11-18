@@ -197,7 +197,11 @@ NOTES "The launcher"): a played start with no ROM, `--netplay` or `--input-scrip
 line opens it (`[launcher] show = 0` in xmen2.ini turns that off, `--launcher` / `--no-launcher`).
 It only writes xmen2.ini and hands the game `--netplay` arguments, so harness runs never meet it. A new
 option appears there by itself (under "Other"); give it a label, group and help in its `shown_table`.
-`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (12 cases, screenshots in OUT/shots).
+`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (14 cases, screenshots in OUT/shots).
+Controls (`platform/native/controls.cpp`, the launcher's Controls tab, xmen2.ini `[player1]`..`[player4]`;
+NOTES "Controls"): every host input goes through it (host_sdl.cpp `host_input` = `controls_mask`), not
+an option (no digest, seal or NP_VERSION change). `XMEN2_PAD_SELFTEST=1` checks the slots and bindings
+with SDL's virtual controllers (headless, ~1 s).
 Online defaults to a join code (room.cpp, joincode.cpp; NOTES "Join codes"): hosting asks the real
 router (UPnP/NAT-PMP) to forward the port, so anything that presses HOST headless sets
 `RNET_HOST_RELAY_NO_ROUTER=1` and `XMEN2_ROOM_BIND=127.0.0.1` (launcher_check does, for every case).
