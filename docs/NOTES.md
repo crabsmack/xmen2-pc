@@ -2715,6 +2715,63 @@ design (a human task, kept off the backlog until then). The other three follow f
   local split screen; (C) truly free: an active window per player and every camera-reading state
   redefined, a redesign of the game's world model. B is the sensible target.
 
+### Ideas, not scheduled: a native sound driver (2026-11-18)
+
+A feasibility study only, no code; the user's ruling: "not pursuing this for now, just something
+we can consider in the future". The question: XMen2Native has no 68000, but its sound still runs
+the cartridge's Z80 program on an emulated Z80 (superzazu, machine.cpp). Could the driver be C?
+The YM2612 and PSG models stay either way: the music is FM patches, and a synth that plays them as
+written is a model of the chip.
+
+- **The driver is GEMS 2.8** (xmen2disasm P7-kickoff.md section 3): 6,247 bytes of Z80 code, ROM
+  $1FE66C-$1FFED2 (`Snd_Z80Driver`, still an undisassembled blob), copied to Z80 RAM by
+  Z80_LoadDriver. P7 already decoded the command dispatch ($0537), song start ($0BB6), the 16
+  track slots ($1B80), the variables ($1B22), the one tempo ($0885) and the per-note voice
+  allocator ($17BF/$1822), from a throwaway linear disassembly that is not in the repo.
+- **The interface is narrow.** 13 game C files touch the Z80, all low-level (Snd_*, Z80_*,
+  EntryPoint), through Z80 RAM cells (the command ring $1B40 with its write index $36, the hold
+  flag $1B20, the busy flag $1B21, the variables $1B22+n) and the bus and reset lines, every one
+  already behind the platform API (`plat_z80_ram_read8/write8`, `plat_z80_busreq_*`,
+  `plat_z80_reset_*`). A C driver can stand behind that API with no change to the game's C.
+- **The game reads the driver back in one place that matters**: BroodClaw_StateWaitMusic
+  (09B45E.c) waits for variable $13, which the song sets. The other reads are the ring index (the
+  game's own write) and the busy flag (it only decides how long Z80_DriverPause waits).
+- **The risk: tick timing.** The driver counts tempo by spinning on YM2612 timer A and times its
+  DAC samples with Z80 loops. Phase 2 needed the Z80's cycles and the YM sample grid exact (above:
+  "timer A ticked once more in the reference across a frame end"), so which frame a tick lands in
+  depends on Z80 timing. A C driver counting timer A overflows per frame will sometimes disagree
+  at a frame end, and on the Brood cue that changes game state (not allowed with options off).
+  Ways out, cheapest first: count overflows and measure the disagreements over the corpus; charge
+  the C the Z80 cycles of each path (like the generated 68000's `XI(addr, cycles)`), exact but
+  not clean C; or keep an exact timing model only for the idle spin, around the ticks.
+- **The digest** (canonical: Z80 RAM, Z80 registers, YM timers) would be redefined: an
+  `NP_VERSION` bump, routine.
+- **What it would give**: `music_voices` simpler (today four whole driver copies run: the game's,
+  players 3-4's (R9), music and parts, each Z80 + GEMS + YM2612 + PSG, each sent every command and
+  muting what it shouldn't play; a C driver is a struct, so one sequencer could give voices out
+  across several chips, which stay one per 6 FM voices); per-voice control (stems, per-player part
+  volumes, voice-steal counts read directly, where capture now filters with `XMEN2_STEM`); no
+  emulated processor in the native build at all; room for options such as the GEMS sequences
+  (MIDI-derived) on other instruments. With options off it sounds the same and runs no faster:
+  no player-facing change by default.
+- **The path, if taken**: (1) disassemble the driver in xmen2disasm, with a Z80 decoder in its
+  tools (the engine's `z80-recomp-core` has one); (2) optionally the engine's experimental Z80
+  static recompiler as a phase-2-like step (segagenesisrecomp docs/Z80_STATIC_RECOMP.md: still
+  one emulated instruction at a time, byte-identical audio in Sonic 1-3, S3K and Rocket Knight);
+  (3) the driver by hand in C (sequencer and commands, voice allocator, FM/PSG patches and
+  envelopes, sample streaming, the 68000 command protocol); (4) a side-by-side check: the Z80
+  driver and the C driver fed the same commands every frame, their state (variables, track
+  slots, voice tables) and chip writes (order and values) compared over all 256 songs and the
+  corpus, plus `soundcheck.py` and the phase 5-7 gates; (5) four instances, savestate sections
+  (with M2's negative control), digest fields. Per frame the writes can be checked exactly;
+  within a frame they land at other moments without Z80 timing (fractions of a millisecond;
+  `sample_retime`, on by default, already moves samples more), a criterion to settle first.
+  Estimate, unmeasured: one to two weeks of agent work. Step 1 is the cheap first commitment.
+- **References**: ValleyBell's gems2mid (MidiConverters on GitHub) reads GEMS 2.8 sequences and
+  names X-Men 2 as a game that starts songs from inside songs; realmonster/GEMS (research, stale).
+  The original GEMS SDK's Z80 source circulates, but it is Sega's development kit and not a
+  source for this project: work from the cartridge's own code, as for the 68000.
+
 ## The launcher (GitHub issue #1, 2026-11-18)
 
 - **What it is.** `platform/native/launcher.cpp`: a start window for players who won't use the
