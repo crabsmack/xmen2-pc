@@ -2706,6 +2706,20 @@ design (a human task, kept off the backlog until then). The other three follow f
   getifaddrs), virtual adapters (Hyper-V/WSL, VirtualBox, VMware, Docker) left out, 100.64.0.0/10
   labelled as a VPN (Tailscale's range). The public address isn't asked of any outside service:
   the page says to look it up.
+- **"Changed from the cartridge"** (the Play page's list and the Options page's `*`; the user,
+  2026-11-18: the defaults aren't the cartridge, "the default already may have some changed"): each
+  option against the cartridge's own setting (`shown_table`'s `cart`: widescreen and high_fps 0,
+  music_voices 0, sample_retime and sample_smooth 0; else the default), `auto` as it comes out on
+  this display (options_detect_display's rule, from SDL's desktop mode: on a 4:3 60 Hz display it is
+  the cartridge's). Two buttons: "Reset to the defaults" and "Everything as the cartridge".
+- **Sharp on scaled displays** (the user's first look: "the text looks low res"; this machine's
+  display is 3840x2160 at 250%, so the DPI-unaware window was stretched 2.5x). The launcher's thread
+  is per-monitor DPI aware while it runs (SetThreadDpiAwarenessContext, Windows 10 1607+), its
+  sizes and fonts scaled by the display's DPI / 96 (ImGui `FontScaleDpi`: glyphs drawn at the real
+  size), and it quits its own SDL video at the end and restores the thread's mode, so the game's
+  window opens DPI-unaware as before: launcher then game on this display, the game still reports
+  `display 1536x864` (the 250% logical size). Linux: scale 1; `XMEN2_LAUNCHER_SCALE` overrides
+  (tests, a high-DPI X11).
 - **Seats are typed by hand** (the host tells each guest theirs), as the netplay contract needs.
   Handing seats out on connection would be a netplay change (a protocol message, NP_VERSION).
 - **Dependencies:** Dear ImGui v1.92.9b (MIT) vendored in `platform/native/external/imgui`

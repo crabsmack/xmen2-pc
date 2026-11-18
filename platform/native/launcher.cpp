@@ -55,7 +55,15 @@ struct Shown {
     const char *key, *group, *label, *help;
     std::vector<ValLabel> vals;   /* labels for listed values; a value without one shows as itself */
     bool checkbox;                /* a 0/1 option */
+    const char *cart = nullptr;   /* the cartridge's own setting, where the default isn't it (picture, sound) */
 };
+
+/* the display the launcher opens on, for what `auto` will mean there (options.cpp's rule:
+   options_detect_display) */
+int g_disp_w, g_disp_h, g_disp_hz;
+
+float g_s = 1;   /* the display's scale (DPI / 96 on Windows; XMEN2_LAUNCHER_SCALE overrides): every size below */
+float px(float v) { return v * g_s; }
 
 const char *const k_groups[] = {"Picture", "Sound", "Gameplay", "Cheats", "Other"};
 
@@ -65,24 +73,24 @@ const std::vector<Shown> &shown_table()
         {"widescreen", "Picture", "Aspect ratio",
          "A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). Auto: 16:9 on a display wider "
          "than 3:2. F10 switches it while playing.",
-         {{"auto", "Auto (follow the display)"}, {"0", "4:3 (original)"}, {"16:9", "16:9"}}, false},
+         {{"auto", "Auto (follow the display)"}, {"0", "4:3 (original)"}, {"16:9", "16:9"}}, false, "0"},
         {"high_fps", "Picture", "Frame rate",
          "Frames in between the game's own for a 120/144/165/240 Hz display. Auto: the display's rate when it is over "
          "60 Hz. F9 switches it while playing.",
-         {{"auto", "Auto (display's refresh rate)"}, {"0", "60 (original)"}}, false},
+         {{"auto", "Auto (display's refresh rate)"}, {"0", "60 (original)"}}, false, "0"},
         {"pacing", "Picture", "Frame pacing",
          "Experimental: show pictures on the display's refreshes (vsync). Timer: by the PC's clock, as before.",
          {{"timer", "Timer (default)"}, {"display", "Display refresh (experimental)"}, {"auto", "Auto (display refresh)"}}, false},
         {"music_voices", "Sound", "Music voices",
          "The music on sound chips of its own, so no part or sound effect takes its notes, and each player's part plays "
          "in full. The cartridge has one set of chips, and with two players or more the game thins each part.",
-         {{"full", "Full (default)"}, {"1", "Own chips, the game's thinned parts"}, {"0", "One set of chips (original)"}}, false},
+         {{"full", "Full (default)"}, {"1", "Own chips, the game's thinned parts"}, {"0", "One set of chips (original)"}}, false, "0"},
         {"sample_retime", "Sound", "Steady sample timing",
          "The sampled sounds (in the music and the effects) reach the chip at a steady rate, each up to 4 ms late, where "
-         "the sound driver gets them there unevenly. Off: as the cartridge.", {}, true},
+         "the sound driver gets them there unevenly. Off: as the cartridge.", {}, true, "0"},
         {"sample_smooth", "Sound", "Smooth samples",
          "A straight line from one sample value to the next, where the cartridge holds each value until the next (a "
-         "stair-step that adds high frequencies). Off: as the cartridge.", {}, true},
+         "stair-step that adds high frequencies). Off: as the cartridge.", {}, true, "0"},
         {"fm_chip", "Sound", "FM sound chip",
          "The YM3438 is the later version of the Mega Drive's sound chip, without the YM2612's DAC \"ladder\" distortion "
          "(clearest in quiet passages).",
@@ -139,15 +147,52 @@ std::string stage_label(const std::string &v)
     return name;
 }
 
+/* what `auto` will be on this display (options.cpp options_detect_display's rule), "" if unknown */
+std::string auto_here(const char *key)
+{
+    if (!strcmp(key, "widescreen") && g_disp_w > 0 && g_disp_h > 0) return g_disp_w * 2 > g_disp_h * 3 ? "16:9" : "0";
+    if (!strcmp(key, "high_fps") && g_disp_hz > 0) {
+        static const int common[] = {60, 75, 90, 100, 120, 144, 165, 180, 200, 240, 280, 360, 480};
+        int hz = g_disp_hz;
+        for (int c : common)
+            if (hz + 1 == c) hz = c;
+        return hz > 61 && hz <= 1000 ? std::to_string(hz) : "0";
+    }
+    return "";
+}
+
 std::string value_label(int i, const std::string &v)
 {
     const char *key = options_name(i);
+    if (v == "auto") {   /* say what it comes to here */
+        std::string a = auto_here(key);
+        if (!strcmp(key, "widescreen") && !a.empty()) return a == "0" ? "Auto (4:3 on this display)" : "Auto (16:9 on this display)";
+        if (!strcmp(key, "high_fps") && !a.empty()) return a == "0" ? "Auto (off: a 60 Hz display)" : "Auto (" + a + " Hz on this display)";
+    }
     if (const Shown *s = shown(key))
         for (const ValLabel &l : s->vals)
             if (v == l.v) return l.label;
     if (!strcmp(key, "start_stage")) return stage_label(v);
     if (!strcmp(key, "high_fps")) return v + " Hz";
     return v;
+}
+
+/* the cartridge's own setting of option i, and whether the current one differs from it (auto as it
+   comes out on this display: auto on a 4:3, 60 Hz display is the cartridge's picture) */
+std::string cart_value(int i)
+{
+    const Shown *s = shown(options_name(i));
+    return s && s->cart ? s->cart : options_values(i)[0];
+}
+
+bool differs_from_cart(int i)
+{
+    std::string v = options_get(i);
+    if (v == "auto") {
+        std::string a = auto_here(options_name(i));
+        if (!a.empty()) v = a;
+    }
+    return v != cart_value(i);
 }
 
 /* ---- state ------------------------------------------------------------------------------------- */
@@ -271,18 +316,18 @@ void bezel(void)
 {
     ImDrawList *dl = ImGui::GetForegroundDrawList();
     ImVec2 sz = ImGui::GetMainViewport()->Size;
-    float b = 8;
-    dl->AddRect(ImVec2(b / 2, b / 2), ImVec2(sz.x - b / 2, sz.y - b / 2), ImGui::GetColorU32(hex(0x575777)), 10.0f, (ImDrawFlags)0, b);
-    dl->AddRect(ImVec2(b + 1, b + 1), ImVec2(sz.x - b - 1, sz.y - b - 1), ImGui::GetColorU32(hex(0x777792)), 8.0f, (ImDrawFlags)0, 2.0f);
-    dl->AddRect(ImVec2(1, 1), ImVec2(sz.x - 1, sz.y - 1), ImGui::GetColorU32(hex(0x313157)), 10.0f, (ImDrawFlags)0, 2.0f);
+    float b = px(8);
+    dl->AddRect(ImVec2(b / 2, b / 2), ImVec2(sz.x - b / 2, sz.y - b / 2), ImGui::GetColorU32(hex(0x575777)), px(10), (ImDrawFlags)0, b);
+    dl->AddRect(ImVec2(b + 1, b + 1), ImVec2(sz.x - b - 1, sz.y - b - 1), ImGui::GetColorU32(hex(0x777792)), px(8), (ImDrawFlags)0, px(2));
+    dl->AddRect(ImVec2(1, 1), ImVec2(sz.x - 1, sz.y - 1), ImGui::GetColorU32(hex(0x313157)), px(10), (ImDrawFlags)0, px(2));
     for (int i = 0; i < 3; i++)
-        dl->AddRectFilled(ImVec2(sz.x - 120 + i * 22.f, 14), ImVec2(sz.x - 106 + i * 22.f, 20),
-                          ImGui::GetColorU32(hex(i == 0 ? 0x00ce00 : 0x007700)), 2.0f);
+        dl->AddRectFilled(ImVec2(sz.x - px(120 - i * 22.f), px(14)), ImVec2(sz.x - px(106 - i * 22.f), px(20)),
+                          ImGui::GetColorU32(hex(i == 0 ? 0x00ce00 : 0x007700)), px(2));
 }
 
 /* ---- the pages ---------------------------------------------------------------------------------- */
 
-const float LABEL_W = 300, FIELD_W = 360;
+float LABEL_W = 300, FIELD_W = 360;   /* scaled in launcher_run */
 
 void focus_help(State &S, const char *key)
 {
@@ -295,7 +340,7 @@ void option_row(State &S, int i)
     const Shown *sh = shown(key);
     std::string cur = options_get(i);
     std::vector<std::string> vals = options_values(i);
-    bool changed = cur != vals[0];
+    bool changed = differs_from_cart(i);
     ImGui::PushID(key);
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(sh ? sh->label : key);
@@ -341,7 +386,7 @@ const char *group_of(int i)
 
 void options_page(State &S, float h)
 {
-    ImGui::BeginChild("opts", ImVec2(0, h - 96));
+    ImGui::BeginChild("opts", ImVec2(0, h - px(96)));
     for (const char *g : k_groups) {
         bool any = false;
         for (int i = 0; i < options_count(); i++) any |= !strcmp(group_of(i), g);
@@ -350,14 +395,14 @@ void options_page(State &S, float h)
         ImGui::PushStyleColor(ImGuiCol_Text, C_ACCENT);
         ImGui::SeparatorText(g);
         ImGui::PopStyleColor();
-        ImGui::TextColored(C_DIM, "%s", !strcmp(g, "Picture") ? "Only how it looks, never the game. Online, each player's own."
-                                      : !strcmp(g, "Sound")   ? "Only how it sounds, never the game. Online, each player's own."
+        ImGui::TextColored(C_DIM, "%s", !strcmp(g, "Picture") ? "Only how it looks, never the game.   * = changed from the cartridge.   Online, each player's own."
+                                      : !strcmp(g, "Sound")   ? "Only how it sounds, never the game.   * = changed from the cartridge.   Online, each player's own."
                                                               : "These change the game.   * = changed from the cartridge.   Online, the host's apply to everyone.");
         for (int i : display_order())
             if (!strcmp(group_of(i), g)) option_row(S, i);
     }
     ImGui::EndChild();
-    ImGui::BeginChild("help", ImVec2(0, 84), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("help", ImVec2(0, px(84)), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
     int f = -1;
     for (int i = 0; i < options_count(); i++)
         if (S.focus == options_name(i)) f = i;
@@ -376,7 +421,7 @@ void options_page(State &S, float h)
 void play_page(State &S)
 {
     ImGui::SeparatorText("Your game");
-    ImGui::SetNextItemWidth(-150);
+    ImGui::SetNextItemWidth(-px(150));
     if (ImGui::InputText("##rom", S.rom, sizeof S.rom)) check_rom(S);
     ImGui::SameLine();
     if (ImGui::Button("Browse...", ImVec2(-1, 0))) {
@@ -392,21 +437,27 @@ void play_page(State &S)
         ImGui::PopStyleColor();
     }
     ImGui::Spacing();
-    ImGui::SeparatorText("Changed from the defaults");
+    ImGui::SeparatorText("Changed from the cartridge");
     int n = 0;
-    for (int i = 0; i < options_count(); i++) {
+    for (int i : display_order()) {
         std::string cur = options_get(i);
-        if (cur == options_values(i)[0]) continue;
+        if (!differs_from_cart(i)) continue;
         const Shown *sh = shown(options_name(i));
         ImGui::BulletText("%s: %s", sh ? sh->label : options_name(i),
                           sh && sh->checkbox ? (cur == "1" ? "on" : "off") : value_label(i, cur).c_str());
         n++;
     }
-    if (!n) ImGui::TextColored(C_DIM, "Nothing: the game plays exactly like the cartridge.");
+    if (!n) ImGui::TextColored(C_DIM, "Nothing: it looks, sounds and plays exactly like the cartridge.");
     if (ImGui::Button("Change options...")) S.want_tab = TAB_OPTIONS;
     ImGui::SameLine();
-    if (ImGui::Button("Reset everything to the defaults"))
+    if (ImGui::Button("Reset to the defaults"))
         for (int i = 0; i < options_count(); i++) options_set(i, options_values(i)[0]);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("The game as the cartridge plays it, with the picture following your display and the sound cleaned up.");
+    ImGui::SameLine();
+    if (ImGui::Button("Everything as the cartridge"))
+        for (int i = 0; i < options_count(); i++) options_set(i, cart_value(i));
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("The cartridge's picture and sound too: 4:3, 60 frames a second, its sound chips.");
     ImGui::Spacing();
     ImGui::SeparatorText("Controls");
     if (ImGui::BeginTable("ctl", 3, ImGuiTableFlags_SizingStretchProp)) {
@@ -461,7 +512,7 @@ void connection_combo(State &S, int players)
 void online_page(State &S)
 {
     if (ImGui::RadioButton("Host a game", S.mode == 0)) S.mode = 0;
-    ImGui::SameLine(0, 30);
+    ImGui::SameLine(0, px(30));
     if (ImGui::RadioButton("Join a game", S.mode == 1)) S.mode = 1;
     ImGui::Spacing();
     if (S.mode == 0) {
@@ -472,7 +523,7 @@ void online_page(State &S)
         connection_combo(S, S.host_players);
         if (S.connection == 0) {
             field_label("Port (UDP)");
-            ImGui::SetNextItemWidth(120);
+            ImGui::SetNextItemWidth(px(120));
             ImGui::InputText("##port", S.port, sizeof S.port, ImGuiInputTextFlags_CharsDecimal);
             ImGui::Spacing();
             ImGui::SeparatorText("Give the other players one of your addresses");
@@ -482,9 +533,9 @@ void online_page(State &S)
                 ImGui::PushID(full.c_str());
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextUnformatted(full.c_str());
-                ImGui::SameLine(250);
+                ImGui::SameLine(px(250));
                 ImGui::TextColored(C_DIM, "%s", a.second.c_str());
-                ImGui::SameLine(ImGui::GetWindowWidth() - 120);
+                ImGui::SameLine(ImGui::GetWindowWidth() - px(120));
                 if (ImGui::Button("Copy")) SDL_SetClipboardText(full.c_str());
                 ImGui::PopID();
             }
@@ -536,9 +587,9 @@ void online_page(State &S)
 
 void footer(State &S)
 {
-    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 58);
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - px(58));
     if (!S.error.empty() && S.error != S.rom_why) {
-        ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 88);
+        ImGui::SetCursorPosY(ImGui::GetWindowHeight() - px(88));
         ImGui::TextColored(C_BAD, "%s", S.error.c_str());
     }
     ImGui::Separator();
@@ -547,9 +598,9 @@ void footer(State &S)
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Off: the game starts straight away with these settings. Start it with --launcher to see this again.");
     const char *label = S.tab != TAB_ONLINE ? "PLAY" : S.mode == 0 ? "HOST GAME" : "JOIN GAME";
-    float bw = 190;
-    ImGui::SameLine(ImGui::GetWindowWidth() - bw - 110 - 18 - 10);
-    if (ImGui::Button("Quit", ImVec2(110, 0))) S.press = PRESS_QUIT;
+    float bw = px(190);
+    ImGui::SameLine(ImGui::GetWindowWidth() - bw - px(110 + 18 + 10));
+    if (ImGui::Button("Quit", ImVec2(px(110), 0))) S.press = PRESS_QUIT;
     ImGui::SameLine();
     bool off = !S.rom_why.empty();
     ImGui::BeginDisabled(off);
@@ -574,9 +625,9 @@ void frame(State &S)
     ImGui::TextColored(C_TITLE, "X-MEN 2: CLONE WARS");
     ImGui::PopFont();
     ImGui::SameLine();
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 12);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + px(12));
     ImGui::TextColored(C_DIM, "for PC%s%s", XMEN2_VERSION[0] ? "  " : "", XMEN2_VERSION);
-    float body_h = ImGui::GetWindowHeight() - ImGui::GetCursorPosY() - 110 - (S.error.empty() || S.error == S.rom_why ? 0 : 30);
+    float body_h = ImGui::GetWindowHeight() - ImGui::GetCursorPosY() - px(110) - (S.error.empty() || S.error == S.rom_why ? 0 : px(30));
     if (ImGui::BeginTabBar("tabs")) {
         static const char *const names[] = {"Play", "Options", "Online"};
         for (int t = 0; t < 3; t++) {
@@ -727,18 +778,42 @@ bool launcher_run(const std::string &rom, LaunchPlan *plan)
         fclose(f);
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
     }
+    /* Sharp text on a scaled display (Windows at 125-200%): this thread's windows are per-monitor DPI
+       aware while the launcher runs, drawn at the display's scale. Only this thread, and its own SDL
+       video (quit at the end): the game's window opens afterwards exactly as it always has (DPI
+       unaware, its sizes and display detection unchanged). */
+#ifdef _WIN32
+    typedef DPI_AWARENESS_CONTEXT(WINAPI * SetCtxFn)(DPI_AWARENESS_CONTEXT);
+    SetCtxFn set_ctx = (SetCtxFn)(void *)GetProcAddress(GetModuleHandleW(L"user32.dll"), "SetThreadDpiAwarenessContext");
+    DPI_AWARENESS_CONTEXT prev_ctx = set_ctx ? set_ctx(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) : nullptr;
+#endif
     if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
         fprintf(stderr, "[launcher] SDL: %s; starting the game without it\n", SDL_GetError());
+#ifdef _WIN32
+        if (prev_ctx) set_ctx(prev_ctx);
+#endif
         plan->rom = rom;
         plan->netplay.clear();
         return !rom.empty() || (fprintf(stderr, "[launcher] no ROM\n"), false);
     }
     SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-    int w = 1100, h = 760;
+    SDL_DisplayMode dm;
+    if (SDL_GetDesktopDisplayMode(0, &dm) == 0) { g_disp_w = dm.w; g_disp_h = dm.h; g_disp_hz = dm.refresh_rate; }
+    float ddpi = 0;
+#ifdef _WIN32
+    if (prev_ctx && SDL_GetDisplayDPI(0, &ddpi, nullptr, nullptr) == 0 && ddpi > 0) g_s = ddpi / 96.0f;
+#endif
+    if (const char *sc = getenv("XMEN2_LAUNCHER_SCALE"); sc && atof(sc) > 0) g_s = (float)atof(sc);
+    if (g_s < 1) g_s = 1;
+    if (g_s > 4) g_s = 4;
+    fprintf(stderr, "[launcher] display %dx%d at %d Hz, scale %.2f\n", g_disp_w, g_disp_h, g_disp_hz, (double)g_s);
+    LABEL_W = px(300);
+    FIELD_W = px(360);
+    int w = (int)px(1100), h = (int)px(760);
     SDL_Rect usable;
     if (SDL_GetDisplayUsableBounds(0, &usable) == 0) {   /* a small screen (a handheld): what fits */
-        if (w > usable.w - 20) w = usable.w - 20;
-        if (h > usable.h - 50) h = usable.h - 50;
+        if (w > usable.w - (int)px(20)) w = usable.w - (int)px(20);
+        if (h > usable.h - (int)px(50)) h = usable.h - (int)px(50);
     }
     Uint32 wf = SDL_WINDOW_RESIZABLE | (script.empty() ? 0 : SDL_WINDOW_HIDDEN);
     SDL_Window *win = SDL_CreateWindow("X-Men 2: Clone Wars", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, wf);
@@ -748,11 +823,15 @@ bool launcher_run(const std::string &rom, LaunchPlan *plan)
     if (!win || !r) {
         fprintf(stderr, "[launcher] no window: %s; starting the game without it\n", SDL_GetError());
         if (win) SDL_DestroyWindow(win);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
+#ifdef _WIN32
+        if (prev_ctx) set_ctx(prev_ctx);
+#endif
         plan->rom = rom;
         plan->netplay.clear();
         return !rom.empty();
     }
-    SDL_SetWindowMinimumSize(win, 900, 620);
+    SDL_SetWindowMinimumSize(win, (int)px(900) < w ? (int)px(900) : w, (int)px(620) < h ? (int)px(620) : h);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -765,6 +844,8 @@ bool launcher_run(const std::string &rom, LaunchPlan *plan)
     io.Fonts->AddFontFromMemoryTTF((void *)k_font_karla, (int)sizeof k_font_karla, 19, &cfg);
     g_title_font = io.Fonts->AddFontFromMemoryTTF((void *)k_font_roboto, (int)sizeof k_font_roboto, 30, &cfg);
     theme();
+    ImGui::GetStyle().ScaleAllSizes(g_s);
+    ImGui::GetStyle().FontScaleDpi = g_s;   /* fonts drawn at the display's size: sharp, not stretched */
     ImGui_ImplSDL2_InitForSDLRenderer(win, r);
     ImGui_ImplSDLRenderer2_Init(r);
 
@@ -809,5 +890,10 @@ bool launcher_run(const std::string &rom, LaunchPlan *plan)
     ImGui::DestroyContext();
     SDL_DestroyRenderer(r);
     SDL_DestroyWindow(win);
+    /* the game starts its SDL afresh, in this thread's own DPI mode */
+    SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
+#ifdef _WIN32
+    if (prev_ctx) set_ctx(prev_ctx);
+#endif
     return go;
 }
