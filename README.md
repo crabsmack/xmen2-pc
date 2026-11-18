@@ -101,13 +101,33 @@ The picture and sound options (`high_fps`, the 16:9 view, `music_voices`, `sampl
 `sample_smooth`, `fm_chip`) are each seat's own,
 except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
-There is no lobby or server: one player hosts, and the others connect to the host's address.
-**The launcher's Online page does all of this:** the host picks the number of players and presses
-Host Game (the page lists the addresses to give out, with Copy buttons); the others type the
-host's address (and, with three or four players, the seat the host gave them) and press Join Game.
-It remembers what you used. The steps below are the same thing from a command prompt (Windows:
-in the game's folder, type `cmd` in Explorer's address bar and press Enter; Linux: a terminal
-there, with `./xmen2` for `XMen2.exe`), and what to check when a connection fails.
+There is no lobby or server: one player hosts, and the others connect to the host.
+
+**With a join code (the launcher's Online page):**
+
+1. The host picks the number of players and presses **Get a code**. The launcher asks the router
+   to open UDP port 7000 for the game (UPnP or NAT-PMP; the router closes it again by itself within
+   two hours) and makes a code like `XM2-5AB3-K9QF-M2PX-TV7` from the host's addresses: the
+   internet one, the home network's, and a VPN's such as Tailscale's. It says whether the router
+   opened the port. Windows may ask to let `XMen2.exe` use the network: allow it.
+2. The host sends the code to the others (a chat message). It holds the host's addresses, so send
+   it only to the people you play with.
+3. Each of the others pastes it under **Join a game** and presses Join Game. The launcher tries
+   every address in the code and uses the nearest that answers; the host decides each player's
+   number and the number of players.
+4. The game starts on every PC once everyone is in, or when the host presses **Start now** with
+   the players in so far. Everyone needs the same release: a player with another is told so.
+
+If the host's router doesn't open the port (some don't, or another router or the internet
+provider's stands in front of it: the launcher says which), players on the host's home network or
+on a VPN with the host can still join, and so can anyone else once the host forwards UDP 7000 on
+the router to their PC. `XMen2.exe --router-check` asks the router as a host would, prints what it
+answered, and closes the port again.
+
+The launcher remembers what you used. Its Connection menu also has the ways below without a code.
+The steps below are the same thing from a command prompt (Windows: in the game's folder, type
+`cmd` in Explorer's address bar and press Enter; Linux: a terminal there, with `./xmen2` for
+`XMen2.exe`), and what to check when a connection fails.
 
 **Two players**
 

@@ -122,6 +122,7 @@ static void np_tell(const std::string &what)
 }
 
 bool netplay_enabled(void) { return N.on; }
+const char *netplay_version(void) { return NP_VERSION; }   /* room.cpp: a joiner of another version is told before it starts */
 
 void netplay_print_json(void)
 {

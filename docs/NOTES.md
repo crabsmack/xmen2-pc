@@ -2780,8 +2780,9 @@ design (a human task, kept off the backlog until then). The other three follow f
   port or the host's address, the time waited, "ESC OR CLOSE THE WINDOW TO STOP"); Esc or closing
   quits (exit 0). `--benchmark` runs keep the 60 s (np_fail, exit 6). Testing: `XMEN2_WAIT_QUIT_MS=N`
   (a close after N ms), `XMEN2_WAIT_SHOT=FILE` (the screen as a BMP).
-- **Seats are typed by hand** (the host tells each guest theirs), as the netplay contract needs.
-  Handing seats out on connection would be a netplay change (a protocol message, NP_VERSION).
+- **Seats are typed by hand** (the host tells each guest theirs) with a direct address, as the
+  netplay contract needs. Join codes (below) hand them out in the launchers, before either game
+  starts, so the netplay contract is unchanged.
 - **Dependencies:** Dear ImGui v1.92.9b (MIT) vendored in `platform/native/external/imgui`
   (core + SDL2 and SDL_Renderer backends, unmodified); Karla (OFL 1.1) and Roboto Medium (Apache
   2.0) in `platform/native/external/fonts`, built into the program by native.cmake at configure
@@ -2793,6 +2794,57 @@ design (a human task, kept off the backlog until then). The other three follow f
   nothing written), show = 0 (the next start plays from `[rom]` without it), `--launcher`, and
   `--benchmark` never showing it: 7/7, with screenshots of the pages. Not checked by a person yet:
   the window on a real desktop, mouse, keyboard and controller navigation, Browse.
+
+### Join codes (2026-11-18)
+
+- **Why.** RecompLauncher reports asked for online play without the command line and IP addresses
+  ("an option to just 'Join by code' instead of relying only on IP address"). The user ruled out
+  any server of the project's ("I'd absolutely not be hosting a server myself, I don't want to be
+  responsible for running it forever"; P7 R8: "No lobby server") and kept the current approach,
+  "as seamless as possible for someone to host and someone to join". Other ports with codes
+  (Dolphin's traversal server, sm64coopdx's CoopNet, Ship of Harkinian's Anchor) all run a server;
+  a code with none can only hold the host's addresses. It can't get through a router that won't
+  open the port: that case still needs a VPN or a forwarded port, and the launcher says so.
+- **The flow** (launcher.cpp, room.cpp, joincode.cpp; the Connection menu's default, "With a join
+  code"): the host's GET A CODE opens a room on the game's port: the engine's RNetHostPort
+  (recomp-net host_relay.h) asks the router (UPnP IGD 2.5 s, then NAT-PMP, then STUN for the
+  public address), the socket is then the room's. The code holds the public address and this PC's
+  own (its network's first, then a VPN's; at most 4). A joiner pastes it (or types an address),
+  sends JOIN to every address every 250 ms and takes the host where the first answer came from (a
+  nearer kind within 0.3 s wins: network, VPN, internet). The host hands out seats in arrival order,
+  closing up when one leaves (LEAVE, or 5 s unheard); its START NOW, or a second after every seat
+  is taken, sends GO (seat, seats) for 0.8 s, then both launchers hand their games the same
+  `--netplay lan|hub` arguments as before (a joiner binds port+seat and dials the host's answering
+  address). A joiner's game knocks (HELLO every 100 ms) until the host's binds, so the order of
+  the hand-off doesn't matter. The wire is text, `XM2ROOM1 JOIN|SEAT|FULL|VER|BYE|GO|LEAVE` (room.h);
+  a JOIN carries NP_VERSION, and a host of another version answers VER, so a mismatch is said
+  before any game starts.
+- **The code** (joincode.h): Crockford base32 behind "XM2-", in fours: a header (format, port 7000
+  or one port or a port each, the count), each address's form (192.168.a.b in 2 bytes, 10.a.b.c and
+  100.64/10 in 3, others 4), CRC-8, and the spare bits zero; a mistyped code is refused with a
+  reason. A public address and a home network's at port 7000: 15 characters.
+- **The router.** The forward is the engine's: a 2-hour lease (UPnP NewLeaseDuration 7200, NAT-PMP
+  lifetime 7200), described as "Retro netplay host", left for the game when the room starts and
+  never renewed, so it lapses by itself; nothing removes it earlier (the room's socket isn't
+  RNetHostPort's after discovery). A forward whose router reports a private outside address
+  (another router or the provider's NAT in front) is said to reach only the network and VPN
+  players. `XMen2Native --router-check [PORT]` runs the host's discovery once, prints one JSON line
+  (how, public, forwarded, behind_another_nat) and removes the forward (rnet_host_port_unmap_release).
+  Checked on one home router: no UPnP answer in 2.5 s, NAT-PMP forwarded UDP 7000 0.2 s later, a
+  public outside address; removed after.
+- **Checked** (`tools/launcher_check.py`, now 12 cases): code 2 (host lan seat 0, joiner seat 1
+  dialing the host; the code and `[netplay] code` saved), code 4 started by START NOW with two
+  joined (hub, 3 seats, seats 1 and 2 in arrival order, players=3), three mistyped codes (a middle
+  character, the spare bits, one character short) refused at once, another version refused
+  (`XMEN2_ROOM_VERSION` stands in for it), and the hand-off: two launchers go on into their games,
+  which both print `[netplay] seat I of 2 (lan), sealed`. Every case runs with
+  `RNET_HOST_RELAY_NO_ROUTER=1` and `XMEN2_ROOM_BIND=127.0.0.1` (the rooms and the code-mode games
+  on loopback, no router or STUN server asked, no firewall question on the desktop). Not checked:
+  two PCs, a session across the internet, a router that answers UPnP.
+- **Lesson:** the old host case pressed HOST with no connection named, so when join codes became the
+  default it hosted for real for 2 minutes and may have asked this machine's router to forward a
+  port. A test harness for code that can reach outside the machine sets the switches that stop it
+  for every case, not per case (launcher_check's NO_ROUTER).
 
 ## Open questions
 

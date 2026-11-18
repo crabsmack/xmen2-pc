@@ -47,6 +47,7 @@
 
 #include "host_sdl.h"
 #include "native.h"
+#include "room.h"
 #include "sample_retime.h"
 #include "state.h"
 #include "xmen2_image.h"
@@ -1139,6 +1140,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--no-render")) no_render = true;
         else if (!strcmp(argv[i], "--no-pixels")) no_pixels = true;
         else if (!strcmp(argv[i], "--quit-after") && i + 1 < argc) s_quit_after = strtoull(argv[++i], nullptr, 10);
+        else if (!strcmp(argv[i], "--router-check"))   /* room.cpp: does this router forward a host's port? */
+            return room_router_check(i + 1 < argc && atoi(argv[i + 1]) > 0 ? atoi(argv[++i]) : 7000);
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
         else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);

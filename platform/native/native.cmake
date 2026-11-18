@@ -80,6 +80,7 @@ endif()
 set(XMEN2_IMGUI "${CMAKE_SOURCE_DIR}/platform/native/external/imgui")
 target_sources(XMen2Native PRIVATE
     "${CMAKE_SOURCE_DIR}/platform/native/launcher.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/joincode.cpp" "${CMAKE_SOURCE_DIR}/platform/native/room.cpp"
     "${XMEN2_IMGUI}/imgui.cpp" "${XMEN2_IMGUI}/imgui_draw.cpp" "${XMEN2_IMGUI}/imgui_tables.cpp"
     "${XMEN2_IMGUI}/imgui_widgets.cpp" "${XMEN2_IMGUI}/backends/imgui_impl_sdl2.cpp"
     "${XMEN2_IMGUI}/backends/imgui_impl_sdlrenderer2.cpp")

@@ -1604,10 +1604,14 @@ widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays w
 high_fps, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
 seat's own (F9 and F10 work), except that with the host's widescreen_gameplay=1 the view is the
 host's too.
-There is no lobby: one player hosts, the others connect to the host's address. Everyone needs the
-same release. The launcher's Online page does it: the host presses Host Game (the page lists the
-addresses to give out), the others type that address and press Join Game. From a command prompt
-in this folder instead:
+There is no lobby: one player hosts, the others connect to the host. Everyone needs the same
+release. The launcher's Online page does it with a join code: the host presses Get a code (the
+launcher asks the router to open UDP port 7000, for at most two hours, and says whether it did;
+allow {exe} through the firewall if asked) and sends the code to the others, who paste it under
+Join a game. The game starts once everyone is in, or at the host's Start now. If the router
+doesn't open the port, players on the host's network or on a VPN with the host (such as
+Tailscale) can still join, or the host forwards UDP 7000 to the PC. {exe} --router-check asks the
+router as a host would and closes the port again. From a command prompt in this folder instead:
  1. The host's address: on one home network, its local IPv4 address (ipconfig); over the
     internet, simplest is a VPN such as Tailscale on both PCs (the host's 100.x.y.z address),
     or the host forwards UDP port 7000 on the router to the PC. Allow {exe} through the

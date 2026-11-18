@@ -19,12 +19,18 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import common  # noqa: E402
 
 EXE_NAME = "XMen2Native.exe" if sys.platform == "win32" else "XMen2Native"
+# Every case, whatever its script: a join code's room asks no router (UPnP, NAT-PMP) and no STUN server, and
+# binds loopback only (no firewall question on the desktop). A case that forgot `field connection direct`
+# once asked this machine's real router to forward a port.
+NO_ROUTER = {"RNET_HOST_RELAY_NO_ROUTER": "1", "XMEN2_ROOM_BIND": "127.0.0.1",
+             "RNET_HOST_RELAY_ENDPOINT": "127.0.0.1:7000"}
 
 
 def run_case(exe: Path, d: Path, script: str | None, args: list[str], dry: bool = True, timeout: int = 120):
@@ -34,7 +40,7 @@ def run_case(exe: Path, d: Path, script: str | None, args: list[str], dry: bool 
         shutil.copy2(exe, local)
         for dll in exe.parent.glob("*.dll"):
             shutil.copy2(dll, d / dll.name)
-    env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy"}
+    env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", **NO_ROUTER}
     env.pop("XMEN2_LAUNCHER_TEST", None)
     env.pop("XMEN2_LAUNCHER_DRYRUN", None)
     if script is not None:
@@ -44,6 +50,36 @@ def run_case(exe: Path, d: Path, script: str | None, args: list[str], dry: bool 
         env["XMEN2_LAUNCHER_DRYRUN"] = "1"
     r = subprocess.run([str(local), *args], capture_output=True, text=True, env=env, timeout=timeout, cwd=d)
     m = re.search(r"^\[launcher\] plan (\{.*\})$", r.stdout, re.M)
+    plan = json.loads(m.group(1).replace("\\", "\\\\")) if m else None
+    ini = (d / "xmen2.ini").read_text() if (d / "xmen2.ini").exists() else ""
+    return r, plan, ini
+
+
+def start_case(exe: Path, d: Path, script: str, extra_env: dict, dry: bool = True) -> subprocess.Popen:
+    """run_case's launcher, started in the background (a room's host and joiners play side by side); dry=False
+    goes on into the game the launcher plans"""
+    d.mkdir(parents=True, exist_ok=True)
+    local = d / exe.name
+    if not local.exists():
+        shutil.copy2(exe, local)
+        for dll in exe.parent.glob("*.dll"):
+            shutil.copy2(dll, d / dll.name)
+    env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "XMEN2_NO_MESSAGEBOX": "1",
+           **({"XMEN2_LAUNCHER_DRYRUN": "1"} if dry else {}), **NO_ROUTER, **extra_env}
+    (d / "script.txt").write_text(script)
+    env["XMEN2_LAUNCHER_TEST"] = str(d / "script.txt")
+    return subprocess.Popen([str(local)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=d)
+
+
+def finish_case(p: subprocess.Popen, d: Path, timeout: int = 90):
+    """-> (result with .stdout/.stderr/.returncode, the plan or None, xmen2.ini)"""
+    try:
+        so, se = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        so, se = p.communicate()
+    r = subprocess.CompletedProcess(p.args, p.returncode, so, se)
+    m = re.search(r"^\[launcher\] plan (\{.*\})$", so, re.M)
     plan = json.loads(m.group(1).replace("\\", "\\\\")) if m else None
     ini = (d / "xmen2.ini").read_text() if (d / "xmen2.ini").exists() else ""
     return r, plan, ini
@@ -93,6 +129,7 @@ press play
     r, plan, ini = run_case(exe, out / "host", f"""rom {rom}
 tab online
 mode host
+field connection direct
 field players 4
 shot {shots / '5_host.bmp'}
 press host
@@ -106,6 +143,7 @@ press host
     r, plan, ini = run_case(exe, out / "join", f"""rom {rom}
 tab online
 mode join
+field connection direct
 field players 2
 field host 192.168.1.20
 shot {shots / '6_join.bmp'}
@@ -142,6 +180,116 @@ press play
     r, plan, ini = run_case(exe, out / "bench", "press quit\n", ["--benchmark", "3"], dry=True)
     check("--benchmark skips it", plan is None and "[launcher]" not in r.stderr, f"exit {r.returncode}")
 
+    # 8-11. join codes (room.cpp): host and joiners on loopback, side by side (XMEN2_ROOM_BIND: no router, no
+    # firewall question; RNET_HOST_RELAY_ENDPOINT: the code's "public" address)
+    def room_env(port: int, **more: str) -> dict:
+        return {"XMEN2_ROOM_BIND": "127.0.0.1", "RNET_HOST_RELAY_ENDPOINT": f"127.0.0.1:{port}", **more}
+
+    def code_game(name: str, players: int, joiners: int, port: int, host_extra: str = "", join_env: dict | None = None,
+                  join_wait: str = "seated", shot: bool = False):
+        """the host gets a code; `joiners` launchers paste it. -> (host result, [joiner results], code)"""
+        hd = out / name / "host"
+        code_file = out / name / "code.txt"
+        sh = (lambda n: f"shot {shots / n}\n") if shot else (lambda n: "")
+        host_script = f"""rom {rom}
+tab online
+mode host
+field players {players}
+field port {port}
+{sh(f'{name}_1_host_before.bmp')}press host
+wait open
+code-to {code_file}
+{sh(f'{name}_2_host_open.bmp')}{host_extra}"""
+        h = start_case(exe, hd, host_script, room_env(port))
+        t0 = time.time()
+        while not code_file.exists() and h.poll() is None and time.time() - t0 < 30:
+            time.sleep(0.05)
+        code = code_file.read_text().strip() if code_file.exists() else ""
+        js = []
+        for k in range(joiners):
+            jd = out / name / f"join{k + 1}"
+            script = f"""rom {rom}
+tab online
+mode join
+field code {code}
+{sh(f'{name}_3_join_pasted.bmp') if k == 0 else ''}press join
+wait {join_wait}
+{sh(f'{name}_4_join_{join_wait}.bmp') if k == 0 else ''}"""
+            js.append(start_case(exe, jd, script, room_env(port, **(join_env or {}))))
+            if k + 1 < joiners:
+                time.sleep(0.4)   # arrival order = seats
+        return finish_case(h, hd), [finish_case(j, out / name / f"join{k + 1}") for k, j in enumerate(js)], code
+
+    # 8. two players: the joiner gets seat 1, the host's game starts by itself once full
+    hr, (jr,), code = code_game("code2", 2, 1, 7110, "wait guests1\nshot " + str(shots / "code2_2b_host_full.bmp") + "\n",
+                                shot=True)
+    hp, jp = hr[1], jr[1]
+    ok = hp is not None and hp["netplay"] == ["--netplay", "lan", "--seat", "0", "--seats", "2", "--bind", "127.0.0.1:7110"]
+    ok = ok and jp is not None and jp["netplay"][:8] == ["--netplay", "lan", "--seat", "1", "--seats", "2", "--bind", "127.0.0.1:7001"] \
+        and jp["netplay"][8] == "--peer" and jp["netplay"][9].endswith(":7110")
+    ok = ok and re.fullmatch(r"XM2(-[0-9A-HJKMNP-TV-Z]{1,4})+", code) is not None and "connection = code" in hr[2] \
+        and f"code = {code}" in jr[2]
+    check("code 2", ok, f"code {code}; host {hp and hp['netplay']}; joiner {jp and jp['netplay']}"
+          + ("" if ok else f"\n{hr[0].stderr[-500:]}\n{jr[0].stderr[-500:]}"))
+
+    # 9. four players, three in: the host's START NOW after two joined -> three seats, the seats in arrival order
+    hr, jrs, code = code_game("code4", 4, 2, 7120, "wait guests2\npress host\n")
+    hp = hr[1]
+    jps = [j[1] for j in jrs]
+    ok = hp is not None and hp["netplay"] == ["--netplay", "hub", "--seat", "0", "--seats", "3", "--bind", "127.0.0.1:7120"] \
+        and hp["options"].get("players") == "3"
+    ok = ok and all(p is not None for p in jps) and [p["netplay"][3] for p in jps] == ["1", "2"] \
+        and all(p["netplay"][1] == "hub" and p["netplay"][5] == "3" for p in jps)
+    check("code 4, start now with 3", ok, f"host {hp and hp['netplay']}; joiners {[p and p['netplay'][:6] for p in jps]}")
+
+    # 10. mistyped codes (a character in the middle; the last one's spare bits; one left off): refused at once
+    # with a reason, nothing tried
+    flip = lambda c: "A" if c != "A" else "B"  # noqa: E731
+    typos = [code[:9] + flip(code[9]) + code[10:], code[:-1] + ("1" if code[-1] == "0" else "0"), code[:-1]]
+    bad_ok = []
+    for k, bad in enumerate(typos):
+        r, plan, ini = run_case(exe, out / f"badcode{k}", f"""rom {rom}
+tab online
+mode join
+field code {bad}
+press join
+wait error 5
+{f"shot {shots / 'code_typo.bmp'}" if k == 0 else ""}
+press quit
+""", [])
+        bad_ok.append(plan is None and "timed out" not in r.stderr)
+    check("mistyped code", all(bad_ok), f"{typos} refused: {bad_ok}")
+
+    # 11. another version: the host refuses the joiner, which says so (XMEN2_ROOM_VERSION stands in for it)
+    hr, (jr,), code = code_game("codever", 2, 1, 7130, "wait guests1 6\npress quit\n",
+                                join_env={"XMEN2_ROOM_VERSION": "xmen2-native-netplay-0"}, join_wait="error")
+    ok = jr[1] is None and "timed out" not in jr[0].stderr and hr[1] is None
+    check("another version refused", ok, f"joiner plan {jr[1]}, host plan {hr[1]}" + ("" if ok else f"\n{jr[0].stderr[-400:]}"))
+
+    # 12. the hand-off: two launchers settle a room, then their games (played, dummy video) connect and agree
+    # on the session ("[netplay] seat I of 2 ... sealed"); then each is stopped by its own PID
+    d12 = out / "handoff"
+    code_file = d12 / "code.txt"
+    h = start_case(exe, d12 / "host", f"rom {rom}\ntab online\nmode host\nfield players 2\nfield port 7150\npress host\n"
+                   f"wait open\ncode-to {code_file}\n", room_env(7150), dry=False)
+    t0 = time.time()
+    while not code_file.exists() and h.poll() is None and time.time() - t0 < 30:
+        time.sleep(0.05)
+    code = code_file.read_text().strip() if code_file.exists() else ""
+    j = start_case(exe, d12 / "join", f"rom {rom}\ntab online\nmode join\nfield code {code}\npress join\n", room_env(7150),
+                   dry=False)
+    logs = {}
+    time.sleep(25)   # the room (a second once full), both games' boot, the session's handshake
+    sealed = {}
+    for name, p in (("host", h), ("join", j)):
+        if p.poll() is None:
+            p.kill()   # this PID only
+        so, se = p.communicate()
+        logs[name] = se
+        sealed[name] = re.search(r"^\[netplay\] seat \d of 2 \(lan\), sealed", se, re.M) is not None
+    check("code hand-off: the games connect", all(sealed.values()), f"sealed {sealed}"
+          + ("" if all(sealed.values()) else f"\nhost: {logs['host'][-400:]}\njoin: {logs['join'][-400:]}"))
+
     for f in shots.glob("*.bmp"):
         try:
             from PIL import Image
@@ -149,7 +297,7 @@ press play
             f.unlink()
         except ImportError:
             break
-    print(f"{7 - len(fails)}/7 pass; screenshots in {shots}")
+    print(f"{12 - len(fails)}/12 pass; screenshots in {shots}")
     return 1 if fails else 0
 
 

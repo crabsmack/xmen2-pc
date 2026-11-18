@@ -197,7 +197,11 @@ NOTES "The launcher"): a played start with no ROM, `--netplay` or `--input-scrip
 line opens it (`[launcher] show = 0` in xmen2.ini turns that off, `--launcher` / `--no-launcher`).
 It only writes xmen2.ini and hands the game `--netplay` arguments, so harness runs never meet it. A new
 option appears there by itself (under "Other"); give it a label, group and help in its `shown_table`.
-`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (7 cases, screenshots in OUT/shots).
+`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (12 cases, screenshots in OUT/shots).
+Online defaults to a join code (room.cpp, joincode.cpp; NOTES "Join codes"): hosting asks the real
+router (UPnP/NAT-PMP) to forward the port, so anything that presses HOST headless sets
+`RNET_HOST_RELAY_NO_ROUTER=1` and `XMEN2_ROOM_BIND=127.0.0.1` (launcher_check does, for every case).
+`XMen2Native --router-check` asks the router once and removes the forward: ask the user before running it.
 A played run that fails (a bad ROM, a netplay session with nobody there) shows a message box, and on
 Windows SDL shows real dialogs even with `SDL_VIDEODRIVER=dummy`: one blocks on the user's desktop
 until clicked. Headless tests that can get there set `XMEN2_NO_MESSAGEBOX=1` (the text goes to stderr).
