@@ -424,10 +424,26 @@ static double now_us(void)
 
 /* the pre-match transfer of the seal: the host sends it, every guest adopts it (as the engine's SRAM
    barrier: nobody runs tick 0 before it has landed) */
+/* the waiting screen's lines: who this seat is waiting for, how long, how to stop */
+static void wait_screen(double secs)
+{
+    char l1[48], l2[48], l3[48];
+    size_t colon = N.bind.rfind(':');
+    std::string port = colon == std::string::npos ? N.bind : N.bind.substr(colon + 1);
+    if (N.transport == "ice") snprintf(l2, sizeof l2, "CONNECTING THROUGH THE SHARED FOLDER");
+    else if (N.seat == 0) snprintf(l2, sizeof l2, "HOSTING %d PLAYERS ON PORT %s", N.seats, port.c_str());
+    else snprintf(l2, sizeof l2, "JOINING %.26s AS PLAYER %d", N.peer.c_str(), N.seat + 1);
+    snprintf(l1, sizeof l1, "%s", N.seat == 0 ? "WAITING FOR THE OTHER PLAYERS" : "WAITING FOR THE HOST");
+    int s = (int)secs;
+    snprintf(l3, sizeof l3, "%d:%02d", s / 60, s % 60);
+    const char *lines[] = {l1, "", l2, l3, "", "ESC OR CLOSE THE WINDOW TO STOP"};
+    host_wait_screen(lines, 6);
+}
+
 static void seal_exchange(void)
 {
     bool sent = false;
-    double t0 = now_us();
+    double t0 = now_us(), drawn = 0;
     for (;;) {
         ice_pump_signals();
         rnet_session_pump(s_session);
@@ -453,7 +469,15 @@ static void seal_exchange(void)
                 if (op == RNET_STATE_OP_SRAM) return;
             }
         }
-        if (now_us() - t0 > 60e6) np_fail("no session after 60 s (the other seats never came)");
+        /* A played session waits as long as it takes (the user, 2026-11-18: "why are we killing the
+           online play if nobody connects in 60 seconds? seems excessive"), on a screen saying so;
+           Esc or closing the window ends it (host_wait_screen). Runs with --benchmark (the harness:
+           seats started together) still give up after 60 s. */
+        if (!s_played && now_us() - t0 > 60e6) np_fail("no session after 60 s (the other seats never came)");
+        if (s_played && now_us() - drawn >= 33e3) {
+            drawn = now_us();
+            wait_screen((drawn - t0) / 1e6);
+        }
         (void)rnet_session_wait_recv(s_session, 2);
     }
 }

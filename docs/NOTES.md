@@ -2731,6 +2731,15 @@ design (a human task, kept off the backlog until then). The other three follow f
   after 60 s, a refused match, the rest). `XMEN2_NO_MESSAGEBOX=1` prints them instead (tests): a
   guest with no host gives "No other player connected within a minute ..." and exit 6. A GUI-subsystem
   build would hide the window completely, but costs the command line its output.
+- **A played session waits as long as it takes** (the user, 2026-11-18: "why are we killing the
+  online play if nobody connects in 60 seconds? seems excessive"). The 60 s limit in seal_exchange
+  came from phase 7's harness (seats started together; a stuck test must end), and while it waited
+  the window pumped no events (black, "Not responding", no way to close it). Now a played session
+  (netplay_run(0)) has no limit and draws a waiting screen every 33 ms (host_sdl.cpp
+  `host_wait_screen`, the OSD font: "WAITING FOR THE OTHER PLAYERS" / "WAITING FOR THE HOST", the
+  port or the host's address, the time waited, "ESC OR CLOSE THE WINDOW TO STOP"); Esc or closing
+  quits (exit 0). `--benchmark` runs keep the 60 s (np_fail, exit 6). Testing: `XMEN2_WAIT_QUIT_MS=N`
+  (a close after N ms), `XMEN2_WAIT_SHOT=FILE` (the screen as a BMP).
 - **Seats are typed by hand** (the host tells each guest theirs), as the netplay contract needs.
   Handing seats out on connection would be a netplay change (a protocol message, NP_VERSION).
 - **Dependencies:** Dear ImGui v1.92.9b (MIT) vendored in `platform/native/external/imgui`

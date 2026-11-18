@@ -460,6 +460,54 @@ static const uint32_t *osd_overlay(const uint32_t *fb, int *stride, int w, int h
     return buf;
 }
 
+/* A played netplay session waiting for the other seats (netplay.cpp seal_exchange): the window stays
+   responsive (Esc or closing it quits, F11 fullscreen, pads plugged in are kept) and shows LINES,
+   centred, in the OSD font on black. Testing: XMEN2_WAIT_QUIT_MS=N acts as a close after N ms,
+   XMEN2_WAIT_SHOT=FILE saves the screen once (BMP). */
+static void draw(const uint32_t *fb, int stride, int w, int h);
+void host_wait_screen(const char *const *lines, int n)
+{
+    static uint64_t t0 = SDL_GetTicks64();
+    static const char *quit_ms = getenv("XMEN2_WAIT_QUIT_MS");
+    bool quit = quit_ms && *quit_ms && SDL_GetTicks64() - t0 >= (uint64_t)atoll(quit_ms);
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)) quit = true;
+        if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F11 && !e.key.repeat) {
+            Uint32 f = SDL_GetWindowFlags(s_win);
+            SDL_SetWindowFullscreen(s_win, (f & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+        }
+        if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
+        pad_event(e);
+    }
+    if (quit) {
+        fprintf(stderr, "[native] closed while waiting for the other players\n");
+        audio_close();
+        SDL_Quit();
+        exit(0);
+    }
+    enum { W = 320, H = 224 };
+    static uint32_t fb[W * H];
+    for (uint32_t &p : fb) p = 0xFF000000u;   /* opaque black, as the game's own frames */
+    int y0 = (H - n * 14) / 2;
+    for (int l = 0; l < n; l++) {
+        int len = (int)strlen(lines[l]);
+        if (len > W / 8) len = W / 8;
+        int x0 = (W - len * 8) / 2, y = y0 + l * 14;
+        uint32_t ink = l == 0 ? 0xFFCECE00u : 0xFFDCDCF0u;   /* the first line in the Cerebro screens' yellow */
+        for (int i = 0; i < len; i++) {
+            unsigned char c = (unsigned char)lines[l][i];
+            if (c < 0x20 || c > 0x7E) continue;
+            for (int ry = 0; ry < 8; ry++)
+                for (int rx = 0; rx < 8; rx++)
+                    if (k_osd_font[c - 0x20][ry] >> rx & 1) fb[(y + ry) * W + x0 + i * 8 + rx] = ink;
+        }
+    }
+    static const char *shot = getenv("XMEN2_WAIT_SHOT");
+    if (shot && *shot) { host_screenshot(shot, fb, W, W, H); shot = nullptr; }
+    draw(fb, W, W, H);
+}
+
 /* XMEN2_PRESENT_TRACE=FILE (played runs; the frame-pacing work, NOTES "Present trace"): a row per
    picture shown: its content time (us on the present clock), when it was due and the performance
    counter before and after SDL_RenderPresent; on Windows also DWM's last V-blank and refresh period

@@ -550,7 +550,7 @@ void online_page(State &S)
         ImGui::Spacing();
         if (S.host_players > 2) ImGui::TextColored(C_DIM, "Seats: player 2 joins as seat 1, player 3 as seat 2, player 4 as seat 3.");
         ImGui::TextColored(C_DIM, "Your game options (Gameplay, Cheats) apply to every player; picture and sound stay each player's own.");
-        ImGui::TextColored(C_DIM, "Start yours first; the others then have a minute to join.");
+        ImGui::TextColored(C_DIM, "Start yours first; it waits for the others until they connect (Esc stops it).");
     } else {
         ImGui::SeparatorText("Join");
         field_label("Players in the game");
