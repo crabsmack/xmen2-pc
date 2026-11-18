@@ -198,6 +198,9 @@ line opens it (`[launcher] show = 0` in xmen2.ini turns that off, `--launcher` /
 It only writes xmen2.ini and hands the game `--netplay` arguments, so harness runs never meet it. A new
 option appears there by itself (under "Other"); give it a label, group and help in its `shown_table`.
 `uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (7 cases, screenshots in OUT/shots).
+A played run that fails (a bad ROM, a netplay session with nobody there) shows a message box, and on
+Windows SDL shows real dialogs even with `SDL_VIDEODRIVER=dummy`: one blocks on the user's desktop
+until clicked. Headless tests that can get there set `XMEN2_NO_MESSAGEBOX=1` (the text goes to stderr).
 Players 3-4: `platform/native/players.cpp` (their pads, VRAM, HUD and the `mp` counters). Netplay:
 `platform/native/netplay.cpp` on the engine's recomp-net and rbengine; the host's game options are
 sealed into the session, presentation ones (`high_fps`, `music_voices`, the 16:9 view unless
