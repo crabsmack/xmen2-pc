@@ -880,11 +880,14 @@ static int s_pixels_off;  /* --no-pixels: all of a render's work but the pixels 
    the table for a render (widescreen.cpp's camera shift and hidden entries, present.cpp's moved
    sprites, players.cpp's chain end) has to edit both (gvdp_sat_byte), else the edit draws nothing:
    from 2026-10-24 the frames in between moved no sprite vertically and the 16:9 view hid no
-   wrapped sprite, and every check passed. Each render checks the two agree; the counter
-   (`sat_cache_mismatch`, renders that disagree) is 0 in every corpus run. */
-static std::atomic<uint64_t> s_sat_mismatch;
+   wrapped sprite, and every check passed. Each render checks the two agree; the counters
+   (`sat_checks`, renders checked, and `sat_cache_mismatch`, renders that disagree) are each
+   process's own, not in the states (xmen2check.py adds up a split run's). Phase 6 E4 and E5 and
+   phase 7 M4 want sat_checks over 0 and no mismatch; --sat-selftest is the negative control. */
+static std::atomic<uint64_t> s_sat_mismatch, s_sat_checks;
 static void sat_check(const GVDP *v)
 {
+    s_sat_checks++;
     bool h40 = gvdp_screen_width(v) == 320;
     uint16_t base = h40 ? 0xFC00 : 0xFE00, sb = (uint16_t)((v->reg[5] << 9) & base);
     for (int s = 0; s < (h40 ? 80 : 64); s++)
@@ -892,6 +895,7 @@ static void sat_check(const GVDP *v)
             if (v->sat[s * 8 + i] != v->vram[(uint16_t)(sb + s * 8 + i)]) { s_sat_mismatch++; return; }
 }
 extern "C" uint64_t machine_sat_mismatch(void) { return s_sat_mismatch; }
+extern "C" uint64_t machine_sat_checks(void) { return s_sat_checks; }
 
 extern "C" void plat_sync_point(void)
 {

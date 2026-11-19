@@ -67,6 +67,7 @@ void        ws_branch(int save);                    /* --branch-plan: widescreen
 uint64_t    present_scan_found(void);               /* that flip's frame, or 0 */
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
 void        present_after_render(uint64_t k, bool interactive, int stride);
+void        present_sat_selftest(void);   /* --sat-selftest: the frames in between skip the sprite table copy */
 std::string present_counters_json(void);
 void        present_render_us_write(const char *path);   /* XMEN2_RENDER_US: the render times, uint32 each */
 #include <vector>
@@ -190,6 +191,7 @@ int  ws_render_shift(void);   /* R8: px the render camera moves the frame being 
 
 /* present.cpp / main.cpp / machine.cpp (phase 6 R4) */
 uint64_t machine_sat_mismatch(void);        /* renders whose sprite table copy disagreed with VRAM (sat_check) */
+uint64_t machine_sat_checks(void);          /* renders sat_check looked at */
 struct GVDP;
 void machine_render_copy(struct GVDP *v, uint32_t *fb, int stride, int rows);   /* a copy of it, on any thread */
 void plat_after_render(void);               /* the frame begun is rendered: high_fps's frames */

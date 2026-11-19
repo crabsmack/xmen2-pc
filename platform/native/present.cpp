@@ -800,6 +800,8 @@ static std::vector<Between> s_between;
 static Pool *s_pool;              /* never freed: its workers wait on it until the process ends */
 static int s_workers = -1;
 static const std::vector<Plan> *s_span_plan;
+static bool s_sat_selftest;       /* --sat-selftest (main.cpp) */
+void present_sat_selftest(void) { s_sat_selftest = true; }
 static uint32_t s_span_hb, s_span_sb;
 static int s_span_stride, s_span_rows;
 
@@ -830,7 +832,7 @@ static void render_between(int i)
            writes do: the renderer reads each sprite's y, size and link from there (the engine's
            sprite attribute cache, pinned 2026-10-24, three days after E4). Without it the sprites
            moved only sideways between frames: their y stayed R_k's until R_k. */
-        if (!pl.t && pl.slot < 80)
+        if (!pl.t && pl.slot < 80 && !s_sat_selftest)   /* --sat-selftest: the bug, for E4's negative control */
             for (uint32_t o : { 0u, 1u, 6u, 7u }) {
                 uint16_t addr = (uint16_t)(s_span_sb + (uint32_t)pl.slot * 8u + o);
                 gvdp_sat_byte(v, addr, v->vram[addr]);

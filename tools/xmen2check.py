@@ -317,6 +317,8 @@ def stepped_args(a, out: Path, hash_out: Path | None = None) -> list[str]:
         cmd += ["--flip-scan", a.flip_scan, "--probe-out", str(out)] + (["--flip-scan-first"] if a.flip_scan_first else [])
     if a.game_rows:   # phase 6 R8: OUT/game.csv, the game's state less the picture's
         cmd += ["--game-rows", str(out / "game.csv")]
+    if getattr(a, "sat_selftest", False):   # phase 6 E4's negative control (sat_check, the presentation reference)
+        cmd += ["--sat-selftest"]
     # phase 7 (P7-multiplayer.md "The contract")
     if a.session is not None:
         cmd += ["--session", str(a.session)]
@@ -1082,6 +1084,11 @@ def line_result(a, src: Path, l: dict, segs: list[tuple], logs: dict, merged: di
     pr = (c.get("enhance") or {}).get("present")
     if isinstance(pr, dict) and "render_us_p99" in pr:
         pr["render_us_p99"] = render_p99([x[3] / "render_us.bin" for x in segs])
+    en = c.get("enhance")
+    if isinstance(en, dict):   # machine.cpp sat_check's counts are each process's own (not in the states): the sum
+        for k in ("sat_checks", "sat_cache_mismatch"):
+            if all(k in (x.get("enhance") or {}) for x in counters):
+                en[k] = sum(x["enhance"][k] for x in counters)
     secs, own = sum(b["seconds"] for b in benches), l["frames"] - l["start"]
     b = {"game": "xmen2", "frames": l["frames"], "seconds": secs, "fps": own / secs if secs else 0.0,
          "requested_frames": l["frames"], "complete": all(x.get("complete") for x in benches), "runner": "native",
@@ -2100,6 +2107,10 @@ def main() -> int:
             p.add_argument("--game-rows", action="store_true",
                            help="native (phase 6 R8): OUT/game.csv, the game's state at each sync point less "
                                 "what only the picture depends on")
+            p.add_argument("--sat-selftest", action="store_true",
+                           help="native (phase 6 E4's negative control): the frames in between leave their moved "
+                                "sprites out of the renderer's copy of the sprite table, the bug of 2026-10-24: "
+                                "enhance.sat_cache_mismatch counts them and the pictures differ")
             p.add_argument("--session", type=int, default=None,
                            help="native (phase 7): the session machine with this seed (P7 \"Definitions\")")
             p.add_argument("--scene", type=int, default=None, help="native (phase 7): a new game starts at scene N")

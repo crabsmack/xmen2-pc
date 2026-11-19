@@ -29,6 +29,8 @@
  *                        runner); --options --json lists them and exits
  *   --record-inputs F    (played, netplay too) the pads of every frame, as a replayable input script
  *                        (capture.cpp; also XMEN2_CAPTURE, XMEN2_STEM, XMEN2_SND_LOG there)
+ *   --sat-selftest       the negative control of sat_check and the presentation reference (phase 6
+ *                        E4): the frames in between move sprites in VRAM only, the bug of 2026-10-24
  * Environment: XMEN2_SYNC_CSV=path (sync rows from the export image), XMEN2_SYNC_DUMP=n,m +
  * XMEN2_DUMP_DIR (sNNNNNN.ram/.vram), XMEN2_STACK_LOW (as game/xmen2_spec.c), XMEN2_RENDER_US=path
  * (at exit: the render times behind the counters' render_us_p99, uint32 each, a loaded run's own).
@@ -460,8 +462,9 @@ static void report_counters_to(FILE *out)
     if (g_opt.high_fps || present_logging()) more += ", \"present\": " + present_counters_json();
     if (g_opt.widescreen) more += ", \"ws\": " + ws_counters_json();
     snprintf(enhance, sizeof enhance, "{\"two_player_frames\": %llu, \"two_player_step_frames\": %llu, "
-             "\"frame_tick_waits\": %llu, \"sat_cache_mismatch\": %llu%s}", (unsigned long long)s_two_player_frames,
-             (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits(),
+             "\"frame_tick_waits\": %llu, \"sat_checks\": %llu, \"sat_cache_mismatch\": %llu%s}",
+             (unsigned long long)s_two_player_frames, (unsigned long long)s_two_player_step_frames,
+             (unsigned long long)machine_frame_tick_waits(), (unsigned long long)machine_sat_checks(),
              (unsigned long long)machine_sat_mismatch(), more.c_str());
     /* phase 7: the savestate's sections and size, and how deep the game's fiber stack went */
     char peak[64];
@@ -1140,6 +1143,7 @@ int main(int argc, char **argv)
             return room_router_check(i + 1 < argc && atoi(argv[i + 1]) > 0 ? atoi(argv[++i]) : 7000);
         else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) s_screenshot = argv[++i];
         else if (!strcmp(argv[i], "--present-log") && i + 1 < argc) present_log = argv[++i];
+        else if (!strcmp(argv[i], "--sat-selftest")) present_sat_selftest();
         else if (!strcmp(argv[i], "--flip") && i + 1 < argc) s_flip = strtoull(argv[++i], nullptr, 10);
         else if (!strcmp(argv[i], "--flip-scan-first")) scan_first = true;
         else if (!strcmp(argv[i], "--flip-scan") && i + 1 < argc) {
