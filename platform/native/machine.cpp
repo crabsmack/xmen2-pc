@@ -13,6 +13,7 @@
  * logs, the bus front) is gone: the game's C calls the platform functions here directly. The video
  * model (genesis_vdp.c), the Z80 core (superzazu) and the sound chips are the engine's.
  */
+#include <algorithm>
 #include <chrono>
 #include <math.h>
 #include <stdint.h>
@@ -899,6 +900,28 @@ extern "C" void machine_render(void)
     players_frame_setup();
     render_frame();
     players_frame_restore();
+}
+
+/* present.cpp's frames in between, on its worker threads: render_frame of `v`, a copy of the VDP
+   (the live one untouched, so several run at once), into fb (rows x stride pixels). The palette and
+   the renderer's settings are the frame's own and stay as they are meanwhile: s_cram_argb's host
+   colours were copied in by R_k's render_frame. */
+extern "C" void machine_render_copy(GVDP *v, uint32_t *fb, int stride, int rows)
+{
+    players_frame_setup_copy(v);
+    uint8_t idxbuf[GVDP_MAX_WIDTH];
+    uint32_t rowbuf[GVDP_MAX_WIDTH];
+    int h = (v->reg[1] & 0x04) ? ((v->reg[1] & 0x08) ? 240 : 224) : 192;
+    for (int line = 0; line < h; line++) {
+        int dbl = gvdp_interlace_double(v);
+        for (int sub = 0; sub <= dbl; sub++) {
+            int row = (line << dbl) + sub;
+            int n = gvdp_render_scanline(v, row, idxbuf);
+            for (int x = 0; x < n; x++) rowbuf[x] = s_cram_argb[idxbuf[x]];
+            if (g_opt.widescreen) ws_mask_line(row, rowbuf, n);
+            if (row < rows) memcpy(fb + (size_t)row * (size_t)stride, rowbuf, (size_t)std::min(n, stride) * sizeof(uint32_t));
+        }
+    }
 }
 extern "C" void machine_set_render(int on) { s_no_render = !on; }
 extern "C" void machine_render_off(void) { s_render_off = 1; }

@@ -66,7 +66,7 @@ void        present_branch_restore(void);           /* ... and put back when the
 void        ws_branch(int save);                    /* --branch-plan: widescreen.cpp's counter strings, kept (1) / put back (0) */
 uint64_t    present_scan_found(void);               /* that flip's frame, or 0 */
 bool        present_whole(uint64_t k, const uint32_t *fb, int stride, int w, int h, bool interactive);
-void        present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride);
+void        present_after_render(uint64_t k, bool interactive, int stride);
 std::string present_counters_json(void);
 void        present_render_us_write(const char *path);   /* XMEN2_RENDER_US: the render times, uint32 each */
 #include <vector>
@@ -90,6 +90,11 @@ bool        players_vram_write(uint16_t a, uint16_t w);   /* a player 3-4's VRAM
 void        players_video_init(void);
 void        players_frame_setup(void);   /* before a frame is rendered: VRAM's sprite chain ended at 80 */
 void        players_frame_restore(void);
+void        players_frame_setup_copy(struct GVDP *v);   /* the same on a copy of the VDP (present.cpp's workers) */
+void        players_render_tables(const uint8_t *tables);   /* this thread draws the region's sprite tables from this
+                                                               copy of [P34_TABLES_LO, P34_TABLES_HI) (null: the region) */
+#define P34_TABLES_LO 0x0400u   /* players 3-4's tables, then the main table's 160 slots (present.cpp rg_off) */
+#define P34_TABLES_HI 0x1500u
 /* sound2.cpp (phase 7 R9: the second sound machine, players 3-4's music parts; music_voices' two) */
 void        snd2_digest_fields(std::vector<uint8_t> *out);
 std::string snd2_counters_json(void);
@@ -185,7 +190,8 @@ int  ws_render_shift(void);   /* R8: px the render camera moves the frame being 
 
 /* present.cpp / main.cpp / machine.cpp (phase 6 R4) */
 void machine_render(void);                  /* render the frame from the VDP's state now */
-void plat_scan_target(uint32_t *fb);        /* where plat_scanline writes (null: the frame buffer) */
+struct GVDP;
+void machine_render_copy(struct GVDP *v, uint32_t *fb, int stride, int rows);   /* a copy of it, on any thread */
 void plat_after_render(void);               /* the frame begun is rendered: high_fps's frames */
 void present_note_render(double us);        /* a displayed frame's render time */
 

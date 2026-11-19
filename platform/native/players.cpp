@@ -172,10 +172,19 @@ static uint32_t table_off(int k) { return 0x0400u + 0x300u * (uint32_t)(k - 3); 
 static uint32_t px_off(int k) { return 0x0200u + 40u * (uint32_t)(k - 3); }   /* g_PX[k - 3] (PlayerX: 40 bytes) */
 static int spr_last(int k) { return (int16_t)(xm_region[px_off(k) + 36] << 8 | xm_region[px_off(k) + 37]); }
 
+/* The region's sprite tables as this thread draws them: present.cpp's workers render frames in
+   between from their own copies of them (moved sprites), the live game's stay as they are */
+static thread_local const uint8_t *t_tables;
+void players_render_tables(const uint8_t *tables) { t_tables = tables; }
+static const uint8_t *rgp(uint32_t off)
+{
+    return t_tables && off >= P34_TABLES_LO && off < P34_TABLES_HI ? t_tables + (off - P34_TABLES_LO) : &xm_region[off];
+}
+
 static uint32_t reg_be(uint32_t off, int w)
 {
     uint32_t v = 0;
-    for (int i = 0; i < w; i++) v = v << 8 | xm_region[off + (uint32_t)i];
+    for (int i = 0; i < w; i++) v = v << 8 | *rgp(off + (uint32_t)i);
     return v;
 }
 
@@ -248,7 +257,7 @@ static void host_sprites(void *user, const GVDP *v, const GVDPSpriteLayer *layer
     uint32_t lo = chr_lo(), hi = chr_hi();
     int idx = 0;
     for (int n = 0; n < 160 && g_opt.players > 2; n++) {   /* the main table past the hardware's 80 */
-        const uint8_t *e = &xm_region[MAIN_TABLE + 8u * (uint32_t)idx];
+        const uint8_t *e = rgp(MAIN_TABLE + 8u * (uint32_t)idx);
         if (idx >= 80) draw_entry(e, 0, v, layer, lo, hi);
         int link = e[3];
         if (!link || link >= 160) break;
@@ -258,7 +267,7 @@ static void host_sprites(void *user, const GVDP *v, const GVDPSpriteLayer *layer
     int ents[80];
     for (int k = 3; k <= g_opt.players && k <= 4 && shown; k++) {
         int n = table_entries(k, ents);
-        for (int i = 0; i < n; i++) draw_entry(&xm_region[table_off(k) + 8u * (uint32_t)ents[i]], k, v, layer, lo, hi);
+        for (int i = 0; i < n; i++) draw_entry(rgp(table_off(k) + 8u * (uint32_t)ents[i]), k, v, layer, lo, hi);
     }
 }
 
@@ -273,18 +282,19 @@ static int s_npatched;
 static const uint16_t k_panel_tile[2] = { 0x7E8, 0x7D0 };   /* players 1-2's panel tiles (Level_FrameLoop) */
 static uint8_t s_panel_was[2][16 * 32];
 static int s_panel_swapped[2];
-void players_frame_setup(void)
+/* keep: the live VDP, put back by players_frame_restore; else a copy (present.cpp's workers), thrown
+   away after its render. The sprite-limit setting is the live frame's (players_frame_setup sets it) */
+static void frame_setup(GVDP *v, bool keep)
 {
-    if (g_opt.players <= 2) return;
-    gvdp_set_unlimited_sprites(1);
-    GVDP *v = &g_machine.vdp;
-    s_npatched = 0;
+    if (keep) s_npatched = 0;
     bool panel[2] = {};
     for (int i = 0; i < 80; i++) {
         uint16_t a = (uint16_t)(0xF000u + 8u * (uint32_t)i + 3u);
         if ((v->vram[a] & 0x7F) >= 80) {
-            s_sat_patched[s_npatched] = a;
-            s_link_was[s_npatched++] = v->vram[a];
+            if (keep) {
+                s_sat_patched[s_npatched] = a;
+                s_link_was[s_npatched++] = v->vram[a];
+            }
             v->vram[a] = 0;
         }
         uint16_t attr = (uint16_t)(v->vram[a + 1] << 8 | v->vram[a + 2]);
@@ -298,10 +308,24 @@ void players_frame_setup(void)
     for (int p = 0; p < 2; p++) {
         if (!panel[p] || !has_portrait(s_hud_char[p])) continue;
         uint8_t *t = &v->vram[k_panel_tile[p] * 32u];
-        memcpy(s_panel_was[p], t, sizeof s_panel_was[p]);
+        if (keep) {
+            memcpy(s_panel_was[p], t, sizeof s_panel_was[p]);
+            s_panel_swapped[p] = 1;
+        }
         portrait_panel(s_hud_char[p], t);
-        s_panel_swapped[p] = 1;
     }
+}
+
+void players_frame_setup(void)
+{
+    if (g_opt.players <= 2) return;
+    gvdp_set_unlimited_sprites(1);
+    frame_setup(&g_machine.vdp, true);
+}
+
+void players_frame_setup_copy(GVDP *v)
+{
+    if (g_opt.players > 2) frame_setup(v, false);
 }
 
 void players_frame_restore(void)

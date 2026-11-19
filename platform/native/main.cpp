@@ -488,8 +488,6 @@ static void report_counters(void)
 #define FB_W 512
 #define FB_H 480
 static uint32_t s_fb[FB_H][FB_W];
-static uint32_t s_ifb[FB_H][FB_W];          /* high_fps: an in-between frame (present.cpp) */
-static uint32_t (*s_target)[FB_W] = s_fb;
 static uint32_t s_hash_frames;
 static FILE *s_hash_out;   /* the [FBHASH] lines: stderr, or --hash-out FILE (a branch plan's runs have their own) */
 
@@ -497,10 +495,8 @@ extern "C" void plat_scanline(int row, const uint32_t *argb, int width)
 {
     if (row < 0 || row >= FB_H) return;
     int n = width < FB_W ? width : FB_W;
-    memcpy(s_target[row], argb, (size_t)n * sizeof(uint32_t));
+    memcpy(s_fb[row], argb, (size_t)n * sizeof(uint32_t));
 }
-
-extern "C" void plat_scan_target(uint32_t *fb) { s_target = fb ? (uint32_t (*)[FB_W])fb : s_fb; }
 
 static uint64_t fb_hash(int w, int h)
 {
@@ -550,7 +546,7 @@ void main_np_slip(double us) { if (s_interactive) host_slip(us); }   /* netplay.
 extern "C" void plat_after_render(void)
 {
     if (quiet()) return;
-    present_after_render(machine_frame_no(), s_interactive != 0, &s_ifb[0][0], FB_W);
+    present_after_render(machine_frame_no(), s_interactive != 0, FB_W);
 }
 
 /* ---- input script --------------------------------------------------------------------------- */

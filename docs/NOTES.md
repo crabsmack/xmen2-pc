@@ -1364,8 +1364,9 @@ and is the default; `widescreen_gameplay=1` is R6's mode as above.
   E4 checks each whole frame's time and hash, the latency and the render time, `present.frames`
   is reported unchecked, and on a 60 Hz screen the bunching doesn't show.
 - **An interpolated frame** is R_k's VDP state rendered with the horizontal scroll of every line
-  (the camera, the parallax), the VSRAM and the matched sprites moved back toward R_(k-1); then
-  VRAM and VSRAM are put back (presentation only: the corpus at 144 Hz has the reference's rows).
+  (the camera, the parallax), the VSRAM and the matched sprites moved back toward R_(k-1), in a
+  copy of the VDP since 2026-11-19 ("Frames in between on worker threads"; before, VRAM and VSRAM
+  were put back after each) (presentation only: the corpus at 144 Hz has the reference's rows).
   A scroll step over 64 px or a sprite step over 48 px snaps. Not moved: the HUD's sprites, the
   palettes, the planes' tiles.
 - **Matching sprites to their object**: the game announces each owner before it draws
@@ -1452,6 +1453,36 @@ the 12 scenario inputs with it at 144 Hz; `summary OUT/*/audit.csv` ranks the ro
   changing in place is not motion the eye tracks); steps over 64 px of scroll or 48 px of sprite
   snap. CRT-like clarity without in-between frames (black frame insertion, a rolling-scan CRT
   simulation) would be a presentation option needing `pacing=display`'s refresh timing.
+
+### Frames in between on worker threads, the BATCHED renderer (2026-11-19)
+
+A player asked whether high_fps runs at 1000 Hz at the game's speed. The game's speed never
+changes (R4), but every in-between picture was a full VDP render on the game's thread, each made
+right before its time: on the TAS at 1000 Hz (17 a logic frame) a render took 634 us median, 1,149
+p99 (the 1.4.0 runner), against 1 ms between pictures, so the slow ones ran late. The logic is
+~0.15 ms a frame; the render is the whole cost.
+
+- **BATCHED** (native.cmake `XMEN2_NATIVE_VDP`, default BATCHED; SCALAR the control): the engine's
+  tile-row plane spans, eight-pixel sprite rows and table-driven compositor, an exact optimization
+  (the engine's renderer differential; docs/ENGINE_VDP_BATCHING.md there). 447 us median, 794 p99.
+  Only XMen2Native: the recomp runners keep the engine's default, so every `--fb` comparison of the
+  port with their references checks BATCHED's pixels.
+- **Workers** (present.cpp "the frames in between, rendered on worker threads"): each frame in
+  between is a job rendering a copy of the VDP with the frame's moves (and, three or more players,
+  a copy of the region's sprite tables, which players.cpp's host sprites read through a
+  thread-local pointer) into its own picture (`machine_render_copy`); the live machine is never
+  written, so all of a span's frames render at once, and the game's thread waits for each only at
+  its time. The engine's sprite line buffers became thread-local for this (engine fork
+  `vdp-thread-scratch`). `XMEN2_PRESENT_THREADS=N` (default the cores less two, at most 8; 0 = each
+  on the game's thread at its turn, the control).
+- **Measured** (3,000 TAS frames at 1000 Hz, headless): 34.6 s (old) -> 24.5 s (BATCHED, no workers)
+  -> 6.1 s (8 workers). Pictures: every present-log row (whole frames and the frames in between,
+  their hashes) equal to the old runner's on the TAS at 240 Hz (17,994 in between), 16:9 at 240,
+  four players in scene 1 at 240 (8,994) and the TAS at 1000 Hz (39,968), and with no workers.
+  Negative control: the workers drawing the live sprite tables instead of their copies changes
+  1,794 of the four-player case's rows.
+- Not measured: a played run's present lateness at 1000 Hz (the desktop was locked, which skews
+  presents: CLAUDE.local.md). `XMEN2_PRESENT_TRACE` + `tools/presenttrace.py` is the check.
 
 ### Present trace: what the display showed (2026-10-30, the vsync work's first step)
 

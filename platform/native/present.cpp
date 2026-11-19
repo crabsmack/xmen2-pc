@@ -20,12 +20,17 @@
  * moved: the HUD's sprites, unmatched ones, a scroll step over 64 px or a sprite step over 48 px
  * (they snap), the palettes, the planes' tiles (the audit of 2026-11-18 found no motion drawn by
  * rewriting them: XMEN2_PRESENT_AUDIT).
- * Presentation only: VRAM and VSRAM are put back after each interpolated render.
+ * Presentation only: each interpolated frame is rendered from a copy of the VDP, on worker threads
+ * ("the frames in between, rendered on worker threads").
  */
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <map>
+#include <memory>
+#include <mutex>
+#include <thread>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -768,9 +773,127 @@ static void audit_anchors(uint64_t k, int t)
     }
 }
 
+/* ---- the frames in between, rendered on worker threads ------------------------------------------
+   A full render took 0.45-0.9 ms (2026-11-19, the TAS at 1000 Hz), so at high rates one after
+   another on the game's thread, each right before its time, ran late (a reddit question: can it
+   run at 1000 Hz?). Each is now a job: a copy of the VDP (and with three or more players of the
+   region's sprite tables) with the frame's moves applied, rendered by machine_render_copy into its
+   own picture. The live machine is never touched, so they all run at once; the game's thread waits
+   for each only when its time comes, and the logic runs after the last (nothing changes the VDP or
+   the game's memory while they render). XMEN2_PRESENT_THREADS=N: N workers (0: each on the game's
+   thread when its turn comes, the control); default the cores less two, at most 8. */
+namespace {
+struct Between {
+    double a = 0, us = 0;
+    std::unique_ptr<GVDP> vdp{ new GVDP };
+    std::vector<uint8_t> tables = std::vector<uint8_t>(P34_TABLES_HI - P34_TABLES_LO);
+    std::vector<uint32_t> fb;
+};
+struct Pool {
+    std::mutex m;
+    std::condition_variable work, done;
+    int next = 0, count = 0;      /* the span's jobs [0, count), the next one to take */
+    std::vector<char> finished;
+};
+}
+static std::vector<Between> s_between;
+static Pool *s_pool;              /* never freed: its workers wait on it until the process ends */
+static int s_workers = -1;
+static const std::vector<Plan> *s_span_plan;
+static uint32_t s_span_hb, s_span_sb;
+static int s_span_stride, s_span_rows;
+
+static void render_between(int i)
+{
+    Between &b = s_between[(size_t)i];
+    GVDP *v = b.vdp.get();
+    memcpy(v, &g_machine.vdp, sizeof *v);
+    const bool region = g_opt.players > 2;
+    if (region) memcpy(b.tables.data(), &xm_region[P34_TABLES_LO], b.tables.size());
+    const double a = b.a;
+    /* the scroll: every line's A and B words, the VSRAM entries */
+    for (int i2 = 0; i2 < 0x400; i2 += 2) {
+        int p = w16(s_prev.hscroll + i2), c = w16(s_cur.hscroll + i2);
+        put16(&v->vram[(uint16_t)(s_span_hb + (uint32_t)i2)], (c & 0xFC00) | lerp_wrap(p & 0x3FF, c & 0x3FF, a, 1024));
+    }
+    for (int i2 = 0; i2 < GVDP_VSRAM_ENTRIES; i2++)
+        v->vsram[i2] = (uint16_t)((s_cur.vsram[i2] & 0xFC00) | lerp_wrap(s_prev.vsram[i2] & 0x3FF, s_cur.vsram[i2] & 0x3FF, a, 1024));
+    /* the sprites: back from R_k's position by (1 - a) of their step */
+    for (const Plan &pl : *s_span_plan) {
+        const uint8_t *c = ent(s_cur, pl.t, pl.slot);
+        uint8_t *dst = !pl.t && pl.slot < 80 ? &v->vram[(uint16_t)(s_span_sb + (uint32_t)pl.slot * 8u)]
+                                             : &b.tables[rg_off(pl.t) + (uint32_t)pl.slot * 8u - P34_TABLES_LO];   /* players.cpp draws these */
+        double back = 1.0 - a;
+        put16(dst + 6, w16(c + 6) - (int)(back * pl.dx + (pl.dx >= 0 ? 0.5 : -0.5)));
+        put16(dst, w16(c) - (int)(back * pl.dy + (pl.dy >= 0 ? 0.5 : -0.5)));
+    }
+    size_t need = (size_t)s_span_stride * (size_t)s_span_rows;
+    if (b.fb.size() < need) b.fb.resize(need);
+    auto r0 = std::chrono::steady_clock::now();
+    players_render_tables(region ? b.tables.data() : nullptr);
+    machine_render_copy(v, b.fb.data(), s_span_stride, s_span_rows);
+    players_render_tables(nullptr);
+    b.us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - r0).count();
+}
+
+static void worker(Pool *p)
+{
+    std::unique_lock<std::mutex> lk(p->m);
+    for (;;) {
+        p->work.wait(lk, [p] { return p->next < p->count; });
+        int i = p->next++;
+        lk.unlock();
+        render_between(i);
+        lk.lock();
+        p->finished[(size_t)i] = 1;
+        p->done.notify_all();
+    }
+}
+
+/* the frames of fractions as[1..] (as[0] unused) */
+static void between_start(const std::vector<double> &as, const std::vector<Plan> &plan, uint32_t hb, uint32_t sb, int stride)
+{
+    if (s_workers < 0) {
+        const char *e = getenv("XMEN2_PRESENT_THREADS");
+        int cores = (int)std::thread::hardware_concurrency();
+        s_workers = e && *e ? std::max(0, atoi(e)) : std::min(8, std::max(1, cores - 2));
+        if (s_workers) {
+            s_pool = new Pool;
+            for (int i = 0; i < s_workers; i++) std::thread(worker, s_pool).detach();
+        }
+    }
+    int count = (int)as.size() - 1;
+    if ((int)s_between.size() < count) s_between.resize((size_t)count);
+    for (int i = 0; i < count; i++) s_between[(size_t)i].a = as[(size_t)i + 1];
+    s_span_plan = &plan;
+    s_span_hb = hb;
+    s_span_sb = sb;
+    s_span_stride = stride;
+    s_span_rows = machine_screen_height();
+    if (!s_pool) return;
+    {
+        std::lock_guard<std::mutex> lk(s_pool->m);
+        s_pool->finished.assign((size_t)count, 0);
+        s_pool->next = 0;
+        s_pool->count = count;
+    }
+    s_pool->work.notify_all();
+}
+
+/* job i, rendered (by the caller, without workers) */
+static const Between &between_wait(int i)
+{
+    if (!s_pool) render_between(i);
+    else {
+        std::unique_lock<std::mutex> lk(s_pool->m);
+        s_pool->done.wait(lk, [i] { return s_pool->finished[(size_t)i] != 0; });
+    }
+    return s_between[(size_t)i];
+}
+
 /* plat_sync_point, after R_k (k = the frame begun) is rendered and before the frame's logic: the
    frames between R_(k-1) and R_k. */
-void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int stride)
+void present_after_render(uint64_t k, bool interactive, int stride)
 {
     if (!g_opt.high_fps && !s_log) return;
     memcpy(s_prev_tags, s_tags, sizeof s_tags);
@@ -814,25 +937,15 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
         double rt[64];
         int nr = display ? refresh_times(t0, t1, hz, rt, 64) : 0;
         if (display) n = nr + 1;
+        std::vector<double> ts((size_t)n), as((size_t)n);
         for (int j = 1; j < n; j++) {
-            double t = display ? rt[j - 1] : t0 + j * (t1 - t0) / n, a = (t - t0) / (t1 - t0);
-            /* the scroll: every line's A and B words, the VSRAM entries */
-            for (int i = 0; i < 0x400 && draw; i += 2) {
-                int p = w16(s_prev.hscroll + i), c = w16(s_cur.hscroll + i);
-                put16(&v->vram[(uint16_t)(hb + (uint32_t)i)], (c & 0xFC00) | lerp_wrap(p & 0x3FF, c & 0x3FF, a, 1024));
-            }
-            for (int i = 0; i < GVDP_VSRAM_ENTRIES && draw; i++)
-                v->vsram[i] = (uint16_t)((s_cur.vsram[i] & 0xFC00) | lerp_wrap(s_prev.vsram[i] & 0x3FF, s_cur.vsram[i] & 0x3FF, a, 1024));
-            /* the sprites: back from R_k's position by (1 - a) of their step */
-            for (size_t q = 0; q < plan.size() && draw; q++) {
-                const Plan &pl = plan[q];
-                const uint8_t *c = ent(s_cur, pl.t, pl.slot);
-                uint8_t *dst = !pl.t && pl.slot < 80 ? &v->vram[(uint16_t)(sb + (uint32_t)pl.slot * 8u)]
-                                                     : &xm_region[rg_off(pl.t) + (uint32_t)pl.slot * 8u];   /* players.cpp draws these */
-                double back = 1.0 - a;
-                put16(dst + 6, w16(c + 6) - (int)(back * pl.dx + (pl.dx >= 0 ? 0.5 : -0.5)));
-                put16(dst, w16(c) - (int)(back * pl.dy + (pl.dy >= 0 ? 0.5 : -0.5)));
-            }
+            ts[(size_t)j] = display ? rt[j - 1] : t0 + j * (t1 - t0) / n;
+            as[(size_t)j] = (ts[(size_t)j] - t0) / (t1 - t0);
+        }
+        /* all of them rendered at once on the workers, each shown at its time as it is ready */
+        if (draw && n > 1) between_start(as, plan, hb, sb, stride);
+        for (int j = 1; j < n; j++) {
+            double t = ts[(size_t)j];
             if (s_gameplay) {
                 static int dbg_n;
                 if (getenv("XMEN2_PRESENT_DEBUG2") && dbg_n < 30) {
@@ -852,30 +965,22 @@ void present_after_render(uint64_t k, bool interactive, uint32_t *ifb, int strid
                 log_row(k, t, false, s_gameplay, 0);
                 continue;
             }
-            auto r0 = std::chrono::steady_clock::now();
-            plat_scan_target(ifb);
-            machine_render();
-            plat_scan_target(nullptr);
-            present_note_render(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - r0).count());
+            const Between &b = between_wait(j - 1);
+            present_note_render(b.us);
+            const uint32_t *fb = b.fb.data();
             int w = machine_screen_width(), h = machine_screen_height();
-            log_row(k, t, false, s_gameplay, s_log ? fnv(ifb, stride, w, h) : 0);
-            if (display) host_present_refresh(ifb, stride, w, h, t);
-            else if (interactive) host_present_at(ifb, stride, w, h, t);
+            log_row(k, t, false, s_gameplay, s_log ? fnv(fb, stride, w, h) : 0);
+            if (display) host_present_refresh(fb, stride, w, h, t);
+            else if (interactive) host_present_at(fb, stride, w, h, t);
             static const char *shots = getenv("XMEN2_PRESENT_SHOTS"), *dir = getenv("XMEN2_DUMP_DIR");
             if (shots && dir) {   /* XMEN2_PRESENT_SHOTS=FROM-TO: the in-between frames of those runner frames */
                 unsigned long long lo = 0, hi = 0;
                 if (sscanf(shots, "%llu-%llu", &lo, &hi) == 2 && k >= lo && k <= hi) {
                     char path[600];
-                    snprintf(path, sizeof path, "%s/p%06llu_%04d.bmp", dir, (unsigned long long)k, (int)(a * 1000));
-                    host_screenshot(path, ifb, stride, w, h);
+                    snprintf(path, sizeof path, "%s/p%06llu_%04d.bmp", dir, (unsigned long long)k, (int)(as[(size_t)j] * 1000));
+                    host_screenshot(path, fb, stride, w, h);
                 }
             }
-            /* back to R_k's state */
-            for (int i = 0; i < 0x400; i++) v->vram[(uint16_t)(hb + (uint32_t)i)] = s_cur.hscroll[i];
-            memcpy(v->vsram, s_cur.vsram, sizeof v->vsram);
-            for (int i = 0; i < 80 * 8; i++) v->vram[(uint16_t)(sb + (uint32_t)i)] = s_cur.sat[i];
-            if (g_opt.players > 2)   /* the region's tables: the game's own memory, as it was */
-                for (int t = 0; t < NT; t++) memcpy(&xm_region[rg_off(t)], s_cur.rg[t], (size_t)slots(t) * 8);
         }
     }
     if (audit_on()) audit_planes(k, s_gameplay && hz);

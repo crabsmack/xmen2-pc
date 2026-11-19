@@ -57,8 +57,14 @@ add_executable(XMen2Native
     "${RUNNER_ROOT}/external/ymfm/src/ymfm_ssg.cpp"
     "${RUNNER_ROOT}/external/ymfm/src/ymfm_adpcm.cpp"
     "${RUNNER_ROOT}/external/ymfm/src/ymfm_pcm.cpp")
+# The port's VDP renderer: the engine's BATCHED (tile-row spans and a table-driven compositor, the
+# same pixels as SCALAR: the engine's renderer differential, and every --fb comparison of this runner
+# with the recomp runners' references), about 1.5x faster, which high_fps's frames in between need.
+# SCALAR is the control. The recomp runners keep the engine's default (GENESIS_VDP_PLANE_IMPL).
+set(XMEN2_NATIVE_VDP "BATCHED" CACHE STRING "XMen2Native's VDP renderer: BATCHED or SCALAR")
+set_property(CACHE XMEN2_NATIVE_VDP PROPERTY STRINGS BATCHED SCALAR)
 target_compile_definitions(XMen2Native PRIVATE XMEN2_NATIVE=1
-    GENESIS_BATCHED_PLANES=$<STREQUAL:${GENESIS_VDP_PLANE_IMPL},BATCHED>)
+    GENESIS_BATCHED_PLANES=$<STREQUAL:${XMEN2_NATIVE_VDP},BATCHED>)
 target_include_directories(XMen2Native PRIVATE
     "${RUNNER_ROOT}"
     "${RUNNER_ROOT}/include"
