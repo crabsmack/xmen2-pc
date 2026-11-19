@@ -50,6 +50,15 @@ Static recompilation of **X-Men 2: Clone Wars** (Sega Genesis, USA/Europe, SHA-1
   is a live status poll: wait. An old one with no `git.exe` running is stale: delete it.
 - `tier3_floor_default` stays 0: a dispatch miss must be loud (K7 needs 0 misses, 0
   interpreter instructions).
+- **Pictures only the port makes** (high_fps's frames in between, the 16:9 view, players 3-4) have
+  no reference but `docs/presentation_ref.json`: phase 6 E4/E5 and phase 7 M4 fail when they
+  change. An unexpected change (an engine bump, a refactor meant to keep the pixels) is a bug until
+  a frame dump shows otherwise (`XMEN2_PRESENT_SHOTS=K-K`, `XMEN2_SHOTS`, `XMEN2_DUMP_DIR`); a meant
+  one is accepted after the phase run, from xmen2disasm, with `uv run tools/phase.py
+  accept-presentation --reason "..."` (what changed, what was looked at), and the file committed
+  with the change. Anything that edits the VDP's sprite table outside the port's VRAM writes calls
+  `gvdp_sat_byte` too (the renderer reads y, size and link from that copy): counters
+  `enhance.sat_cache_mismatch` stays 0 (NOTES "How the vertical-motion bug was missed").
 - One runner at a time (#24); kill a stuck one **by PID**, never by image name. (A phase-2
   rule. Phase 4's retrospective recommends retiring it once workers get their own build dir and
   runner copy, so they can verify per batch. That is the user's call at phase 5 P0: see

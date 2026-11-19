@@ -1528,12 +1528,18 @@ renderer's other 2026-10-24 changes (the reference's sprite rules: the pixel lim
 collision border) can't change a frame in between or the 16:9 view in a way the earlier checks miss:
 the limits are off in 16:9 and with three or more players, the border is collision state only.
 
-**Still checked by nothing but people** (each a candidate for a reference): the frames in between
-(only now `sat_cache_mismatch` and the present log's hashes, which nothing compares across
-builds), the 16:9 margins, players 3-4's sprites and HUD, a played run's present timing
-(`XMEN2_PRESENT_TRACE` by hand), `pacing=display`. A presentation reference (the TAS's present-log
-hashes in and out of 16:9 and the four-player scene's, kept per accepted change, a change failing
-the gate until accepted) would have failed the 2026-10-24 pin bump.
+**The gate since** (the user's approval, 2026-11-19; xmen2disasm tools/phase.py "pictures only the
+port makes"): E4, E5 and M4 want every run's `sat_checks` over 0 and `sat_cache_mismatch` 0 (the
+counts are each process's; xmen2check adds a split run's segments up), and three runs' pictures
+equal to `docs/presentation_ref.json`: `tas-144hz` (the TAS's present log at 144 Hz, every frame in
+between with its hash, 102,416 rows), `tas-16x9` (the TAS's whole frames in 16:9, `--fb`) and
+`scene1-4p` (scene 1 with four players, `--fb`), digests per 1,000 rows, so a failure names the
+first sync that differs. E4's negative control: the TAS's first 6,000 frames at 144 Hz with
+`--sat-selftest` (the runner leaves the frames in between's moved sprites out of the renderer's
+copy: the 2026-10-24 bug) must show mismatches and pictures unlike the reference's. A change is
+accepted with `phase.py accept-presentation --reason` (CLAUDE.md). Windows only.
+**Still checked by nothing but people**: a played run's present timing (`XMEN2_PRESENT_TRACE` by
+hand; a headless run presents nothing) and `pacing=display`.
 
 ### Present trace: what the display showed (2026-10-30, the vsync work's first step)
 
