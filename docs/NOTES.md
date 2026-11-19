@@ -1483,6 +1483,15 @@ p99 (the 1.4.0 runner), against 1 ms between pictures, so the slow ones ran late
   1,794 of the four-player case's rows.
 - Not measured: a played run's present lateness at 1000 Hz (the desktop was locked, which skews
   presents: CLAUDE.local.md). `XMEN2_PRESENT_TRACE` + `tools/presenttrace.py` is the check.
+- **Found on the way: the sprites never moved vertically between frames** in any release. The
+  engine's sprite attribute cache (pinned 2026-10-24, three days after E4) gives the renderer each
+  sprite's y, size and link from the VDP's internal copy; present.cpp wrote the moved y into VRAM
+  only, so a sprite slid sideways and jumped to R_k's height at the first frame in between. The
+  frame's moved entries now go to the cache too (`gvdp_sat_byte`, as a port write does). Of the
+  TAS's 17,994 frames in between at 240 Hz, 5,215 change (5,182 gameplay); no whole frame does.
+  Repro: the TAS, sync 286 at 240 Hz (`XMEN2_PRESENT_SHOTS=286-286`): the player's jump. E4's
+  "sprites interpolated" counted planned moves, not pixels, so it passed; the playtests at 120-144 Hz
+  didn't notice. The coverage audit above counts plans too.
 
 ### Present trace: what the display showed (2026-10-30, the vsync work's first step)
 

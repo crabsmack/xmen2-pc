@@ -826,6 +826,15 @@ static void render_between(int i)
         double back = 1.0 - a;
         put16(dst + 6, w16(c + 6) - (int)(back * pl.dx + (pl.dx >= 0 ? 0.5 : -0.5)));
         put16(dst, w16(c) - (int)(back * pl.dy + (pl.dy >= 0 ? 0.5 : -0.5)));
+        /* a VRAM write to the attribute table goes to the VDP's internal copy too, as the port's
+           writes do: the renderer reads each sprite's y, size and link from there (the engine's
+           sprite attribute cache, pinned 2026-10-24, three days after E4). Without it the sprites
+           moved only sideways between frames: their y stayed R_k's until R_k. */
+        if (!pl.t && pl.slot < 80)
+            for (uint32_t o : { 0u, 1u, 6u, 7u }) {
+                uint16_t addr = (uint16_t)(s_span_sb + (uint32_t)pl.slot * 8u + o);
+                gvdp_sat_byte(v, addr, v->vram[addr]);
+            }
     }
     size_t need = (size_t)s_span_stride * (size_t)s_span_rows;
     if (b.fb.size() < need) b.fb.resize(need);
