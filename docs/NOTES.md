@@ -1493,6 +1493,48 @@ p99 (the 1.4.0 runner), against 1 ms between pictures, so the slow ones ran late
   "sprites interpolated" counted planned moves, not pixels, so it passed; the playtests at 120-144 Hz
   didn't notice. The coverage audit above counts plans too.
 
+### How the vertical-motion bug was missed, and what else was (2026-11-19)
+
+**Why nothing caught it.** Every check of a presentation-only picture checks intent, not pixels:
+E4's "sprites interpolated" counts planned moves, its "on time" and "frames even" the planned
+times in the present log (a headless run presents nothing), E5's counters come from the game's RAM
+table and VRAM. The one pixel check, `--fb`, compares whole frames with the recomp runners, which
+is why the whole frames stayed right while the pixels only the port makes (the frames in between,
+the 16:9 margins, players 3-4) had no reference. The engine's sprite attribute cache (pinned
+2026-10-24 for the exact-mode work) changed where the renderer reads a sprite's y; the pin bump's
+gate passed because nothing it compares had changed.
+
+**The same mistake elsewhere** (platform code editing the sprite table in VRAM only):
+- widescreen.cpp `shift_vram`: wrapped entries get y 0 to hide them in the wide view; since the
+  cache that hid nothing. None in the corpus (`sprites_wrapped` 0 in the TAS and every scenario,
+  whole frames equal with the fix), so the ghosts it guards against weren't seen.
+- machine.cpp's VRAM copy and fill DMA skipped the cache (the engine's own mirror it). The game
+  doesn't copy or fill into the table in the corpus (whole frames equal with the fix).
+- players.cpp's chain end at slot 80: dead since the cache, harmless (the engine ends the chain at
+  a link of 80 or more by itself).
+All three now write both. **The check that would have caught all of them**: `sat_check`
+(machine.cpp) compares the table's y, size and link in VRAM with the renderer's copy at every
+render, whole and in between; `enhance.sat_cache_mismatch` in the counters. 0 in the TAS and the 12
+scenarios at 240 Hz, the TAS in 16:9 and four players in scene 1; 27,596 on the TAS with the
+in-between fix taken out (the negative control).
+
+**Checked and clean** (a throwaway diagnostic, the TAS and 12 scenarios at 240 Hz, ~700,000 frames
+in between): no frame in between has a line over the 20-sprite or 320-pixel limit that neither
+whole frame around it has (moved sprites never make sprites vanish between frames); no moved sprite
+lands on 9-bit x 0 (a mask sprite) and none of the game's moves one; the hardware's masking is in
+effect in no whole frame. The 16:9 view's x-0 sprites are x words of $200 (64 px past the right
+edge, which the 9 bits wrap): the camera shift puts them in the right margin, as meant. The
+renderer's other 2026-10-24 changes (the reference's sprite rules: the pixel limit, masking, the
+collision border) can't change a frame in between or the 16:9 view in a way the earlier checks miss:
+the limits are off in 16:9 and with three or more players, the border is collision state only.
+
+**Still checked by nothing but people** (each a candidate for a reference): the frames in between
+(only now `sat_cache_mismatch` and the present log's hashes, which nothing compares across
+builds), the 16:9 margins, players 3-4's sprites and HUD, a played run's present timing
+(`XMEN2_PRESENT_TRACE` by hand), `pacing=display`. A presentation reference (the TAS's present-log
+hashes in and out of 16:9 and the four-player scene's, kept per accepted change, a change failing
+the gate until accepted) would have failed the 2026-10-24 pin bump.
+
 ### Present trace: what the display showed (2026-10-30, the vsync work's first step)
 
 - **The trace.** `XMEN2_PRESENT_TRACE=FILE` (played runs, host_sdl.cpp): a row per picture shown, its

@@ -14,6 +14,7 @@
  * model (genesis_vdp.c), the Z80 core (superzazu) and the sound chips are the engine's.
  */
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <math.h>
 #include <stdint.h>
@@ -380,8 +381,9 @@ static void dma_copy(uint32_t bytes)
     GVDP *v = V;
     if (!(v->code & 0x10)) return;
     uint16_t source = (uint16_t)s_dma_src;
-    do {
+    do {   /* each byte to the sprite attribute cache too, as the engine's dma_run_vram_copy */
         v->vram[(uint16_t)(v->address ^ 1)] = v->vram[(uint16_t)(source ^ 1)];
+        gvdp_sat_byte(v, (uint16_t)(v->address ^ 1), v->vram[(uint16_t)(v->address ^ 1)]);
         source++;
         v->address = (uint16_t)(v->address + REG(15));
     } while (--bytes);
@@ -394,8 +396,9 @@ static void dma_fill(uint32_t bytes)
     switch (v->code & 0x0F) {
     case 0x01: {
         uint8_t data = (uint8_t)(s_fifo[(s_fifo_idx + 3) & 3] >> 8);
-        do {
+        do {   /* and to the sprite attribute cache, as the engine's dma_run_vram_fill_data */
             v->vram[(uint16_t)(v->address ^ 1)] = data;
+            gvdp_sat_byte(v, (uint16_t)(v->address ^ 1), data);
             v->address = (uint16_t)(v->address + REG(15));
         } while (--bytes);
         break;
@@ -872,6 +875,24 @@ static int s_no_render;   /* a rollback's replay: nobody sees its frames (machin
 static int s_render_off;  /* --no-render: a headless trace that compares no picture (machine_render_off) */
 static int s_pixels_off;  /* --no-pixels: all of a render's work but the pixels (machine_pixels_off) */
 
+/* The renderer takes each sprite's y, size and link from the VDP's internal copy of the attribute
+   table (the engine's sprite attribute cache), its x and pattern from VRAM. Everything that edits
+   the table for a render (widescreen.cpp's camera shift and hidden entries, present.cpp's moved
+   sprites, players.cpp's chain end) has to edit both (gvdp_sat_byte), else the edit draws nothing:
+   from 2026-10-24 the frames in between moved no sprite vertically and the 16:9 view hid no
+   wrapped sprite, and every check passed. Each render checks the two agree; the counter
+   (`sat_cache_mismatch`, renders that disagree) is 0 in every corpus run. */
+static std::atomic<uint64_t> s_sat_mismatch;
+static void sat_check(const GVDP *v)
+{
+    bool h40 = gvdp_screen_width(v) == 320;
+    uint16_t base = h40 ? 0xFC00 : 0xFE00, sb = (uint16_t)((v->reg[5] << 9) & base);
+    for (int s = 0; s < (h40 ? 80 : 64); s++)
+        for (int i = 0; i < 4; i++)   /* y, size, link: what the renderer reads from the copy */
+            if (v->sat[s * 8 + i] != v->vram[(uint16_t)(sb + s * 8 + i)]) { s_sat_mismatch++; return; }
+}
+extern "C" uint64_t machine_sat_mismatch(void) { return s_sat_mismatch; }
+
 extern "C" void plat_sync_point(void)
 {
     if (s_depth) return;
@@ -883,6 +904,7 @@ extern "C" void plat_sync_point(void)
         return;
     }
     players_frame_setup();   /* phase 7: three or more players' sprites past the hardware's 80 */
+    sat_check(&g_machine.vdp);
     if (s_pixels_off) {}   /* the frame's pixels only: present.cpp's frames in between are planned and counted */
     else if (g_opt.high_fps) {   /* phase 6 E4: each displayed frame's render time */
         auto r0 = std::chrono::steady_clock::now();
@@ -895,13 +917,6 @@ extern "C" void plat_sync_point(void)
     ws_frame_check();
 }
 
-extern "C" void machine_render(void)
-{
-    players_frame_setup();
-    render_frame();
-    players_frame_restore();
-}
-
 /* present.cpp's frames in between, on its worker threads: render_frame of `v`, a copy of the VDP
    (the live one untouched, so several run at once), into fb (rows x stride pixels). The palette and
    the renderer's settings are the frame's own and stay as they are meanwhile: s_cram_argb's host
@@ -909,6 +924,7 @@ extern "C" void machine_render(void)
 extern "C" void machine_render_copy(GVDP *v, uint32_t *fb, int stride, int rows)
 {
     players_frame_setup_copy(v);
+    sat_check(v);
     uint8_t idxbuf[GVDP_MAX_WIDTH];
     uint32_t rowbuf[GVDP_MAX_WIDTH];
     int h = (v->reg[1] & 0x04) ? ((v->reg[1] & 0x08) ? 240 : 224) : 192;

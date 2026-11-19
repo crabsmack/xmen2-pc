@@ -460,9 +460,9 @@ static void report_counters_to(FILE *out)
     if (g_opt.high_fps || present_logging()) more += ", \"present\": " + present_counters_json();
     if (g_opt.widescreen) more += ", \"ws\": " + ws_counters_json();
     snprintf(enhance, sizeof enhance, "{\"two_player_frames\": %llu, \"two_player_step_frames\": %llu, "
-             "\"frame_tick_waits\": %llu%s}", (unsigned long long)s_two_player_frames,
+             "\"frame_tick_waits\": %llu, \"sat_cache_mismatch\": %llu%s}", (unsigned long long)s_two_player_frames,
              (unsigned long long)s_two_player_step_frames, (unsigned long long)machine_frame_tick_waits(),
-             more.c_str());
+             (unsigned long long)machine_sat_mismatch(), more.c_str());
     /* phase 7: the savestate's sections and size, and how deep the game's fiber stack went */
     char peak[64];
     snprintf(peak, sizeof peak, ", \"fiber_stack_peak\": %llu}", (unsigned long long)machine_stack_peak());

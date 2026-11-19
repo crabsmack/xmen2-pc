@@ -439,10 +439,15 @@ static int s_nspr, s_shifted;
 static uint8_t s_hscroll[0x400];
 static uint32_t s_hscroll_at;
 
+/* a VRAM word, and the VDP's internal copy of it where it is in the sprite table (the renderer
+   reads each sprite's y, size and link there: without it, from the engine's sprite attribute cache
+   of 2026-10-24 on, the wrapped entries' y 0 hid nothing) */
 static void put16(GVDP *v, uint32_t a, uint16_t w)
 {
     v->vram[(uint16_t)a] = (uint8_t)(w >> 8);
     v->vram[(uint16_t)(a + 1)] = (uint8_t)w;
+    gvdp_sat_byte(v, (uint16_t)a, (uint8_t)(w >> 8));
+    gvdp_sat_byte(v, (uint16_t)(a + 1), (uint8_t)w);
 }
 
 static void shift_vram(int m, int shift)

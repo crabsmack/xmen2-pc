@@ -296,6 +296,7 @@ static void frame_setup(GVDP *v, bool keep)
                 s_link_was[s_npatched++] = v->vram[a];
             }
             v->vram[a] = 0;
+            gvdp_sat_byte(v, a, 0);   /* the renderer reads the link from the VDP's copy (machine.cpp sat_check) */
         }
         uint16_t attr = (uint16_t)(v->vram[a + 1] << 8 | v->vram[a + 2]);
         /* a panel: 4x4 tiles (the "press start" in player 2's tiles is 4x1) on the HUD's row (Level_FrameLoop's
@@ -331,7 +332,10 @@ void players_frame_setup_copy(GVDP *v)
 void players_frame_restore(void)
 {
     GVDP *v = &g_machine.vdp;
-    for (int i = 0; i < s_npatched; i++) v->vram[s_sat_patched[i]] = s_link_was[i];
+    for (int i = 0; i < s_npatched; i++) {
+        v->vram[s_sat_patched[i]] = s_link_was[i];
+        gvdp_sat_byte(v, s_sat_patched[i], s_link_was[i]);
+    }
     s_npatched = 0;
     for (int p = 0; p < 2; p++)
         if (s_panel_swapped[p]) {

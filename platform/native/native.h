@@ -189,7 +189,7 @@ void ws_mask_line(int row, uint32_t *argb, int width);   /* the bars (R6) on one
 int  ws_render_shift(void);   /* R8: px the render camera moves the frame being rendered (sprites drawn by the host follow) */
 
 /* present.cpp / main.cpp / machine.cpp (phase 6 R4) */
-void machine_render(void);                  /* render the frame from the VDP's state now */
+uint64_t machine_sat_mismatch(void);        /* renders whose sprite table copy disagreed with VRAM (sat_check) */
 struct GVDP;
 void machine_render_copy(struct GVDP *v, uint32_t *fb, int stride, int rows);   /* a copy of it, on any thread */
 void plat_after_render(void);               /* the frame begun is rendered: high_fps's frames */
