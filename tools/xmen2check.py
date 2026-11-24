@@ -1555,12 +1555,13 @@ The picture, by default as your display allows (auto); widescreen=0,high_fps=0 f
     widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
                         plays as in 4:3, so enemies still appear at the old screen edge.
                         auto: 16:9 on a display wider than 3:2, else 4:3
-    shader_preset=PATH  Windows: the picture through a RetroArch shader preset (a .slangp
-                        file). None come with the game; choose one in the launcher (Options,
-                        Shader preset, Browse...). libretro's slang-shaders
+    shader_preset=PATH  the picture through a RetroArch shader preset (a .slangp file). None
+                        come with the game; choose one in the launcher (Options, Shader
+                        preset, Browse...). libretro's slang-shaders
                         (https://github.com/libretro/slang-shaders) is one collection of them.
-                        F8 turns it off and on. Done by librashader.dll (MPL-2.0, unmodified;
-                        source: https://github.com/SnowflakePowered/librashader). Default: none
+                        F8 turns it off and on. Done by the librashader library beside the
+                        game (MPL-2.0, unmodified; source:
+                        https://github.com/SnowflakePowered/librashader). Default: none
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     widescreen_gameplay=1  with widescreen: enemies wake and appear across the wide view, and
@@ -1676,6 +1677,14 @@ def cmd_native_build(a) -> dict:
     if r.returncode:
         sys.exit(f"export_table.py failed: {(r.stdout + r.stderr).strip()[-400:]}")
     BUILD.mkdir(parents=True, exist_ok=True)
+    librashader = None
+    if sys.platform.startswith("linux"):
+        # shader_preset's librashader.so: built once per version from its pinned source (cached outside the
+        # build dir; native.cmake copies it beside the program). A failure leaves the option without it.
+        r = subprocess.run([sys.executable, str(common.ROOT / "tools" / "librashader_linux.py"), "--json"],
+                           capture_output=True, text=True)
+        librashader = next((json.loads(l) for l in reversed(r.stdout.splitlines()) if l.startswith("{")),
+                           {"ok": False, "how": (r.stdout + r.stderr).strip()[-300:]})
     if not (BUILD / "CMakeCache.txt").exists():
         args = ["-S", str(common.ROOT), "-B", str(BUILD), "-DXMEN2_NATIVE_ONLY=ON"]
         args += ["-G", GENERATOR, "-A", "x64"] if sys.platform == "win32" else \
@@ -1685,7 +1694,10 @@ def cmd_native_build(a) -> dict:
     rc = cmake("--build", str(BUILD), "--config", "Release", "--target", "XMen2Native", "--parallel",
                logfile=BUILD / "build.log")
     exe = exe_path(NATIVE_EXE)
-    return {"ok": rc == 0 and exe.is_file(), "exe": str(exe), "log": str(BUILD / "build.log")}
+    out = {"ok": rc == 0 and exe.is_file(), "exe": str(exe), "log": str(BUILD / "build.log")}
+    if librashader is not None:
+        out["librashader"] = librashader
+    return out
 
 
 def wsl_path(p: Path) -> str:
@@ -1768,11 +1780,19 @@ def package_linux(a) -> dict:
     c = wsl(f"cp \"{bdir}/XMen2Native\" '{wsl_path(stage)}/xmen2' && chmod +x '{wsl_path(stage)}/xmen2'")
     if c.returncode:
         sys.exit(f"copying the Linux runner failed: {c.stderr.strip()[-300:]}")
+    # shader_preset: librashader.so, built from the release's pinned source (tools/librashader_linux.py), beside
+    # the program (its RUNPATH is $ORIGIN); MPL-2.0, NOTICE.md says where the source is
+    c = wsl(f"cp \"{bdir}/librashader.so\" '{wsl_path(stage)}/librashader.so'")
+    if c.returncode:
+        sys.exit(f"no librashader.so in the Linux build ({bdir}; tools/librashader_linux.py builds it): "
+                 f"{c.stderr.strip()[-300:]}")
     readme = PACKAGE_README.format(exe="./xmen2").replace("path\\to\\xmen2.bin", "path/to/xmen2.bin")
     readme += "\nLinux: needs SDL2 (Debian/Ubuntu: sudo apt install libsdl2-2.0-0).\n"
     (stage / "README.txt").write_text(readme, encoding="utf-8", newline="\n")
     package_recomplauncher(stage)
     package_licenses(stage / "LICENSES", sdl=False)
+    shutil.copy2(common.ROOT / "platform" / "native" / "external" / "librashader" / "LICENSE-MPL-2.0.md",
+                 stage / "LICENSES" / "librashader-LICENSE-MPL-2.0.md")
     c = wsl(f"cp \"{bdir}/_deps/libjuice-src/LICENSE\" '{wsl_path(stage)}/LICENSES/libjuice-LICENSE.txt'")
     if c.returncode:
         sys.exit(f"libjuice's license (MPL-2.0) is not in the Linux build tree: {c.stderr.strip()[-300:]}")

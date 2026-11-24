@@ -126,7 +126,7 @@ path = C:\Games\xmen2.bin
 | `widescreen=16:9` | A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). F10 toggles it. The default, `auto`, is 16:9 on a display wider than 3:2 (16:10, 16:9, ultrawide), else 4:3 |
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
 | `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it. The default, `auto`, is the display's own rate when it is over 60 Hz (and follows the window to another display), else off |
-| `shader_preset=PATH` | The picture through a RetroArch shader preset (`.slangp`), on Windows: see [Shader presets](#shader-presets). F8 turns it off and on. The default, empty, is the plain picture |
+| `shader_preset=PATH` | The picture through a RetroArch shader preset (`.slangp`): see [Shader presets](#shader-presets). F8 turns it off and on. The default, empty, is the plain picture |
 | `pacing=display` | Experimental, not yet measured on a live display: pictures go out on the display's refreshes (vsync), each at the refresh nearest its time, and with `high_fps` each refresh shows the game at its own moment (`high_fps` is then at most that rate). The default, `timer`, shows them by the PC's clock, as before. If the display holds pictures back (a locked, hidden or minimized window), the timer takes over for 5 s at a time |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
 | `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
@@ -146,18 +146,19 @@ path = C:\Games\xmen2.bin
 ## Shader presets
 
 `shader_preset` puts the picture through a RetroArch shader preset (a `.slangp` file), with
-[librashader](https://github.com/SnowflakePowered/librashader). It is off by default. Windows only
-for now.
+[librashader](https://github.com/SnowflakePowered/librashader). It is off by default.
 
 The game comes with no presets. Choose a `.slangp` file in the launcher (Options, Picture, Shader
-preset, Browse...), or set `shader_preset=C:\path\to\preset.slangp` in `xmen2.ini` (a relative path
-starts at the game's folder). libretro's [slang-shaders](https://github.com/libretro/slang-shaders)
-is one collection of them.
+preset, Browse...), or set `shader_preset=C:\path\to\preset.slangp` (on Linux,
+`/path/to/preset.slangp`) in `xmen2.ini` (a relative path starts at the game's folder). libretro's
+[slang-shaders](https://github.com/libretro/slang-shaders) is one collection of them.
 
 F8 turns the preset off and on while playing. A preset that can't be loaded leaves
 the plain picture, with the reason on the console. Presets that keep earlier frames see every
-picture shown, so with `high_fps` they get the frames in between too. `librashader.dll` (MPL-2.0,
-the upstream release unmodified) comes with the game; without it the option does nothing.
+picture shown, so with `high_fps` they get the frames in between too. The librashader library
+(MPL-2.0) comes with the game: on Windows `librashader.dll`, the upstream release unmodified; on
+Linux `librashader.so`, built from the same release's source unmodified (it needs OpenGL 3.3). Without
+it the option does nothing.
 
 ## Online
 

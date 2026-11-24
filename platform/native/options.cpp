@@ -90,7 +90,7 @@ static OptDef s_defs[] = {
       "the sound driver's samples with a straight line between each value and the next at the chip's own rate, where the original holds each value until the next (a stair-step); with sample_retime=0 the lines lead to the values at the driver's times; 0 = held (the original)", "1" },
     /* (a player's request, 2026-11-22; backlog 2026-11-23): any path, "" = none (the original picture) */
     { "shader_preset", { "", nullptr },
-      "a RetroArch shader preset (.slangp) the picture goes through, played on Windows (librashader.dll beside the game; F8 turns it off and on): a path, relative ones from the game's folder; empty = none, the plain picture (the original)", "" },
+      "a RetroArch shader preset (.slangp) the picture goes through, in played runs (librashader.dll / librashader.so beside the game; F8 turns it off and on): a path, relative ones from the game's folder; empty = none, the plain picture (the original)", "" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path, s_exe_dir;

@@ -159,6 +159,12 @@ static int make_renderer(void)
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
     s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "");
+#else
+    if (!options_shader_preset().empty()) {   /* shader.cpp's runtime there is OpenGL; else SDL's own choice */
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+        s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "");
+    }
 #endif
     if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, SDL_RENDERER_ACCELERATED);
     if (!s_ren) s_ren = SDL_CreateRenderer(s_win, -1, 0);

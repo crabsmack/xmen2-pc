@@ -200,9 +200,12 @@ defined(XMEN2_NATIVE)` branches through `g_opt` (`platform/xmen2_options.h`). A 
 both files, in README.md's table, in the package README (`PACKAGE_README` in xmen2check.py) and in
 the launcher's `shown_table` (launcher.cpp).
 `shader_preset` (a path, not in `g_opt`; NOTES "Shader presets"): `platform/native/shader.cpp` runs a
-RetroArch `.slangp` through librashader (librashader.dll, fetched by hash in native.cmake, loaded at run
-time) on SDL's D3D11 device, Windows only; played runs only, so no headless check sees it. The window as
-presented, after the chain: `XMEN2_BACKBUFFER_SHOT=N,...` with `XMEN2_DUMP_DIR`.
+RetroArch `.slangp` through librashader, loaded at run time from beside the program: on Windows
+librashader.dll (fetched by hash in native.cmake) on SDL's D3D11 device; on Linux librashader.so (built
+from the pinned source by `tools/librashader_linux.py`, which needs cargo in WSL; `native-build` runs it,
+cached in `~/.cache/xmen2/`) on SDL's OpenGL renderer, found through the program's RUNPATH `$ORIGIN`.
+Played runs only, so no headless check sees it. The window as presented, after the chain:
+`XMEN2_BACKBUFFER_SHOT=N,...` with `XMEN2_DUMP_DIR`.
 Savestates: `platform/native/state.cpp` (sections registered at start; M2's negative control
 leaves each out and must catch it).
 The launcher (`platform/native/launcher.cpp`, Dear ImGui vendored in `platform/native/external/`;

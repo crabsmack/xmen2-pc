@@ -152,11 +152,32 @@ endif()
 
 # shader_preset (platform/native/shader.cpp): librashader's C headers are vendored (MIT,
 # platform/native/external/librashader); the library itself (MPL-2.0) is loaded at run time from
-# librashader.dll beside the program, the upstream release unmodified, pinned by hash and fetched once
-# into the build tree. Offline, or with XMEN2_LIBRASHADER off, the build goes on without it and the
-# option says the library is missing. Linux: not yet (shader.cpp's runtime is Direct3D 11).
+# beside the program. Windows: librashader.dll, the upstream release unmodified, pinned by hash and
+# fetched once into the build tree. Linux: librashader.so, built from the same release's source by
+# tools/librashader_linux.py (upstream publishes no Linux library; `xmen2check.py native-build` runs
+# it) into a per-version cache, copied from there; the program's RUNPATH ($ORIGIN) lets dlopen find
+# it beside the program. Without it (offline, no cargo, XMEN2_LIBRASHADER off) the build goes on and
+# the option says the library is missing.
 target_sources(XMen2Native PRIVATE "${CMAKE_SOURCE_DIR}/platform/native/shader.cpp")
-option(XMEN2_LIBRASHADER "Fetch librashader.dll for shader_preset (Windows)" ON)
+option(XMEN2_LIBRASHADER "librashader beside the program, for shader_preset" ON)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(XMen2Native PRIVATE ${CMAKE_DL_LIBS})   # dlopen (librashader_ld.h)
+    set_target_properties(XMen2Native PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
+endif()
+if(UNIX AND NOT APPLE AND XMEN2_LIBRASHADER)
+    if(DEFINED ENV{XMEN2_LIBRASHADER_CACHE})
+        set(XMEN2_LS_SO "$ENV{XMEN2_LIBRASHADER_CACHE}/librashader.so")
+    else()
+        set(XMEN2_LS_SO "$ENV{HOME}/.cache/xmen2/librashader-0.12.0/librashader.so")
+    endif()
+    if(EXISTS "${XMEN2_LS_SO}")
+        add_custom_command(TARGET XMen2Native POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XMEN2_LS_SO}" "$<TARGET_FILE_DIR:XMen2Native>/librashader.so"
+            COMMENT "Copying librashader.so")
+    else()
+        message(WARNING "no ${XMEN2_LS_SO} (python3 tools/librashader_linux.py builds it): shader_preset will say the library is missing")
+    endif()
+endif()
 if(WIN32 AND XMEN2_LIBRASHADER)
     set(XMEN2_LS_VER "0.12.0")
     set(XMEN2_LS_ZIP "${CMAKE_BINARY_DIR}/_deps/librashader-x86_64-windows-v${XMEN2_LS_VER}-optimized.zip")

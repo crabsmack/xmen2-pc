@@ -1737,7 +1737,8 @@ user rules, today's pacing) | `display` | `auto` (= `display`); presentation onl
 
 `shader_preset=PATH` (a player's Reddit request, 2026-11-22: "support for RetroArch's .slangp shader
 presets ... for dithering treatment"): the played picture through a RetroArch preset, with
-[librashader](https://github.com/SnowflakePowered/librashader) v0.12.0. Presentation only, each
+[librashader](https://github.com/SnowflakePowered/librashader) v0.12.0, on Windows (Direct3D 11,
+v1.5.0) and Linux (OpenGL, after it). Presentation only, each
 seat's own online (not sealed, not in the digest, no `NP_VERSION` change), default empty = the plain
 picture. Players bring their own presets (libretro's slang-shaders have mixed licences): none
 bundled. F8 turns it off and on (a reserved key now, as F9-F11).
@@ -1784,8 +1785,31 @@ bundled. F8 turns it off and on (a reserved key now, as F9-F11).
   blur, interlacing) get every presented picture, the frames in between included, and the frame count
   counts pictures, not game frames. A preset that alternates by frame count (interlacing, some NTSC
   phases) therefore alternates at the display's rate, not 60 Hz.
-- **Not yet**: Linux (librashader's OpenGL runtime on SDL's GL renderer; the prebuilt releases have
-  no .so, so it would be built from source in WSL): `shader_preset` says "Windows only" there.
+- **Linux** (2026-11-24, after v1.5.0): librashader's OpenGL runtime on SDL's "opengl" renderer
+  (make_renderer asks for it when a preset is set; otherwise SDL's own choice, as before), a context of
+  3.3 or later (checked; older: one line, the plain picture). The GL runtime draws into a texture, not
+  the window, so the chain's output is a texture of ours the size of the picture's place, blitted into
+  the default framebuffer (turned over: GL counts rows from the bottom). SDL's GL renderer caches the
+  state it set, so `GlState` reads and puts back what the chain can change: program, VAO, the array
+  buffer (SDL's vertex arrays are client memory, so it must be 0 again), texture and sampler bindings
+  on SDL's units 0-2 (a sampler left bound would override its nearest filter), framebuffers, viewport,
+  scissor, blend, colour mask, clear colour, unpack row length. librashader publishes no Linux library:
+  `tools/librashader_linux.py` builds the C API from the v0.12.0 tag's source (commit 87e8a97b checked,
+  `--locked`, upstream's own build script and profile, default features) with cargo in WSL, once per
+  version, into `~/.cache/xmen2/librashader-0.12.0/` (12.7 MB; needs glibc 2.38 and GLIBCXX 3.4.29, no newer
+  than the game's own 2.43 and 3.4.30). `native-build` runs it before CMake; native.cmake copies the .so
+  beside XMen2Native and sets its RUNPATH to `$ORIGIN`, so the loader's `dlopen("librashader.so")`
+  finds it there. The Linux zip carries it and its licence.
+- **Checked on Linux** (WSLg, Mesa's OpenGL 4.5 over Direct3D 12; the same scene-30 runs as Windows,
+  `XMEN2_BACKBUFFER_SHOT`): `nearest.slangp` (one pass, no change) equals the plain window pixel for
+  pixel, the 16:9 view too, so orientation and placement are right; sgenpt-mix and
+  crt-guest-advanced-ntsc (multi-pass, feedback) equal the Windows D3D11 pictures within 5 levels a
+  channel (rounding); the hotkey message over the shaded picture equals Windows' within 3; a broken
+  preset and a missing librashader.so each give the plain picture pixel for pixel and one line;
+  `high_fps=120` put 13,570 pictures through the chain. The plain Linux and Windows windows are equal.
+  Cost there is not a Linux figure: WSLg's GL runs on a translation layer (sgenpt-mix p50 3.1 ms,
+  crt-guest-advanced-ntsc 62 ms, too slow for `high_fps` there). Not checked: a real Linux GPU driver
+  (Mesa radeonsi/iris, NVIDIA's), Wayland, the Steam Deck, a played session by eye.
   Headless runs open no window, so traces, digests and `docs/presentation_ref.json` never meet it.
   `host_screenshot`/`XMEN2_SHOTS` stay the raw frame; `XMEN2_BACKBUFFER_SHOT=N,...` reads the window.
 - **Packaging**: native.cmake fetches the release zip by SHA-256 into `build/_deps` once and copies
