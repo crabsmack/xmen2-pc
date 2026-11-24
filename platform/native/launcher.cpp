@@ -99,9 +99,8 @@ const std::vector<Shown> &shown_table()
          "Experimental: show pictures on the display's refreshes (vsync). Timer: by the PC's clock, as before.",
          {{"timer", "Timer (default)"}, {"display", "Display refresh (experimental)"}, {"auto", "Auto (display refresh)"}}, false},
         {"shader_preset", "Picture", "Shader preset",
-         "A RetroArch shader preset (.slangp) for the picture: de-dithering (sgenpt-mix or GDAPT blend the game's "
-         "checkerboards and stripes), NTSC or a CRT. Get libretro's slang-shaders and choose a .slangp file. Windows only "
-         "for now. F8 turns it off and on while playing.",
+         "A RetroArch shader preset (.slangp) for the picture. None come with the game: choose a .slangp file. "
+         "Windows only for now. F8 turns it off and on while playing.",
          {{"", "None (original)"}}, false},
         {"music_voices", "Sound", "Music voices",
          "The music on sound chips of its own, so no part or sound effect takes its notes, and each player's part plays "

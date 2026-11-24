@@ -1556,11 +1556,9 @@ The picture, by default as your display allows (auto); widescreen=0,high_fps=0 f
                         plays as in 4:3, so enemies still appear at the old screen edge.
                         auto: 16:9 on a display wider than 3:2, else 4:3
     shader_preset=PATH  Windows: the picture through a RetroArch shader preset (a .slangp
-                        file), to blend the game's dithering (checkerboards, stripes) as a TV
-                        did, or for an NTSC or CRT look. None come with the game: get libretro's
-                        slang-shaders (https://github.com/libretro/slang-shaders, Download ZIP)
-                        and choose one in the launcher (Options, Shader preset, Browse...). For
-                        the dithering: dithering\\sgenpt-mix.slangp or dithering\\gdapt.slangp.
+                        file). None come with the game; choose one in the launcher (Options,
+                        Shader preset, Browse...). libretro's slang-shaders
+                        (https://github.com/libretro/slang-shaders) is one collection of them.
                         F8 turns it off and on. Done by librashader.dll (MPL-2.0, unmodified;
                         source: https://github.com/SnowflakePowered/librashader). Default: none
 Enhancements, each off unless you turn it on:

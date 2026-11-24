@@ -145,28 +145,16 @@ path = C:\Games\xmen2.bin
 
 ## Shader presets
 
-The Genesis art blends colours with dithering, checkerboards and vertical stripes that a composite
-TV smeared into in-between colours and see-through effects (in X-Men 2: the whole backgrounds of
-Savage Land A2 and A3, Avalon's pillars, Savage Land A4's machinery). On a sharp display
-the stripes show. `shader_preset` puts the picture through a RetroArch shader preset (a `.slangp`
-file), with [librashader](https://github.com/SnowflakePowered/librashader), so you can blend them
-again, or have an NTSC or CRT look. Windows only for now.
+`shader_preset` puts the picture through a RetroArch shader preset (a `.slangp` file), with
+[librashader](https://github.com/SnowflakePowered/librashader). It is off by default. Windows only
+for now.
 
-The game comes with no presets: get libretro's
-[slang-shaders](https://github.com/libretro/slang-shaders) (Code, Download ZIP), unzip it anywhere,
-and choose a `.slangp` file in the launcher (Options, Picture, Shader preset, Browse...), or set
-`shader_preset=C:\path\to\slang-shaders\dithering\sgenpt-mix.slangp` in `xmen2.ini` (a relative
-path starts at the game's folder). Tried on this game's frames:
+The game comes with no presets. Choose a `.slangp` file in the launcher (Options, Picture, Shader
+preset, Browse...), or set `shader_preset=C:\path\to\preset.slangp` in `xmen2.ini` (a relative path
+starts at the game's folder). libretro's [slang-shaders](https://github.com/libretro/slang-shaders)
+is one collection of them.
 
-| Preset | What it does here |
-|---|---|
-| `dithering/sgenpt-mix.slangp` | Made for Genesis: blends both the checkerboards and the vertical stripes, sharp otherwise |
-| `dithering/gdapt.slangp` | Blends both, a little darker on stripes |
-| `dithering/mdapt.slangp`, `dithering/checkerboard-dedither.slangp` | Checkerboards only: the stripes stay |
-| `ntsc/ntsc-320px-composite.slangp`, `crt/crt-guest-advanced-ntsc.slangp` | A composite signal, as the console's own cable: blends both, with the rainbow bands real composite gives fine checkerboards |
-| `crt/crt-lottes.slangp`, `crt/zfast-crt-composite.slangp` | A CRT's mask and scanlines, with some blending |
-
-F8 turns the preset off and on while playing (to compare). A preset that can't be loaded leaves
+F8 turns the preset off and on while playing. A preset that can't be loaded leaves
 the plain picture, with the reason on the console. Presets that keep earlier frames see every
 picture shown, so with `high_fps` they get the frames in between too. `librashader.dll` (MPL-2.0,
 the upstream release unmodified) comes with the game; without it the option does nothing.

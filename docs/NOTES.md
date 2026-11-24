@@ -1747,7 +1747,11 @@ bundled. F8 turns it off and on (a reserved key now, as F9-F11).
   snow speckle matches single pixels): Savage Land A2/A3 (scenes 28, 30: the whole background a
   checkerboard), Savage Land A4 (32: checker areas and striped pipes), Avalon (8: the pillars' vertical
   stripes), Bani Maza A2 (22: some). Siberia, Sentinels and the Cerebro screens hardly at all.
-- **Stock presets on those frames** (librashader-cli 0.12.1, D3D11, 4x output; the README's table):
+- **No preset picks in what players read** (the user's ruling, 2026-11-24): the README, the package
+  README and the launcher say the feature exists, that it is off by default and where presets come
+  from; which presets suit the game is the user's call to sign off, and v1.5.0's text that named some
+  was taken out. The findings below are the engineering record, not advice.
+- **Stock presets on those frames** (librashader-cli 0.12.1, D3D11, 4x output):
   `dithering/sgenpt-mix` (Genesis pseudo-transparency) and `gdapt` blend checkerboards and stripes;
   `mdapt` and `checkerboard-dedither` only checkerboards; the NTSC/composite presets
   (`ntsc-320px-composite`, `crt-guest-advanced-ntsc`) blend both with the rainbow bands composite gives
