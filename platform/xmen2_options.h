@@ -37,6 +37,8 @@ typedef struct XmOptions {
                            YM2612 (the original, the default); presentation only */
     int pacing;         /* 1: pictures on the display's refreshes (vsync, platform/native/host_sdl.cpp
                            host_present_refresh); 0: by the clock (the default); presentation only */
+    /* shader_preset (a path, presentation only) is the host side's alone, never the game's: not here but
+       options_shader_preset() (platform/native/native.h, read by platform/native/shader.cpp) */
 } XmOptions;
 
 extern XmOptions g_opt;

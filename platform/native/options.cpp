@@ -88,6 +88,9 @@ static OptDef s_defs[] = {
     /* (the user, 2026-10-30: "likewise, default on, separate option") */
     { "sample_smooth", { "1", "0", nullptr },
       "the sound driver's samples with a straight line between each value and the next at the chip's own rate, where the original holds each value until the next (a stair-step); with sample_retime=0 the lines lead to the values at the driver's times; 0 = held (the original)", "1" },
+    /* (a player's request, 2026-11-22; backlog 2026-11-23): any path, "" = none (the original picture) */
+    { "shader_preset", { "", nullptr },
+      "a RetroArch shader preset (.slangp) the picture goes through, played on Windows (librashader.dll beside the game; F8 turns it off and on): a path, relative ones from the game's folder; empty = none, the plain picture (the original)", "" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path, s_exe_dir;
@@ -107,6 +110,8 @@ static bool valid(const OptDef &d, const std::string &v)
 {
     for (int i = 0; d.values[i]; i++)
         if (v == d.values[i]) return true;
+    if (!strcmp(d.name, "shader_preset"))   /* a path: one line, and no comma (--options K=V,K=V) */
+        return v.find_first_of(",\r\n") == std::string::npos;
     char *e;
     long n = strtol(v.c_str(), &e, 10);
     if (v.empty() || *e) return false;
@@ -292,7 +297,8 @@ void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : 
    sealed widescreen_gameplay is 1. The text is `k=v,...` in table order. */
 static bool presentation_only(const OptDef &d, bool ws_gameplay)
 {
-    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "pacing") || !strcmp(d.name, "music_voices") ||
+    return !strcmp(d.name, "high_fps") || !strcmp(d.name, "pacing") || !strcmp(d.name, "shader_preset") ||
+           !strcmp(d.name, "music_voices") ||
            !strcmp(d.name, "sample_retime") ||
            !strcmp(d.name, "sample_smooth") || !strcmp(d.name, "fm_chip") ||
            (!strcmp(d.name, "widescreen") && !ws_gameplay);
@@ -365,6 +371,7 @@ extern "C" int plat_first_scene(int scene)
 }
 
 std::string options_exe_dir(void) { return s_exe_dir; }
+std::string options_shader_preset(void) { return find("shader_preset")->value; }
 std::string options_ini_rom(void) { return s_ini_rom; }
 
 std::string options_ini_get(const char *section, const char *key, const std::string &def)

@@ -98,6 +98,11 @@ const std::vector<Shown> &shown_table()
         {"pacing", "Picture", "Frame pacing",
          "Experimental: show pictures on the display's refreshes (vsync). Timer: by the PC's clock, as before.",
          {{"timer", "Timer (default)"}, {"display", "Display refresh (experimental)"}, {"auto", "Auto (display refresh)"}}, false},
+        {"shader_preset", "Picture", "Shader preset",
+         "A RetroArch shader preset (.slangp) for the picture: de-dithering (sgenpt-mix or GDAPT blend the game's "
+         "checkerboards and stripes), NTSC or a CRT. Get libretro's slang-shaders and choose a .slangp file. Windows only "
+         "for now. F8 turns it off and on while playing.",
+         {{"", "None (original)"}}, false},
         {"music_voices", "Sound", "Music voices",
          "The music on sound chips of its own, so no part or sound effect takes its notes, and each player's part plays "
          "in full. The cartridge has one set of chips, and with two players or more the game thins each part.",
@@ -190,6 +195,10 @@ std::string value_label(int i, const std::string &v)
         for (const ValLabel &l : s->vals)
             if (v == l.v) return l.label;
     if (!strcmp(key, "start_stage")) return stage_label(v);
+    if (!strcmp(key, "shader_preset")) {   /* a path: its file's name */
+        size_t s = v.find_last_of("/\\");
+        return s == std::string::npos ? v : v.substr(s + 1);
+    }
     if (!strcmp(key, "high_fps")) return v + " Hz";
     return v;
 }
@@ -382,6 +391,22 @@ void option_row(State &S, int i)
     if (sh && sh->checkbox) {
         bool b = cur == "1";
         if (ImGui::Checkbox(b ? "On" : "Off", &b)) options_set(i, b ? "1" : "0");
+    } else if (!strcmp(key, "shader_preset")) {   /* a path: the field, Browse... and None */
+        static char buf[1024];
+        static std::string shown_for = "\x01";
+        if (cur != shown_for) { snprintf(buf, sizeof buf, "%s", cur.c_str()); shown_for = cur; }
+        float bw = (FIELD_W - px(20)) / 4;
+        ImGui::SetNextItemWidth(FIELD_W - 2 * bw - px(20));
+        if (ImGui::InputTextWithHint("##v", "None (original)", buf, sizeof buf) && options_set(i, buf)) shown_for = buf;
+        focus_help(S, key);
+        ImGui::SameLine(0, px(10));
+        if (ImGui::Button("Browse...", ImVec2(bw, 0))) {
+            char path[1024];
+            if (host_pick_shader(path, sizeof path) && options_set(i, path)) { snprintf(buf, sizeof buf, "%s", path); shown_for = path; }
+        }
+        focus_help(S, key);
+        ImGui::SameLine(0, px(10));
+        if (ImGui::Button("None", ImVec2(bw, 0)) && options_set(i, "")) { buf[0] = 0; shown_for = ""; }
     } else {
         if (std::find(vals.begin(), vals.end(), cur) == vals.end()) vals.push_back(cur);   /* a value from the file */
         if (ImGui::BeginCombo("##v", value_label(i, cur).c_str())) {
@@ -518,7 +543,7 @@ void play_page(State &S)
         ImGui::TableSetColumnIndex(0);
         ImGui::TextColored(C_DIM, "While playing");
         ImGui::TableSetColumnIndex(1);
-        ImGui::TextUnformatted("F9 frame rate, F10 16:9, F11 fullscreen, Esc quit");
+        ImGui::TextUnformatted("F8 shader, F9 frame rate, F10 16:9, F11 fullscreen, Esc quit");
         ImGui::EndTable();
     }
     if (ImGui::Button("Change controls...")) S.want_tab = TAB_CONTROLS;

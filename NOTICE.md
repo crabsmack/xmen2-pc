@@ -32,6 +32,7 @@ grant any rights in the original game.
 | [Dear ImGui](https://github.com/ocornut/imgui) (Omar Cornut) | The launcher's interface, v1.92.9b vendored in `platform/native/external/imgui/` | MIT |
 | [Karla](https://github.com/googlefonts/karla) (Jonathan Pinhorn, the Karla Project Authors) | The launcher's text font, built into the program | SIL Open Font License 1.1 |
 | [Roboto](https://github.com/googlefonts/roboto) (Christian Robertson) | The launcher's title font, built into the program | Apache License 2.0 |
+| [librashader](https://github.com/SnowflakePowered/librashader) (chyyran and contributors) | RetroArch shader presets on the picture (`shader_preset`, Windows): its C headers vendored in `platform/native/external/librashader/`, the library loaded at run time from `librashader.dll` | headers MIT; the library MPL-2.0, v0.12.0's release unmodified (source at the link), fetched by `platform/native/native.cmake` |
 | [clowncommon](https://github.com/Clownacy/clowncommon), [tomlc99](https://github.com/cktan/tomlc99) | Engine helpers, TOML parsing | ISC, MIT |
 | [xmen2disasm](https://github.com/crabsmack/xmen2disasm) | The disassembly (submodule) | MIT, see its NOTICE.md |
 

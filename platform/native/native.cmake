@@ -149,3 +149,35 @@ if(MSVC)
             "${RUNNER_ROOT}/external/SDL2/SDL2-2.28.5/lib/x64/SDL2.dll" "$<TARGET_FILE_DIR:XMen2Native>"
         COMMENT "Copying SDL2.dll")
 endif()
+
+# shader_preset (platform/native/shader.cpp): librashader's C headers are vendored (MIT,
+# platform/native/external/librashader); the library itself (MPL-2.0) is loaded at run time from
+# librashader.dll beside the program, the upstream release unmodified, pinned by hash and fetched once
+# into the build tree. Offline, or with XMEN2_LIBRASHADER off, the build goes on without it and the
+# option says the library is missing. Linux: not yet (shader.cpp's runtime is Direct3D 11).
+target_sources(XMen2Native PRIVATE "${CMAKE_SOURCE_DIR}/platform/native/shader.cpp")
+option(XMEN2_LIBRASHADER "Fetch librashader.dll for shader_preset (Windows)" ON)
+if(WIN32 AND XMEN2_LIBRASHADER)
+    set(XMEN2_LS_VER "0.12.0")
+    set(XMEN2_LS_ZIP "${CMAKE_BINARY_DIR}/_deps/librashader-x86_64-windows-v${XMEN2_LS_VER}-optimized.zip")
+    set(XMEN2_LS_DIR "${CMAKE_BINARY_DIR}/_deps/librashader-${XMEN2_LS_VER}")
+    if(NOT EXISTS "${XMEN2_LS_DIR}/librashader.dll")
+        file(DOWNLOAD
+            "https://github.com/SnowflakePowered/librashader/releases/download/librashader-v${XMEN2_LS_VER}/librashader-x86_64-windows-v${XMEN2_LS_VER}-optimized.zip"
+            "${XMEN2_LS_ZIP}"
+            EXPECTED_HASH SHA256=521fe0f364bfa705883f9e99fb1733a3a24f0f403bcc5591b6b78f6cff289183
+            STATUS XMEN2_LS_STATUS)
+        list(GET XMEN2_LS_STATUS 0 XMEN2_LS_RC)
+        if(XMEN2_LS_RC EQUAL 0)
+            file(ARCHIVE_EXTRACT INPUT "${XMEN2_LS_ZIP}" DESTINATION "${XMEN2_LS_DIR}" PATTERNS "librashader.dll")
+            file(REMOVE "${XMEN2_LS_ZIP}")
+        else()
+            message(WARNING "librashader ${XMEN2_LS_VER} not fetched (${XMEN2_LS_STATUS}): shader_preset will say the library is missing")
+        endif()
+    endif()
+    if(EXISTS "${XMEN2_LS_DIR}/librashader.dll")
+        add_custom_command(TARGET XMen2Native POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XMEN2_LS_DIR}/librashader.dll" "$<TARGET_FILE_DIR:XMen2Native>"
+            COMMENT "Copying librashader.dll")
+    endif()
+endif()

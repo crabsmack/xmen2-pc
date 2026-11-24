@@ -1733,6 +1733,62 @@ user rules, today's pacing) | `display` | `auto` (= `display`); presentation onl
   the same clamped limit, so the margin doesn't add a stall there. A player hanging back still
   holds the camera, as player 2 does on the cartridge. Not run with a four-pad input.
 
+### Shader presets (2026-11-24)
+
+`shader_preset=PATH` (a player's Reddit request, 2026-11-22: "support for RetroArch's .slangp shader
+presets ... for dithering treatment"): the played picture through a RetroArch preset, with
+[librashader](https://github.com/SnowflakePowered/librashader) v0.12.0. Presentation only, each
+seat's own online (not sealed, not in the digest, no `NP_VERSION` change), default empty = the plain
+picture. Players bring their own presets (libretro's slang-shaders have mixed licences): none
+bundled. F8 turns it off and on (a reserved key now, as F9-F11).
+
+- **Where the game dithers** (the first step: every 120th frame of the 22 stage inputs, scanned for 4x4
+  areas of a two-colour checkerboard or vertical stripes; the TAS never leaves Siberia, where only
+  snow speckle matches single pixels): Savage Land A2/A3 (scenes 28, 30: the whole background a
+  checkerboard), Savage Land A4 (32: checker areas and striped pipes), Avalon (8: the pillars' vertical
+  stripes), Bani Maza A2 (22: some). Siberia, Sentinels and the Cerebro screens hardly at all.
+- **Stock presets on those frames** (librashader-cli 0.12.1, D3D11, 4x output; the README's table):
+  `dithering/sgenpt-mix` (Genesis pseudo-transparency) and `gdapt` blend checkerboards and stripes;
+  `mdapt` and `checkerboard-dedither` only checkerboards; the NTSC/composite presets
+  (`ntsc-320px-composite`, `crt-guest-advanced-ntsc`) blend both with the rainbow bands composite gives
+  a fine checkerboard; `crt-royale` blends nothing at 4x (its mask wants 4K); `ntsc-md-rainbows`
+  desaturates the whole picture. The mock-up sheets were shown to the user before the build.
+- **How it draws** (platform/native/shader.cpp): SDL 2.28 gives out its D3D11 device but neither its
+  textures nor its back buffer. The frame goes into an input texture of ours on SDL's device (w x h,
+  made again when the view changes: 320 or 400 wide); the output is the back buffer's render target
+  view, which SDL binds when it draws (a black fill over the cleared window, flushed, then
+  `OMGetRenderTargets`); the chain runs in a device context state of its own
+  (`ID3D11DeviceContext1::SwapDeviceContextState`), so SDL's cached pipeline state (input layout,
+  shaders, blend, samplers) is as it left it. SDL's device is single-threaded, so the state object
+  needs `D3D11_1_CREATE_DEVICE_CONTEXT_STATE_SINGLETHREADED` (without it the create fails). The
+  hotkey messages are a second, blended texture drawn over the shaded picture, so they stay sharp.
+  `libra_preset_free` in 0.12 panics on a preset the chain already took (null): freed only when still set.
+- **Failures**: no librashader.dll, a preset that doesn't load or compile, no D3D11.1: one stderr line
+  and the plain picture (checked with a preset naming a missing .slang: the back buffer equal to the
+  plain run's pixel for pixel). Three failed frames in a row turn it off for the run. Device loss
+  (`s_rebuild`) remakes the chain with the renderer (not exercised: no way to force a reset here).
+- **Checked** (played windows, `--no-launcher --input-script game/mp_inputs/scene30.input --scene 30
+  --session 1 --quit-after 2500`, `XMEN2_BACKBUFFER_SHOT` = the window as presented after the chain):
+  sgenpt-mix, crt-guest-advanced-ntsc (multi-pass, feedback) and crt-royale each differ from the plain
+  run at the same pictures and look right (the checkerboard blended, sprites and HUD sharp); the
+  message over the shaded picture (`XMEN2_OSD_TEST`); `widescreen=16:9` (400-wide input);
+  `high_fps=240` (the chain per presented picture: 17,958 of them in 2,500 runner frames).
+- **Cost** (GPU timestamps around the chain, `[native] shader:` at exit; a current desktop GPU, a
+  960x672 window): sgenpt-mix p50 9 us, crt-royale 98 us, crt-guest-advanced-ntsc 161 us (also at
+  240 Hz: 161 us, about 4% of a 4.2 ms refresh). Not measured: fullscreen at 4K, a slower GPU.
+- **high_fps**: presets that keep earlier frames (feedback, history: the CRT ones' afterglow, motion
+  blur, interlacing) get every presented picture, the frames in between included, and the frame count
+  counts pictures, not game frames. A preset that alternates by frame count (interlacing, some NTSC
+  phases) therefore alternates at the display's rate, not 60 Hz.
+- **Not yet**: Linux (librashader's OpenGL runtime on SDL's GL renderer; the prebuilt releases have
+  no .so, so it would be built from source in WSL): `shader_preset` says "Windows only" there.
+  Headless runs open no window, so traces, digests and `docs/presentation_ref.json` never meet it.
+  `host_screenshot`/`XMEN2_SHOTS` stay the raw frame; `XMEN2_BACKBUFFER_SHOT=N,...` reads the window.
+- **Packaging**: native.cmake fetches the release zip by SHA-256 into `build/_deps` once and copies
+  `librashader.dll` beside the runner; the Windows package carries it and
+  `LICENSES/librashader-LICENSE-MPL-2.0.md`, NOTICE.md names the source. The vendored headers
+  (`platform/native/external/librashader`, MIT) are 0.12.0's.
+
 ## Phase 7: online play and four players
 
 Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phases/P7-multiplayer.md`

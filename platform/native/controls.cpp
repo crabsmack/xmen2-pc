@@ -274,7 +274,8 @@ bool controls_is_default(int p)
 
 bool controls_reserved_key(int sc)
 {
-    return sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_F9 || sc == SDL_SCANCODE_F10 || sc == SDL_SCANCODE_F11;
+    return sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_F8 || sc == SDL_SCANCODE_F9 || sc == SDL_SCANCODE_F10 ||
+           sc == SDL_SCANCODE_F11;
 }
 
 std::string controls_key_label(int sc)
@@ -442,7 +443,7 @@ std::string controls_keyboard_preset(int p, int preset)
 
 std::string controls_bind_key(int p, int b, int slot, int sc)
 {
-    if (controls_reserved_key(sc)) return controls_key_label(sc) + " is the game's own key (Esc quits, F9-F11 change the picture).";
+    if (controls_reserved_key(sc)) return controls_key_label(sc) + " is the game's own key (Esc quits, F8-F11 change the picture).";
     std::string note;
     for (int q = 0; q < CTL_PLAYERS; q++)
         for (int bb = 0; bb < CB_COUNT; bb++)

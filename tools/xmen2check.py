@@ -1538,7 +1538,8 @@ levels from your file each time it starts.
 Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D = Z, Q = Mode.
 Game controllers (players 1-4, in the order they are plugged in): D-pad or left stick; X = A,
 A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
-F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  Each says so on screen.
+F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  F8: the shader preset
+on/off.  Each says so on screen.
 The launcher's Controls page changes all of that for each player: which controller (any, a
 particular one, or none), a keyboard layout (arrows or W A S D, so two can share a keyboard), and
 two keys and two controller inputs for every button (click a box, press the key or button). Most
@@ -1554,6 +1555,14 @@ The picture, by default as your display allows (auto); widescreen=0,high_fps=0 f
     widescreen=16:9     a 16:9 view in the stages (the Cerebro screens stay 4:3); the game
                         plays as in 4:3, so enemies still appear at the old screen edge.
                         auto: 16:9 on a display wider than 3:2, else 4:3
+    shader_preset=PATH  Windows: the picture through a RetroArch shader preset (a .slangp
+                        file), to blend the game's dithering (checkerboards, stripes) as a TV
+                        did, or for an NTSC or CRT look. None come with the game: get libretro's
+                        slang-shaders (https://github.com/libretro/slang-shaders, Download ZIP)
+                        and choose one in the launcher (Options, Shader preset, Browse...). For
+                        the dithering: dithering\\sgenpt-mix.slangp or dithering\\gdapt.slangp.
+                        F8 turns it off and on. Done by librashader.dll (MPL-2.0, unmodified;
+                        source: https://github.com/SnowflakePowered/librashader). Default: none
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     widescreen_gameplay=1  with widescreen: enemies wake and appear across the wide view, and
@@ -1608,12 +1617,12 @@ editor (Notepad: save as xmen2.ini with "All files", not xmen2.ini.txt). The com
     lives=inf
 {exe} --options --json shows the file it reads (settings_file, settings_file_found).
 While playing: F9 turns the in-between frames on and off, F10 the 16:9 view (from the next
-screen).  {exe} --options --json lists them.
+screen), F8 the shader preset.  {exe} --options --json lists them.
 
 Online (rollback netplay, two to four players, each on their own machine with their own
 cartridge file). The host (seat 0) chooses the options that change the game (players,
 widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays with them;
-high_fps, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
+high_fps, shader_preset, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
 seat's own (F9 and F10 work), except that with the host's widescreen_gameplay=1 the view is the
 host's too.
 There is no lobby: one player hosts, the others connect to the host. Everyone needs the same
@@ -1981,7 +1990,9 @@ def cmd_options(a) -> dict:
     if not src.is_file():
         sys.exit(f"no native runner at {src}: run `xmen2check.py build`")
     listed = runner_options([str(src)])
-    want = {k: next(v for v in d["values"] if v != d["default"]) for k, d in listed["options"].items()}
+    # a free-text option (shader_preset: a path) lists only its default: a sample value of its kind
+    want = {k: next((v for v in d["values"] if v != d["default"]), f"e2-check-{k}.slangp")
+            for k, d in listed["options"].items()}
     with tempfile.TemporaryDirectory(prefix="xmen2opt_") as td:
         copy_runner(src, Path(td))
         (Path(td) / "xmen2.ini").write_text("[options]\n" + "".join(f"{k}={v}\n" for k, v in want.items()),
@@ -2020,9 +2031,16 @@ def cmd_package(a) -> dict:
     (stage / "LICENSES").mkdir(parents=True)
     shutil.copy2(exe, stage / "XMen2.exe")
     shutil.copy2(exe.parent / "SDL2.dll", stage / "SDL2.dll")
+    # shader_preset: librashader's upstream release, unmodified (MPL-2.0: its license, and NOTICE.md says
+    # where the source is); native.cmake fetches it by hash into the build tree
+    if not (exe.parent / "librashader.dll").is_file():
+        sys.exit(f"no librashader.dll beside {exe} (native.cmake fetches it; offline at configure time?)")
+    shutil.copy2(exe.parent / "librashader.dll", stage / "librashader.dll")
     (stage / "README.txt").write_text(PACKAGE_README.format(exe="XMen2.exe"), encoding="utf-8", newline="\r\n")
     package_recomplauncher(stage)
     package_licenses(stage / "LICENSES", sdl=True)
+    shutil.copy2(common.ROOT / "platform" / "native" / "external" / "librashader" / "LICENSE-MPL-2.0.md",
+                 stage / "LICENSES" / "librashader-LICENSE-MPL-2.0.md")
     juice = BUILD / "_deps" / "libjuice-src" / "LICENSE"
     if not juice.is_file():
         sys.exit(f"libjuice's license (MPL-2.0) is not in the build tree ({juice})")

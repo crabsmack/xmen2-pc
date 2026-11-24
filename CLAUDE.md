@@ -199,6 +199,10 @@ off). `platform/native/options.cpp` (the table,
 defined(XMEN2_NATIVE)` branches through `g_opt` (`platform/xmen2_options.h`). A new option goes in
 both files, in README.md's table, in the package README (`PACKAGE_README` in xmen2check.py) and in
 the launcher's `shown_table` (launcher.cpp).
+`shader_preset` (a path, not in `g_opt`; NOTES "Shader presets"): `platform/native/shader.cpp` runs a
+RetroArch `.slangp` through librashader (librashader.dll, fetched by hash in native.cmake, loaded at run
+time) on SDL's D3D11 device, Windows only; played runs only, so no headless check sees it. The window as
+presented, after the chain: `XMEN2_BACKBUFFER_SHOT=N,...` with `XMEN2_DUMP_DIR`.
 Savestates: `platform/native/state.cpp` (sections registered at start; M2's negative control
 leaves each out and must catch it).
 The launcher (`platform/native/launcher.cpp`, Dear ImGui vendored in `platform/native/external/`;

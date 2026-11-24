@@ -55,7 +55,7 @@ The launcher's **Controls** page sets each player's controls (players 1-4, a tab
   choose it with Enter or the A button) and press the key, the controller button, or move the stick
   or trigger you want. Esc cancels, Backspace clears; right-click or Delete clears a box. A key
   belongs to one button of one player, so taking it moves it from wherever it was (the page says
-  so). Esc, F9, F10 and F11 stay the game's own.
+  so). Esc, F8, F9, F10 and F11 stay the game's own.
 - **Stick dead zone**: how far a stick or trigger moves before it counts.
 - Press anything on the page to try it: a light shows what the game will get for that player.
 
@@ -98,7 +98,7 @@ the picture follows your display (`widescreen` and `high_fps` are `auto`), `musi
 plays the music on chips of its own, `sample_retime` and `sample_smooth` play the sound
 driver's samples at a steady rate and smoothed.
 `widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0` gives
-the cartridge's picture and sound. F9, F10 and F11 say on screen what they did.
+the cartridge's picture and sound. F8, F9, F10 and F11 say on screen what they did.
 
 The launcher's Options page sets them, with a description of each. They can also go on the
 command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in the settings
@@ -126,6 +126,7 @@ path = C:\Games\xmen2.bin
 | `widescreen=16:9` | A 16:9 view in the stages; the game plays as in 4:3 (the Cerebro screens stay 4:3). F10 toggles it. The default, `auto`, is 16:9 on a display wider than 3:2 (16:10, 16:9, ultrawide), else 4:3 |
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
 | `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it. The default, `auto`, is the display's own rate when it is over 60 Hz (and follows the window to another display), else off |
+| `shader_preset=PATH` | The picture through a RetroArch shader preset (`.slangp`), on Windows: see [Shader presets](#shader-presets). F8 turns it off and on. The default, empty, is the plain picture |
 | `pacing=display` | Experimental, not yet measured on a live display: pictures go out on the display's refreshes (vsync), each at the refresh nearest its time, and with `high_fps` each refresh shows the game at its own moment (`high_fps` is then at most that rate). The default, `timer`, shows them by the PC's clock, as before. If the display holds pictures back (a locked, hidden or minimized window), the timer takes over for 5 s at a time |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
 | `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
@@ -142,12 +143,40 @@ path = C:\Games\xmen2.bin
 
 `XMen2.exe --options --json` lists them.
 
+## Shader presets
+
+The Genesis art blends colours with dithering, checkerboards and vertical stripes that a composite
+TV smeared into in-between colours and see-through effects (in X-Men 2: the whole backgrounds of
+Savage Land A2 and A3, Avalon's pillars, Savage Land A4's machinery). On a sharp display
+the stripes show. `shader_preset` puts the picture through a RetroArch shader preset (a `.slangp`
+file), with [librashader](https://github.com/SnowflakePowered/librashader), so you can blend them
+again, or have an NTSC or CRT look. Windows only for now.
+
+The game comes with no presets: get libretro's
+[slang-shaders](https://github.com/libretro/slang-shaders) (Code, Download ZIP), unzip it anywhere,
+and choose a `.slangp` file in the launcher (Options, Picture, Shader preset, Browse...), or set
+`shader_preset=C:\path\to\slang-shaders\dithering\sgenpt-mix.slangp` in `xmen2.ini` (a relative
+path starts at the game's folder). Tried on this game's frames:
+
+| Preset | What it does here |
+|---|---|
+| `dithering/sgenpt-mix.slangp` | Made for Genesis: blends both the checkerboards and the vertical stripes, sharp otherwise |
+| `dithering/gdapt.slangp` | Blends both, a little darker on stripes |
+| `dithering/mdapt.slangp`, `dithering/checkerboard-dedither.slangp` | Checkerboards only: the stripes stay |
+| `ntsc/ntsc-320px-composite.slangp`, `crt/crt-guest-advanced-ntsc.slangp` | A composite signal, as the console's own cable: blends both, with the rainbow bands real composite gives fine checkerboards |
+| `crt/crt-lottes.slangp`, `crt/zfast-crt-composite.slangp` | A CRT's mask and scanlines, with some blending |
+
+F8 turns the preset off and on while playing (to compare). A preset that can't be loaded leaves
+the plain picture, with the reason on the console. Presets that keep earlier frames see every
+picture shown, so with `high_fps` they get the frames in between too. `librashader.dll` (MPL-2.0,
+the upstream release unmodified) comes with the game; without it the option does nothing.
+
 ## Online
 
 Rollback netplay for two to four players, each on their own machine with their own ROM file.
 The host (seat 0) chooses the options that change the game, and every seat plays with them.
-The picture and sound options (`high_fps`, the 16:9 view, `music_voices`, `sample_retime`,
-`sample_smooth`, `fm_chip`) are each seat's own,
+The picture and sound options (`high_fps`, the 16:9 view, `shader_preset`, `music_voices`,
+`sample_retime`, `sample_smooth`, `fm_chip`) are each seat's own,
 except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
 There is no lobby or server: one player hosts, and the others connect to the host.

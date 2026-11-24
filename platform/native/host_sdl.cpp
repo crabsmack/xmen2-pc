@@ -10,7 +10,8 @@
  *   LB = X, Y = Y, RB = Z, Back = Mode.  Esc or closing the window quits.
  * XMEN2_PAD_SELFTEST=1: the slots checked with virtual controllers, headless (host_pad_selftest).
  * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
- * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen).
+ * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen), F8 the shader preset
+ * (shader_preset, shader.cpp: the picture through a RetroArch .slangp preset).
  * The renderer is Direct3D 11 on Windows where it can be (SDL's default, Direct3D 9, loses its
  * device when the window moves to another monitor or the displays change, and the picture froze
  * while the game and its music went on); a device reset or 30 failed draws in a row rebuild the
@@ -35,6 +36,7 @@ extern "C" {
 #include "host_sdl.h"
 #include "native.h"
 #include "osd_font.h"
+#include "shader.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -69,27 +71,28 @@ void host_message(const char *text)
         fprintf(stderr, "[native] %s\n", text);
 }
 
-bool host_pick_rom(char *path, size_t cap)
+/* a file picker: filter is Windows' ("Name\0*.a;*.b\0...\0"), glob the same patterns for zenity
+   ("*.a *.b"); title has no single quote */
+static bool pick_file(char *path, size_t cap, const char *filter, const char *glob, const char *title)
 {
-    if (const char *t = getenv("XMEN2_PICK_ROM_TEST")) {   /* testing: the picker's answer ("" = cancelled) */
-        snprintf(path, cap, "%s", t);
-        return *t != 0;
-    }
 #ifdef _WIN32
+    (void)glob;
     OPENFILENAMEA o = {};
     path[0] = 0;
     o.lStructSize = sizeof o;
-    o.lpstrFilter = "Genesis ROM (*.bin, *.md, *.gen)\0*.bin;*.md;*.gen\0All files\0*.*\0";
+    o.lpstrFilter = filter;
     o.lpstrFile = path;
     o.nMaxFile = (DWORD)cap;
-    o.lpstrTitle = "X-Men 2: Clone Wars - choose your ROM (USA/Europe)";
+    o.lpstrTitle = title;
     o.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
     return GetOpenFileNameA(&o) != 0;
 #else
+    (void)filter;
     /* zenity (GNOME and most desktops) or kdialog (KDE); neither: false */
-    static const char *const cmds[] = {
-        "zenity --file-selection --title='X-Men 2: Clone Wars - choose your ROM (USA/Europe)' 2>/dev/null",
-        "kdialog --getopenfilename . 2>/dev/null" };
+    std::string z = std::string("zenity --file-selection --title='") + title + "' --file-filter='" + glob +
+                    "' --file-filter='*' 2>/dev/null";
+    std::string k = std::string("kdialog --getopenfilename . '") + glob + "' 2>/dev/null";
+    const char *const cmds[] = { z.c_str(), k.c_str() };
     for (const char *cmd : cmds) {
         FILE *p = popen(cmd, "r");
         if (!p) continue;
@@ -106,10 +109,31 @@ bool host_pick_rom(char *path, size_t cap)
 #endif
 }
 
+bool host_pick_rom(char *path, size_t cap)
+{
+    if (const char *t = getenv("XMEN2_PICK_ROM_TEST")) {   /* testing: the picker's answer ("" = cancelled) */
+        snprintf(path, cap, "%s", t);
+        return *t != 0;
+    }
+    return pick_file(path, cap, "Genesis ROM (*.bin, *.md, *.gen)\0*.bin;*.md;*.gen\0All files\0*.*\0", "*.bin *.md *.gen",
+                     "X-Men 2: Clone Wars - choose your ROM (USA/Europe)");
+}
+
+bool host_pick_shader(char *path, size_t cap)
+{
+    if (const char *t = getenv("XMEN2_PICK_SHADER_TEST")) {   /* testing: the picker's answer ("" = cancelled) */
+        snprintf(path, cap, "%s", t);
+        return *t != 0;
+    }
+    return pick_file(path, cap, "RetroArch shader preset (*.slangp)\0*.slangp\0All files\0*.*\0", "*.slangp",
+                     "X-Men 2: Clone Wars - choose a shader preset (.slangp)");
+}
+
 static SDL_Window *s_win;
 static SDL_Renderer *s_ren;
 static SDL_Texture *s_tex;
-static uint64_t s_next;          /* performance-counter time of the next frame */
+static SDL_Texture *s_osd_tex;   /* shader_preset: the hotkeys' messages, drawn over the shaded picture */
+static uint64_t s_next;         /* performance-counter time of the next frame */
 static double s_period;          /* counter ticks per frame */
 static bool s_at_started;        /* high_fps: the present clock has started */
 static double s_at_base;         /* high_fps: performance-counter ticks at t_us 0 */
@@ -127,6 +151,8 @@ static void ptrace_open(void);   /* XMEN2_PRESENT_TRACE (below, with draw) */
 /* the renderer and the frame's texture, (re)made; 0 when there is none */
 static int make_renderer(void)
 {
+    shader_close();   /* its objects are the old device's */
+    if (s_osd_tex) { SDL_DestroyTexture(s_osd_tex); s_osd_tex = nullptr; }
     if (s_tex) { SDL_DestroyTexture(s_tex); s_tex = nullptr; }
     if (s_ren) { SDL_DestroyRenderer(s_ren); s_ren = nullptr; }
 #ifdef _WIN32
@@ -146,6 +172,11 @@ static int make_renderer(void)
     if (!s_tex) { fprintf(stderr, "[native] SDL texture: %s\n", SDL_GetError()); return 0; }
     SDL_RendererInfo info;
     if (SDL_GetRendererInfo(s_ren, &info) == 0) fprintf(stderr, "[native] renderer: %s\n", info.name);
+    shader_open(s_ren);   /* shader_preset (shader.cpp); nothing when it is unset */
+    if (!options_shader_preset().empty()) {
+        s_osd_tex = SDL_CreateTexture(s_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 256);
+        if (s_osd_tex) SDL_SetTextureBlendMode(s_osd_tex, SDL_BLENDMODE_BLEND);
+    }
     s_rebuild = false;
     s_draw_fails = 0;
     return 1;
@@ -219,6 +250,7 @@ void host_input(uint16_t pads[4])
         /* phase 6 R1: the two presentation options */
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
+        if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F8 && !e.key.repeat) shader_toggle();
         if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
         /* high_fps=auto follows the window to another display's rate (the 16:9 view stays as it is) */
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED && options_high_fps_auto()) {
@@ -440,17 +472,19 @@ void host_osd(const char *text)
     s_osd_until = SDL_GetTicks64() + 2000;
 }
 
-static const uint32_t *osd_overlay(const uint32_t *fb, int *stride, int w, int h)
+static bool osd_live(int w, int h) { return s_osd[0] && SDL_GetTicks64() < s_osd_until && w <= 512 && h <= 256; }
+
+/* the box and the text into buf (512 wide): over the picture copied there, or (layer, the shaded picture's:
+   drawn over it after the chain) on a clear layer of their own, the box as black at 2/3 alpha */
+static void osd_paint(uint32_t *buf, int w, int h, bool layer)
 {
-    static uint32_t buf[256 * 512];
-    if (!s_osd[0] || SDL_GetTicks64() >= s_osd_until || w > 512 || h > 256) return fb;
-    for (int y = 0; y < h; y++) memcpy(buf + y * 512, fb + y * *stride, (size_t)w * 4);
     int n = (int)strlen(s_osd), tw = n * 8, x0 = (w - tw) / 2, y0 = 8;
     for (int y = y0 - 3; y < y0 + 11; y++)
         for (int x = x0 - 4; x < x0 + tw + 3; x++) {
             if (x < 0 || x >= w || y < 0 || y >= h) continue;
             uint32_t p = buf[y * 512 + x];   /* 2/3 black over the picture */
-            buf[y * 512 + x] = (p & 0xFF000000u) | ((p >> 16 & 0xFF) / 3) << 16 | ((p >> 8 & 0xFF) / 3) << 8 | (p & 0xFF) / 3;
+            buf[y * 512 + x] = layer ? 0xAA000000u
+                                     : (p & 0xFF000000u) | ((p >> 16 & 0xFF) / 3) << 16 | ((p >> 8 & 0xFF) / 3) << 8 | (p & 0xFF) / 3;
         }
     for (int i = 0; i < n; i++) {
         unsigned char c = (unsigned char)s_osd[i];
@@ -462,8 +496,27 @@ static const uint32_t *osd_overlay(const uint32_t *fb, int *stride, int w, int h
                     if (px >= 0 && px < w && py < h) buf[py * 512 + px] = 0xFFFFFFFFu;
                 }
     }
+}
+
+static const uint32_t *osd_overlay(const uint32_t *fb, int *stride, int w, int h)
+{
+    static uint32_t buf[256 * 512];
+    if (!osd_live(w, h)) return fb;
+    for (int y = 0; y < h; y++) memcpy(buf + y * 512, fb + y * *stride, (size_t)w * 4);
+    osd_paint(buf, w, h, false);
     *stride = 512;
     return buf;
+}
+
+/* ... the layer over the shaded picture (shader.cpp): s_osd_tex at dst; false if there is no message */
+static bool osd_layer(int w, int h)
+{
+    static uint32_t buf[256 * 512];
+    if (!s_osd_tex || !osd_live(w, h)) return false;
+    memset(buf, 0, sizeof buf);
+    osd_paint(buf, w, h, true);
+    SDL_Rect src = { 0, 0, w, h };
+    return SDL_UpdateTexture(s_osd_tex, &src, buf, 512 * 4) == 0;
 }
 
 /* A played netplay session waiting for the other seats (netplay.cpp seal_exchange): the window stays
@@ -567,18 +620,45 @@ static void draw(const uint32_t *fb, int stride, int w, int h)
         host_osd(strchr(osd_test, ':') + 1);
         osd_dump = getenv("XMEN2_DUMP_DIR") != nullptr;
     }
-    fb = osd_overlay(fb, &stride, w, h);
-    if (osd_dump) host_screenshot((std::string(getenv("XMEN2_DUMP_DIR")) + "/osd.bmp").c_str(), fb, stride, w, h);
-    SDL_Rect src = { 0, 0, w, h };
-    int bad = SDL_UpdateTexture(s_tex, &src, fb, stride * 4) != 0;
     int ww, wh;
     if (SDL_GetRendererOutputSize(s_ren, &ww, &wh) != 0 || ww <= 0 || wh <= 0) { s_draw_fails++; return; }
     double sx = (double)ww / w, sy = (double)wh / (h * 1.0);
     double s = sx < sy ? sx : sy;
     SDL_Rect dst = { (int)((ww - w * s) / 2), (int)((wh - h * s) / 2), (int)(w * s), (int)(h * s) };
+    SDL_Rect src = { 0, 0, w, h };
     SDL_SetRenderDrawColor(s_ren, 0, 0, 0, 255);
     SDL_RenderClear(s_ren);
-    bad |= SDL_RenderCopy(s_ren, s_tex, &src, &dst) != 0;
+    int bad = 0;
+    if (shader_draw(s_ren, fb, stride, w, h, &dst)) {   /* shader_preset: the message over the shaded picture */
+        if (osd_layer(w, h)) bad |= SDL_RenderCopy(s_ren, s_osd_tex, &src, &dst) != 0;
+    } else {
+        fb = osd_overlay(fb, &stride, w, h);
+        if (osd_dump) host_screenshot((std::string(getenv("XMEN2_DUMP_DIR")) + "/osd.bmp").c_str(), fb, stride, w, h);
+        bad |= SDL_UpdateTexture(s_tex, &src, fb, stride * 4) != 0;
+        bad |= SDL_RenderCopy(s_ren, s_tex, &src, &dst) != 0;
+    }
+    /* testing: XMEN2_BACKBUFFER_SHOT=N,M,... the window as presented at the Nth picture drawn (after the
+       shader chain and the message), as $XMEN2_DUMP_DIR/backbuffer_N.bmp */
+    static const char *bb_list = getenv("XMEN2_BACKBUFFER_SHOT"), *bb_dir = getenv("XMEN2_DUMP_DIR");
+    static long bb_draws;
+    if (bb_list && bb_dir) {
+        ++bb_draws;
+        for (const char *q = bb_list; *q; ) {
+            char *e;
+            long n = strtol(q, &e, 10);
+            if (e == q) break;
+            if (n == bb_draws) {
+                SDL_Surface *sf = SDL_CreateRGBSurfaceWithFormat(0, ww, wh, 32, SDL_PIXELFORMAT_ARGB8888);
+                char path[600];
+                snprintf(path, sizeof path, "%s/backbuffer_%ld.bmp", bb_dir, n);
+                if (!sf || SDL_RenderReadPixels(s_ren, nullptr, SDL_PIXELFORMAT_ARGB8888, sf->pixels, sf->pitch) != 0 ||
+                    SDL_SaveBMP(sf, path) != 0)
+                    fprintf(stderr, "[native] XMEN2_BACKBUFFER_SHOT %s: %s\n", path, SDL_GetError());
+                if (sf) SDL_FreeSurface(sf);
+            }
+            q = *e == ',' ? e + 1 : e;
+        }
+    }
     uint64_t pre = s_ptrace ? SDL_GetPerformanceCounter() : 0;
     SDL_RenderPresent(s_ren);
     if (s_ptrace) ptrace_row(pre, SDL_GetPerformanceCounter());

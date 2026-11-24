@@ -27,5 +27,6 @@ void host_osd(const char *text);       /* a hotkey's message on the picture for 
 void host_wait_screen(const char *const *lines, int n);   /* netplay, played: waiting for the others (one
                                                               frame; Esc or closing the window quits) */
 bool host_pick_rom(char *path, size_t cap);   /* a file picker for the ROM; false: cancelled or none */
+bool host_pick_shader(char *path, size_t cap);   /* ... for a shader preset (.slangp) */
 
 #endif /* XMEN2_HOST_SDL_H */
