@@ -1787,7 +1787,13 @@ bundled. F8 turns it off and on (a reserved key now, as F9-F11).
 - **Packaging**: native.cmake fetches the release zip by SHA-256 into `build/_deps` once and copies
   `librashader.dll` beside the runner; the Windows package carries it and
   `LICENSES/librashader-LICENSE-MPL-2.0.md`, NOTICE.md names the source. The vendored headers
-  (`platform/native/external/librashader`, MIT) are 0.12.0's.
+  (`platform/native/external/librashader`, MIT) are 0.12.0's. The zip grows to 7.8 MB.
+- **P8's ROM scan and the DLL**: the scan found 357 bytes of librashader.dll in the ROM, a single
+  $08 byte then 356 zeros (the window starting at the $08 was not "a run of one byte value"). The
+  user amended P8 (2026-11-24, xmen2disasm P5-port.md): a window that is one byte value but for at
+  most 8 bytes counts as a run (`romscan.py` RUN_SLACK). `romscan.py --selftest` is its negative
+  control: a planted mixed ROM window is still found, the ROM's own near-run is not, and the edge
+  is at 8 vs 9 other bytes, together or spread out.
 
 ## Phase 7: online play and four players
 
