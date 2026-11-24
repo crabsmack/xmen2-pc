@@ -10,7 +10,8 @@ Cases: play (options set, saved, the plan's options), host 4 (hub, seat 0, playe
 default port added to the address, seat 1's port), a wrong ROM (PLAY refused, nothing written), show=0 then
 a start without the launcher (the game runs from [rom], no launcher), and --launcher overriding show=0,
 the Controls page (a virtual controller's input caught, keyboard layouts, [playerN] written and read back),
-the pad selftest (controllers' slots and bindings), and join codes.
+the pad selftest (controllers' slots and bindings), join codes, and RecompLauncher's start (its [rom] path,
+the program started bare).
 """
 from __future__ import annotations
 
@@ -183,6 +184,27 @@ press play
     # 7. scripted and headless starts never see it: --benchmark with no ROM argument and no ini
     r, plan, ini = run_case(exe, out / "bench", "press quit\n", ["--benchmark", "3"], dry=True)
     check("--benchmark skips it", plan is None and "[launcher]" not in r.stderr, f"exit {r.returncode}")
+
+    # 7a. RecompLauncher (platform/native/recomplauncher.json, issue #6): it writes the player's ROM into
+    # xmen2.ini's [rom] path (its game_path "rom/path", the path as is) and starts the program bare, so this
+    # launcher opens with that ROM. First a new file as it writes one, with the ROM in a folder with spaces and
+    # .md (not beside the program, so only [rom] can find it); then the file our launcher has saved since,
+    # with that line changed in place, as its INI editor does
+    d = out / "recomplauncher"
+    picked = d / "My Games" / "X-Men 2 (USA, Europe).md"
+    picked.parent.mkdir(parents=True)
+    shutil.copy2(rom, picked)
+    (d / "xmen2.ini").write_text(f"[rom]\npath={picked}\n")
+    r, plan, ini = run_case(exe, d, "press play\n", [])
+    same = lambda a, b: a.replace("\\", "/").lower() == str(b).replace("\\", "/").lower()
+    ok = plan is not None and same(plan["rom"], picked) and "[launcher]" in ini
+    edited = re.sub(r"(?m)^(\s*path\s*=\s*).*$", lambda m: m.group(1) + rom, ini, count=1) if ok else ""
+    if ok:
+        (d / "xmen2.ini").write_text(edited)
+    r2, plan2, ini2 = run_case(exe, d, "press play\n", []) if ok else (r, None, "")
+    ok2 = plan2 is not None and same(plan2["rom"], rom)
+    check("RecompLauncher's [rom] path", ok and ok2, f"new file: plan rom {plan and plan['rom']}; changed in place: "
+          f"{plan2 and plan2['rom']}" + ("" if ok and ok2 else f"\n{r.stderr[-400:]}\n{ini}"))
 
     # 7b. the Controls page (controls.cpp): a virtual controller's stick press caught for player 1's Z, player 2
     # on W A S D (A S D move from player 1's X Y Z), a second key, player 3 with no controller, a dead zone; all

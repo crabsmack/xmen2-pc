@@ -3047,6 +3047,32 @@ written is a model of the chip.
   buttons on a real Switch pad), a real unknown joystick, keyboard capture (SDL can't fake key
   state headless; the parsing and binding are tested), and the page on a 250% display.
 
+## RecompLauncher (GitHub issue #6, 2026-11-24)
+
+- **What it is.** [RecompLauncher](https://github.com/elripalda/RecompLauncher), a third-party
+  launcher that installs PC recomps from their GitHub releases, already listed the port (catalog
+  id `xmen2-pc`) and installed its zips. `platform/native/recomplauncher.json`, put at the top of
+  both zips by `xmen2check.py package` (`package_recomplauncher`, which refuses a manifest whose
+  `start.program` isn't in the package), adds its Easy Setup: the player picks the ROM there, it is
+  marked verified when it matches `dumps` (size and CRC32 of the ROM with this repo's SHA-1), and
+  `xmen2.ini` is backed up as the game's save (the game has no saves of its own; the zips ship no
+  `xmen2.ini`, so updates keep it). Their schema has no check for a Genesis cartridge, so any file
+  is taken at setup and the game's own SHA-1 check refuses a wrong one at Play.
+- **Our launcher stays the front door (the user's ruling).** The manifest starts the program bare
+  and writes the ROM through `config.game_path` = `rom/path` (their `profile.rs`: `Section/Key`,
+  the path written as is, the line edited in place), not as an argument: a ROM on the command line
+  would skip our launcher, and with it online play and Controls. So Play there opens our launcher
+  with the ROM filled in, the same as a double-click, and its "Show this launcher" box still
+  decides. No `settings` section: the options stay in our launcher, where we control the
+  experience (and a hand copy of `shown_table` would go stale). No README badge.
+- **Checks.** The manifest against their schema
+  ([recomplauncher.schema.json](https://github.com/elripalda/RecompLauncher/blob/main/docs/recomplauncher.schema.json),
+  jsonschema; a copy with a short CRC and a number for `game_path` fails it). `launcher_check.py`
+  case "RecompLauncher's [rom] path": a new xmen2.ini as their editor writes it (ROM in a folder with
+  spaces, `.md`) and that line changed in place after our launcher saved the file; both starts open
+  the launcher with that ROM. Not checked: RecompLauncher itself (its Developer tab's "Add a build"
+  reads a local folder; nobody here has run it).
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

@@ -206,7 +206,10 @@ NOTES "The launcher"): a played start with no ROM, `--netplay` or `--input-scrip
 line opens it (`[launcher] show = 0` in xmen2.ini turns that off, `--launcher` / `--no-launcher`).
 It only writes xmen2.ini and hands the game `--netplay` arguments, so harness runs never meet it. A new
 option appears there by itself (under "Other"); give it a label, group and help in its `shown_table`.
-`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (14 cases, screenshots in OUT/shots).
+`uv run tools/launcher_check.py OUT [--exe EXE]` checks it headless (15 cases, screenshots in OUT/shots).
+RecompLauncher (NOTES "RecompLauncher", issue #6): `platform/native/recomplauncher.json` goes at the top of both
+zips. It starts the program bare and writes the ROM into `[rom] path`, so our launcher still opens: keep it
+that way, with no `settings` section (the user's ruling: our launcher stays the front door).
 Controls (`platform/native/controls.cpp`, the launcher's Controls tab, xmen2.ini `[player1]`..`[player4]`;
 NOTES "Controls"): every host input goes through it (host_sdl.cpp `host_input` = `controls_mask`), not
 an option (no digest, seal or NP_VERSION change). `XMEN2_PAD_SELFTEST=1` checks the slots and bindings

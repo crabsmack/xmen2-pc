@@ -1714,6 +1714,20 @@ def package_licenses(dest: Path, sdl: bool) -> None:
         shutil.copy2(src, dest / name)
 
 
+RECOMPLAUNCHER_JSON = common.ROOT / "platform" / "native" / "recomplauncher.json"
+
+
+def package_recomplauncher(stage: Path) -> None:
+    """recomplauncher.json at the top of the package, next to the program (GitHub issue #6; NOTES
+    "RecompLauncher"): RecompLauncher reads it from the release to set the game up from the player's
+    ROM. Refused when the program it starts isn't in this package (a renamed exe)."""
+    m = json.loads(RECOMPLAUNCHER_JSON.read_text(encoding="utf-8"))
+    progs = m["start"]["program"]
+    if not any((stage / p).is_file() for p in progs):
+        sys.exit(f"recomplauncher.json starts {progs}, none of which is in the package")
+    shutil.copy2(RECOMPLAUNCHER_JSON, stage / "recomplauncher.json")
+
+
 def linux_native_build() -> str:
     """`native-build` in this machine's WSL Ubuntu (P9), build dir ~/xmen2-native-build/<hash of the
     tree> (one per source tree); returns that directory (holding XMen2Native)."""
@@ -1750,6 +1764,7 @@ def package_linux(a) -> dict:
     readme = PACKAGE_README.format(exe="./xmen2").replace("path\\to\\xmen2.bin", "path/to/xmen2.bin")
     readme += "\nLinux: needs SDL2 (Debian/Ubuntu: sudo apt install libsdl2-2.0-0).\n"
     (stage / "README.txt").write_text(readme, encoding="utf-8", newline="\n")
+    package_recomplauncher(stage)
     package_licenses(stage / "LICENSES", sdl=False)
     c = wsl(f"cp \"{bdir}/_deps/libjuice-src/LICENSE\" '{wsl_path(stage)}/LICENSES/libjuice-LICENSE.txt'")
     if c.returncode:
@@ -2006,6 +2021,7 @@ def cmd_package(a) -> dict:
     shutil.copy2(exe, stage / "XMen2.exe")
     shutil.copy2(exe.parent / "SDL2.dll", stage / "SDL2.dll")
     (stage / "README.txt").write_text(PACKAGE_README.format(exe="XMen2.exe"), encoding="utf-8", newline="\r\n")
+    package_recomplauncher(stage)
     package_licenses(stage / "LICENSES", sdl=True)
     juice = BUILD / "_deps" / "libjuice-src" / "LICENSE"
     if not juice.is_file():

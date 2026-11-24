@@ -1,0 +1,19 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "repo": "crabsmack/xmen2-pc",
+  "name": "X-Men 2: Clone Wars",
+  "inputs": [
+    {
+      "id": "game",
+      "label": "Your ROM of X-Men 2: Clone Wars (USA, Europe): one unheadered 2 MB file (.bin, .gen or .md).",
+      "formats": [{ "type": "file", "extensions": ["bin", "gen", "md"] }],
+      "dumps": [{ "name": "X-Men 2: Clone Wars (USA, Europe)", "size": 2097152, "crc32": "710bc628" }]
+    }
+  ],
+  "start": { "program": ["XMen2.exe", "xmen2"] },
+  "config": [
+    { "id": "main", "format": "ini", "file": [{ "path": "{install}/xmen2.ini" }], "game_path": "rom/path" }
+  ],
+  "saves": ["{install}/xmen2.ini"]
+}
