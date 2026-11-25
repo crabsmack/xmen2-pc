@@ -7,8 +7,8 @@
 
 int  host_open(const char *title);           /* 0: no display */
 void host_input(uint16_t pads[4]);           /* GPAD_* masks of players 1-4; quits on Esc / close */
-void host_audio(uint64_t frame, bool mute, bool silent = false);   /* the Z80 frame's sound, mixed, to the device
-                                                                       (mute: not heard; silent: silence in its place) */
+void host_audio(uint64_t frame, bool mute, int how = 0);   /* the Z80 frame's sound, mixed, to the device (mute: not
+                                                               heard; how: rewind_audio(), silence or backwards) */
 void host_audio_silence(void);   /* rewind.cpp: one frame's length of silence to the device */
 void host_audio_discard(void);   /* rewind.cpp: the sound queued for the device dropped (a load) */
 void host_present_shift(double us);   /* rewind.cpp: the frame-numbered present clock moves by us (present_jump) */

@@ -17,8 +17,8 @@
  * section whole when its length changed: the fiber's live stack), as runs of zero bytes and
  * literals, with the pads frame k ran with and S_k's canonical digest (machine_digest). The newest
  * state is kept whole. A rewind step drops the newest frame C, rebuilds S_(C-2), loads it and runs
- * frame C-1 again with its own pads: the picture of C-1 is drawn and shown as it was, the sound
- * chips run silent, and the state is S_(C-1) again. Its digest is checked against the one kept
+ * frame C-1 again with its own pads: the picture of C-1 is drawn and shown as it was, its sound
+ * silent or backwards ([rewind] sound; host_sdl.cpp host_audio), and the state is S_(C-1) again. Its digest is checked against the one kept
  * (counters `rewind.mismatch`: 0, or the replay is not the game it was). The ring's oldest frames
  * go when it holds more than [rewind] seconds or 256 MB.
  *
@@ -173,6 +173,7 @@ enum { SLOTS = 4 };
 
 bool s_on;                 /* the ring records (a played run, or XMEN2_HOTKEYS) */
 size_t s_max_frames;       /* [rewind] seconds as frames; 0 = no ring */
+bool s_reversed;           /* [rewind] sound = reversed: a step's frame is heard backwards (else silent) */
 std::deque<Entry> s_ring;
 size_t s_ring_bytes;
 Snapshot s_top;            /* the newest state, whole (S of the ring's newest frame) */
@@ -253,14 +254,14 @@ void push(void)
 
 /* a state of frame `to` is loaded in place of frame `from`'s: the presentation's clock and
    interpolation follow (present.cpp), the sound queued for the old timeline goes */
-void jumped(uint64_t from, uint64_t to)
+void jumped(uint64_t from, uint64_t to, bool keep_sound = false)
 {
     present_jump(from, to);
-    if (plat_realtime()) host_audio_discard();
+    if (plat_realtime() && !keep_sound) host_audio_discard();
 }
 
 /* one step back from frame C: S_(C-2) loaded and frame C-1's pads set, so the host loop's next tick
-   runs frame C-1 again (drawn and shown, its sound silent) and the state is S_(C-1), the ring's
+   runs frame C-1 again (drawn and shown, its sound silent or backwards) and the state is S_(C-1), the ring's
    newest again (checked at the next sync point: step_done); false: no older frame */
 bool s_replaying;   /* the next tick is a step's frame */
 
@@ -288,7 +289,8 @@ bool step_back(void)
     s_top_frame = e.frame;
     if (!decode(s_top, e.back, before)) return broken();
     state_load(before, s_skip);
-    jumped(from, machine_frame_no());
+    /* reversed: the queue holds the rewind's own sound, in order (dropped once, when the hold began) */
+    jumped(from, machine_frame_no(), s_reversed);
     memcpy(s_force_pads, e.pads, sizeof s_force_pads);
     s_force = s_replaying = true;
     return true;
@@ -366,6 +368,11 @@ void rewind_init(bool played)
     if (seconds < 0) seconds = 0;
     if (seconds > 3600) seconds = 3600;
     s_max_frames = (size_t)seconds * 60;
+    std::string sound = options_ini_get("rewind", "sound", "silent");
+    if (const char *t = getenv("XMEN2_REWIND_SOUND"); t && *t) sound = t;
+    s_reversed = sound == "reversed";
+    if (!s_reversed && sound != "silent")
+        fprintf(stderr, "[rewind] [rewind] sound = %s: silent or reversed; silent\n", sound.c_str());
     if (const char *t = getenv("XMEN2_REWIND_SKIP"); t && *t) {
         if (!state_has_section(t)) { fprintf(stderr, "[rewind] XMEN2_REWIND_SKIP: no section %s\n", t); exit(2); }
         s_skip = t;
@@ -397,6 +404,8 @@ bool rewind_pads(uint16_t pads[4])
 }
 
 bool rewind_replaying(void) { return s_replaying; }
+
+int rewind_audio(void) { return !s_replaying ? REWIND_AUDIO_FORWARD : s_reversed ? REWIND_AUDIO_REVERSED : REWIND_AUDIO_SILENT; }
 
 /* main.cpp plat_at_sync: the game is at a sync point, its frame done; the host loop runs the next
    frame when this returns */
@@ -431,13 +440,14 @@ std::string rewind_counters_json(void)
     snprintf(b, sizeof b,
              "{\"on\": %s, \"seconds\": %llu, \"frames\": %llu, \"bytes\": %llu, \"max_bytes\": %llu, \"pushed\": %llu, "
              "\"bytes_per_frame\": %llu, \"push_us\": %.1f, \"dropped\": %llu, \"steps\": %llu, \"mismatch\": %llu, "
-             "\"bad\": %llu, \"saves\": %llu, \"loads\": %llu, \"empty_loads\": %llu}",
+             "\"bad\": %llu, \"saves\": %llu, \"loads\": %llu, \"empty_loads\": %llu, \"sound\": \"%s\"}",
              s_on ? "true" : "false", (unsigned long long)(s_max_frames / 60), (unsigned long long)s_ring.size(),
              (unsigned long long)s_ring_bytes, (unsigned long long)c_max_bytes, (unsigned long long)c_pushed,
              (unsigned long long)(c_pushed ? c_push_bytes / c_pushed : 0),
              (c_pushed + 1) ? (double)c_push_ns / 1000.0 / (double)(c_pushed + 1) : 0.0, (unsigned long long)c_dropped,
              (unsigned long long)c_steps, (unsigned long long)c_mismatch, (unsigned long long)c_bad,
-             (unsigned long long)c_saves, (unsigned long long)c_loads, (unsigned long long)c_empty);
+             (unsigned long long)c_saves, (unsigned long long)c_loads, (unsigned long long)c_empty,
+             s_reversed ? "reversed" : "silent");
     return b;
 }
 

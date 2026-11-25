@@ -541,8 +541,8 @@ extern "C" void plat_frame_audio(uint64_t frame)
         g_fm_m1.clear();
         for (const ChipEv &e : merged) audio_event_push(e.stamp, e.port, e.v);
     }
-    host_audio(frame, quiet(), rewind_replaying());   /* quiet: the chips run, nothing is heard; a rewind step's
-                                                          frame: shown, silence in its sound's place */
+    host_audio(frame, quiet(), rewind_audio());   /* quiet: the chips run, nothing is heard; a rewind step's
+                                                      frame: shown, its sound silent or backwards ([rewind] sound) */
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }

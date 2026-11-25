@@ -1542,8 +1542,8 @@ F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  F8: the s
 on/off.  Each says so on screen.
 Quick saves: F5 saves, F7 loads, F6 picks the slot (1-4); they last until the game quits (nothing
 is written to disk). Rewind: hold Backspace or a controller's left trigger, and the game goes back
-a frame at a time for up to a minute (xmen2.ini [rewind] seconds = 60; 0 turns it off). Neither
-works online.
+a frame at a time for up to a minute (xmen2.ini [rewind] seconds = 60; 0 turns it off), silent
+([rewind] sound = reversed: its sound backwards). Neither works online.
 The launcher's Controls page changes all of that for each player: which controller (any, a
 particular one, or none), a keyboard layout (arrows or W A S D, so two can share a keyboard), and
 two keys and two controller inputs for every button (click a box, press the key or button). Most

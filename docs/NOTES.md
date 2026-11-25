@@ -3220,8 +3220,24 @@ written is a model of the chip.
   save, a rewind of 300 and a load that jumps forward 200 frames (meant: 80.7 s): neither uncapped
   nor stalled. The desktop was locked then (LogonUI), so no frame-pacing numbers were taken.
   `launcher_check.py` 15/15 (the Controls page's Rewind row, the Play page's line).
+- **Reversed sound (`[rewind] sound = reversed`; default `silent`, the user's call).** A step's
+  replayed frame C-1 makes its sound again, so host_audio plays that instead of silence, backwards:
+  steps C-1, C-2, ... give the sound before them backwards end to end, at speed, nothing stored.
+  The FM (~53 kHz) is first taken to the PSG rate with audio_flush's own nearest-neighbour index
+  (`i * fm_n / psg_n`), then both are reversed: reversing the FM at its own rate made ~23% of the
+  mixed samples differ (a different FM sample beside the same PSG one). A backwards frame is held one
+  frame, so the last one before forward play, the held picture's silence or a load ends faded out
+  and the next sound starts faded in (an eighth of a frame each). With it on, a step no longer drops
+  the device queue (it holds the rewind's own sound, in order; dropped once when the hold begins), so
+  the queue's ~50 ms of backwards sound plays out after the key is let go. Checks: `uv run
+  tools/rewindsound.py` (~35 s; the WAV tap, XMEN2_WAV, of the TAS to 4,300 plain and with a
+  120-frame rewind at 4,000): reversed, every sample of the stretch outside the two fades is the
+  plain run's frames 3,880-3,999 backwards, then the plain run's again from 3,881; silent (the
+  control), the stretch is zeros. rewindcheck with `XMEN2_REWIND_SOUND=reversed`: 12/12 as the
+  reference (the game's state and sound counters don't move). Played windows (dummy audio driver,
+  240 Hz display, a 300-frame rewind): both settings 300 steps, mismatch 0, no device underruns.
 - **Not checked.** A person pressing the keys and a real controller's trigger; how the rewind looks
-  and sounds (silent while rewinding) at a live, unlocked display; pacing=display during a rewind
+  and sounds (silent or backwards) at a live, unlocked display; pacing=display during a rewind
   (the same clock base, unmeasured); a rewind across a high_fps or widescreen toggle; Linux played.
 
 ## Open questions

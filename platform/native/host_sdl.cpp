@@ -20,11 +20,13 @@
  */
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
+#include <algorithm>
 #include <cmath>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 extern "C" {
 #include "audio.h"
@@ -475,15 +477,54 @@ static void wav_maybe_start(void)
     else fprintf(stderr, "[native] XMEN2_WAV: no audio device or can't write %s\n", path);
 }
 
-void host_audio(uint64_t frame, bool mute, bool silent)
+/* [rewind] sound = reversed: a rewind step's frame (frame C-1, played again after C) is heard
+   backwards, so the steps C-1, C-2, ... are the sound before them backwards, end to end. A
+   backwards frame is held back one frame: the last one, before the game plays on, the held picture's
+   silence or a load, ends faded out, and the first sound after it starts faded in (no click where the
+   wave turns round). The fades are an eighth of a frame (~2 ms). */
+namespace {
+struct Rev {
+    std::vector<int16_t> fm, psg;   /* fm stereo pairs */
+    uint32_t frame = 0;
+    bool held = false;      /* a backwards frame waits */
+    bool fade_in = false;   /* the next sound starts faded in */
+} s_rev;
+
+void ramp(int16_t *b, size_t n, int ch, bool in)
+{
+    size_t k = n / 8;
+    for (size_t i = 0; i < k; i++) {
+        float g = ((float)i + 0.5f) / (float)k;
+        size_t at = in ? i : n - 1 - i;
+        for (int c = 0; c < ch; c++) b[at * ch + c] = (int16_t)((float)b[at * ch + c] * g);
+    }
+}
+
+void rev_send(bool fade_out)
+{
+    if (!s_rev.held) return;
+    s_rev.held = false;
+    size_t fm_n = s_rev.fm.size() / 2, psg_n = s_rev.psg.size();
+    if (fade_out) {
+        ramp(s_rev.fm.data(), fm_n, 2, false);
+        ramp(s_rev.psg.data(), psg_n, 1, false);
+        s_rev.fade_in = true;
+    }
+    if (s_audio) audio_flush(s_rev.frame, 1, s_rev.fm.data(), fm_n, s_rev.psg.data(), psg_n);
+}
+}  // namespace
+
+void host_audio(uint64_t frame, bool mute, int how)
 {
     wav_maybe_start();
     /* the chips' writes of the Z80's frame (stamped in master clocks from its start), mixed, to
        the device (as the engine's sim step: GENESIS_SIM_WALL_FRAME_MASTER_CYCLES); muted (a
-       rollback's replay of frames already heard), the chips still run; silent (a rewind's frames
-       shown again): the chips run and the device gets the frame's length of silence */
+       rollback's replay of frames already heard), the chips still run; a rewind's frames shown
+       again (how): the chips run and the device gets the frame's length of silence, or its sound
+       backwards */
     static int16_t fm[8192 * 2], psg[16384];
     size_t fm_n = 0, psg_n = 0;
+    bool silent = how == REWIND_AUDIO_SILENT, reversed = how == REWIND_AUDIO_REVERSED && !mute;
     audio_mixer_drain(895780u, fm, 8192, &fm_n, psg, sizeof psg / sizeof psg[0], &psg_n);
     /* phase 7 R9: players 3-4's parts; music_voices: the music (XMEN2_STEM=sfx: silent) */
     sound_mix(fm, fm_n, psg, psg_n, mute || silent || capture_mute_snd2());
@@ -491,6 +532,33 @@ void host_audio(uint64_t frame, bool mute, bool silent)
         memset(fm, 0, fm_n * 2 * sizeof fm[0]);
         memset(psg, 0, psg_n * sizeof psg[0]);
     }
+    rev_send(!reversed);   /* a backwards frame before this one: as it is, or faded out when this one isn't */
+    if (reversed) {
+        /* the FM taken to the PSG rate first, as audio_flush's mix does (nearest: fi = i * fm_n / psg_n), so
+           the two reversed at one rate mix to the forward sound exactly backwards (FM reversed at its own
+           rate would pick the neighbouring sample for about one in four) */
+        s_rev.fm.resize(psg_n * 2);
+        for (size_t i = 0; i < psg_n; i++) {
+            size_t fi = fm_n ? i * fm_n / psg_n : 0, at = psg_n - 1 - i;
+            s_rev.fm[2 * at] = fm_n ? fm[2 * fi] : 0;
+            s_rev.fm[2 * at + 1] = fm_n ? fm[2 * fi + 1] : 0;
+        }
+        s_rev.psg.assign(psg, psg + psg_n);
+        std::reverse(s_rev.psg.begin(), s_rev.psg.end());
+        if (s_rev.fade_in) {
+            ramp(s_rev.fm.data(), psg_n, 2, true);
+            ramp(s_rev.psg.data(), psg_n, 1, true);
+        }
+        s_rev.fade_in = false;
+        s_rev.frame = (uint32_t)frame;
+        s_rev.held = true;
+        return;
+    }
+    if (s_rev.fade_in && !mute && !silent) {
+        ramp(fm, fm_n, 2, true);
+        ramp(psg, psg_n, 1, true);
+    }
+    if (!mute) s_rev.fade_in = silent;   /* forward after a silent stretch fades in too */
     if (s_audio && !mute) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
 }
 
@@ -498,12 +566,17 @@ void host_audio(uint64_t frame, bool mute, bool silent)
 void host_audio_silence(void)
 {
     static int16_t psg[3734];   /* one NTSC frame at the PSG rate (223,721 Hz / 59.92) */
+    rev_send(true);
+    s_rev.fade_in = true;
     if (s_audio) audio_flush(0, 1, nullptr, 0, psg, sizeof psg / sizeof psg[0]);
 }
 
-/* ... the sound queued for the device, dropped (a load: it was the other timeline's) */
+/* ... the sound queued for the device, dropped (a load: it was the other timeline's; a rewind's
+   start) */
 void host_audio_discard(void)
 {
+    s_rev.held = false;
+    s_rev.fade_in = true;
     if (s_audio) audio_discard_playback();
 }
 

@@ -224,7 +224,8 @@ with SDL's virtual controllers (headless, ~1 s).
 Quick saves and rewind (`platform/native/rewind.cpp`, NOTES "Quick saves and rewind"): F5/F6/F7 and
 the Controls table's Rewind row (`CB_REWIND`, no pad bit), played runs only, in memory only, off
 online; not an option. Headless runs record nothing unless `XMEN2_HOTKEYS=STEP:ACTION,...` is set.
-`uv run tools/rewindcheck.py` (~1.5 min) checks it against plain runs, with each section left out.
+`uv run tools/rewindcheck.py` (~1.5 min) checks it against plain runs, with each section left out;
+`uv run tools/rewindsound.py` (~35 s) checks `[rewind] sound = reversed` sample for sample on the WAV tap.
 Online defaults to a join code (room.cpp, joincode.cpp; NOTES "Join codes"): hosting asks the real
 router (UPnP/NAT-PMP) to forward the port, so anything that presses HOST headless sets
 `RNET_HOST_RELAY_NO_ROUTER=1` and `XMEN2_ROOM_BIND=127.0.0.1` (launcher_check does, for every case).

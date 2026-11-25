@@ -59,7 +59,9 @@ void        rewind_init(bool played);               /* after the sections are re
 bool        rewind_on(void);
 void        rewind_at_sync(void);                   /* main.cpp plat_at_sync */
 bool        rewind_pads(uint16_t pads[4]);          /* a rewind's replayed frame: its own pads (true) */
-bool        rewind_replaying(void);                 /* the frame running is a rewind step's (shown, silent) */
+bool        rewind_replaying(void);                 /* the frame running is a rewind step's (shown again) */
+enum { REWIND_AUDIO_FORWARD, REWIND_AUDIO_SILENT, REWIND_AUDIO_REVERSED };
+int         rewind_audio(void);                     /* host_audio: the frame's sound as played, silent, or backwards */
 void        rewind_key_save(void);
 void        rewind_key_load(void);
 void        rewind_key_slot(void);
