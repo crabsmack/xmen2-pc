@@ -3220,7 +3220,8 @@ written is a model of the chip.
   save, a rewind of 300 and a load that jumps forward 200 frames (meant: 80.7 s): neither uncapped
   nor stalled. The desktop was locked then (LogonUI), so no frame-pacing numbers were taken.
   `launcher_check.py` 15/15 (the Controls page's Rewind row, the Play page's line).
-- **Reversed sound (`[rewind] sound = reversed`; default `silent`, the user's call).** A step's
+- **Reversed sound (`[rewind] sound = reversed`, the default since 2026-11-25 by the user's call;
+  `silent` mutes it, as at first).** A step's
   replayed frame C-1 makes its sound again, so host_audio plays that instead of silence, backwards:
   steps C-1, C-2, ... give the sound before them backwards end to end, at speed, nothing stored.
   The FM (~53 kHz) is first taken to the PSG rate with audio_flush's own nearest-neighbour index

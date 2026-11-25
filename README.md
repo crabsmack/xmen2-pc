@@ -50,13 +50,13 @@ minute; let go to play on from there. The Controls page sets which inputs rewind
 
 Quick saves last until the game quits: nothing is written to disk. Neither works in online play.
 The rewind keeps the last 60 seconds by default (a few MB); set the length in `xmen2.ini` (0 turns
-it off, up to 3600). The game is silent while it rewinds by default; `sound = reversed` plays its
-sound backwards instead:
+it off, up to 3600). While it rewinds, the game's sound plays backwards by default; `sound = silent`
+mutes it instead:
 
 ```ini
 [rewind]
 seconds = 60
-sound = silent
+sound = reversed
 ```
 
 ## Controls

@@ -173,7 +173,7 @@ enum { SLOTS = 4 };
 
 bool s_on;                 /* the ring records (a played run, or XMEN2_HOTKEYS) */
 size_t s_max_frames;       /* [rewind] seconds as frames; 0 = no ring */
-bool s_reversed;           /* [rewind] sound = reversed: a step's frame is heard backwards (else silent) */
+bool s_reversed;           /* [rewind] sound = reversed (the default): a step's frame is heard backwards; silent */
 std::deque<Entry> s_ring;
 size_t s_ring_bytes;
 Snapshot s_top;            /* the newest state, whole (S of the ring's newest frame) */
@@ -368,11 +368,11 @@ void rewind_init(bool played)
     if (seconds < 0) seconds = 0;
     if (seconds > 3600) seconds = 3600;
     s_max_frames = (size_t)seconds * 60;
-    std::string sound = options_ini_get("rewind", "sound", "silent");
+    std::string sound = options_ini_get("rewind", "sound", "reversed");
     if (const char *t = getenv("XMEN2_REWIND_SOUND"); t && *t) sound = t;
-    s_reversed = sound == "reversed";
-    if (!s_reversed && sound != "silent")
-        fprintf(stderr, "[rewind] [rewind] sound = %s: silent or reversed; silent\n", sound.c_str());
+    s_reversed = sound != "silent";
+    if (s_reversed && sound != "reversed")
+        fprintf(stderr, "[rewind] [rewind] sound = %s: reversed or silent; reversed\n", sound.c_str());
     if (const char *t = getenv("XMEN2_REWIND_SKIP"); t && *t) {
         if (!state_has_section(t)) { fprintf(stderr, "[rewind] XMEN2_REWIND_SKIP: no section %s\n", t); exit(2); }
         s_skip = t;
