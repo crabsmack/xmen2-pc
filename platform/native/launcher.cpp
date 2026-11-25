@@ -102,6 +102,13 @@ const std::vector<Shown> &shown_table()
          "A RetroArch shader preset (.slangp) for the picture. None come with the game: choose a .slangp file. "
          "F8 turns it off and on while playing.",
          {{"", "None (original)"}}, false},
+        {"scaling", "Picture", "Scaling",
+         "How the picture is enlarged to the window. Even pixels (sharp bilinear): fills the window, every pixel the same size, with a "
+         "one-pixel blend where two meet. Whole number: the largest whole multiple that fits, sharp, with a border. Sharp: "
+         "fills the window, but at most sizes some pixels come out a little wider or taller than others. At an exact "
+         "multiple, such as the 3x window, all three look the same. F4 switches it while playing.",
+         {{"sharp_bilinear", "Even pixels (default)"}, {"integer", "Whole number (border)"}, {"nearest", "Sharp (uneven sizes)"}},
+         false},
         {"music_voices", "Sound", "Music voices",
          "The music on sound chips of its own, so no part or sound effect takes its notes, and each player's part plays "
          "in full. The cartridge has one set of chips, and with two players or more the game thins each part.",
@@ -542,7 +549,7 @@ void play_page(State &S)
         ImGui::TableSetColumnIndex(0);
         ImGui::TextColored(C_DIM, "While playing");
         ImGui::TableSetColumnIndex(1);
-        ImGui::TextUnformatted("F8 shader, F9 frame rate, F10 16:9, F11 fullscreen, Esc quit");
+        ImGui::TextUnformatted("F4 scaling, F8 shader, F9 frame rate, F10 16:9, F11 fullscreen, Esc quit");
         /* quick saves and rewind (rewind.cpp): Rewind's inputs are player 1's (Controls page) */
         std::string rk = controls_summary(0, rw, 1, true), rp = controls_summary(0, rw, 1, false), how;
         if (rk != "-") how = rk;

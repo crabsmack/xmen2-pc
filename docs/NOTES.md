@@ -1823,6 +1823,42 @@ bundled. F8 turns it off and on (a reserved key now, as F9-F11).
   control: a planted mixed ROM window is still found, the ROM's own near-run is not, and the edge
   is at 8 vs 9 other bytes, together or spread out.
 
+### Scaling (2026-11-25)
+
+A player's report (Reddit, 2026-11-24): the 16:9 view at 1080p looked "stretched vertically", and a shader
+preset seemed to fix it. Their screenshot and video (an image-compare tool zoomed on two screenshots)
+measured square pixels on both sides: 4.800 x 4.801 screen pixels per game pixel in the screenshot,
+6.932 x 6.929 (plain) and 6.932 x 6.937 (shaded) in the video. What they saw is nearest-neighbour at a
+non-whole scale: at 1920x1080 the 16:9 view is 4.8x, so 320 of the 400 columns get 5 screen pixels and
+80 get 4 (179 and 45 of the 224 rows), and the bands move with the scroll; 4:3 at 1080p is the same
+(4.82x). A preset's sampling hides it. The user saw mock-ups of the three ways (scratch frames of v1.6.0,
+1920x1080) and ruled: offer all three with a key to switch, "for now make C the default".
+
+- **`scaling`** (options.cpp; presentation only, each seat's own online, not in the seal): `sharp_bilinear`
+  (the default), `integer`, `nearest` (before this option, the only way). host_sdl.cpp `draw()`: the fitted
+  scale s = min(window / picture); `integer` uses floor(s) (when at least 1), centred, black around it;
+  `sharp_bilinear` between whole multiples draws the frame nearest to k = floor(s) times into a target
+  texture (`s_pre`, remade when the size changes, freed with the renderer) and that, linear, into the
+  fitted rectangle: each game pixel is k screen pixels plus at most one blended one (at 1080p 16:9, 1.2 of
+  4.8 columns mixed: a third 92/8, a third 75/25, a third about 58/42). At a whole multiple (the 3x window)
+  and with no render targets it is drawn as nearest, so all three are the same there.
+- **With a shader preset** the preset samples the frame itself: `integer` still sets the rectangle it
+  draws into (whole-number size, even scanlines in CRT presets), and the other two give it the fitted one.
+- **F4** goes to the next of the three and says so ("SCALING: EVEN PIXELS", "WHOLE NUMBER", "SHARP"); it is
+  a reserved key now (controls.cpp: Esc and F4-F11). The launcher's Picture group has it.
+- **Checked** (played windows, `XMEN2_WINDOW_SIZE=W,H` sets the window, `XMEN2_BACKBUFFER_SHOT`; scene 8,
+  16:9 and 4:3): the game frame read back from each window and each mode's model drawn from it (PIL) vs
+  the window: `integer` exact at 1200x672, 1440x810, 1280x800 and 4:3 1440x810; `sharp_bilinear` within 2
+  levels (GPU vs PIL rounding); `nearest` (unchanged) off at only 11-366 pixels where the GPU picks the
+  other texel at a boundary; at 3x the three windows identical; the borders black. `XMEN2_KEY_TEST=N:F4,...`
+  (a key press through the event queue at the Nth picture) cycles sharp_bilinear, integer, nearest,
+  sharp_bilinear, each shot fitting its own model, the message on the picture. With `nearest.slangp`:
+  `integer` equals the plain integer window, the other two the plain nearest window. Linux (WSLg,
+  OpenGL renderer): the same six windows equal the Windows ones (the shots at 3x differed only where two
+  runs caught the select's PRESS START blink apart). Online: two seats, `integer` and `nearest`, 4,433
+  frames on a lossy link, equal digests. launcher_check 15/15, the pad selftest, `options --json`.
+  Not checked: a played session by eye, fullscreen at 1080p on a real 1080p display, the Steam Deck.
+
 ## Phase 7: online play and four players
 
 Criteria, rulings (R1-R10) and the measurement contract: xmen2disasm `docs/phases/P7-multiplayer.md`

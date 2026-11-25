@@ -54,7 +54,7 @@ bool        controls_parse(const std::string &text, int keys[CTL_SLOTS], PadIn p
 std::string controls_key_label(int scancode);     /* "Up", "Enter", "Left Shift" */
 std::string controls_pad_label(PadIn in, int p);  /* as on player p's controller: "A", "Cross", "Button 3" */
 std::string controls_summary(int p, const int *buttons, int n, bool keyboard);   /* "Z  X  C" */
-bool        controls_reserved_key(int scancode);  /* Esc, F5-F11: the game's own keys */
+bool        controls_reserved_key(int scancode);  /* Esc, F4-F11: the game's own keys */
 
 /* binding (the launcher): the input moves here from wherever else it was; the note says from where */
 std::string controls_bind_key(int p, int b, int slot, int scancode);

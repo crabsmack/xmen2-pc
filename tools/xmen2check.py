@@ -1539,7 +1539,7 @@ Keyboard (player 1): arrows; Z = A, X = B, C = C, Enter = Start; A = X, S = Y, D
 Game controllers (players 1-4, in the order they are plugged in): D-pad or left stick; X = A,
 A = B, B = C, Start; LB = X, Y = Y, RB = Z, Back = Mode.  F11: fullscreen.  Esc: quit.
 F9: high frame rate on/off.  F10: 16:9 on/off (from the next screen).  F8: the shader preset
-on/off.  Each says so on screen.
+on/off.  F4: the next scaling.  Each says so on screen.
 Quick saves: F5 saves, F7 loads, F6 picks the slot (1-4); they last until the game quits (nothing
 is written to disk). Rewind: hold Backspace or a controller's left trigger, and the game goes back
 a frame at a time for up to a minute (xmen2.ini [rewind] seconds = 60; 0 turns it off), its sound
@@ -1566,6 +1566,12 @@ The picture, by default as your display allows (auto); widescreen=0,high_fps=0 f
                         F8 turns it off and on. Done by the librashader library beside the
                         game (MPL-2.0, unmodified; source:
                         https://github.com/SnowflakePowered/librashader). Default: none
+    scaling=integer     how the picture is enlarged to the window (F4 switches it). The
+                        default, sharp_bilinear: fills the window with every pixel the same
+                        size, one blended screen pixel where two meet. integer: the largest
+                        whole multiple that fits, sharp, with a border. nearest: fills the
+                        window, sharp, but some pixels a screen pixel wider than others.
+                        At an exact multiple (the 3x window) all three are the same
 Enhancements, each off unless you turn it on:
     full_rate_2p=1      two players at the full 60 frames a second (the original halves it)
     widescreen_gameplay=1  with widescreen: enemies wake and appear across the wide view, and
@@ -1620,12 +1626,12 @@ editor (Notepad: save as xmen2.ini with "All files", not xmen2.ini.txt). The com
     lives=inf
 {exe} --options --json shows the file it reads (settings_file, settings_file_found).
 While playing: F9 turns the in-between frames on and off, F10 the 16:9 view (from the next
-screen), F8 the shader preset.  {exe} --options --json lists them.
+screen), F8 the shader preset, F4 the scaling.  {exe} --options --json lists them.
 
 Online (rollback netplay, two to four players, each on their own machine with their own
 cartridge file). The host (seat 0) chooses the options that change the game (players,
 widescreen_gameplay, full_rate_2p, the cheats and tweaks) and every seat plays with them;
-high_fps, shader_preset, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
+high_fps, shader_preset, scaling, music_voices, sample_retime, sample_smooth, fm_chip and the 16:9 view are each
 seat's own (F9 and F10 work), except that with the host's widescreen_gameplay=1 the view is the
 host's too.
 There is no lobby: one player hosts, the others connect to the host. Everyone needs the same

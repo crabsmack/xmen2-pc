@@ -280,7 +280,8 @@ bool controls_is_default(int p)
 
 bool controls_reserved_key(int sc)
 {
-    return sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_F5 || sc == SDL_SCANCODE_F6 || sc == SDL_SCANCODE_F7 ||
+    return sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_F4 || sc == SDL_SCANCODE_F5 || sc == SDL_SCANCODE_F6 ||
+           sc == SDL_SCANCODE_F7 ||
            sc == SDL_SCANCODE_F8 || sc == SDL_SCANCODE_F9 || sc == SDL_SCANCODE_F10 || sc == SDL_SCANCODE_F11;
 }
 

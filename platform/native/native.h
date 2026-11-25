@@ -21,6 +21,9 @@ void        options_set_first_scene(int scene);     /* --scene N: a new game sta
 int         options_first_scene(void);              /* -1: none */
 std::string options_exe_dir(void);                  /* the runner's folder (xmen2.ini's) */
 std::string options_shader_preset(void);            /* shader_preset as given ("" = none; shader.cpp) */
+enum { SCALE_SHARP_BILINEAR, SCALE_INTEGER, SCALE_NEAREST };   /* scaling's values, in the table's order */
+int         options_scaling(void);                  /* SCALE_* (host_sdl.cpp draw) */
+void        options_toggle_scaling(void);           /* played: F4, the next of the three */
 void        options_detect_display(int w, int h, int hz, bool aspect);   /* high_fps/widescreen auto (host_sdl.cpp) */
 bool        options_high_fps_auto(void);            /* high_fps is auto (a display change looks again) */
 std::string options_ini_rom(void);                  /* xmen2.ini's [rom] path ("" if none) */

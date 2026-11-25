@@ -91,6 +91,10 @@ static OptDef s_defs[] = {
     /* (a player's request, 2026-11-22; backlog 2026-11-23): any path, "" = none (the original picture) */
     { "shader_preset", { "", nullptr },
       "a RetroArch shader preset (.slangp) the picture goes through, in played runs (librashader.dll / librashader.so beside the game; F8 turns it off and on): a path, relative ones from the game's folder; empty = none, the plain picture (the original)", "" },
+    /* (a player's report, 2026-11-24: the 16:9 view at 1080p looked uneven; the user, 2026-11-25: all
+       three, a key to switch, "for now make C the default") */
+    { "scaling", { "sharp_bilinear", "integer", "nearest", nullptr },
+      "how the picture is enlarged to the window, in played runs (F4 switches it): sharp_bilinear = filling the window with every game pixel the same size, a one-screen-pixel blend where two meet; integer = the largest whole multiple that fits, sharp, with a border; nearest = filling the window, sharp, with some pixels a screen pixel wider or taller than others at most sizes (as before). At a whole multiple, such as the 3x window, all three are the same", "sharp_bilinear" },
 };
 static const int NDEFS = (int)(sizeof s_defs / sizeof s_defs[0]);
 static std::string s_ini_path, s_exe_dir;
@@ -289,6 +293,22 @@ void options_toggle_widescreen(void)
     host_osd(ws_request_toggle() ? "16:9 FROM THE NEXT SCREEN" : "4:3 FROM THE NEXT SCREEN");
 }
 
+/* scaling (host_sdl.cpp draw): F4 goes through the three in the table's order */
+int options_scaling(void)
+{
+    const std::string &v = find("scaling")->value;
+    return v == "integer" ? SCALE_INTEGER : v == "nearest" ? SCALE_NEAREST : SCALE_SHARP_BILINEAR;
+}
+
+void options_toggle_scaling(void)
+{
+    static const char *const said[] = { "SCALING: EVEN PIXELS", "SCALING: WHOLE NUMBER", "SCALING: SHARP" };
+    int m = (options_scaling() + 1) % 3;
+    OptDef *d = find("scaling");
+    d->value = d->values[m];   /* the table's order is the modes' */
+    host_osd(said[m]);
+}
+
 void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : "0"; g_opt.widescreen = on; }
 
 /* Netplay (phase 7 R10, R12): the options that change the game are the host's, sealed into the
@@ -298,6 +318,7 @@ void options_set_widescreen(int on) { find("widescreen")->value = on ? "16:9" : 
 static bool presentation_only(const OptDef &d, bool ws_gameplay)
 {
     return !strcmp(d.name, "high_fps") || !strcmp(d.name, "pacing") || !strcmp(d.name, "shader_preset") ||
+           !strcmp(d.name, "scaling") ||
            !strcmp(d.name, "music_voices") ||
            !strcmp(d.name, "sample_retime") ||
            !strcmp(d.name, "sample_smooth") || !strcmp(d.name, "fm_chip") ||

@@ -12,7 +12,8 @@
  * XMEN2_PAD_SELFTEST=1: the slots checked with virtual controllers, headless (host_pad_selftest).
  * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
  * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen), F8 the shader preset
- * (shader_preset, shader.cpp: the picture through a RetroArch .slangp preset).
+ * (shader_preset, shader.cpp: the picture through a RetroArch .slangp preset), F4 the next scaling
+ * (sharp_bilinear, integer, nearest: draw()).
  * The renderer is Direct3D 11 on Windows where it can be (SDL's default, Direct3D 9, loses its
  * device when the window moves to another monitor or the displays change, and the picture froze
  * while the game and its music went on); a device reset or 30 failed draws in a row rebuild the
@@ -136,6 +137,8 @@ static SDL_Window *s_win;
 static SDL_Renderer *s_ren;
 static SDL_Texture *s_tex;
 static SDL_Texture *s_osd_tex;   /* shader_preset: the hotkeys' messages, drawn over the shaded picture */
+static SDL_Texture *s_pre;       /* scaling=sharp_bilinear: the picture at a whole multiple, smoothed from there */
+static int s_pre_w, s_pre_h;
 static uint64_t s_next;         /* performance-counter time of the next frame */
 static double s_period;          /* counter ticks per frame */
 static bool s_at_started;        /* high_fps: the present clock has started */
@@ -156,6 +159,7 @@ static int make_renderer(void)
 {
     shader_close();   /* its objects are the old device's */
     if (s_osd_tex) { SDL_DestroyTexture(s_osd_tex); s_osd_tex = nullptr; }
+    if (s_pre) { SDL_DestroyTexture(s_pre); s_pre = nullptr; s_pre_w = s_pre_h = 0; }
     if (s_tex) { SDL_DestroyTexture(s_tex); s_tex = nullptr; }
     if (s_ren) { SDL_DestroyRenderer(s_ren); s_ren = nullptr; }
 #ifdef _WIN32
@@ -228,6 +232,9 @@ int host_open(const char *title)
                              224 * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s_win) { fprintf(stderr, "[native] SDL window: %s\n", SDL_GetError()); return 0; }
     if (getenv("XMEN2_FULLSCREEN")) SDL_SetWindowFullscreen(s_win, SDL_WINDOW_FULLSCREEN_DESKTOP);   /* as F11 (measuring) */
+    int tw, th;   /* testing: XMEN2_WINDOW_SIZE=W,H the window's size in place of 3x (scaling's checks) */
+    if (const char *t = getenv("XMEN2_WINDOW_SIZE"))
+        if (sscanf(t, "%d,%d", &tw, &th) == 2 && tw > 0 && th > 0) SDL_SetWindowSize(s_win, tw, th);
     if (!make_renderer()) return 0;
     pads_scan();
     s_audio = audio_init((int)GENESIS_PSG_SAMPLE_RATE_NTSC) == 0;
@@ -260,6 +267,7 @@ void host_input(uint16_t pads[4])
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F8 && !e.key.repeat) shader_toggle();
+        if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F4 && !e.key.repeat) options_toggle_scaling();
         /* quick saves (rewind.cpp): F5 save, F6 the next slot, F7 load; Rewind held (controls.cpp, by
            default Backspace and a controller's left trigger) rewinds (below) */
         if (e.type == SDL_KEYDOWN && !e.key.repeat &&
@@ -740,12 +748,50 @@ static void draw(const uint32_t *fb, int stride, int w, int h)
         host_osd(strchr(osd_test, ':') + 1);
         osd_dump = getenv("XMEN2_DUMP_DIR") != nullptr;
     }
+    /* testing: XMEN2_KEY_TEST=N:KEY,... presses KEY (an SDL scancode name: F4) as the Nth picture is drawn,
+       through the event queue the keyboard's presses take */
+    static const char *key_test = getenv("XMEN2_KEY_TEST");
+    static long key_draws;
+    if (key_test) {
+        ++key_draws;
+        for (const char *q = key_test; *q; ) {
+            char *e, name[32] = "";
+            long n = strtol(q, &e, 10);
+            if (e == q || *e != ':') break;
+            size_t len = strcspn(e + 1, ",");
+            snprintf(name, sizeof name, "%.*s", (int)(len < 31 ? len : 31), e + 1);
+            if (n == key_draws) {
+                SDL_Event ev = {};
+                ev.type = SDL_KEYDOWN;
+                ev.key.keysym.scancode = SDL_GetScancodeFromName(name);
+                SDL_PushEvent(&ev);
+            }
+            q = e + 1 + len;
+            if (*q == ',') q++;
+        }
+    }
     int ww, wh;
     if (SDL_GetRendererOutputSize(s_ren, &ww, &wh) != 0 || ww <= 0 || wh <= 0) { s_draw_fails++; return; }
+    /* scaling: the largest size that fits; integer keeps a whole multiple of it (when one fits) */
     double sx = (double)ww / w, sy = (double)wh / (h * 1.0);
     double s = sx < sy ? sx : sy;
+    int mode = options_scaling(), k = (int)s;
+    if (mode == SCALE_INTEGER && k >= 1) s = k;
     SDL_Rect dst = { (int)((ww - w * s) / 2), (int)((wh - h * s) / 2), (int)(w * s), (int)(h * s) };
     SDL_Rect src = { 0, 0, w, h };
+    /* sharp_bilinear between whole multiples: sharp to k times, then smoothed to the size (each game pixel
+       k screen pixels plus at most one blended one where it meets the next); at a whole multiple, or with
+       no render targets, it is drawn as nearest */
+    bool prescale = mode == SCALE_SHARP_BILINEAR && k >= 1 && s - k > 1e-6 && SDL_RenderTargetSupported(s_ren);
+    if (prescale && (s_pre_w != w * k || s_pre_h != h * k)) {
+        if (s_pre) SDL_DestroyTexture(s_pre);
+        s_pre = SDL_CreateTexture(s_ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, w * k, h * k);
+        s_pre_w = s_pre ? w * k : 0;
+        s_pre_h = s_pre ? h * k : 0;
+        if (s_pre) SDL_SetTextureScaleMode(s_pre, SDL_ScaleModeLinear);
+        else fprintf(stderr, "[native] scaling=sharp_bilinear: no %dx%d target (%s), drawn sharp\n", w * k, h * k, SDL_GetError());
+    }
+    prescale = prescale && s_pre;
     SDL_SetRenderDrawColor(s_ren, 0, 0, 0, 255);
     SDL_RenderClear(s_ren);
     int bad = 0;
@@ -755,7 +801,15 @@ static void draw(const uint32_t *fb, int stride, int w, int h)
         fb = osd_overlay(fb, &stride, w, h);
         if (osd_dump) host_screenshot((std::string(getenv("XMEN2_DUMP_DIR")) + "/osd.bmp").c_str(), fb, stride, w, h);
         bad |= SDL_UpdateTexture(s_tex, &src, fb, stride * 4) != 0;
-        bad |= SDL_RenderCopy(s_ren, s_tex, &src, &dst) != 0;
+        if (prescale) {
+            SDL_Rect whole = { 0, 0, w * k, h * k };
+            bad |= SDL_SetRenderTarget(s_ren, s_pre) != 0;
+            bad |= SDL_RenderCopy(s_ren, s_tex, &src, &whole) != 0;
+            bad |= SDL_SetRenderTarget(s_ren, nullptr) != 0;
+            bad |= SDL_RenderCopy(s_ren, s_pre, &whole, &dst) != 0;
+        } else {
+            bad |= SDL_RenderCopy(s_ren, s_tex, &src, &dst) != 0;
+        }
     }
     /* testing: XMEN2_BACKBUFFER_SHOT=N,M,... the window as presented at the Nth picture drawn (after the
        shader chain and the message), as $XMEN2_DUMP_DIR/backbuffer_N.bmp */

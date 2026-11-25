@@ -72,7 +72,7 @@ The launcher's **Controls** page sets each player's controls (players 1-4, a tab
   choose it with Enter or the A button) and press the key, the controller button, or move the stick
   or trigger you want. Esc cancels, Backspace clears; right-click or Delete clears a box. A key
   belongs to one button of one player, so taking it moves it from wherever it was (the page says
-  so). Esc and F5-F11 stay the game's own.
+  so). Esc and F4-F11 stay the game's own.
 - **Rewind (hold)**, the last row, is not a Genesis button: held, it rewinds the game (see
   [Quick saves and rewind](#quick-saves-and-rewind)). Any player's rewinds.
 - **Stick dead zone**: how far a stick or trigger moves before it counts.
@@ -117,7 +117,7 @@ the picture follows your display (`widescreen` and `high_fps` are `auto`), `musi
 plays the music on chips of its own, `sample_retime` and `sample_smooth` play the sound
 driver's samples at a steady rate and smoothed.
 `widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0` gives
-the cartridge's picture and sound. F5-F11 say on screen what they did.
+the cartridge's picture and sound. F4-F11 say on screen what they did.
 
 The launcher's Options page sets them, with a description of each. They can also go on the
 command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in the settings
@@ -146,6 +146,7 @@ path = C:\Games\xmen2.bin
 | `widescreen_gameplay=1` | With widescreen: enemies wake and appear across the wide view, and the camera keeps it inside the stage (changes the game) |
 | `high_fps=144` | Frames in between the game's own for a 120/144/165/240 Hz display (any rate from 61 to 1000). F9 toggles it. The default, `auto`, is the display's own rate when it is over 60 Hz (and follows the window to another display), else off |
 | `shader_preset=PATH` | The picture through a RetroArch shader preset (`.slangp`): see [Shader presets](#shader-presets). F8 turns it off and on. The default, empty, is the plain picture |
+| `scaling=integer` | How the picture is enlarged to the window: see [Scaling](#scaling). F4 switches it. The default, `sharp_bilinear`, fills the window with every pixel the same size |
 | `pacing=display` | Experimental, not yet measured on a live display: pictures go out on the display's refreshes (vsync), each at the refresh nearest its time, and with `high_fps` each refresh shows the game at its own moment (`high_fps` is then at most that rate). The default, `timer`, shows them by the PC's clock, as before. If the display holds pictures back (a locked, hidden or minimized window), the timer takes over for 5 s at a time |
 | `full_rate_2p=1` | Two players at the full 60 frames a second (the original halves it) |
 | `players=4` | Three or four players, on one PC (a controller each, in plug-in order) or online: players 3 and 4 join at the player select, with their own panels; the camera keeps everyone in view, and their characters' music parts play on sound chips of their own |
@@ -179,11 +180,29 @@ picture shown, so with `high_fps` they get the frames in between too. The libras
 Linux `librashader.so`, built from the same release's source unmodified (it needs OpenGL 3.3). Without
 it the option does nothing.
 
+## Scaling
+
+The game's picture is 320x224 pixels (400x224 in the 16:9 view), enlarged to the window. Unless the
+window is an exact multiple of that, such as the 3x window the game opens in, the pixels can't all
+be the same whole number of screen pixels: at 1920x1080, each game pixel is 4.8 screen pixels.
+`scaling` chooses what happens then, and F4 switches between the three while playing:
+
+- `sharp_bilinear` (the default): fills the window with every pixel the same size. Each one is
+  drawn sharp at a whole multiple (4x at 1080p), and the last step to the window's size is smoothed,
+  so where two pixels meet there is at most one blended screen pixel.
+- `integer`: the largest whole multiple that fits, sharp, with a black border (4x at 1080p, which
+  leaves 160 pixels at the sides and 92 above and below).
+- `nearest`: fills the window, sharp, as before this option: at most sizes some pixels come out one
+  screen pixel wider or taller than others, which can shimmer when the picture scrolls.
+
+At an exact multiple all three are the same. With a shader preset, the preset draws the picture;
+`integer` still sets its size.
+
 ## Online
 
 Rollback netplay for two to four players, each on their own machine with their own ROM file.
 The host (seat 0) chooses the options that change the game, and every seat plays with them.
-The picture and sound options (`high_fps`, the 16:9 view, `shader_preset`, `music_voices`,
+The picture and sound options (`high_fps`, the 16:9 view, `shader_preset`, `scaling`, `music_voices`,
 `sample_retime`, `sample_smooth`, `fm_chip`) are each seat's own,
 except that with the host's `widescreen_gameplay=1` the 16:9 view is the host's too (F10 is off).
 
