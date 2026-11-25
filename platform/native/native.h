@@ -53,6 +53,21 @@ void        netplay_run(uint64_t frames);           /* never returns: the netpla
 void        netplay_print_json(void);               /* --netplay --json */
 int         ws_request_toggle(void);                /* widescreen.cpp: the view it goes to, 1 = 16:9 */
 void        present_reset(void);                    /* present.cpp: high_fps turned on again */
+void        present_jump(uint64_t from, uint64_t to);   /* present.cpp: a played run loaded frame `to`'s state at `from` */
+/* rewind.cpp: quick saves and rewind in a played run (F5-F7, Backspace) */
+void        rewind_init(bool played);               /* after the sections are registered; on in a played run */
+bool        rewind_on(void);
+void        rewind_at_sync(void);                   /* main.cpp plat_at_sync */
+bool        rewind_pads(uint16_t pads[4]);          /* a rewind's replayed frame: its own pads (true) */
+bool        rewind_replaying(void);                 /* the frame running is a rewind step's (shown, silent) */
+void        rewind_key_save(void);
+void        rewind_key_load(void);
+void        rewind_key_slot(void);
+void        rewind_key_held(bool held);
+std::string rewind_counters_json(void);
+int         rewind_selftest(void);                  /* XMEN2_REWIND_SELFTEST: the encoding; 0 = pass */
+void        main_frame_pads(uint16_t pads[4]);      /* main.cpp: the pads the last frame ran with */
+void        main_hold_picture(void);                /* main.cpp: the picture again for a frame, the game waiting */
 void        present_repeat(void);                   /* present.cpp: a played frame-tick V-int's period */
 std::string options_effective_json(void);           /* {"opt": "value", ...} */
 std::string ws_counters_json(void);                 /* widescreen.cpp: the `ws` counters */

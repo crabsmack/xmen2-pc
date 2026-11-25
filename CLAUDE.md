@@ -221,6 +221,10 @@ Controls (`platform/native/controls.cpp`, the launcher's Controls tab, xmen2.ini
 NOTES "Controls"): every host input goes through it (host_sdl.cpp `host_input` = `controls_mask`), not
 an option (no digest, seal or NP_VERSION change). `XMEN2_PAD_SELFTEST=1` checks the slots and bindings
 with SDL's virtual controllers (headless, ~1 s).
+Quick saves and rewind (`platform/native/rewind.cpp`, NOTES "Quick saves and rewind"): F5/F6/F7 and
+the Controls table's Rewind row (`CB_REWIND`, no pad bit), played runs only, in memory only, off
+online; not an option. Headless runs record nothing unless `XMEN2_HOTKEYS=STEP:ACTION,...` is set.
+`uv run tools/rewindcheck.py` (~1.5 min) checks it against plain runs, with each section left out.
 Online defaults to a join code (room.cpp, joincode.cpp; NOTES "Join codes"): hosting asks the real
 router (UPnP/NAT-PMP) to forward the port, so anything that presses HOST headless sets
 `RNET_HOST_RELAY_NO_ROUTER=1` and `XMEN2_ROOM_BIND=127.0.0.1` (launcher_check does, for every case).

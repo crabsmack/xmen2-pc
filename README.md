@@ -42,6 +42,21 @@ goes to the next one plugged in): D-pad or left stick;
 X/A/B = A/B/C, LB/Y/RB = X/Y/Z, Start = Start, Back = Mode. F11: fullscreen. Esc: quit.
 All of these can be changed: see [Controls](#controls).
 
+## Quick saves and rewind
+
+F5 saves the game, F7 loads it, and F6 picks the slot (1-4) the two use. Hold Backspace, or a
+controller's left trigger, to rewind: the game goes back a frame at a time, as it was, for up to a
+minute; let go to play on from there. The Controls page sets which inputs rewind ("Rewind (hold)").
+
+Quick saves last until the game quits: nothing is written to disk. Neither works in online play.
+The rewind keeps the last 60 seconds by default (a few MB); set the length in `xmen2.ini` (0 turns
+it off, up to 3600):
+
+```ini
+[rewind]
+seconds = 60
+```
+
 ## Controls
 
 The launcher's **Controls** page sets each player's controls (players 1-4, a tab each):
@@ -55,7 +70,9 @@ The launcher's **Controls** page sets each player's controls (players 1-4, a tab
   choose it with Enter or the A button) and press the key, the controller button, or move the stick
   or trigger you want. Esc cancels, Backspace clears; right-click or Delete clears a box. A key
   belongs to one button of one player, so taking it moves it from wherever it was (the page says
-  so). Esc, F8, F9, F10 and F11 stay the game's own.
+  so). Esc and F5-F11 stay the game's own.
+- **Rewind (hold)**, the last row, is not a Genesis button: held, it rewinds the game (see
+  [Quick saves and rewind](#quick-saves-and-rewind)). Any player's rewinds.
 - **Stick dead zone**: how far a stick or trigger moves before it counts.
 - Press anything on the page to try it: a light shows what the game will get for that player.
 
@@ -83,8 +100,8 @@ start = key:Space, pad:start, pad:righttrigger
 
 `controller` is `auto`, `none` or a controller's GUID (the launcher writes it, and its name as
 `controller_name`). Each button (`up`, `down`, `left`, `right`, `a`, `b`, `c`, `start`, `x`, `y`,
-`z`, `mode`) lists up to two `key:` and two `pad:` inputs, or nothing; a button left out keeps its
-default. Keys are SDL's names (`key:Left Shift`, `key:Keypad 8`); controller inputs are SDL's
+`z`, `mode`, and `rewind`) lists up to two `key:` and two `pad:` inputs, or nothing; a button left
+out keeps its default. Keys are SDL's names (`key:Left Shift`, `key:Keypad 8`); controller inputs are SDL's
 (`pad:a` the bottom face button, `b` right, `x` left, `y` top, `leftshoulder`, `rightshoulder`,
 `back`, `start`, `guide`, `leftstick`, `rightstick`, `dpup`..., `misc1`, `paddle1`-`paddle4`,
 `touchpad`; a stick direction `-leftx` / `+leftx` / `-lefty` / `+lefty`, the same for `rightx`
@@ -98,7 +115,7 @@ the picture follows your display (`widescreen` and `high_fps` are `auto`), `musi
 plays the music on chips of its own, `sample_retime` and `sample_smooth` play the sound
 driver's samples at a steady rate and smoothed.
 `widescreen=0,high_fps=0,music_voices=0,sample_retime=0,sample_smooth=0` gives
-the cartridge's picture and sound. F8, F9, F10 and F11 say on screen what they did.
+the cartridge's picture and sound. F5-F11 say on screen what they did.
 
 The launcher's Options page sets them, with a description of each. They can also go on the
 command line, `XMen2.exe xmen2.bin --options widescreen=16:9,high_fps=144`, or in the settings

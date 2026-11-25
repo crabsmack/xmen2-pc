@@ -11,7 +11,8 @@
 #include <string>
 #include <vector>
 
-enum CtlButton { CB_UP, CB_DOWN, CB_LEFT, CB_RIGHT, CB_A, CB_B, CB_C, CB_START, CB_X, CB_Y, CB_Z, CB_MODE, CB_COUNT };
+/* CB_REWIND is not a pad button: the host's rewind (rewind.cpp), held; its bit is 0 */
+enum CtlButton { CB_UP, CB_DOWN, CB_LEFT, CB_RIGHT, CB_A, CB_B, CB_C, CB_START, CB_X, CB_Y, CB_Z, CB_MODE, CB_REWIND, CB_COUNT };
 enum { CTL_PLAYERS = 4, CTL_SLOTS = 2 };
 
 /* a standard controller's input (SDL's game controller layout: positional, south = A) */
@@ -53,7 +54,7 @@ bool        controls_parse(const std::string &text, int keys[CTL_SLOTS], PadIn p
 std::string controls_key_label(int scancode);     /* "Up", "Enter", "Left Shift" */
 std::string controls_pad_label(PadIn in, int p);  /* as on player p's controller: "A", "Cross", "Button 3" */
 std::string controls_summary(int p, const int *buttons, int n, bool keyboard);   /* "Z  X  C" */
-bool        controls_reserved_key(int scancode);  /* Esc, F9-F11: the game's own keys */
+bool        controls_reserved_key(int scancode);  /* Esc, F5-F11: the game's own keys */
 
 /* binding (the launcher): the input moves here from wherever else it was; the note says from where */
 std::string controls_bind_key(int p, int b, int slot, int scancode);
@@ -67,6 +68,8 @@ std::string controls_event(const SDL_Event &e);   /* plugged in / out: what chan
 void        controls_reassign(void);           /* the players' controllers again, from the settings */
 uint16_t    controls_mask(int p);              /* player p's GPAD_* bits now */
 SDL_GameController *controls_player_pad(int p);
+bool        controls_rewind_held(void);        /* any player's Rewind input is held */
+bool        controls_rewind_held_by(int p);    /* ... player p's */
 bool        controls_any_pad_held(void);       /* a button or a stick of any controller */
 struct CtlDevice {
     std::string guid, name;

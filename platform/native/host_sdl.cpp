@@ -7,7 +7,8 @@
  *   [player1]..[player4]); by default the keyboard is player 1's: arrows; Z = A, X = B, C = C,
  *   Enter = Start; A = X, S = Y, D = Z, Q = Mode; game controllers are players 1-4 in plug-in order
  *   (an unplugged one frees its player): D-pad or left stick; X = A, A = B, B = C, Start;
- *   LB = X, Y = Y, RB = Z, Back = Mode.  Esc or closing the window quits.
+ *   LB = X, Y = Y, RB = Z, Back = Mode; Rewind (held: Backspace, a controller's left trigger).
+ *   Esc or closing the window quits. F5 quick save, F6 the next slot, F7 quick load (rewind.cpp).
  * XMEN2_PAD_SELFTEST=1: the slots checked with virtual controllers, headless (host_pad_selftest).
  * Frames are paced to the NTSC rate (59.92 Hz) by the clock (high_fps: present.cpp's clock); F11
  * toggles fullscreen, F9 high_fps, F10 widescreen (from the next screen), F8 the shader preset
@@ -257,6 +258,16 @@ void host_input(uint16_t pads[4])
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F9 && !e.key.repeat) options_toggle_high_fps();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F10 && !e.key.repeat) options_toggle_widescreen();
         if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_F8 && !e.key.repeat) shader_toggle();
+        /* quick saves (rewind.cpp): F5 save, F6 the next slot, F7 load; Rewind held (controls.cpp, by
+           default Backspace and a controller's left trigger) rewinds (below) */
+        if (e.type == SDL_KEYDOWN && !e.key.repeat &&
+            (e.key.keysym.scancode == SDL_SCANCODE_F5 || e.key.keysym.scancode == SDL_SCANCODE_F6 ||
+             e.key.keysym.scancode == SDL_SCANCODE_F7)) {
+            if (!rewind_on()) host_osd(netplay_enabled() ? "NO SAVES OR REWIND ONLINE" : "REWIND AND SAVES ARE OFF");
+            else if (e.key.keysym.scancode == SDL_SCANCODE_F5) rewind_key_save();
+            else if (e.key.keysym.scancode == SDL_SCANCODE_F6) rewind_key_slot();
+            else if (e.key.keysym.scancode == SDL_SCANCODE_F7) rewind_key_load();
+        }
         if (e.type == SDL_RENDER_DEVICE_RESET) s_rebuild = true;
         /* high_fps=auto follows the window to another display's rate (the 16:9 view stays as it is) */
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED && options_high_fps_auto()) {
@@ -268,6 +279,7 @@ void host_input(uint16_t pads[4])
         pad_event(e);
     }
     for (int p = 0; p < 4; p++) pads[p] = controls_mask(p);
+    if (rewind_on()) rewind_key_held(controls_rewind_held());
 }
 
 /* XMEN2_PAD_SELFTEST=1: the slots with SDL's virtual game controllers, headless (no window, no ROM).
@@ -361,6 +373,17 @@ int host_pad_selftest(void)
         g_controls[0].deadzone = 95;
         expect_pads("a dead zone past the stick", GPAD_B, 0);
         controls_defaults(0);
+        /* Rewind (rewind.cpp): the left trigger by default, held; no pad bit; then unbound, not held */
+        SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 30000);
+        expect_pads("the left trigger: no game button", GPAD_B | GPAD_RIGHT, 0);
+        bool rw = controls_rewind_held() && controls_rewind_held_by(0) && !controls_rewind_held_by(1);
+        g_controls[0].pad[CB_REWIND][0] = PadIn();
+        rw = rw && !controls_rewind_held();
+        steps++;
+        good += rw;
+        fprintf(stderr, "[native] pad selftest: the left trigger is player 1's Rewind, unbound it is nothing: %s\n", rw ? "ok" : "WRONG");
+        controls_defaults(0);
+        SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 0);
         SDL_JoystickSetVirtualButton(j, SDL_CONTROLLER_BUTTON_A, 0);
         SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_LEFTX, 0);
         /* player 1 with no controller: it goes to player 2 */
@@ -452,18 +475,36 @@ static void wav_maybe_start(void)
     else fprintf(stderr, "[native] XMEN2_WAV: no audio device or can't write %s\n", path);
 }
 
-void host_audio(uint64_t frame, bool mute)
+void host_audio(uint64_t frame, bool mute, bool silent)
 {
     wav_maybe_start();
     /* the chips' writes of the Z80's frame (stamped in master clocks from its start), mixed, to
        the device (as the engine's sim step: GENESIS_SIM_WALL_FRAME_MASTER_CYCLES); muted (a
-       rollback's replay of frames already heard), the chips still run */
+       rollback's replay of frames already heard), the chips still run; silent (a rewind's frames
+       shown again): the chips run and the device gets the frame's length of silence */
     static int16_t fm[8192 * 2], psg[16384];
     size_t fm_n = 0, psg_n = 0;
     audio_mixer_drain(895780u, fm, 8192, &fm_n, psg, sizeof psg / sizeof psg[0], &psg_n);
     /* phase 7 R9: players 3-4's parts; music_voices: the music (XMEN2_STEM=sfx: silent) */
-    sound_mix(fm, fm_n, psg, psg_n, mute || capture_mute_snd2());
+    sound_mix(fm, fm_n, psg, psg_n, mute || silent || capture_mute_snd2());
+    if (silent) {
+        memset(fm, 0, fm_n * 2 * sizeof fm[0]);
+        memset(psg, 0, psg_n * sizeof psg[0]);
+    }
     if (s_audio && !mute) audio_flush((uint32_t)frame, 1, fm, fm_n, psg, psg_n);
+}
+
+/* rewind.cpp: a frame's length of silence (the picture held at the rewind's oldest frame) */
+void host_audio_silence(void)
+{
+    static int16_t psg[3734];   /* one NTSC frame at the PSG rate (223,721 Hz / 59.92) */
+    if (s_audio) audio_flush(0, 1, nullptr, 0, psg, sizeof psg / sizeof psg[0]);
+}
+
+/* ... the sound queued for the device, dropped (a load: it was the other timeline's) */
+void host_audio_discard(void)
+{
+    if (s_audio) audio_discard_playback();
 }
 
 /* The hotkeys' messages (F9, F10, F11): 8x8 text, white on a translucent black box, centred at the
@@ -805,4 +846,11 @@ void host_slip(double us)
     double ticks = us * (double)SDL_GetPerformanceFrequency() / 1e6;
     s_next += (uint64_t)ticks;
     s_at_base += ticks;
+}
+
+/* rewind.cpp (present_jump): the frame-numbered present clock only (host_present's timer counts
+   pictures, not frames) */
+void host_present_shift(double us)
+{
+    if (s_at_started) s_at_base += us * (double)SDL_GetPerformanceFrequency() / 1e6;
 }

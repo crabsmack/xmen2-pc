@@ -1008,6 +1008,16 @@ void present_reset(void)
     for (int t = 0; t < NT; t++) { s_marks[t].clear(); s_seen[t].clear(); }
 }
 
+/* rewind.cpp: a played run loaded frame `to`'s state in place of frame `from`'s (a quick load, a
+   rewind step). The next frame is shown whole (no frame in between from the other timeline), and the
+   present clock, which times frame k at k x T, moves by the jump, so that frame comes one period
+   after the last one shown rather than at once (back) or seconds later (forward). */
+void present_jump(uint64_t from, uint64_t to)
+{
+    present_reset();
+    host_present_shift(((double)from - (double)to) * T_US);
+}
+
 void present_render_us_write(const char *path)
 {
     FILE *f = fopen(path, "wb");

@@ -3163,6 +3163,67 @@ written is a model of the chip.
   the launcher with that ROM. Not checked: RecompLauncher itself (its Developer tab's "Add a build"
   reads a local folder; nobody here has run it).
 
+## Quick saves and rewind (2026-11-25)
+
+- **What.** A played run of XMen2Native: F5 saves to a slot, F7 loads it, F6 picks the next of 4;
+  holding Rewind (a 13th row of the Controls table, `CB_REWIND`: no pad bit, any player's; default
+  Backspace for player 1's keys and every controller's left trigger, which the game doesn't use)
+  takes the game back a frame at a time. `platform/native/rewind.cpp`; hooks: main.cpp `plat_at_sync`
+  (`rewind_at_sync`), `plat_frame_begin` (a replayed frame's pads), `plat_frame_audio` (its sound
+  silent), host_sdl.cpp's keys. Off in online play (the netplay loop never calls plat_at_sync, and
+  `rewind_init` leaves it off: rollback owns the state) and in every headless run unless
+  `XMEN2_HOTKEYS` is set, so no trace, digest or presentation reference changes, and it is not an
+  option (it changes nothing the game does until a key is pressed; no `NP_VERSION` change). Slots
+  are in memory only: a state holds the game fiber's raw stack (state_place.cpp), so saves that
+  outlive the process need the fixed layout the harness's runner copies have; not done.
+- **The ring.** At every sync point the phase-7 savestate is taken (`state_save`, ~225 KB) and the
+  ring keeps, per frame k, S_k -> S_(k-1): each section XORed with the newer one's (or whole when
+  its length changed: the fiber's live stack), as (zero run, literal run) varints; the pads frame k
+  ran with; S_k's `machine_digest`. The newest state is kept whole. A step back from frame C pops C,
+  rebuilds S_(C-2), loads it and sets C-1's pads, and the host loop's next tick runs C-1 again: drawn
+  and shown as it was, its sound silent (host_audio `silent`), the state S_(C-1) again, its digest
+  checked against the kept one at the next sync point (counters `rewind.mismatch`). Held at the
+  ring's oldest frame, the picture stays and the game waits inside the hook (main_hold_picture).
+  Measured (TAS by runner frame in the session machine): ~1.9-2.6 KB a frame (two players ~2.8, four
+  ~4 KB), so the default 60 s is 6-15 MB (cap: 256 MB, `[rewind] seconds` up to 3600); recording
+  costs ~0.27-0.42 ms a frame (the save, the encoding, the digest), the TAS 762 -> 630 fps headless.
+- **The presentation.** A load moves the frame number, and the present clock (high_fps,
+  pacing=display) times frame k at k x T: `present_jump` moves its base by the jump
+  (`host_present_shift`; host_present's timer counts pictures, not frames, and needs nothing) and
+  resets the interpolation (`present_reset`), so the next picture comes one period after the last
+  and is shown whole. The in-between frames' workers are all waited for before a frame ends, so a
+  load at a sync point never races them. A load also drops the sound queued for the device
+  (`audio_discard_playback`).
+- **The first try was wrong (a lesson).** `rewind_at_sync` first ran the replayed frame itself
+  (`machine_tick` inside the hook, as the state probe does) and returned; the host loop then ran
+  one more frame forward, so each "step" showed two frames and went back one, and the ring's newest
+  no longer matched the state. The check that caught it: each frame's picture hash written as many
+  times as the keys make the game play it (`rewindcheck.py` "frames played"), not just "every row
+  equals the reference" (which passed). Second slip, same check: a rewind started before the frame
+  just run was pushed, so it began one frame back.
+- **Checks.** `uv run tools/rewindcheck.py` (~1.5 min on 30 threads): XMEN2_REWIND_SELFTEST (the
+  encoding: 200 random pairs, lengths changed, decoded back, and a damaged entry must not decode to
+  the same state), XMEN2_PAD_SELFTEST (18 steps: the left trigger is player 1's Rewind and no game
+  bit; F5-F7 can't be bound; an old xmen2.ini's Backspace on a button keeps it there), then three
+  configurations (tas to 6,000 frames, scenario-two-player to 4,900, mp scene 1 with four players to
+  4,433; all in the session machine, as played) with four cases each: a save and a later load, a
+  rewind held 200-300 frames, slots switched and an empty one loaded, a rewind of 400 with a 2-second
+  ring (stops after 119). Each sync row, digest row and frame picture hash equals the reference's,
+  each frame is written exactly as often as the keys make it play, the sound and mp counters agree,
+  mismatch 0: all 12 pass. Negative control (`XMEN2_REWIND_SKIP`, one section left out of every load,
+  for the save/load and rewind cases): every section caught somewhere: arena, machine, platform
+  everywhere; fiber in two/save-load and mp/save-load (a rewind's loads are a frame or two back,
+  where the game's stack is the same); sound in two/rewind and mp; snd2 and p34video in mp;
+  snd_music everywhere and snd_parts in tas and two (the `sound` counters); players34 in mp.
+  Played (a window, the TAS script, high_fps=120 on the 240 Hz display, `--quit-after 4400`): 74.02 s
+  plain, 83.96 s with a 300-frame rewind (+9.94 s; 600 frames' worth is 10.01 s), 80.63 s with a
+  save, a rewind of 300 and a load that jumps forward 200 frames (meant: 80.7 s): neither uncapped
+  nor stalled. The desktop was locked then (LogonUI), so no frame-pacing numbers were taken.
+  `launcher_check.py` 15/15 (the Controls page's Rewind row, the Play page's line).
+- **Not checked.** A person pressing the keys and a real controller's trigger; how the rewind looks
+  and sounds (silent while rewinding) at a live, unlocked display; pacing=display during a rewind
+  (the same clock base, unmeasured); a rewind across a high_fps or widescreen toggle; Linux played.
+
 ## Open questions
 
 - (Resolved 2026-10-17 by the user: keep AvalonB1_RunScene's CLEAR_COUNTER.) It byte-matches only

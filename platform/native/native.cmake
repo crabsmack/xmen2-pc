@@ -23,6 +23,7 @@ add_executable(XMen2Native
     "${CMAKE_SOURCE_DIR}/platform/native/host_sdl.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/controls.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/state.cpp"
+    "${CMAKE_SOURCE_DIR}/platform/native/rewind.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/players.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/sound2.cpp"
     "${CMAKE_SOURCE_DIR}/platform/native/sample_retime.cpp"

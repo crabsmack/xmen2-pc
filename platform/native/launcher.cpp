@@ -519,7 +519,7 @@ void play_page(State &S)
     if (ImGui::BeginTable("ctl", 3, ImGuiTableFlags_SizingStretchProp)) {
         /* player 1's, as set on the Controls page */
         static const int move[] = {CB_UP, CB_DOWN, CB_LEFT, CB_RIGHT}, abc[] = {CB_A, CB_B, CB_C}, xyz[] = {CB_X, CB_Y, CB_Z},
-                         sm[] = {CB_START, CB_MODE};
+                         sm[] = {CB_START, CB_MODE}, rw[] = {CB_REWIND};
         struct Row { const char *name; const int *b; int n; } rows[] = {{"Move", move, 4}, {"A  B  C", abc, 3}, {"X  Y  Z", xyz, 3},
                                                                           {"Start  Mode", sm, 2}};
         std::string pad_head = "Controller (player 1: " + controls_device_label(0) + ")";
@@ -543,6 +543,17 @@ void play_page(State &S)
         ImGui::TextColored(C_DIM, "While playing");
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted("F8 shader, F9 frame rate, F10 16:9, F11 fullscreen, Esc quit");
+        /* quick saves and rewind (rewind.cpp): Rewind's inputs are player 1's (Controls page) */
+        std::string rk = controls_summary(0, rw, 1, true), rp = controls_summary(0, rw, 1, false), how;
+        if (rk != "-") how = rk;
+        if (rp != "-" && g_controls[0].device != "none") how += (how.empty() ? "" : " or ") + rp;
+        std::string line = "F5 quick save, F7 load, F6 slot" + (how.empty() ? std::string() : "; hold " + how + " to rewind");
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextUnformatted(line.c_str());
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Four quick save slots (F6 picks the next), kept while the game runs: they are gone\n"
+                              "when it quits. Rewind goes back up to a minute. Neither works in online play.");
         ImGui::EndTable();
     }
     if (ImGui::Button("Change controls...")) S.want_tab = TAB_CONTROLS;
@@ -758,7 +769,7 @@ void controls_page(State &S)
             ImGui::TextColored(C_DIM, "%s", heads[i]);
         }
         for (int b = 0; b < CB_COUNT; b++) {
-            bool on = live & ctl_button_bit(b);
+            bool on = b == CB_REWIND ? controls_rewind_held_by(p) : (live & ctl_button_bit(b)) != 0;
             ImGui::PushID(b);
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);

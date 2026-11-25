@@ -7,7 +7,11 @@
 
 int  host_open(const char *title);           /* 0: no display */
 void host_input(uint16_t pads[4]);           /* GPAD_* masks of players 1-4; quits on Esc / close */
-void host_audio(uint64_t frame, bool mute);  /* the Z80 frame's sound, mixed, to the device (mute: not heard) */
+void host_audio(uint64_t frame, bool mute, bool silent = false);   /* the Z80 frame's sound, mixed, to the device
+                                                                       (mute: not heard; silent: silence in its place) */
+void host_audio_silence(void);   /* rewind.cpp: one frame's length of silence to the device */
+void host_audio_discard(void);   /* rewind.cpp: the sound queued for the device dropped (a load) */
+void host_present_shift(double us);   /* rewind.cpp: the frame-numbered present clock moves by us (present_jump) */
 void host_present(const uint32_t *fb, int stride, int w, int h);   /* the picture, then paced to NTSC */
 void host_present_at(const uint32_t *fb, int stride, int w, int h, double t_us);   /* high_fps: the picture
                                                                                       at t_us on the present clock */

@@ -14,7 +14,9 @@
  *
  * The defaults are the original fixed mapping: keyboard (player 1) arrows, Z X C = A B C, A S D = X Y Z,
  * Enter = Start, Q = Mode; every controller D-pad or left stick, X A B = A B C, LB Y RB = X Y Z,
- * Start, Back = Mode; controllers go to players 1-4 in plug-in order (an unplugged one frees its
+ * Start, Back = Mode. Besides the 12 buttons, each player has Rewind (hold; rewind.cpp): no pad bit,
+ * any player's rewinds the game; by default Backspace (player 1's keys) and every controller's left
+ * trigger. Controllers go to players 1-4 in plug-in order (an unplugged one frees its
  * player, the next one plugged in takes the first free player). A player can instead have one
  * particular controller (by its GUID: two of the same model take the pinned players in plug-in
  * order) or none.
@@ -42,10 +44,11 @@ PlayerControls g_controls[CTL_PLAYERS];
 
 namespace {
 
-const char *const k_names[CB_COUNT] = {"Up", "Down", "Left", "Right", "A", "B", "C", "Start", "X", "Y", "Z", "Mode"};
-const char *const k_keys[CB_COUNT] = {"up", "down", "left", "right", "a", "b", "c", "start", "x", "y", "z", "mode"};
+const char *const k_names[CB_COUNT] = {"Up", "Down", "Left", "Right", "A", "B", "C", "Start", "X", "Y", "Z", "Mode",
+                                       "Rewind (hold)"};
+const char *const k_keys[CB_COUNT] = {"up", "down", "left", "right", "a", "b", "c", "start", "x", "y", "z", "mode", "rewind"};
 const uint16_t k_bits[CB_COUNT] = {GPAD_UP, GPAD_DOWN, GPAD_LEFT, GPAD_RIGHT, GPAD_A, GPAD_B, GPAD_C, GPAD_START,
-                                   GPAD_X, GPAD_Y, GPAD_Z, GPAD_MODE};
+                                   GPAD_X, GPAD_Y, GPAD_Z, GPAD_MODE, 0 /* CB_REWIND: the host's, no pad bit */};
 
 PadIn btn(SDL_GameControllerButton b) { PadIn i; i.kind = PadIn::BUTTON; i.code = (int8_t)b; return i; }
 PadIn axis(SDL_GameControllerAxis a, int dir) { PadIn i; i.kind = PadIn::AXIS; i.code = (int8_t)a; i.dir = (int8_t)dir; return i; }
@@ -53,10 +56,12 @@ PadIn axis(SDL_GameControllerAxis a, int dir) { PadIn i; i.kind = PadIn::AXIS; i
 /* the keyboard layouts (KEYS_ARROWS is player 1's default) */
 const SDL_Scancode k_arrows[CB_COUNT] = {SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT,
                                          SDL_SCANCODE_Z, SDL_SCANCODE_X, SDL_SCANCODE_C, SDL_SCANCODE_RETURN,
-                                         SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_D, SDL_SCANCODE_Q};
+                                         SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_D, SDL_SCANCODE_Q,
+                                         SDL_SCANCODE_BACKSPACE};
 const SDL_Scancode k_wasd[CB_COUNT] = {SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D,
                                        SDL_SCANCODE_J, SDL_SCANCODE_K, SDL_SCANCODE_L, SDL_SCANCODE_SPACE,
-                                       SDL_SCANCODE_U, SDL_SCANCODE_I, SDL_SCANCODE_O, SDL_SCANCODE_TAB};
+                                       SDL_SCANCODE_U, SDL_SCANCODE_I, SDL_SCANCODE_O, SDL_SCANCODE_TAB,
+                                       SDL_SCANCODE_UNKNOWN /* rewind: the arrows layout's Backspace is enough */};
 
 std::string trim(const std::string &s)
 {
@@ -240,6 +245,7 @@ void controls_pad_defaults(int p)
     c.pad[CB_Y][0] = btn(SDL_CONTROLLER_BUTTON_Y);
     c.pad[CB_Z][0] = btn(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
     c.pad[CB_MODE][0] = btn(SDL_CONTROLLER_BUTTON_BACK);
+    c.pad[CB_REWIND][0] = axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT, 1);   /* the game uses neither trigger */
     c.deadzone = 37;
 }
 
@@ -274,8 +280,8 @@ bool controls_is_default(int p)
 
 bool controls_reserved_key(int sc)
 {
-    return sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_F8 || sc == SDL_SCANCODE_F9 || sc == SDL_SCANCODE_F10 ||
-           sc == SDL_SCANCODE_F11;
+    return sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_F5 || sc == SDL_SCANCODE_F6 || sc == SDL_SCANCODE_F7 ||
+           sc == SDL_SCANCODE_F8 || sc == SDL_SCANCODE_F9 || sc == SDL_SCANCODE_F10 || sc == SDL_SCANCODE_F11;
 }
 
 std::string controls_key_label(int sc)
@@ -369,6 +375,7 @@ bool controls_parse(const std::string &text, int keys[CTL_SLOTS], PadIn pads[CTL
 }
 
 static bool s_loaded;
+static void rewind_keys_yield(void);
 
 void controls_load(void)
 {
@@ -392,6 +399,21 @@ void controls_load(void)
                         k_keys[b], v.c_str());
         }
     }
+    rewind_keys_yield();
+}
+
+/* an xmen2.ini from before Rewind had a key may bind its default (Backspace) to a button: the key
+   stays the button's, Rewind has none there */
+static void rewind_keys_yield(void)
+{
+    for (int p = 0; p < CTL_PLAYERS; p++)
+        for (int s = 0; s < CTL_SLOTS; s++) {
+            int &k = g_controls[p].key[CB_REWIND][s];
+            for (int q = 0; q < CTL_PLAYERS && k; q++)
+                for (int b = 0; b < CB_COUNT && k; b++)
+                    for (int t = 0; t < CTL_SLOTS && k; t++)
+                        if (b != CB_REWIND && g_controls[q].key[b][t] == k) k = 0;
+        }
 }
 
 bool controls_save(void)
@@ -433,6 +455,7 @@ std::string controls_keyboard_preset(int p, int preset)
     const SDL_Scancode *k = preset == KEYS_ARROWS ? k_arrows : k_wasd;
     std::string notes;
     for (int b = 0; b < CB_COUNT; b++) {
+        if (!k[b]) continue;   /* none in this layout */
         std::string n = controls_bind_key(p, b, 0, k[b]);
         if (!n.empty()) notes += (notes.empty() ? "" : " ") + n;
     }
@@ -443,7 +466,8 @@ std::string controls_keyboard_preset(int p, int preset)
 
 std::string controls_bind_key(int p, int b, int slot, int sc)
 {
-    if (controls_reserved_key(sc)) return controls_key_label(sc) + " is the game's own key (Esc quits, F8-F11 change the picture).";
+    if (controls_reserved_key(sc))
+        return controls_key_label(sc) + " is the game's own key (Esc quits, F5-F7 save and load, F8-F11 change the picture).";
     std::string note;
     for (int q = 0; q < CTL_PLAYERS; q++)
         for (int bb = 0; bb < CB_COUNT; bb++)
@@ -636,6 +660,33 @@ uint16_t controls_mask(int p)
 
 SDL_GameController *controls_player_pad(int p) { return p >= 0 && p < CTL_PLAYERS ? s_slot[p] : nullptr; }
 
+/* player p's Rewind input is held */
+bool controls_rewind_held_by(int p)
+{
+    if (p < 0 || p >= CTL_PLAYERS) return false;
+    int n = 0;
+    const Uint8 *k = SDL_GetKeyboardState(&n);
+    const PlayerControls &c = g_controls[p];
+    SDL_GameController *pad = s_slot[p];
+    int dead = c.deadzone * 32767 / 100;
+    for (int s = 0; s < CTL_SLOTS; s++) {
+        int sc = c.key[CB_REWIND][s];
+        if (k && sc > 0 && sc < n && k[sc]) return true;
+        const PadIn &in = c.pad[CB_REWIND][s];
+        if (pad && in.kind == PadIn::BUTTON && SDL_GameControllerGetButton(pad, (SDL_GameControllerButton)in.code)) return true;
+        if (pad && in.kind == PadIn::AXIS && SDL_GameControllerGetAxis(pad, (SDL_GameControllerAxis)in.code) * in.dir > dead) return true;
+    }
+    return false;
+}
+
+/* any player's (rewind.cpp: the whole game goes back, whoever holds it) */
+bool controls_rewind_held(void)
+{
+    for (int p = 0; p < CTL_PLAYERS; p++)
+        if (controls_rewind_held_by(p)) return true;
+    return false;
+}
+
 bool controls_any_pad_held(void)
 {
     for (SDL_GameController *c : s_open) {
@@ -731,6 +782,19 @@ int controls_selftest(void)
     check("WASD for player 2 takes A S D from player 1", controls_keyboard_layout(1) == KEYS_WASD && !g_controls[0].key[CB_X][0] &&
                                                              g_controls[0].key[CB_UP][0] == SDL_SCANCODE_UP);
     check("not default after a change", !controls_is_default(0) && !controls_is_default(1) && controls_is_default(2));
+    /* Rewind (rewind.cpp): Backspace and the left trigger; F5-F7 are the game's own; an old xmen2.ini's
+       Backspace on a button keeps it there */
+    for (int p = 0; p < CTL_PLAYERS; p++) controls_defaults(p);
+    check("Rewind's defaults", controls_ini_value(0, CB_REWIND) == "key:Backspace, pad:lefttrigger" &&
+                                   controls_ini_value(1, CB_REWIND) == "pad:lefttrigger" && !ctl_button_bit(CB_REWIND));
+    check("F5-F7 can't be bound", !controls_bind_key(0, CB_A, 0, SDL_SCANCODE_F5).empty() &&
+                                      !controls_bind_key(0, CB_A, 0, SDL_SCANCODE_F7).empty() &&
+                                      g_controls[0].key[CB_A][0] == SDL_SCANCODE_Z && !controls_parse("key:F6", k, pd));
+    g_controls[0].key[CB_MODE][0] = SDL_SCANCODE_BACKSPACE;   /* as controls_load reads an old [player1] */
+    rewind_keys_yield();
+    check("an old Backspace button keeps the key", g_controls[0].key[CB_MODE][0] == SDL_SCANCODE_BACKSPACE &&
+                                                       !g_controls[0].key[CB_REWIND][0] &&
+                                                       g_controls[0].pad[CB_REWIND][0] == axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT, 1));
     for (int p = 0; p < CTL_PLAYERS; p++) g_controls[p] = keep[p];
     return bad;
 }

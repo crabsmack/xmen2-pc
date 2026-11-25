@@ -411,6 +411,7 @@ extern "C" void plat_at_sync(uint64_t sync)
     if (!s_branch_on) save_states();   /* --state-at: before a branch of the same frame */
     if (!s_branch_on && s_plan_next < s_plan.size()) run_branches();   /* --branch-plan: before this run's own work */
     at_sync_work(sync);
+    rewind_at_sync();   /* a played run: the quick saves' keys, the rewind ring (rewind.cpp) */
 }
 
 static void at_sync_work(uint64_t sync)
@@ -473,10 +474,10 @@ static void report_counters_to(FILE *out)
     /* no dispatch, no interpreter, no stand-ins: the native runner has no 68000 code to miss */
     fprintf(out, "[xmen2] counters {\"dispatch_misses\": 0, \"interp_instructions\": 0, \"stub_hits\": 0, "
                  "\"sync_points\": %llu, \"a7_min\": null, \"stack_low\": %u, \"exported\": %s, \"memory\": %s, "
-                 "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s, \"sound\": %s}\n",
+                 "\"options\": %s, \"enhance\": %s, \"state\": %s, \"session\": %s, \"mp\": %s, \"sound\": %s, \"rewind\": %s}\n",
             (unsigned long long)s_sync_rows, (unsigned)(s_stack_low & 0xFFFFFFu), exported, memory,
             options_effective_json().c_str(), enhance, state.c_str(), machine_session() ? "true" : "false",
-            players_counters_json().c_str(), sound_counters_json().c_str());
+            players_counters_json().c_str(), sound_counters_json().c_str(), rewind_counters_json().c_str());
     fflush(out);
 }
 
@@ -540,7 +541,8 @@ extern "C" void plat_frame_audio(uint64_t frame)
         g_fm_m1.clear();
         for (const ChipEv &e : merged) audio_event_push(e.stamp, e.port, e.v);
     }
-    host_audio(frame, quiet());   /* quiet: the chips run, nothing is heard */
+    host_audio(frame, quiet(), rewind_replaying());   /* quiet: the chips run, nothing is heard; a rewind step's
+                                                          frame: shown, silence in its sound's place */
 }
 
 extern "C" int plat_realtime(void) { return s_interactive; }
@@ -613,10 +615,19 @@ uint16_t main_local_pad(uint64_t frame, int col)
 }
 void main_np_pads(const uint16_t rows[4]) { s_np_pads = true; memcpy(s_np_pad, rows, sizeof s_np_pad); }
 
+static uint16_t s_frame_pads[4];   /* the pads the frame begun last runs with (rewind.cpp keeps them) */
+void main_frame_pads(uint16_t pads[4]) { memcpy(pads, s_frame_pads, sizeof s_frame_pads); }
+
 extern "C" void plat_frame_begin(uint64_t frame)
 {
     uint16_t pad[4] = { 0, 0, 0, 0 };
     if (s_np_pads) memcpy(pad, s_np_pad, sizeof pad);
+    else if (rewind_pads(pad)) {   /* a rewind step: the frame's own pads again (the keys still read) */
+        if (s_interactive) {
+            uint16_t live[4];
+            host_input(live);
+        }
+    }
     else if (s_interactive && s_script.empty()) host_input(pad);
     else if (!s_script.empty()) {
         if (s_interactive) {   /* a window replaying a script: its events still read (else Windows calls it
@@ -628,6 +639,7 @@ extern "C" void plat_frame_begin(uint64_t frame)
     }
     if (s_flip && frame >= s_flip && frame < s_flip + 8) pad[0] ^= GPAD_C;   /* --flip: the latency probe */
     capture_record_pads(frame, pad);   /* --record-inputs */
+    memcpy(s_frame_pads, pad, sizeof s_frame_pads);
     g_machine.bus.pad[0] = pad[0];
     g_machine.bus.pad[1] = pad[1];
     g_pad34[0] = pad[2];
@@ -722,6 +734,17 @@ extern "C" void plat_frame_end(uint64_t frame)
         if (s_plan_next < s_plan.size()) run_branches();   /* the plan's branches at this run's last frame */
         exit(0);
     }
+}
+
+/* rewind.cpp, held at the ring's oldest frame: the keys read, the picture shown again for a frame
+   (paced as a frame), silence; the game waits at its sync point */
+void main_hold_picture(void)
+{
+    if (!s_interactive) return;
+    uint16_t live[4];
+    host_input(live);
+    host_audio_silence();
+    host_present(&s_fb[0][0], FB_W, machine_screen_width(), machine_screen_height());
 }
 
 /* ---- --branch-plan (see the declarations above plat_sync_row) --------------------------------- */
@@ -1177,6 +1200,7 @@ int main(int argc, char **argv)
         else { fprintf(stderr, "[native] unknown option %s\n", argv[i]); return 2; }
     }
     if (const char *t = getenv("XMEN2_PAD_SELFTEST"); t && *t && strcmp(t, "0")) return host_pad_selftest();   /* host_sdl.cpp */
+    if (const char *t = getenv("XMEN2_REWIND_SELFTEST"); t && *t && strcmp(t, "0")) return rewind_selftest();   /* rewind.cpp */
     if (!s_benchmark) host_detach_lone_console();   /* a double-click's console window: closed (host_sdl.cpp) */
     std::string found;
     /* The launcher (GitHub issue #1): a played start with no ROM, no netplay and no input script on the
@@ -1340,6 +1364,7 @@ int main(int argc, char **argv)
     state_counters(&s_sync_rows, sizeof s_sync_rows);
     state_counters(&s_two_player_frames, sizeof s_two_player_frames);
     state_counters(&s_two_player_step_frames, sizeof s_two_player_step_frames);
+    rewind_init(s_interactive != 0);   /* quick saves and rewind: a played run's (or XMEN2_HOTKEYS) */
     machine_power_on();
     g_machine.bus.pad_type[0] = g_machine.bus.pad_type[1] = 1;
     if (netplay_enabled()) {   /* phase 7: the netplay loop runs the ticks; it ends the session itself */
